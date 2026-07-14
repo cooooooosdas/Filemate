@@ -23,7 +23,7 @@
 
 ```bash
 # 1. clone 仓库
-git clone https://github.com/<胡希用户名>/FileMate.git
+git clone https://github.com/cooooooosdas/Filemate.git
 cd FileMate
 
 # 2. 创建虚拟环境 + 安装依赖
