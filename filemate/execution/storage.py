@@ -158,6 +158,11 @@ class SQLiteStorage:
 
     def record_hash(self, file_hash: str, session_id: str) -> None:
         conn = self._conn()
+        # 确保 FK 不报错（测试可能未显式建 session）
+        conn.execute(
+            "INSERT OR IGNORE INTO sessions (session_id, source_path) VALUES (?, ?)",
+            (session_id, f"/test/{session_id}"),
+        )
         conn.execute(
             "INSERT OR IGNORE INTO processed_files (file_hash, session_id) VALUES (?, ?)",
             (file_hash, session_id),

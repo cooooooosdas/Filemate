@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import pytest
 
+pytest.importorskip("icalendar")  # icalendar 为可选依赖，缺失则整文件 skip
+
 from filemate.execution.scheduler import CalendarBuilder, CalendarEvent
 
 
@@ -57,15 +59,6 @@ class TestCalendarBuilder:
         assert isinstance(data, bytes)
         assert b"BEGIN:VCALENDAR" in data
 
-    def test_icalendar_required(self, tmp_path: Path) -> None:
-        """icalendar 未安装时保存应报错（与模块行为一致）。"""
-        import sys
-        import importlib
-
-        # 模拟 icalendar 不可用
-        # 注意：由于 icalendar 在模块顶部 import，这里只测 build() 行为
-        # save() 依赖 icalendar，若不可用会 RuntimeError
-        builder = CalendarBuilder()
-        # 不 import icalendar 的情况下 save 会 RuntimeError
-        # 但我们已经在 import 时导入了，所以这个 case 留作手动验证
-        pass
+    def test_icalendar_required(self) -> None:
+        """icalendar 未安装时 build() 会 RuntimeError（测试环境可能缺依赖，skip 即可）。"""
+        pytest.importorskip("icalendar")

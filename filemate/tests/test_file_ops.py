@@ -29,7 +29,7 @@ class TestEnsureDir:
         assert result == target
 
     def test_existing(self, ops: FileOps, tmp: Path) -> None:
-        tmp.mkdir()
+        # tmp 已被 pytest 自动创建，无需再 mkdir
         result = ops.ensure_dir(tmp)
         assert result == tmp
 

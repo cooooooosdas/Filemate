@@ -18,6 +18,13 @@ import sys
 import uuid
 from pathlib import Path
 
+# Windows GBK 控制台 + 中文输出兼容
+if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 from filemate.llm_client import LLMClient, LLMConfig
 from filemate.perception import FileParser
 from filemate.understanding import (
@@ -276,6 +283,10 @@ def main() -> None:
         print("请让对应成员按 TODO 标记完成：")
         print("  感知层 → 汤新阳 | 理解层 → 张金宝 | 执行层 → 徐书和")
         sys.exit(2)
+    except Exception as exc:
+        print(f"\n❌ 处理失败：{exc}")
+        logger.exception("处理失败: %s", path)
+        sys.exit(1)
 
     print("\n=== 处理结果 ===")
     print(f"  文件:      {session.source_path}")
