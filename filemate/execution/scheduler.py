@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Sequence
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CalendarEvent:
     summary: str
-    start: str  # ISO 8601  (YYYY-MM-DD 或 YYYY-MM-DDTHH:MM)
+    start: str  # ISO 8601  (YYYY-MM-DD / YYYY-MM-DDTHH:MM / YYYY-MM-DDTHH:MM:SS)
     end: str | None = None
     location: str = ""
     description: str = ""
@@ -49,7 +49,7 @@ class CalendarBuilder:
                 evt.add("location", ev.location)
             if ev.description:
                 evt.add("description", ev.description)
-            evt.add("dtstamp", datetime.now())
+            evt.add("dtstamp", datetime.now(timezone.utc))
             cal.add_component(evt)
 
         return cal.to_ical()
@@ -69,7 +69,19 @@ class CalendarBuilder:
 
     @staticmethod
     def _parse_dt(value: str) -> datetime:
-        """将 'YYYY-MM-DD' 或 'YYYY-MM-DDTHH:MM' 解析为 datetime。"""
-        if "T" in value:
-            return datetime.strptime(value, "%Y-%m-%dT%H:%M")
-        return datetime.strptime(value, "%Y-%m-%d")
+        """将 ISO 8601 日期时间字符串解析为 datetime。
+
+        支持三种格式（按优先级尝试）：
+        - YYYY-MM-DDTHH:MM:SS（含秒）
+        - YYYY-MM-DDTHH:MM（含分钟）
+        - YYYY-MM-DD（仅日期）
+        """
+        for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(value, fmt)
+            except ValueError:
+                continue
+        raise ValueError(
+            f"无法解析日期时间: {value!r}，"
+            f"支持格式: YYYY-MM-DD / YYYY-MM-DDTHH:MM / YYYY-MM-DDTHH:MM:SS"
+        )

@@ -77,6 +77,18 @@ class TestRename:
         res = ops.rename(tmp / "a.txt", "b.txt")
         assert not res.success
 
+    def test_rename_empty_name(self, ops: FileOps, tmp: Path) -> None:
+        (tmp / "x.txt").write_text("x")
+        res = ops.rename(tmp / "x.txt", "")
+        assert not res.success
+        assert "不能为空" in res.error
+
+    def test_rename_invalid_name(self, ops: FileOps, tmp: Path) -> None:
+        (tmp / "x.txt").write_text("x")
+        res = ops.rename(tmp / "x.txt", "a/b.txt")  # 含路径分隔符
+        assert not res.success
+        assert "无效" in res.error
+
 
 class TestHash:
     def test_stable(self, ops: FileOps, tmp: Path) -> None:
@@ -98,6 +110,10 @@ class TestHash:
         h = ops.compute_hash(p)
         assert h == hashlib.sha256().hexdigest()
 
+    def test_missing_file_raises(self, ops: FileOps, tmp: Path) -> None:
+        with pytest.raises(FileNotFoundError, match="文件不存在"):
+            ops.compute_hash(tmp / "does_not_exist.txt")
+
 
 class TestSuffix:
     def test_docx(self, ops: FileOps) -> None:
@@ -108,6 +124,35 @@ class TestSuffix:
 
     def test_no_ext(self, ops: FileOps) -> None:
         assert ops.suffix("README") == ""
+
+
+class TestCopy:
+    def test_copy_basic(self, ops: FileOps, tmp: Path) -> None:
+        src = tmp / "src.txt"
+        src.write_text("hello")
+        dst = tmp / "sub" / "dst.txt"
+        res = ops.copy(src, dst)
+        assert res.success
+        assert src.exists()  # 源文件仍在
+        assert dst.exists()
+
+    def test_copy_missing(self, ops: FileOps, tmp: Path) -> None:
+        res = ops.copy(tmp / "missing.txt", tmp / "dst.txt")
+        assert not res.success
+        assert "不存在" in res.error
+
+
+class TestDelete:
+    def test_delete_basic(self, ops: FileOps, tmp: Path) -> None:
+        p = tmp / "remove_me.txt"
+        p.write_text("x")
+        res = ops.delete(p)
+        assert res.success
+        assert not p.exists()
+
+    def test_delete_missing(self, ops: FileOps, tmp: Path) -> None:
+        res = ops.delete(tmp / "gone.txt")
+        assert not res.success
 
 
 class TestIsSupported:
