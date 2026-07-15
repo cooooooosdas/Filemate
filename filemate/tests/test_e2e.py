@@ -118,5 +118,5 @@ class TestOperationLog:
         storage.log_operation("log-1", "classify", "课件 0.9")
         ops = storage.get_operations("log-1")
         assert len(ops) == 1
-        assert ops[0]["action"] == "classify"
+        assert ops[0]["op"] == "classify"
         assert "0.9" in ops[0]["detail"]

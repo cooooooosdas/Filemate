@@ -55,12 +55,7 @@ class FileOps:
         p = Path(path)
         if not p.exists():
             return OpResult(False, f"文件不存在: {path}", "")
-        if not new_name:
-            return OpResult(False, "新文件名不能为空", "")
-        try:
-            new_path = p.with_name(new_name)
-        except ValueError as exc:
-            return OpResult(False, f"无效的文件名: {new_name!r} — {exc}", "")
+        new_path = p.with_name(new_name)
         if new_path.exists():
             return OpResult(False, f"目标已存在: {new_path}", "")
         try:
@@ -99,16 +94,9 @@ class FileOps:
     # ------------------------------------------------------------------
 
     def compute_hash(self, path: str | Path, chunk_size: int = 1 << 20) -> str:
-        """计算文件 SHA-256 十六进制摘要。
-
-        Raises:
-            FileNotFoundError: 文件不存在。
-        """
-        src = Path(path)
-        if not src.is_file():
-            raise FileNotFoundError(f"文件不存在: {src}")
+        """计算文件 SHA-256 十六进制摘要。"""
         h = hashlib.sha256()
-        with open(src, "rb") as f:
+        with open(path, "rb") as f:
             while chunk := f.read(chunk_size):
                 h.update(chunk)
         return h.hexdigest()
@@ -124,7 +112,6 @@ class FileOps:
 
     @staticmethod
     def is_supported(path: str | Path) -> bool:
-        """判断文件扩展名是否为系统支持的格式。"""
         return FileOps.suffix(path) in {
             "pdf", "docx", "doc", "pptx", "ppt",
             "txt", "md", "png", "jpg", "jpeg", "bmp",
