@@ -265,6 +265,20 @@ print(p.parse('测试.docx'))   # 替换成你电脑上的真实文件
 "
 ```
 
+**模块使用示例：**
+
+```python
+from filemate.perception import FileParser
+
+parser = FileParser()
+result = parser.parse("实验报告.docx")
+# {
+#   "raw_text": "实验三：实现一个线程池...",
+#   "metadata": {"filename": "实验报告.docx", "suffix": "docx", "size_bytes": 20480},
+# }
+text = result["raw_text"]
+```
+
 ### 理解层开发指引（张金宝）
 
 四个子模块的接口契约已经写在代码里，你只需要：
@@ -275,6 +289,40 @@ print(p.parse('测试.docx'))   # 替换成你电脑上的真实文件
 4. 用 `rules/keywords.json` 做规则引擎兜底
 
 **开发顺序：** classifier → entity_extractor → milestone_detector → namer
+
+**模块使用示例：**
+
+```python
+from filemate.llm_client import LLMClient
+from filemate.understanding import Classifier, EntityExtractor, MilestoneDetector, Namer
+
+llm = LLMClient()  # 自动从 .env 读取配置
+
+# 1. 分类
+classifier = Classifier(llm)
+cat = classifier.classify(text="实验三：实现一个线程池...", filename="lab3.docx")
+# {"category": "作业", "confidence": 0.83, "course_name": None, "reason": "关键词规则命中"}
+
+# 2. 实体抽取
+extractor = EntityExtractor(llm)
+entities = extractor.extract(text)
+# {"course_name": "操作系统", "task_description": "实验三", "deadline": "2026-05-20", ...}
+
+# 3. 多里程碑识别
+detector = MilestoneDetector(llm)
+milestones = detector.detect(long_text)
+# [{"event": "报名截止", "date": "2026-05-10", "order": 1}, ...]
+
+# 4. 命名生成
+namer = Namer(llm)
+name = namer.generate(
+    category=cat["category"],
+    course=entities["course_name"] or "未分类",
+    task=entities["task_description"] or "未命名",
+    deadline=entities["deadline"] or "待定",
+)
+# "[操作系统]-[作业]-[实验三]-[0520]-[待处理]"
+```
 
 每个 Prompt 迭代到 v5 后归档到 `docs/PROMPT_LIB.md`。
 
@@ -289,6 +337,34 @@ print(p.parse('测试.docx'))   # 替换成你电脑上的真实文件
 ```bash
 pip install gradio
 python -m filemate.ui.app   # 或你写好的启动方式
+```
+
+**模块使用示例：**
+
+```python
+from filemate.ui.backend_api import BackendAPI
+from filemate.execution.storage import SQLiteStorage
+from filemate.core.pipeline import PipelineWorker
+from filemate.core.session import ProcessingSession
+
+# 1. 初始化
+storage = SQLiteStorage("filemate.db")
+storage.init_schema()
+pipeline = PipelineWorker(stages=...)  # 见 main.py _make_stages()
+api = BackendAPI(pipeline_worker=pipeline, state_store=storage)
+
+# 2. 提交文件
+result = api.submit("/path/to/lab3.docx")
+# {"session_id": "a1b2c3d4e5f6", "source_path": "...", "status": "pending"}
+
+# 3. 查询队列
+queue = api.get_queue(status="pending")
+
+# 4. 用户确认 / 拒绝
+api.confirm(session_id="a1b2c3d4e5f6", accepted=True, edits={"suggested_name": "..."})
+
+# 5. 查看操作日志
+ops = api.get_operations("a1b2c3d4e5f6")
 ```
 
 ---
@@ -423,6 +499,44 @@ main (受保护，只能由胡希合并)
 
 **Q：Git 是什么？我没用过。**
 > Git 就是"代码的云盘"。胡希会初始化好仓库，clone 下来直接用，不会的单独教。
+
+---
+
+## 部署
+
+### 生产环境一键启动
+
+```bash
+# 1. 克隆 + 安装
+git clone https://github.com/cooooooosdas/Filemate.git && cd FileMate
+python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env   # 填入真实 LLM key
+
+# 2. 命令行模式（无界面）
+python main.py --watch-dir C:\Users\胡希\Downloads\CourseFiles
+
+# 3. Gradio 界面模式
+python -m filemate.ui.app
+```
+
+### 打包为可执行文件（可选）
+
+```bash
+pip install pyinstaller
+pyinstaller --onefile main.py
+```
+
+### Docker（计划中，W5 前完成）
+
+```dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+CMD ["python", "-m", "filemate.ui.app"]
+```
 
 ---
 
