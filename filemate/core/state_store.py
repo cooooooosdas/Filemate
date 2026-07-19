@@ -38,6 +38,9 @@ class SQLiteStateStore:
     def list_sessions(self, status: str | None = None) -> list[dict]:
         return self._impl.list_sessions(status)
 
+    def delete_session(self, session_id: str) -> bool:
+        return self._impl.delete_session(session_id)
+
     # ------------------------------------------------------------------
     # 去重
     # ------------------------------------------------------------------
@@ -52,8 +55,37 @@ class SQLiteStateStore:
     # 日志
     # ------------------------------------------------------------------
 
-    def log_operation(self, session_id: str, op: str, detail: str = "") -> None:
-        self._impl.log_operation(session_id, op, detail)
+    def log_operation(
+        self,
+        session_id: str,
+        action: str,
+        detail: str = "",
+        **kwargs,
+    ) -> int:
+        return self._impl.log_operation(session_id, action, detail, **kwargs)
 
     def get_operations(self, session_id: str) -> list[dict]:
         return self._impl.get_operations(session_id)
+
+    # ------------------------------------------------------------------
+    # 去重查询
+    # ------------------------------------------------------------------
+
+    def get_file_info(self, file_hash: str) -> dict | None:
+        return self._impl.get_file_info(file_hash)
+
+    # ------------------------------------------------------------------
+    # 规则管理
+    # ------------------------------------------------------------------
+
+    def add_rule(self, rule_type: str, pattern: str, replacement: str, priority: int = 0) -> int:
+        return self._impl.add_rule(rule_type, pattern, replacement, priority)
+
+    def update_rule(self, rule_id: int, **kwargs) -> bool:
+        return self._impl.update_rule(rule_id, **kwargs)
+
+    def delete_rule(self, rule_id: int) -> bool:
+        return self._impl.delete_rule(rule_id)
+
+    def list_rules(self, rule_type: str | None = None, enabled_only: bool = True) -> list[dict]:
+        return self._impl.list_rules(rule_type, enabled_only)
