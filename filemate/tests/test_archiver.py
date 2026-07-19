@@ -95,7 +95,7 @@ class TestArchiver:
 
 class TestArchiverValidCategories:
     def test_all_standard_categories_accepted(self, archiver: Archiver) -> None:
-        for cat in ["课件", "作业", "竞赛通知", "考试通知", "待确认"]:
+        for cat in ["课件", "作业", "竞赛通知", "考试通知", "参考资料", "大创通知", "待确认"]:
             dest = archiver.preview_dest(
                 base_dir=Path("/x"), category=cat, course="课", new_name="a.pdf"
             )

@@ -1,7 +1,7 @@
-"""分类器测试脚本。
+"""分类器端到端测试脚本。
 
 用法:
-    python tests/run_classifier_test.py
+    python filemate/tests/test_classifier_e2e.py
 
 功能:
     1. 扫描 datasets/raw/ 下所有样本文件

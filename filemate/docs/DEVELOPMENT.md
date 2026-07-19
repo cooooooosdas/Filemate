@@ -228,7 +228,7 @@ class Classifier:
 **分类 Prompt 要求（写 classify.md 时）：**
 
 - 输出严格 JSON，字段固定：`category / confidence / course_name / reason`
-- `category` 只能是 `课件 / 作业 / 竞赛通知 / 考试通知 / 待确认`
+- `category` 只能是 `课件 / 作业 / 竞赛通知 / 考试通知 / 参考资料 / 大创通知 / 待确认`
 - `confidence` 是 0–1 的浮点数
 - 没把握时 category 输出 `待确认`，confidence 输出 `< 0.7`
 
