@@ -3,14 +3,18 @@
 两层覆盖：
 - TestFileParserContract / TestParserRegistry — 单元测试（假文件/注册表），用 pytest tmp_path
 - TestReal* — 集成测试（datasets/raw/ 真实文件），用 @pytest.mark.skipif 按数据集有无自动跳过
+- TestFileWatcher — 目录监控单元测试
 """
 from __future__ import annotations
 
+import asyncio
+import time
 from pathlib import Path
 
 import pytest
 
 from filemate.perception import FileParser
+from filemate.perception.watcher import FileWatcher
 
 # ──────────────────────────────────────────────
 #  真实数据集路径
@@ -314,3 +318,106 @@ class TestLegacyFormats:
         result = parser.parse(p)
         assert "error" in result
         assert "ppt" in result["error"].lower() or "不支持" in result["error"]
+
+
+# ══════════════════════════════════════════════
+#  FileWatcher 测试
+# ══════════════════════════════════════════════
+
+
+class TestFileWatcher:
+    """测试目录监控（轮询）的基础行为。"""
+
+    def test_init_handles_nonexistent_dir(self, tmp_path: Path) -> None:
+        d = tmp_path / "watched"
+        # __init__ 不创建目录（只由 run() 创建），不存在时应优雅处理
+        w = FileWatcher(d)
+        assert w.watch_dir == d.resolve()
+        assert isinstance(w._seen, set)
+
+    def test_init_seen_marks_existing(self, tmp_path: Path) -> None:
+        d = tmp_path / "watched"
+        d.mkdir()
+        (d / "a.docx").write_text("test")
+        (d / "b.pdf").write_text("test")
+        w = FileWatcher(d)
+        assert len(w._seen) == 2
+
+    def test_init_seen_ignores_dirs(self, tmp_path: Path) -> None:
+        d = tmp_path / "watched"
+        d.mkdir()
+        (d / "sub").mkdir()
+        (d / "a.docx").write_text("test")
+        w = FileWatcher(d)
+        # 只标记文件，不标记目录
+        assert len(w._seen) == 1
+
+    def test_scan_detects_new_file(self, tmp_path: Path) -> None:
+        d = tmp_path / "watched"
+        d.mkdir()
+        w = FileWatcher(d, poll_interval=0.1)
+        detected: list[str] = []
+        w.on_new_file(lambda p: detected.append(p.name))
+
+        # 创建新文件
+        (d / "new.docx").write_text("hello")
+        w._scan()
+        assert "new.docx" in detected
+
+    def test_scan_skips_seen_files(self, tmp_path: Path) -> None:
+        d = tmp_path / "watched"
+        d.mkdir()
+        (d / "old.docx").write_text("old")
+        w = FileWatcher(d)
+        detected: list[str] = []
+        w.on_new_file(lambda p: detected.append(p.name))
+
+        # 第一次 scan 不应触发（已在 seen 中）
+        w._scan()
+        assert "old.docx" not in detected, "已有文件不应触发回调"
+
+    def test_scan_respects_extensions(self, tmp_path: Path) -> None:
+        d = tmp_path / "watched"
+        d.mkdir()
+        w = FileWatcher(d, extensions={"pdf"})
+        detected: list[str] = []
+        w.on_new_file(lambda p: detected.append(p.name))
+
+        (d / "note.pdf").write_text("a")
+        (d / "note.docx").write_text("b")
+        w._scan()
+        assert "note.pdf" in detected
+        assert "note.docx" not in detected
+
+    @pytest.mark.asyncio()
+    async def test_stop_stops_loop(self, tmp_path: Path) -> None:
+        d = tmp_path / "watched"
+        d.mkdir()
+        w = FileWatcher(d, poll_interval=0.05)
+
+        async def _stop_soon() -> None:
+            await asyncio.sleep(0.15)
+            w.stop()
+
+        start = time.monotonic()
+        await asyncio.gather(w.run(), _stop_soon())
+        elapsed = time.monotonic() - start
+        # 应在合理时间内退出（不应跑满 poll_interval 的很多倍）
+        assert elapsed < 2.0
+
+    def test_reset_seen(self, tmp_path: Path) -> None:
+        d = tmp_path / "watched"
+        d.mkdir()
+        (d / "a.docx").write_text("a")
+        w = FileWatcher(d)
+        assert len(w._seen) == 1
+
+        # 清空
+        w.reset_seen()
+        assert len(w._seen) == 1  # _init_seen 重新填充
+
+        # 删除文件后 reset_seen
+        for f in d.iterdir():
+            f.unlink()
+        w.reset_seen()
+        assert len(w._seen) == 0
