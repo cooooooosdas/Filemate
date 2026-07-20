@@ -234,7 +234,7 @@ archiver = Archiver(base_dir="./archive", file_ops=FileOps())
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | `session_id` | `str` | 是 | 对应 session 的 ID |
-| `category` | `str` | 是 | 课件 / 作业 / 竞赛通知 / 考试通知 / 待确认 |
+| `category` | `str` | 是 | 课件 / 作业 / 竞赛通知 / 考试通知 / 参考资料 / 大创通知 / 待确认 |
 | `course` | `str` | 是 | 课程名 |
 | `new_name` | `str` | 是 | 目标文件名（不含路径） |
 | `source_path` | `str \| Path \| None` | 否 | 源文件路径，默认取 session 原始路径 |
