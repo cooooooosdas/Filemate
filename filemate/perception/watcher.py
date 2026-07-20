@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
 from pathlib import Path
 from typing import Callable
 
@@ -89,8 +88,7 @@ class FileWatcher:
             it = self.watch_dir.rglob("*") if self.recursive else self.watch_dir.iterdir()
             for p in it:
                 if p.is_file():
-                    self._seen.add(str(p.resolve())
-                                   )
+                    self._seen.add(str(p.resolve()))
         except OSError:
             pass
 
@@ -107,11 +105,21 @@ class FileWatcher:
             if resolved in self._seen:
                 continue
             self._seen.add(resolved)
-            logger.debug("新文件: %s", p.name)
+            logger.info("检测到新文件: %s", p.name)
             if self._callback:
                 try:
                     result = self._callback(p)
+                    # 如果是协程，安排到当前事件循环执行（而非 run_until_complete）
                     if asyncio.iscoroutine(result):
-                        asyncio.get_event_loop().run_until_complete(result)
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            asyncio.ensure_future(result)
+                        else:
+                            loop.run_until_complete(result)
                 except Exception:
                     logger.exception("回调执行失败: %s", p)
+
+    def reset_seen(self) -> None:
+        """清空已见文件集合（主要用于测试）。"""
+        self._seen.clear()
+        self._init_seen()

@@ -64,19 +64,35 @@ class FileParser:
             raw = raw[: self._MAX_CHARS]
             logger.info("文本已截断到 %d 字: %s", self._MAX_CHARS, p.name)
 
-        return self._ok(p, raw_text=raw)
+        # 保留解析器上报的额外元数据（pages / slides / is_image_based 等）
+        extra_meta = (result or {}).get("metadata", {}) or {}
+        # 取解析器 note（如果有）
+        parser_note = (result or {}).get("note", "") or ""
+
+        return self._ok(p, raw_text=raw, note=parser_note, extra_meta=extra_meta)
 
     # ------------------------------------------------------------------
     # 内部
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _ok(p: Path, *, raw_text: str = "", note: str = "") -> dict:
-        meta = {
+    def _ok(
+        p: Path,
+        *,
+        raw_text: str = "",
+        note: str = "",
+        extra_meta: dict | None = None,
+    ) -> dict:
+        meta: dict = {
             "filename": p.name,
             "suffix": p.suffix.lstrip(".").lower(),
             "size_bytes": p.stat().st_size,
         }
+        # 合并解析器的额外元数据（不覆盖基础字段）
+        if extra_meta:
+            for key, value in extra_meta.items():
+                if key not in meta:
+                    meta[key] = value
         out: dict = {"raw_text": raw_text, "metadata": meta}
         if note:
             out["note"] = note
