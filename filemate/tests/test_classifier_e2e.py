@@ -164,10 +164,10 @@ def run_e2e():
                 "predicted": predicted,
                 "confidence": confidence,
                 "correct": is_correct,
-                "method": "rule" if "关键词" in reason else "llm",
+                "method": result.get("method", "llm"),
             })
 
-            if "关键词" in reason:
+            if result.get("method") == "rule":
                 rule_hits += 1
             else:
                 llm_calls += 1

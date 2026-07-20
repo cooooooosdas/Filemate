@@ -20,7 +20,7 @@ class Classifier:
     接口契约（输入/输出）：:
 
         classify(text: str, filename: str = "") ->
-            {"category": str, "confidence": float, "course_name": str | None, "reason": str}
+            {"category": str, "confidence": float, "course_name": str | None, "reason": str, "method": str}
     """
 
     def __init__(self, llm_client, rules_path: str | None = None) -> None:
@@ -73,14 +73,14 @@ class Classifier:
         """分类。规则命中 → 直接返回；否则走 LLM。"""
         # 空文本 → 直接待确认
         if not text or not text.strip():
-            return {"category": "待确认", "confidence": 0.0, "course_name": None, "reason": "空文本"}
+            return {"category": "待确认", "confidence": 0.0, "course_name": None, "reason": "空文本", "method": "none"}
 
         # 规则兜底
         hit = self._keyword_hit(text)
         if hit:
             category, confidence = hit
             logger.debug("规则命中: %s (%.0f%%)", category, confidence * 100)
-            return {"category": category, "confidence": confidence, "course_name": None, "reason": "关键词规则命中"}
+            return {"category": category, "confidence": confidence, "course_name": None, "reason": "关键词规则命中", "method": "rule"}
 
         # 走 LLM
         return self._classify_llm(text, filename)
@@ -110,7 +110,8 @@ class Classifier:
                 "confidence": confidence,
                 "course_name": result.get("course_name"),
                 "reason": result.get("reason", ""),
+                "method": "llm",
             }
         except Exception as exc:
             logger.error("LLM 分类失败: %s", exc)
-            return {"category": "待确认", "confidence": 0.0, "course_name": None, "reason": f"LLM 失败: {exc}"}
+            return {"category": "待确认", "confidence": 0.0, "course_name": None, "reason": f"LLM 失败: {exc}", "method": "none"}

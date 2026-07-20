@@ -43,7 +43,7 @@ class Namer:
         Parameters
         ----------
         category : str
-            课件 / 作业 / 竞赛通知 / 考试通知 / 待确认
+            课件 / 作业 / 竞赛通知 / 考试通知 / 参考资料 / 大创通知 / 待确认
         course : str
             课程名（如"操作系统"）
         task : str

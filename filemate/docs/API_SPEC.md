@@ -47,6 +47,7 @@ classifier = Classifier(llm_client=llm)
 | `confidence` | `float` | 置信度 `[0.0, 1.0]`；规则命中单次 ≥ 0.83 |
 | `course_name` | `str \| None` | 识别的课程名，未识别则为 `None` |
 | `reason` | `str` | 分类依据（规则命中 / LLM 返回原文） |
+| `method` | `str` | 分类方式：`"rule"` 规则命中 / `"llm"` LLM 推断 / `"none"` 空文本 |
 
 **调用示例：**
 

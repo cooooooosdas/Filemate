@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 
 # 分类输出契约（技术决策定稿 §4.1）
-EXPECTED_FIELDS = {"category", "confidence", "course_name"}
+EXPECTED_FIELDS = {"category", "confidence", "course_name", "method"}
 
 
 def _make_classifier(llm_client_stub=None):
