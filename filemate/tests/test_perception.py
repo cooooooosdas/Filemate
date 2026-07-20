@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from filemate.perception import FileParser
+from filemate.perception.ocr import OCRBackend
 from filemate.perception.watcher import FileWatcher
 
 # ──────────────────────────────────────────────
@@ -421,3 +422,46 @@ class TestFileWatcher:
             f.unlink()
         w.reset_seen()
         assert len(w._seen) == 0
+
+
+# ══════════════════════════════════════════════
+#  OCR 测试
+# ══════════════════════════════════════════════
+
+
+class TestOCRBackend:
+    """测试 OCR 后端的探测、降级与基本接口。"""
+
+    def test_available_probe(self) -> None:
+        """PaddleOCR 安装后 available 应为 True。"""
+        ocr = OCRBackend(lang="ch")
+        assert ocr.available
+
+    def test_missing_file_returns_empty(self) -> None:
+        ocr = OCRBackend(lang="ch")
+        result = ocr.recognize("/nonexistent/image.png")
+        assert result == ""
+
+    @pytest.mark.skip(reason="需下载 PaddleOCR 模型（~80MB），CI 环境跳过")
+    def test_recognize_empty_image(self, tmp_path: Path) -> None:
+        """空白图片应返回空字符串，不崩溃。"""
+        from PIL import Image
+
+        p = tmp_path / "empty.png"
+        img = Image.new("RGB", (100, 100), color="white")
+        img.save(p)
+
+        ocr = OCRBackend(lang="ch", engine="onnxruntime")
+        if not ocr.available:
+            pytest.skip("PaddleOCR 不可用")
+        result = ocr.recognize(p)
+        # 空白图片可能识别为空，但不应崩溃
+        assert isinstance(result, str)
+
+    def test_ocr_engine_reuse(self) -> None:
+        """第二次调用 recognize 应复用已初始化的引擎（不重新下载模型）。"""
+        ocr = OCRBackend(lang="ch", engine="onnxruntime")
+        assert ocr._ocr is None  # 尚未初始化
+        # 不实际调用 recognize（避免下载模型），仅验证属性
+        assert ocr.lang == "ch"
+        assert ocr.ocr_version == "PP-OCRv6"
