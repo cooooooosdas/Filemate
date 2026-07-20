@@ -36,6 +36,29 @@ def _real_files(suffix: str, max_count: int = 5) -> list[Path]:
     return files[:max_count]
 
 
+def _paddleocr_available() -> bool:
+    """PaddleOCR 是否已安装（OCR 为可选依赖）。"""
+    try:
+        import paddleocr  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+_PADDLEOCR_INSTALLED = _paddleocr_available()
+
+
+def _pytest_asyncio_available() -> bool:
+    try:
+        import pytest_asyncio  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+_PYTEST_ASYNCIO_INSTALLED = _pytest_asyncio_available()
+
+
 # ──────────────────────────────────────────────
 #  Fixtures
 # ──────────────────────────────────────────────
@@ -288,15 +311,16 @@ class TestRealPPTParser:
         not DATASETS_DIR.is_dir(), reason="datasets/raw/ 目录不存在"
     )
     def test_slide_count_in_metadata(self, parser: FileParser) -> None:
-        """PPTParser 的 metadata 应包含 slides 字段。"""
+        """PPTParser 的 metadata 应包含 slides 字段（FileParser 透传 extra_meta）。"""
         files = _real_files("pptx", max_count=1)
         if not files:
             pytest.skip("没有可用的 .pptx 测试文件")
         result = parser.parse(files[0])
-        if "error" not in result:
-            # 注意：FileParser 统一出口会覆盖 metadata，slides 可能丢失
-            # 当前 FileParser._ok() 不保留解析器返回的额外 metadata
-            pass  # 如果不保留，这属于已知行为
+        assert "error" not in result, f"{files[0].name} 解析失败: {result.get('error')}"
+        meta = result["metadata"]
+        assert "slides" in meta, f"metadata 缺少 slides 字段: {meta}"
+        assert isinstance(meta["slides"], int)
+        assert meta["slides"] >= 0
 
 
 class TestLegacyFormats:
@@ -390,6 +414,7 @@ class TestFileWatcher:
         assert "note.pdf" in detected
         assert "note.docx" not in detected
 
+    @pytest.mark.skipif(not _PYTEST_ASYNCIO_INSTALLED, reason="pytest-asyncio 未安装")
     @pytest.mark.asyncio()
     async def test_stop_stops_loop(self, tmp_path: Path) -> None:
         d = tmp_path / "watched"
@@ -432,6 +457,7 @@ class TestFileWatcher:
 class TestOCRBackend:
     """测试 OCR 后端的探测、降级与基本接口。"""
 
+    @pytest.mark.skipif(not _PADDLEOCR_INSTALLED, reason="PaddleOCR 未安装（可选依赖）")
     def test_available_probe(self) -> None:
         """PaddleOCR 安装后 available 应为 True。"""
         ocr = OCRBackend(lang="ch")
