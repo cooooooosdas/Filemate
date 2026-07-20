@@ -11,7 +11,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # 分类类别（与技术决策定稿 §4.1 保持一致）
-CATEGORIES = ("课件", "作业", "竞赛通知", "考试通知", "待确认")
+CATEGORIES = ("课件", "作业", "竞赛通知", "考试通知", "参考资料", "大创通知", "待确认")
 
 
 class Classifier:

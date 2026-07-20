@@ -33,7 +33,7 @@ class TestClassifierContract:
     def test_category_in_set(self) -> None:
         clf = _make_classifier()
         result = clf.classify("随便什么文本")
-        valid = {"课件", "作业", "竞赛通知", "考试通知", "待确认"}
+        valid = {"课件", "作业", "竞赛通知", "考试通知", "参考资料", "大创通知", "待确认"}
         assert result["category"] in valid, f"category={result['category']} 不合法"
 
     def test_confidence_range(self) -> None:
@@ -57,7 +57,7 @@ class TestClassifierEdgeCases:
         clf = _make_classifier()
         result = clf.classify("")
         assert result["category"] == "待确认" or result["category"] in {
-            "课件", "作业", "竞赛通知", "考试通知"
+            "课件", "作业", "竞赛通知", "考试通知", "参考资料", "大创通知"
         }
 
     def test_short_text(self) -> None:

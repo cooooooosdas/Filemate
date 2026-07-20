@@ -39,3 +39,4 @@ __paddle__/
 logs/
 *.log
 *.ics
+test_result*.json

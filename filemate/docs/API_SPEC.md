@@ -43,7 +43,7 @@ classifier = Classifier(llm_client=llm)
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `category` | `str` | 分类结果，取值为 `{"课件", "作业", "竞赛通知", "考试通知", "待确认"}` |
+| `category` | `str` | 分类结果，取值为 `{"课件", "作业", "竞赛通知", "考试通知", "参考资料", "大创通知", "待确认"}` |
 | `confidence` | `float` | 置信度 `[0.0, 1.0]`；规则命中单次 ≥ 0.83 |
 | `course_name` | `str \| None` | 识别的课程名，未识别则为 `None` |
 | `reason` | `str` | 分类依据（规则命中 / LLM 返回原文） |
@@ -178,7 +178,7 @@ namer = Namer(llm_client=llm)
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |---|---|---|---|---|
-| `category` | `str` | 是 | — | 课件 / 作业 / 竞赛通知 / 考试通知 / 待确认 |
+| `category` | `str` | 是 | — | 课件 / 作业 / 竞赛通知 / 考试通知 / 参考资料 / 大创通知 / 待确认 |
 | `course` | `str` | 是 | — | 课程名 |
 | `task` | `str` | 是 | — | 任务描述 |
 | `deadline` | `str` | 是 | — | `"YYYY-MM-DD"` 或 `"MMDD"`，空字符串 → `"待定"` |
@@ -234,7 +234,7 @@ archiver = Archiver(base_dir="./archive", file_ops=FileOps())
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | `session_id` | `str` | 是 | 对应 session 的 ID |
-| `category` | `str` | 是 | 课件 / 作业 / 竞赛通知 / 考试通知 / 待确认 |
+| `category` | `str` | 是 | 课件 / 作业 / 竞赛通知 / 考试通知 / 参考资料 / 大创通知 / 待确认 |
 | `course` | `str` | 是 | 课程名 |
 | `new_name` | `str` | 是 | 目标文件名（不含路径） |
 | `source_path` | `str \| Path \| None` | 否 | 源文件路径，默认取 session 原始路径 |

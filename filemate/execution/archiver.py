@@ -23,7 +23,7 @@ class Archiver:
         │   └── 考试通知/
     """
 
-    VALID_CATEGORIES = {"课件", "作业", "竞赛通知", "考试通知", "待确认"}
+    VALID_CATEGORIES = {"课件", "作业", "竞赛通知", "考试通知", "参考资料", "大创通知", "待确认"}
 
     def __init__(self, base_dir: str | Path, file_ops: FileOps) -> None:
         self.base_dir = Path(base_dir)
