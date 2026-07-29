@@ -1,0 +1,44 @@
+========================================
+ FileMate 智能文件管理工具 v1.0
+========================================
+
+【快速开始】
+1. 解压所有文件
+2. 安装Python依赖: pip install -r requirements.txt
+3. 安装Node依赖: cd filemate/web && npm install
+4. 双击 "启动FileMate.bat"
+
+【环境要求】
+- Python 3.10+
+- Node.js 18+
+
+【文件说明】
+启动FileMate.bat      - 一键启动所有服务
+启动FileMate说明.txt   - 本说明
+requirements.txt     - Python依赖
+filemate/            - 主程序
+filemate/web/        - 前端页面
+server.py            - 后端服务
+main.py              - 命令行入口
+
+【技术栈】
+- 前端: Vue3 + Vite + Element Plus
+- 后端: FastAPI + Python
+- AI: 云知声LLM API
+
+【问题排查】
+1. 如果端口被占用，修改启动脚本中的端口
+2. 如果缺少模块，运行 pip install -r requirements.txt
+3. 如果前端无法启动，进入 filemate/web 运行 npm install
+
+【常见问题】
+Q: 为什么文件那么大？
+A: 首次安装需要下载依赖，后续会变小
+
+Q: 需要联网吗？
+A: 是的，需要联网调用AI接口
+
+Q: 可以打包成exe吗？
+A: 可以，需要安装Rust和Tauri
+
+========================================
