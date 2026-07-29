@@ -1,0 +1,87 @@
+// Session 状态
+export type SessionStatus =
+  | 'pending'
+  | 'processing'
+  | 'done'
+  | 'confirmed'
+  | 'skipped'
+  | 'expired'
+  | 'failed'
+
+// 文件分类
+export type Category =
+  | '课件'
+  | '作业'
+  | '竞赛通知'
+  | '考试通知'
+  | '参考资料'
+  | '大创通知'
+  | '待确认'
+
+// ProcessingSession
+export interface ProcessingSession {
+  session_id: string
+  source_path: string
+  status: SessionStatus
+  category: Category | ''
+  confidence: number
+  suggested_name: string
+  entities: Record<string, any>
+  milestones: Milestone[]
+  error: string
+  created_at: string
+  updated_at: string
+}
+
+// 里程碑
+export interface Milestone {
+  event: string
+  date: string
+  order: number
+}
+
+// 文件元数据
+export interface FileMetadata {
+  filename: string
+  suffix: string
+  size_bytes: number
+  pages?: number
+  slides?: number
+}
+
+// API 响应
+export interface ApiResponse<T = any> {
+  success: boolean
+  data?: T
+  error?: string
+}
+
+// 上传响应
+export interface UploadResponse extends ProcessingSession {
+  message?: string
+}
+
+// 确认请求
+export interface ConfirmRequest {
+  accepted: boolean
+  edits?: Record<string, any>
+}
+
+// 确认响应
+export interface ConfirmResponse {
+  ok: boolean
+  session_id: string
+  accepted: boolean
+  error?: string
+}
+
+// 历史记录项
+export interface HistoryItem {
+  session_id: string
+  source_path: string
+  status: SessionStatus
+  category: string
+  suggested_name: string
+  created_at: string
+  updated_at: string
+}

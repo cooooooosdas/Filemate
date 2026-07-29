@@ -1,0 +1,155 @@
+<template>
+  <div class="history-page">
+    <el-card>
+      <template #header>
+        <div class="card-header">
+          <h3>📜 历史记录</h3>
+          <el-button @click="loadHistory" :loading="loading">
+            <el-icon><Refresh /></el-icon>
+            刷新
+          </el-button>
+        </div>
+      </template>
+
+      <el-table :data="history" v-loading="loading" stripe>
+        <el-table-column prop="session_id" label="ID" width="100" />
+        <el-table-column label="文件" min-width="200">
+          <template #default="{ row }">
+            {{ getFileName(row.source_path) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="category" label="分类" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getCategoryType(row.category)" size="small">
+              {{ row.category || '待确认' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="suggested_name" label="建议名" min-width="200" />
+        <el-table-column prop="status" label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getStatusType(row.status)" size="small">
+              {{ getStatusText(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="created_at" label="创建时间" width="180" />
+        <el-table-column label="操作" width="150">
+          <template #default="{ row }">
+            <el-button type="primary" size="small" @click="viewDetail(row)">
+              查看
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { Refresh } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { getHistory, getSession } from '../services/api'
+import { useFileStore } from '../stores/fileStore'
+
+interface HistoryItem {
+  session_id: string
+  source_path: string
+  category: string
+  suggested_name: string
+  status: string
+  created_at: string
+}
+
+const router = useRouter()
+const fileStore = useFileStore()
+const history = ref<HistoryItem[]>([])
+const loading = ref(false)
+
+onMounted(() => {
+  loadHistory()
+})
+
+async function loadHistory() {
+  loading.value = true
+  try {
+    history.value = await getHistory(undefined, 50)
+  } catch (e: any) {
+    ElMessage.error(`加载失败: ${e.message}`)
+  } finally {
+    loading.value = false
+  }
+}
+
+function getFileName(path: string): string {
+  return path.split(/[/\\]/).pop() || path
+}
+
+function getCategoryType(category: string): '' | 'success' | 'warning' | 'danger' | 'info' {
+  const map: Record<string, '' | 'success' | 'warning' | 'danger' | 'info'> = {
+    课件: 'info',
+    作业: 'warning',
+    竞赛通知: 'success',
+    考试通知: 'danger',
+    参考资料: 'info',
+    大创通知: 'warning',
+    待确认: ''
+  }
+  return map[category] || ''
+}
+
+function getStatusType(status: string): 'success' | 'warning' | 'danger' | 'info' {
+  const map: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
+    pending: 'info',
+    processing: 'warning',
+    done: 'success',
+    confirmed: 'success',
+    skipped: 'info',
+    expired: 'warning',
+    failed: 'danger'
+  }
+  return map[status] || 'info'
+}
+
+function getStatusText(status: string): string {
+  const map: Record<string, string> = {
+    pending: '待处理',
+    processing: '处理中',
+    done: '已完成',
+    confirmed: '已确认',
+    skipped: '已跳过',
+    expired: '已过期',
+    failed: '失败'
+  }
+  return map[status] || status
+}
+
+async function viewDetail(row: HistoryItem) {
+  try {
+    const session = await getSession(row.session_id)
+    fileStore.setCurrentFile(session)
+    router.push(`/classification?session=${row.session_id}`)
+  } catch (e: any) {
+    ElMessage.error(`加载详情失败: ${e.message}`)
+  }
+}
+</script>
+
+<style scoped>
+.history-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-header h3 {
+  margin: 0;
+}
+</style>

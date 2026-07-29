@@ -40,3 +40,7 @@ logs/
 *.log
 *.ics
 test_result*.json
+
+# ── 前端项目 ──
+filemate/web/node_modules/
+filemate/web/dist/

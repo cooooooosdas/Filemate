@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FileMate 第二次周会 · 2026.07.26</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: #f5f6fa;
+    color: #2d3436;
+    line-height: 1.8;
+    padding: 20px;
+  }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+    overflow: hidden;
+  }
+  .header {
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    color: #fff;
+    padding: 36px 40px;
+  }
+  .header h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .header .meta { font-size: 14px; opacity: 0.9; }
+  .header .meta span { margin-right: 20px; }
+  .body { padding: 36px 40px; }
+
+  h2 {
+    font-size: 17px;
+    color: #6c5ce7;
+    border-left: 4px solid #6c5ce7;
+    padding-left: 12px;
+    margin: 36px 0 18px;
+  }
+  h2:first-child { margin-top: 0; }
+
+  h3 {
+    font-size: 14px;
+    color: #636e72;
+    margin: 22px 0 10px;
+    font-weight: 600;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13.5px;
+  }
+  th {
+    background: #f1f0ff;
+    color: #6c5ce7;
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 2px solid #ddd6fe;
+  }
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafaff; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-ok { background: #d4edda; color: #155724; }
+  .badge-warn { background: #fff3cd; color: #856404; }
+  .badge-fail { background: #f8d7da; color: #721c24; }
+  .badge-todo { background: #d1ecf1; color: #0c5460; }
+  .badge-red { background: #fde8e8; color: #c0392b; }
+  .badge-yellow { background: #fef9e7; color: #b7791f; }
+
+  .person-card {
+    background: #fafaff;
+    border: 1px solid #e8e4ff;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 10px 0;
+  }
+  .person-card .name {
+    font-weight: 700;
+    font-size: 14px;
+    color: #6c5ce7;
+    margin-bottom: 8px;
+  }
+  .person-card .tasks {
+    font-size: 13px;
+    color: #636e72;
+    padding-left: 18px;
+  }
+  .person-card .tasks li { margin: 4px 0; }
+  .person-card .tasks ul { margin: 2px 0; }
+
+  .checklist {
+    list-style: none;
+    padding: 0;
+  }
+  .checklist li {
+    padding: 5px 0 5px 24px;
+    position: relative;
+    font-size: 13.5px;
+  }
+  .checklist li::before {
+    content: "☐";
+    position: absolute;
+    left: 0;
+    color: #b2bec3;
+    font-size: 15px;
+  }
+
+  .section-note {
+    background: #fff8e1;
+    border-left: 4px solid #ffc107;
+    padding: 12px 16px;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    color: #856404;
+    margin: 14px 0;
+  }
+  .section-note strong { color: #6c5ce7; }
+
+  .section-info {
+    background: #e8f4fd;
+    border-left: 4px solid #3498db;
+    padding: 12px 16px;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    color: #2980b9;
+    margin: 14px 0;
+  }
+  .section-info strong { color: #6c5ce7; }
+
+  .section-danger {
+    background: #fde8e8;
+    border-left: 4px solid #e74c3c;
+    padding: 12px 16px;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    color: #c0392b;
+    margin: 14px 0;
+  }
+  .section-danger strong { color: #6c5ce7; }
+
+  .pipeline-box {
+    background: #2d3436;
+    color: #dfe6e9;
+    border-radius: 8px;
+    padding: 18px 24px;
+    margin: 14px 0;
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 12.5px;
+    line-height: 2;
+    overflow-x: auto;
+  }
+  .pipeline-box .arrow { color: #6c5ce7; font-weight: bold; }
+  .pipeline-box .step { color: #ffeaa7; }
+  .pipeline-box .module { color: #55efc4; }
+
+  .milestone-box {
+    background: linear-gradient(135deg, #f1f0ff, #fafaff);
+    border: 2px solid #ddd6fe;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 14px 0;
+  }
+  .milestone-box .title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #6c5ce7;
+    margin-bottom: 10px;
+  }
+  .milestone-box .detail {
+    font-size: 13.5px;
+    color: #636e72;
+    padding-left: 18px;
+  }
+  .milestone-box .detail li { margin: 4px 0; }
+
+  .interfaces-box {
+    background: #f5f6fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 10px 0;
+  }
+  .interfaces-box .iface {
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 12.5px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 6px 12px;
+    margin: 4px 0;
+    display: inline-block;
+  }
+
+  .footer {
+    background: #f8f9fa;
+    padding: 20px 40px;
+    font-size: 12.5px;
+    color: #999;
+    text-align: center;
+    border-top: 1px solid #eee;
+  }
+
+  .deliver-box {
+    background: #f0fff4;
+    border: 1px solid #c3e6cb;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 10px 0;
+  }
+  .deliver-box .title {
+    font-weight: 700;
+    font-size: 13px;
+    color: #155724;
+    margin-bottom: 6px;
+  }
+  .deliver-box .items {
+    font-size: 13px;
+    color: #636e72;
+    padding-left: 18px;
+  }
+  .deliver-box .items li { margin: 3px 0; }
+
+  @media (max-width: 600px) {
+    .body, .header { padding: 20px; }
+    table { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>📋 FileMate 第二次周会</h1>
+    <div class="meta">
+      <span>📅 2026 年 7 月 26 日（周六）</span>
+      <span>⏱ 约 30 分钟</span>
+      <span>👥 全体成员（胡希、汤新阳、张金宝、徐书和、余恒、杨乐）</span>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <!-- ==================== SECTION 1 ==================== -->
+    <h2>一、上周交付回顾</h2>
+
+    <h3>✅ 已合并 PR（4 个，全部完成）</h3>
+    <table>
+      <thead>
+        <tr><th>PR</th><th>负责人</th><th>内容</th><th>合并时间</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>#1</strong></td>
+          <td>徐书和</td>
+          <td>执行层 W2 — Schema 对齐总纲 §3.6 + 健壮性修复 + 测试全覆盖</td>
+          <td>7/14</td>
+        </tr>
+        <tr>
+          <td><strong>#2</strong></td>
+          <td>张金宝</td>
+          <td>理解层 W2 — Prompt v1 + keywords 扩充至 116 词 + 7 类同步 + 测试脚本</td>
+          <td>7/19</td>
+        </tr>
+        <tr>
+          <td><strong>#3</strong></td>
+          <td>汤新阳</td>
+          <td>感知层 W2 — Word/PDF/PPT 解析 + Watcher + PaddleOCR v3.x 适配</td>
+          <td>7/20</td>
+        </tr>
+        <tr>
+          <td><strong>#4</strong> 🆕</td>
+          <td>张金宝</td>
+          <td>理解层 W3 — 分类 <strong>86.8%</strong> + 实体抽取 92% + 命名生成 + 里程碑识别 + 样本 57 份</td>
+          <td><strong>今晚合入</strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="section-note">
+      <strong>✨ 表扬：</strong>汤新阳、徐书和均在 W2 截止前完成并合并。张金宝在 W3 <strong>超额完成</strong>——分类准确率从 65.4% 提升到 86.8%，远超 85% 目标，且同步完成了实体抽取、里程碑识别、命名生成三大模块。
+    </div>
+
+    <h3>⚠️ 仍需关注的成员</h3>
+    <table>
+      <thead>
+        <tr><th>成员</th><th>模块</th><th>现状</th><th>具体说明</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>余恒</strong></td>
+          <td>UI 层</td>
+          <td><span class="badge badge-fail">滞后</span></td>
+          <td><code>ui/</code> 目录有骨架文件，但 <strong>无 PR 提交</strong>。W2、W3 均无实质交付，是当前最大风险点。</td>
+        </tr>
+        <tr>
+          <td><strong>杨乐</strong></td>
+          <td>功能设计</td>
+          <td><span class="badge badge-warn">未交付</span></td>
+          <td>功能规格文档 v1.0 未产出，无 commit 记录。负责协调和测试支持工作未见进展。</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ==================== SECTION 2 ==================== -->
+    <h2>二、W3 验收结果（7/21 – 7/27）</h2>
+
+    <table>
+      <thead>
+        <tr><th>验收项</th><th>目标</th><th>实际</th><th>判定</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>分类准确率（50 份样本）</td>
+          <td>≥ 85%</td>
+          <td><strong>86.8%</strong>（53 份有效 / 57 份样本）</td>
+          <td><span class="badge badge-ok">✅ 超额达标</span></td>
+        </tr>
+        <tr>
+          <td>实体抽取召回率（task_description）</td>
+          <td>≥ 80%</td>
+          <td><strong>92%</strong></td>
+          <td><span class="badge badge-ok">✅ 超额达标</span></td>
+        </tr>
+        <tr>
+          <td>里程碑识别</td>
+          <td>能识别竞赛通知中的关键节点</td>
+          <td>19 份竞赛通知中 <strong>13 份识别到节点</strong>，LLM 零失败</td>
+          <td><span class="badge badge-ok">✅ 达标</span></td>
+        </tr>
+        <tr>
+          <td>命名生成</td>
+          <td>格式正确</td>
+          <td><strong>100%</strong>格式正确率，task 平均 11.4 字符</td>
+          <td><span class="badge badge-ok">✅ 达标</span></td>
+        </tr>
+        <tr>
+          <td>样本量</td>
+          <td>≥ 50 份</td>
+          <td><strong>57 份</strong>，7 类全覆盖</td>
+          <td><span class="badge badge-ok">✅ 达标</span></td>
+        </tr>
+        <tr>
+          <td>关键词规则库</td>
+          <td>扩充 + 覆盖 7 类</td>
+          <td><strong>188 词</strong>（v0.3），新增"待确认"类别 32 词</td>
+          <td><span class="badge badge-ok">✅ 达标</span></td>
+        </tr>
+        <tr>
+          <td>Prompt 升级</td>
+          <td>分类 / 抽取 / 里程碑 / 命名 均有稳定版本</td>
+          <td>classify v2 / extract v2 / milestone v1（含 few-shot）/ naming v1</td>
+          <td><span class="badge badge-ok">✅ 达标</span></td>
+        </tr>
+        <tr>
+          <td>Gradio 四大 Tab 可交互</td>
+          <td>4 Tab 可操作</td>
+          <td>骨架存在</td>
+          <td><span class="badge badge-fail">❌ 未达标</span></td>
+        </tr>
+        <tr>
+          <td>功能规格文档 v1.0</td>
+          <td>正式产出</td>
+          <td>未产出</td>
+          <td><span class="badge badge-fail">❌ 未达标</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="section-note">
+      <strong>📊 总结：</strong>理解层 6 项全部达标，2 项未达标（UI + 文档）均由非张金宝成员负责。张金宝在本周额外完成了 main.py 的感知层→理解层集成（OCR 回退、状态机流转、JSON 序列化），主动为 W4 联调铺路。
+    </div>
+
+    <div class="section-info">
+      <strong>📈 准确率提升历程：</strong>v1 首测 41.7%（14 份） → v2 中间 65.4%（28 份） → <strong>v3 最终 86.8%（57 份）</strong>。主要提升手段：关键词规则库扩充（116→188 词）+ Prompt 增加易混淆区分章节 + 文件名参与匹配 + 规则模糊降级 LLM + LLM 重试机制。
+    </div>
+
+    <!-- ==================== SECTION 3 ==================== -->
+    <h2>三、W4 任务布置 — 里程碑 1（7/28 – 8/3）</h2>
+
+    <div class="milestone-box">
+      <div class="title">🎯 Milestone 1 总目标</div>
+      <ul class="detail">
+        <li>在命令行执行 <code>python main.py &lt;文件路径&gt;</code></li>
+        <li>系统完成完整链路：<strong>解析 → 分类 → 抽取实体 → 生成命名 → 输出结果</strong></li>
+        <li>终端打印出结构化结果（分类标签 + 置信度 + 课程名 + 截止时间 + 建议文件名）</li>
+        <li>任意 .docx / .pdf / .ppt 文件丢进去都能跑通</li>
+        <li>对 20 份真实样本测试，记录每份的输出结果和失败案例</li>
+      </ul>
+    </div>
+
+    <!-- PIPELINE DIAGRAM -->
+    <h3>📡 完整数据流（端到端链路）</h3>
+    <div class="pipeline-box">
+      <span class="module">[感知层]</span> <span class="step">FileParser.parse(path)</span>
+      <span class="arrow">──▶</span> 提取 raw_text + metadata<br>
+      <span class="arrow">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      <span class="arrow">──▶</span> <span class="module">[理解层]</span> <span class="step">Classifier.classify(text)</span>
+      <span class="arrow">──▶</span> 分类标签 + 置信度<br>
+      <span class="arrow">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      <span class="arrow">──▶</span> <span class="module">[理解层]</span> <span class="step">EntityExtractor.extract(text)</span>
+      <span class="arrow">──▶</span> 课程名 / 截止时间 / 任务描述<br>
+      <span class="arrow">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      <span class="arrow">──▶</span> <span class="module">[理解层]</span> <span class="step">Namer.generate(entities)</span>
+      <span class="arrow">──▶</span> 建议文件名<br>
+      <span class="arrow">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      <span class="arrow">──▶</span> <span class="module">[执行层]</span> <span class="step">Archiver / Scheduler</span>
+      <span class="arrow">──▶</span> .ics 日程 + 归档目录规划<br>
+      <span class="arrow">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      <span class="arrow">──▶</span> <span class="module">[main.py]</span> <span class="step">打印最终结果</span>
+      <span class="arrow">──▶</span> ✅ 完成
+    </div>
+
+    <h3>5 个核心接口契约（联调时必须对齐）</h3>
+    <div class="interfaces-box">
+      <div class="iface">FileParser.parse(path) → {raw_text: str, metadata: dict}</div>
+      <div class="iface">Classifier.classify(text, file_name) → {category: str, confidence: float}</div>
+      <div class="iface">EntityExtractor.extract(text, category) → {course_name, task_description, deadline, location}</div>
+      <div class="iface">Namer.generate(category, course_name, task, deadline) → str（建议文件名）</div>
+      <div class="iface">CalendarBuilder.build(events) → .ics 文件路径</div>
+    </div>
+    <div class="section-info">
+      <strong>接口协议文档：</strong>详见 <code>filemate/docs/API_SPEC.md</code>，所有模块必须遵守此规范，否则联调无法进行。
+    </div>
+
+    <!-- 7 END CHECKPOINT -->
+    <h3>📅 7 月底 Checkpoint（7/31 必须达到的程度）</h3>
+    <div class="section-note">
+      <strong>7 月底 = 进入 W4 后的第三天。</strong>这不是最终 deadline，但这是一个<strong>关键检查点</strong>。到 7/31 为止，以下每一项必须完成，否则 Milestone 1 有极高风险延期。
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>检查项</th><th>7/31 必须达到</th><th>负责</th><th>判定标准</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>main.py 可运行</strong></td>
+          <td>命令行 <code>python main.py test.docx</code> 不报错，正常输出</td>
+          <td>胡希</td>
+          <td><span class="badge badge-ok">✅ 关键路径</span></td>
+        </tr>
+        <tr>
+          <td><strong>感知层 → 理解层 对接</strong></td>
+          <td>解析出的 raw_text 能传入 Classifier，返回分类结果</td>
+          <td>胡希 + 张金宝</td>
+          <td><span class="badge badge-ok">✅ 关键路径</span></td>
+        </tr>
+        <tr>
+          <td><strong>分类准确率（张金宝已完成）</strong></td>
+          <td>≥ 85%（<strong>已达标：86.8%</strong>）</td>
+          <td>张金宝</td>
+          <td><span class="badge badge-ok">✅ 已完成</span></td>
+        </tr>
+        <tr>
+          <td><strong>实体抽取可用</strong></td>
+          <td>至少能稳定抽取出"课程名"和"截止时间"两个字段</td>
+          <td>张金宝</td>
+          <td><span class="badge badge-ok">✅ 已达标</span></td>
+        </tr>
+        <tr>
+          <td><strong>执行层 .ics 可用</strong></td>
+          <td>给定事件列表，能生成 .ics 文件，用系统日历软件可打开</td>
+          <td>徐书和</td>
+          <td><span class="badge badge-ok">✅ 关键路径</span></td>
+        </tr>
+        <tr>
+          <td><strong>SQLite 存储正常</strong></td>
+          <td>处理结果可写入数据库，不报错，数据可查询</td>
+          <td>徐书和</td>
+          <td><span class="badge badge-ok">✅ 关键路径</span></td>
+        </tr>
+        <tr>
+          <td><strong>测试样本就位</strong></td>
+          <td>至少 50 份样本（.docx / .pdf / .ppt 各覆盖），用于联调测试</td>
+          <td>汤新阳</td>
+          <td><span class="badge badge-yellow">🔴 关键路径</span></td>
+        </tr>
+        <tr>
+          <td><strong>命名生成可用</strong></td>
+          <td>Namer.generate() 能根据实体信息生成规范文件名</td>
+          <td>张金宝</td>
+          <td><span class="badge badge-ok">✅ 已达标</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="section-note">
+      <strong>对比上周：</strong>张金宝负责的 4 项检查（分类、实体抽取、命名、关键词规则）已全部通过，不再占用 checkpoint 的紧张时间。剩余 4 项关键路径需要本周全力推进。
+    </div>
+
+    <!-- ==================== SECTION 4 ==================== -->
+    <h2>四、W4 分人任务详解</h2>
+
+    <h3>👤 胡希（架构 + 集成）— W4 最忙的人</h3>
+    <div class="person-card">
+      <div class="name">胡希 · 项目负责人</div>
+      <ul class="tasks">
+        <li><strong>main.py pipeline（7/28 – 7/30 完成）：</strong>
+          <ul>
+            <li>编写完整的 <code>main.py</code>，串联感知 → 理解 → 执行的 5 步调用链</li>
+            <li>处理每一步的异常：解析失败 → 打印错误并退出；LLM 超时 → 重试 3 次后报错</li>
+            <li>命令行参数：<code>python main.py &lt;file_path&gt;</code>，支持可选 <code>--verbose</code> 输出详细信息</li>
+            <li>最终输出格式示例：
+              <div class="pipeline-box" style="font-size:12px; padding:12px 16px;">
+                文件: 操作系统_实验三.docx<br>
+                分类: 作业（置信度 0.91）<br>
+                课程: 操作系统<br>
+                任务: 实验三 — 进程同步<br>
+                截止: 2026-08-15<br>
+                建议命名: [操作系统]-[实验三]-[进程同步]-[0815]-[待处理]<br>
+                日程: 已生成 1 个日历事件（.ics）<br>
+                状态: ✅ 处理完成
+              </div>
+            </li>
+          </ul>
+        </li>
+        <li><strong>BackendAPI 接口契约（7/30 前）：</strong>写好后端 API 类，定义所有 Gradio 需要调用的方法签名，发给余恒</li>
+        <li><strong>每日站会（7/28 起）：</strong>每天在群里简短同步进度，每人 3 行</li>
+        <li><strong>7/31 checkpoint 检查：</strong>逐项核实剩余 4 项 checkpoint 是否完成</li>
+        <li><strong>PR #4 审查发现的问题跟进（本周内）：</strong>
+          <ul>
+            <li>要求张金宝用 57 份样本重新跑测试，更新 <code>test_result.json</code> 等结果文件</li>
+            <li>与张金宝讨论关键词置信度公式调整方案（建议基础值降到 0.50 以下）</li>
+            <li>与张金宝讨论 retry 机制改进：只对可恢复错误重试，不重试业务层面错误</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <h3>👤 汤新阳（感知层）</h3>
+    <div class="person-card">
+      <div class="name">汤新阳 · 感知层工程师</div>
+      <ul class="tasks">
+        <li><strong>样本补充（7/28 – 7/30）：</strong>
+          <ul>
+            <li>总样本量达到 <strong>100+ 份</strong>（当前 57 份，目标新增 43+ 份）</li>
+            <li>类型分布要求：
+              <table style="margin:6px 0; font-size:12px;">
+                <tr><td>.docx 课件</td><td>≥ 30 份</td><td>.pdf 课件</td><td>≥ 15 份</td></tr>
+                <tr><td>.pptx 课件</td><td>≥ 10 份</td><td>.docx 作业</td><td>≥ 15 份</td></tr>
+                <tr><td>竞赛通知</td><td>≥ 15 份</td><td>考试通知</td><td>≥ 10 份</td></tr>
+                <tr><td>大创通知</td><td>≥ 8 份</td><td>参考资料</td><td>≥ 10 份</td></tr>
+                <tr><td>待确认</td><td>≥ 12 份</td><td></td><td></td></tr>
+              </table>
+            </li>
+            <li>至少包含 5 份"麻烦"文件：加密 PDF、扫描版 PDF（纯图片）、损坏文件、超大文件（&gt;10MB）、极短文件（只有标题）</li>
+          </ul>
+        </li>
+        <li><strong>异常处理完善（7/29 前）：</strong>
+          <ul>
+            <li>解析器遇到每种错误类型（加密 / 损坏 / 格式不支持 / 内存不足）都必须抛出清晰的错误信息</li>
+            <li>错误信息格式：<code>{"error": "PARSE_FAILED", "reason": "文件已加密，需要密码", "suggestion": "请提供密码或转换格式"}</code></li>
+            <li>确保 PipelineWorker 能 catch 到这些错误，不崩溃</li>
+          </ul>
+        </li>
+        <li><strong>测试样本集（7/30 前）：</strong>整理出 20 份精选样本（各类别均衡），打包给胡希用于联调</li>
+      </ul>
+    </div>
+
+    <h3>👤 张金宝（理解层）— 本周重点转为联调 + 优化</h3>
+    <div class="person-card">
+      <div class="name">张金宝 · 理解层工程师</div>
+      <ul class="tasks">
+        <li><strong>W3 已完成，本周重心转移：</strong>
+          <ul>
+            <li>分类准确率 86.8% — <strong>已达标，不需要再提升</strong></li>
+            <li>实体抽取、命名生成、里程碑识别 — <strong>均已达标</strong></li>
+            <li>关键词规则库 188 词 + Prompt v2 — <strong>已交付</strong></li>
+          </ul>
+        </li>
+        <li><strong>W4 新任务：联调对接 + 代码优化</strong>
+          <ul>
+            <li>配合胡希的 main.py，确保 5 个接口在端到端场景下正确对接</li>
+            <li>修复 PR #4 review 中提出的 4 个问题：
+              <table style="margin:6px 0; font-size:12px;">
+                <tr><th>问题</th><th>修复方案</th><th>Deadline</th></tr>
+                <tr><td>测试 JSON 是旧数据</td><td>用 57 份样本重新跑，更新所有 test_*.json</td><td>7/28</td></tr>
+                <tr><td>关键词置信度过高</td><td>将基础置信度从 0.55 降到 0.45 以下</td><td>7/29</td></tr>
+                <tr><td>retry 一刀切</td><td>只对 JSONDecodeError/Timeout/Limit 重试</td><td>7/29</td></tr>
+                <tr><td>main.py 职责越界</td><td>标注临时集成代码，标注后续迁移计划</td><td>7/30</td></tr>
+              </table>
+            </li>
+            <li>参与 20 份样本的端到端联调，记录每份的分类 / 抽取 / 命名结果</li>
+            <li>如果联调中发现准确率下降，分析原因并快速修复</li>
+          </ul>
+        </li>
+        <li><strong>每日同步：</strong>联调进度和 bug 修复情况在群里同步</li>
+      </ul>
+    </div>
+
+    <h3>👤 徐书和（执行层）</h3>
+    <div class="person-card">
+      <div class="name">徐书和 · 执行层工程师</div>
+      <ul class="tasks">
+        <li><strong>端到端验证（7/29 – 7/31）：</strong>
+          <ul>
+            <li>模拟 PipelineWorker 的输出，直接调用 <code>archiver.py</code> 和 <code>scheduler.py</code></li>
+            <li>验证 archiver：给定分类结果 + 课程名，能正确创建目录结构并移动文件</li>
+            <li>验证 scheduler：给定事件列表，生成的 .ics 文件能被 Windows 日历 / 手机日历正确导入</li>
+          </ul>
+        </li>
+        <li><strong>batch_processor 测试（7/30 前）：</strong>
+          <ul>
+            <li>补充 <code>batch_processor.py</code> 的单元测试，覆盖：正常批量处理、并发控制、失败重试、进度回调</li>
+          </ul>
+        </li>
+        <li><strong>SQLite 线程安全（7/28 前）：</strong>
+          <ul>
+            <li>确认多线程写入时无 race condition（至少跑一个并发压测：10 个线程同时写入 100 次）</li>
+            <li>如有问题，加锁或改用 WAL 模式</li>
+          </ul>
+        </li>
+        <li><strong>file_ops 测试（7/30 前）：</strong>
+          <ul>
+            <li>补充文件移动、重命名、哈希计算的单元测试</li>
+            <li>覆盖边界情况：目标目录已存在同名文件、源文件不存在、权限不足</li>
+          </ul>
+        </li>
+        <li><strong>对接胡希的 main.py：</strong>
+          <ul>
+            <li>确认 <code>SQLiteStorage</code> 的 <code>init_schema()</code> 在 main.py 中被正确调用</li>
+            <li>确认 <code>update_session()</code> 的字段过滤逻辑与 W3 新增的 JSON 序列化兼容</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <h3>👤 余恒（UI 层）— 🟡 追赶项，本周必须出成果</h3>
+    <div class="person-card">
+      <div class="name">余恒 · UI + 集成工程师</div>
+      <ul class="tasks">
+        <li><strong>当前状态：</strong>W2、W3 均无实质提交。这是第二次周会重点讨论的对象。</li>
+
+        <li><strong>本周最低目标（7/31 前）：</strong>
+          <ul>
+            <li>实现一个最简单的 Gradio 界面：一个文件上传按钮 + 一个文本输出区域</li>
+            <li>用户上传文件 → 调用后端解析 → 在界面上显示解析出的文本内容</li>
+            <li>这个最小链路验证了"Gradio 能调用后端模块"这件事</li>
+          </ul>
+        </li>
+
+        <li><strong>依赖条件：</strong>
+          <ul>
+            <li>胡希在 7/28 前提供 <code>BackendAPI</code> 的接口定义（类名 + 方法签名）</li>
+            <li>收到接口定义后 <strong>2 天内</strong>（7/30 前）必须跑通最小链路</li>
+          </ul>
+        </li>
+
+        <li><strong>W5 目标（8/4 – 8/10）：</strong>
+          <ul>
+            <li>完成 4 个 Tab 的完整实现</li>
+            <li>对接 BackendAPI，实现分类预览、命名预览、日程预览的交互</li>
+          </ul>
+        </li>
+
+        <li><strong>会上需要讨论的问题：</strong>
+          <ul>
+            <li>为什么 W2、W3 都没有提交？遇到什么困难？</li>
+            <li>对 Gradio 是否熟悉？是否需要先过一遍 Gradio 基础教程？</li>
+            <li>是否需要胡希或其他人协助写初始代码？</li>
+          </ul>
+        </li>
+
+        <li><strong>⚠️ 风险预案：</strong>如果 7/30 前仍无法开工，胡希将直接参与 UI 开发，确保 W5 不阻塞。余恒在 W5 只负责 Tab 2-4 的具体组件。</li>
+      </ul>
+    </div>
+
+    <h3>👤 杨乐（功能设计 + 协调）</h3>
+    <div class="person-card">
+      <div class="name">杨乐 · 功能设计 + 项目协调</div>
+      <ul class="tasks">
+        <li><strong>功能规格文档 v1.0（7/29 前）：</strong>
+          <ul>
+            <li>内容必须包含：用户操作流程、界面交互逻辑、错误状态处理、边界情况说明</li>
+            <li>格式：Markdown，放到 <code>docs/</code> 目录</li>
+            <li>不少于 3 页内容</li>
+          </ul>
+        </li>
+        <li><strong>联调 Bug 跟踪（7/28 起）：</strong>
+          <ul>
+            <li>维护一份 Bug 清单（可用 GitHub Issues 或 Markdown 表格）</li>
+            <li>记录每次联调发现的问题、严重程度、负责人、修复状态</li>
+          </ul>
+        </li>
+        <li><strong>Prompt 测试用例集（7/30 前）：</strong>
+          <ul>
+            <li>协助张金宝设计 20 条测试用例，覆盖：典型场景（10 条）+ 边界场景（10 条）</li>
+            <li>每条用例包含：输入文本、预期分类、预期实体、备注说明</li>
+          </ul>
+        </li>
+        <li><strong>协助集成测试（8/1 – 8/3）：</strong>
+          <ul>
+            <li>参与 20 份样本的端到端测试</li>
+            <li>记录每份的测试结果：处理成功 / 分类错误 / 解析失败 / 其他</li>
+            <li>输出集成测试报告</li>
+          </ul>
+        </li>
+        <li><strong>会上需要讨论的问题：</strong>
+          <ul>
+            <li>W2、W3 没有 commit 的原因是什么？</li>
+            <li>对当前分工是否有疑问或需要调整的地方？</li>
+            <li>是否需要其他人分担功能规格文档的工作？</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <!-- ==================== SECTION 5 ==================== -->
+    <h2>五、W4 本周交付物清单</h2>
+
+    <div class="section-note">
+      以下每一项都是 <strong>7/31 或 8/3 前必须完成</strong>的交付物，不是"尽量做"。
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>#</th><th>交付物</th><th>负责人</th><th>Deadline</th><th>验收方式</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><code>main.py</code> 完整 pipeline，命令行可运行</td>
+          <td>胡希</td>
+          <td>7/30</td>
+          <td><code>python main.py &lt;file&gt;</code> 不报错</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>BackendAPI 接口定义（类名 + 方法签名）</td>
+          <td>胡希</td>
+          <td>7/30</td>
+          <td>发给余恒，余恒确认可以开工</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>样本扩充至 100+ 份，含边缘场景</td>
+          <td>汤新阳</td>
+          <td>7/30</td>
+          <td>datasets/raw/ 下文件数 ≥ 100</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>测试结果 JSON 更新（57 份样本）</td>
+          <td>张金宝</td>
+          <td>7/28</td>
+          <td>test_result.json 等文件包含 57 条数据</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>关键词置信度公式调整</td>
+          <td>张金宝</td>
+          <td>7/29</td>
+          <td>单次命中置信度 &lt; 0.60</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td>retry 机制改进</td>
+          <td>张金宝</td>
+          <td>7/29</td>
+          <td>只对可恢复错误重试</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td>.ics 文件端到端验证</td>
+          <td>徐书和</td>
+          <td>7/31</td>
+          <td>系统日历软件可导入</td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td>SQLite 线程安全压测通过</td>
+          <td>徐书和</td>
+          <td>7/28</td>
+          <td>10 线程并发写入 100 次无错误</td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td>Gradio 最小链路跑通</td>
+          <td>余恒</td>
+          <td>7/30</td>
+          <td>上传文件 → 显示解析文本</td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td>功能规格文档 v1.0</td>
+          <td>杨乐</td>
+          <td>7/29</td>
+          <td>Markdown 文件，≥ 3 页</td>
+        </tr>
+        <tr>
+          <td>11</td>
+          <td>集成测试报告（20 份样本）</td>
+          <td>胡希 + 杨乐</td>
+          <td>8/3</td>
+          <td>每份样本有分类 / 抽取 / 命名结果记录</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ==================== SECTION 6 ==================== -->
+    <h2>六、W4 每日节奏安排</h2>
+
+    <table>
+      <thead>
+        <tr><th>日期</th><th>星期</th><th>重点</th><th>当日目标</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>7/28</td>
+          <td>一</td>
+          <td>开工日</td>
+          <td>胡希写出 main.py 框架；张金宝修复 PR review 问题；汤新阳提交样本清单；徐书和完成 SQLite 线程安全</td>
+        </tr>
+        <tr>
+          <td>7/29</td>
+          <td>二</td>
+          <td>集成日</td>
+          <td>5 个模块首次串联跑通；张金宝完成置信度 + retry 修复；杨乐文档 deadline</td>
+        </tr>
+        <tr>
+          <td>7/30</td>
+          <td>三</td>
+          <td>联调日</td>
+          <td>用 10 份样本跑完整 pipeline；修复联调 bug；余恒最小链路 deadline；胡希发 BackendAPI</td>
+        </tr>
+        <tr>
+          <td><strong>7/31</strong></td>
+          <td><strong>四</strong></td>
+          <td><strong>Checkpoint 🔴</strong></td>
+          <td><strong>剩余 checkpoint 逐项验证；张金宝联调配合；汤新阳样本补充完成</strong></td>
+        </tr>
+        <tr>
+          <td>8/1</td>
+          <td>五</td>
+          <td>扩展测试</td>
+          <td>20 份样本全量测试；Bug 修复</td>
+        </tr>
+        <tr>
+          <td>8/2</td>
+          <td>六</td>
+          <td>第二次周会</td>
+          <td>周会 + 联调总结 + 剩余问题分配 + Milestone 1 冲刺</td>
+        </tr>
+        <tr>
+          <td>8/3</td>
+          <td>日</td>
+          <td>Milestone 1 验收 🔴</td>
+          <td>验收标准逐条验证；全体在场演示</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="section-danger">
+      <strong>⚠️ 7/31 和 8/3 是硬日期。</strong>7/31 是 W4 的中途检查，不合格必须立刻调整计划。8/3 是 Milestone 1 的正式 deadline，必须全员在场演示。
+    </div>
+
+    <!-- ==================== SECTION 7 ==================== -->
+    <h2>七、Milestone 1 验收标准（8/3 详细版）</h2>
+
+    <div class="section-note">
+      Milestone 1 不是一个"功能做了就行"的软验收。以下每一项都是<strong>可验证、可复现</strong>的。任何人拿到同一份文件，执行命令后必须得到一致的结果。
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>#</th><th>验收项</th><th>测试方法</th><th>通过标准</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>命令行可启动</td>
+          <td><code>python main.py 任意.docx</code></td>
+          <td>不报错，正常输出结果</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Word 解析正确</td>
+          <td>传入 .docx 课件文件</td>
+          <td>raw_text 非空，metadata 包含 file_size、page_count</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>PDF 解析正确</td>
+          <td>传入 .pdf 课件文件</td>
+          <td>raw_text 非空（纯文字 PDF）；扫描版 PDF 触发 OCR 或报清晰错误</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>PPT 解析正确</td>
+          <td>传入 .pptx 课件文件</td>
+          <td>raw_text 非空，metadata 包含 slide_count</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>分类正确率</td>
+          <td>50 份样本盲测</td>
+          <td>准确率 ≥ 85%（当前 86.8%，达标）</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td>实体抽取可用</td>
+          <td>20 份含明确信息的文件</td>
+          <td>课程名召回率 ≥ 90%，截止时间召回率 ≥ 75%</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td>命名生成合理</td>
+          <td>10 份样本人工评审</td>
+          <td>≥ 8 份命名可直接使用或经小改即可使用</td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td>.ics 可导入</td>
+          <td>竞赛通知 / 大创通知样本</td>
+          <td>生成的 .ics 文件能被 Windows 日历 / macOS 日历 / Google 日历导入</td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td>异常处理不崩溃</td>
+          <td>传入加密 PDF、损坏文件、空文件</td>
+          <td>程序不崩溃，输出清晰的错误提示</td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td>代码可运行</td>
+          <td>在新环境中 <code>pip install -r requirements.txt</code> 后运行</td>
+          <td>不依赖本地特殊配置，requirements.txt 完整</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ==================== SECTION 8 ==================== -->
+    <h2>八、质量要求与代码规范</h2>
+
+    <h3>代码规范</h3>
+    <ul class="checklist">
+      <li>遵循 PEP 8，提交前用 <code>black</code> 格式化</li>
+      <li>每个函数必须有类型标注（type hints）</li>
+      <li>每个模块必须有模块级 docstring</li>
+      <li>每个 public 函数必须有 docstring（参数、返回值、异常）</li>
+      <li>异常必须被正确 catch 和处理，不允许裸 <code>except:</code></li>
+    </ul>
+
+    <h3>测试要求</h3>
+    <ul class="checklist">
+      <li>每个模块的单元测试覆盖率 ≥ 70%（pytest --cov 验证）</li>
+      <li>联调时用真实样本，不允许只跑 mock 数据</li>
+      <li>失败案例必须记录原因，不允许"不知道为什么 failed"就跳过</li>
+      <li>每个 PR 必须包含对应的测试文件或测试用例更新</li>
+    </ul>
+
+    <h3>Git 工作流</h3>
+    <ul class="checklist">
+      <li>commit 信息格式：<code>feat(module): 做了什么</code> / <code>fix(module): 修了什么</code> / <code>test(module): 测试了什么</code></li>
+      <li>每人每周至少 2 次有效 commit</li>
+      <li>所有代码通过 PR 提交，胡希 review 后才能合并</li>
+      <li>不允许直接 push 到 main，必须走 feature branch → PR → merge</li>
+    </ul>
+
+    <!-- ==================== SECTION 9 ==================== -->
+    <h2>九、风险与应对</h2>
+    <table>
+      <thead>
+        <tr><th>风险</th><th>影响</th><th>概率</th><th>应对方案</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>余恒 UI 完全滞后</td>
+          <td>W5 进度阻塞，Milestone 2 风险</td>
+          <td><span class="badge badge-red">高</span></td>
+          <td><strong>会上重点讨论</strong>：了解卡点；7/30 仍未开工 → 胡希接手 UI 基础框架；W5 余恒只做 Tab 2-4 的具体组件</td>
+        </tr>
+        <tr>
+          <td>杨乐持续零交付</td>
+          <td>联调无人记录 Bug，测试用例无人设计</td>
+          <td><span class="badge badge-red">高</span></td>
+          <td><strong>会上重点讨论</strong>：了解原因；若确实时间不够，胡希承担 Bug 跟踪，张金宝协助测试用例</td>
+        </tr>
+        <tr>
+          <td>LLM API 不稳定 / 超时</td>
+          <td>端到端测试阻塞</td>
+          <td><span class="badge badge-yellow">中</span></td>
+          <td>准备 mock 模式：用规则引擎结果替代 LLM 输出，确保离线也能跑通链路</td>
+        </tr>
+        <tr>
+          <td>样本质量差 / 不够</td>
+          <td>评估结果不可信</td>
+          <td><span class="badge badge-yellow">中</span></td>
+          <td>汤新阳本周集中补样本；胡希从课程群、学校官网收集补充</td>
+        </tr>
+        <tr>
+          <td>模块接口不一致</td>
+          <td>联调时发现对接不上</td>
+          <td><span class="badge badge-yellow">中</span></td>
+          <td>联调前胡希先核对 5 个接口的实际实现 vs API_SPEC.md，提前对齐</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ==================== SECTION 10 ==================== -->
+    <h2>十、近期全景时间线</h2>
+
+    <table>
+      <thead>
+        <tr><th>里程碑</th><th>时间</th><th>验收标准</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>今晚 · 第二次周会</strong></td>
+          <td>7/26</td>
+          <td>W4 任务对齐、风险讨论、余恒/杨乐情况确认</td>
+        </tr>
+        <tr>
+          <td><strong>7 月底 Checkpoint</strong></td>
+          <td><strong>7/31（周三）</strong></td>
+          <td>剩余 4 项 checkpoint 全部通过：main.py 可运行、对接跑通、样本就位、测试 JSON 更新</td>
+        </tr>
+        <tr>
+          <td><strong>第二次周会</strong></td>
+          <td>8/2（周六）</td>
+          <td>联调总结 + 剩余 bug 分配 + Milestone 1 冲刺</td>
+        </tr>
+        <tr>
+          <td><strong>🎯 Milestone 1</strong></td>
+          <td><strong>2026.08.03</strong></td>
+          <td><code>python main.py &lt;file&gt;</code> 端到端跑通，10 项验收标准逐条通过</td>
+        </tr>
+        <tr>
+          <td><strong>W5：执行层深化</strong></td>
+          <td>8/4 – 8/10</td>
+          <td>Gradio 内走完完整流程，4 Tab 可交互</td>
+        </tr>
+        <tr>
+          <td><strong>W6：确认层打磨</strong></td>
+          <td>8/11 – 8/17</td>
+          <td>批量导入 10 个文件不崩溃，用户确认流程流畅</td>
+        </tr>
+        <tr>
+          <td><strong>🎯 Milestone 2</strong></td>
+          <td><strong>2026.08.24</strong></td>
+          <td>Gradio UI + 完整链路 + 基础测试通过 + 演示视频</td>
+        </tr>
+        <tr>
+          <td><strong>W8：收尾</strong></td>
+          <td>8/25 – 8/31</td>
+          <td>成果包完整 + 中期检查材料 + 阶段总结 PPT</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ==================== SECTION 11 ==================== -->
+    <h2>十一、沟通机制</h2>
+    <table>
+      <thead>
+        <tr><th>事项</th><th>安排</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>每日站会</td>
+          <td>每天 21:00 前，微信群文字同步。每人 3 行：<br>① 昨天做了什么 ② 今天做了什么 ③ 有 blocker 吗</td>
+        </tr>
+        <tr>
+          <td>周会</td>
+          <td>每周六晚 30 分钟（今晚 + 8/2）</td>
+        </tr>
+        <tr>
+          <td>代码提交</td>
+          <td>每周至少 2 次有效 commit；PR 需胡希 review 后合并</td>
+        </tr>
+        <tr>
+          <td>紧急沟通</td>
+          <td>微信群 @胡希；电话 / 腾讯会议（紧急情况）</td>
+        </tr>
+        <tr>
+          <td>7/31 Checkpoint</td>
+          <td>胡希在群里 @所有人 确认完成情况，不合格者当晚说明原因和补救计划</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>十二、会上重点讨论事项</h2>
+
+    <div class="section-danger">
+      <strong>以下三个问题需要会上确认，请参会者提前想好：</strong>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>讨论项</th><th>背景</th><th>需要确认</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>余恒的滞后问题</strong></td>
+          <td>W2、W3 均无 PR 提交，UI 是 Milestone 2 的关键路径</td>
+          <td>遇到什么困难？需要什么帮助？能否 7/30 前跑通最小链路？</td>
+        </tr>
+        <tr>
+          <td><strong>杨乐的交付问题</strong></td>
+          <td>功能规格文档未产出，联调 Bug 跟踪无人负责</td>
+          <td>时间不够还是分工有疑问？是否需要调整分工？</td>
+        </tr>
+        <tr>
+          <td><strong>PR #4 review 意见落实</strong></td>
+          <td>合入前提出 4 个改进点，需确认张金宝本周能完成</td>
+          <td>测试 JSON 更新、置信度调整、retry 改进、main.py 职责标注</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+
+  <div class="footer">
+    由 FileMate 项目负责人 胡希 编制 · 2026.07.26 · 如有调整请同步全体成员
+  </div>
+
+</div>
+</body>
+</html>
