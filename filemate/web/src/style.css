@@ -14,17 +14,133 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 重置 Element Plus 的一些样式 */
+/* 点击手型光标 */
+a, button, .el-button, .nav-item, .feature-card, .recent-item, .queue-item, .header-btn, .user-avatar, .logo-container, .stat-card, .tip-card {
+  cursor: pointer;
+}
+
+/* 聚焦状态 - 提高可访问性 */
+a:focus-visible, button:focus-visible, .el-button:focus-visible,
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--accent-primary, #10b981);
+  outline-offset: 2px;
+}
+
+/* 过渡动画 */
+a, button, .el-button, .nav-item, .feature-card, .recent-item, .queue-item, .header-btn {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 尊重减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 重置 Element Plus 样式 - 操作台风格 */
 .el-card {
-  border-radius: 8px;
+  --el-card-bg-color: var(--bg-card, #16161e);
+  --el-card-border-color: var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: var(--radius-lg, 16px);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  backdrop-filter: blur(8px);
 }
 
-.el-button {
-  border-radius: 6px;
+.el-card__header {
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  padding: 16px 20px;
 }
 
+.el-card__body {
+  padding: 20px;
+}
+
+/* 暗色主题的表格 */
+.el-table {
+  --el-table-bg-color: var(--bg-card, #16161e);
+  --el-table-tr-bg-color: var(--bg-card, #16161e);
+  --el-table-header-bg-color: #1a1a24;
+  --el-table-row-hover-bg-color: rgba(255, 255, 255, 0.03);
+  --el-table-border-color: var(--border-subtle, rgba(255, 255, 255, 0.06));
+  --el-table-text-color: var(--text-secondary, #a1a1aa);
+  --el-table-header-text-color: var(--text-muted, #71717a);
+}
+
+/* 暗色主题的下拉菜单 */
+.el-select-dropdown {
+  background: var(--bg-elevated, #1a1a24);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+}
+
+.el-select-dropdown__item {
+  color: var(--text-secondary, #a1a1aa);
+}
+
+.el-select-dropdown__item.hover,
+.el-select-dropdown__item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.el-select-dropdown__item.selected {
+  color: var(--accent-primary, #10b981);
+}
+
+/* 暗色主题的输入框 */
 .el-input__wrapper {
-  border-radius: 6px;
+  background: var(--bg-elevated, #1a1a24);
+  border-color: var(--border-subtle, rgba(255, 255, 255, 0.06));
+  box-shadow: none;
+}
+
+.el-input__inner {
+  color: var(--text-primary, #f4f4f5);
+}
+
+.el-input__inner::placeholder {
+  color: var(--text-muted, #71717a);
+}
+
+/* 按钮样式 */
+.el-button {
+  border-radius: var(--radius-md, 12px);
+}
+
+.el-button--primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: none;
+}
+
+.el-button--primary:hover {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+}
+
+/* 暗色主题的空状态 */
+.el-empty__description p {
+  color: var(--text-muted, #71717a);
+}
+
+/* Timeline 样式 */
+.el-timeline-item__node {
+  background: var(--accent-primary, #10b981);
+}
+
+/* Alert 样式 */
+.el-alert {
+  --el-alert-bg-color: rgba(16, 185, 129, 0.08);
+  --el-alert-border-color: rgba(16, 185, 129, 0.2);
+  --el-alert-title-color: #6ee7b7;
+  --el-alert-description-color: var(--text-secondary, #a1a1aa);
+}
+
+/* Divider 样式 */
+.el-divider {
+  border-color: var(--border-subtle, rgba(255, 255, 255, 0.06));
 }
 
 /* 确保内容区域高度 */

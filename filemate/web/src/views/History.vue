@@ -3,7 +3,7 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <h3>📜 历史记录</h3>
+          <h3><el-icon><Document /></el-icon> 历史记录</h3>
           <el-button @click="loadHistory" :loading="loading">
             <el-icon><Refresh /></el-icon>
             刷新
@@ -49,7 +49,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Refresh } from '@element-plus/icons-vue'
+import { Refresh, Document } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getHistory, getSession } from '../services/api'
 import { useFileStore } from '../stores/fileStore'
@@ -151,5 +151,49 @@ async function viewDetail(row: HistoryItem) {
 
 .card-header h3 {
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 表格样式统一为暗色主题 */
+:deep(.el-table) {
+  --el-table-bg-color: #16161e;
+  --el-table-tr-bg-color: #16161e;
+  --el-table-header-bg-color: #1a1a24;
+  --el-table-row-hover-bg-color: rgba(16, 185, 129, 0.08);
+  --el-table-border-color: rgba(255, 255, 255, 0.06);
+  --el-table-text-color: #a1a1aa;
+  --el-table-header-text-color: #71717a;
+}
+
+:deep(.el-table__row--striped) {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+:deep(.el-table__row--striped td) {
+  background: transparent !important;
+}
+
+:deep(.el-table td.el-table__cell) {
+  background: transparent;
+  border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+:deep(.el-table th.el-table__cell) {
+  background: #1a1a24 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+:deep(.el-table__body tr:hover > td.el-table__cell) {
+  background: rgba(16, 185, 129, 0.08) !important;
+}
+
+/* 分页样式 */
+:deep(.el-pagination) {
+  --el-pagination-bg-color: transparent;
+  --el-pagination-text-color: #71717a;
+  --el-pagination-button-bg-color: #1a1a24;
+  --el-pagination-hover-color: #10b981;
 }
 </style>

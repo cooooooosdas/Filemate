@@ -10,7 +10,7 @@
     <template v-else>
       <el-card>
         <template #header>
-          <h3>✏️ 命名预览</h3>
+          <h3><el-icon><Edit /></el-icon> 命名预览</h3>
         </template>
 
         <el-row :gutter="20">
@@ -44,6 +44,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Edit } from '@element-plus/icons-vue'
 import { confirmSession } from '../services/api'
 import { useFileStore } from '../stores/fileStore'
 

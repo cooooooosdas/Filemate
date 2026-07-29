@@ -11,6 +11,10 @@ requests>=2.31
 
 # ── 确认层 ──
 gradio>=4.44
+fastapi>=0.115
+uvicorn>=0.30
+python-multipart>=0.0.17
+python-dotenv>=1.0
 
 # ── 执行层 ──
 icalendar>=6.0

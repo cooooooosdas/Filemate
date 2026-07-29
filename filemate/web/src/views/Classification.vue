@@ -11,7 +11,7 @@
       <el-card>
         <template #header>
           <div class="card-header">
-            <h3>🏷️ 分类预览</h3>
+            <h3><el-icon><Collection /></el-icon> 分类预览</h3>
           </div>
         </template>
 
@@ -74,6 +74,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Collection } from '@element-plus/icons-vue'
 import { getSession, confirmSession } from '../services/api'
 import { useFileStore } from '../stores/fileStore'
 import type { Category } from '../types'
@@ -141,27 +142,61 @@ function initChart() {
 
   const chart = echarts.init(chartRef.value)
   const option = {
-    tooltip: { trigger: 'item' },
-    legend: { orient: 'vertical', left: 'left' },
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}: {c} ({d}%)',
+      backgroundColor: 'rgba(18, 18, 26, 0.9)',
+      borderColor: 'rgba(16, 185, 129, 0.3)',
+      borderWidth: 1,
+      textStyle: { color: '#f4f4f5' }
+    },
+    legend: {
+      orient: 'vertical',
+      left: 'left',
+      textStyle: { color: '#a1a1aa' }
+    },
     series: [
       {
         name: '分类',
         type: 'pie',
-        radius: '50%',
-        data: [
-          { value: 35, name: '课件' },
-          { value: 28, name: '作业' },
-          { value: 15, name: '竞赛通知' },
-          { value: 12, name: '考试通知' },
-          { value: 10, name: '参考资料' }
-        ],
+        radius: ['45%', '70%'],
+        center: ['60%', '50%'],
+        avoidLabelOverlap: true,
+        itemStyle: {
+          borderRadius: 8,
+          borderColor: '#16161e',
+          borderWidth: 2
+        },
+        label: {
+          show: true,
+          color: '#a1a1aa',
+          fontSize: 12
+        },
         emphasis: {
+          scale: true,
+          scaleSize: 15,
           itemStyle: {
-            shadowBlur: 10,
+            shadowBlur: 20,
             shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.5)'
+            shadowColor: 'rgba(16, 185, 129, 0.4)'
+          },
+          label: {
+            show: true,
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#f4f4f5'
           }
-        }
+        },
+        labelLine: {
+          lineStyle: { color: 'rgba(255, 255, 255, 0.1)' }
+        },
+        data: [
+          { value: 35, name: '课件', itemStyle: { color: '#6366f1' } },
+          { value: 28, name: '作业', itemStyle: { color: '#ec4899' } },
+          { value: 15, name: '竞赛通知', itemStyle: { color: '#10b981' } },
+          { value: 12, name: '考试通知', itemStyle: { color: '#ef4444' } },
+          { value: 10, name: '参考资料', itemStyle: { color: '#f59e0b' } }
+        ]
       }
     ]
   }

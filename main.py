@@ -19,6 +19,12 @@ import sys
 import uuid
 from pathlib import Path
 
+# 加载 .env 文件
+from dotenv import load_dotenv
+from pathlib import Path
+env_path = Path(__file__).parent / ".env"
+load_dotenv(env_path)
+
 # Windows GBK 控制台 + 中文输出兼容
 if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
     try:

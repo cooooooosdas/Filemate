@@ -10,11 +10,19 @@
     <template v-else>
       <el-card>
         <template #header>
-          <h3>📅 日程预览</h3>
+          <h3><el-icon><Calendar /></el-icon> 日程预览</h3>
         </template>
 
-        <div v-if="milestones.length === 0">
-          <el-empty description="暂无里程碑" />
+        <div v-if="milestones.length === 0" class="empty-schedule">
+          <div class="empty-icon-wrap">
+            <el-icon size="64"><Clock /></el-icon>
+          </div>
+          <h4>暂无日程安排</h4>
+          <p>上传文件后，系统将自动提取其中的日期和里程碑信息</p>
+          <el-button type="primary" @click="$router.push('/import')">
+            <el-icon><Upload /></el-icon>
+            前往导入
+          </el-button>
         </div>
 
         <div v-else>
@@ -57,7 +65,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Download } from '@element-plus/icons-vue'
+import { Download, Calendar, Clock, Upload } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import type { Milestone } from '../types'
 import { useFileStore } from '../stores/fileStore'
@@ -114,26 +122,65 @@ function updateChart() {
   const events = milestones.value.map(m => m.event)
 
   const option = {
-    tooltip: { trigger: 'axis' },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(18, 18, 26, 0.9)',
+      borderColor: 'rgba(16, 185, 129, 0.3)',
+      borderWidth: 1,
+      textStyle: { color: '#f4f4f5' }
+    },
     xAxis: {
       type: 'category',
-      data: dates
+      data: dates,
+      axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.1)' } },
+      axisLabel: { color: '#a1a1aa' }
     },
     yAxis: {
       type: 'category',
       data: events,
-      inverse: true
+      inverse: true,
+      axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.1)' } },
+      axisLabel: { color: '#a1a1aa' }
     },
     series: [
       {
         type: 'bar',
         data: milestones.value.map((_, i) => ({
           value: events.length - i,
-          itemStyle: { color: '#409eff' }
+          itemStyle: {
+            color: {
+              type: 'linear',
+              x: 0, y: 0, x2: 1, y2: 0,
+              colorStops: [
+                { offset: 0, color: '#10b981' },
+                { offset: 1, color: '#34d399' }
+              ]
+            },
+            borderRadius: [0, 4, 4, 0]
+          }
         })),
-        label: { show: true, position: 'right' }
+        label: {
+          show: true,
+          position: 'right',
+          color: '#a1a1aa',
+          fontSize: 11
+        },
+        barWidth: '60%',
+        itemStyle: {
+          emphasis: {
+            shadowBlur: 10,
+            shadowColor: 'rgba(16, 185, 129, 0.3)'
+          }
+        }
       }
-    ]
+    ],
+    grid: {
+      left: '3%',
+      right: '10%',
+      bottom: '3%',
+      top: '3%',
+      containLabel: true
+    }
   }
 
   chart.setOption(option)
@@ -144,6 +191,48 @@ function updateChart() {
 .schedule-page {
   max-width: 1000px;
   margin: 0 auto;
+}
+
+/* Empty state styling */
+.empty-schedule {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+  background: var(--bg-card);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-lg);
+}
+
+.empty-icon-wrap {
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 185, 129, 0.06);
+  border-radius: 50%;
+  margin-bottom: 20px;
+}
+
+.empty-icon-wrap .el-icon {
+  color: var(--accent-primary, #10b981);
+}
+
+.empty-schedule h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+
+.empty-schedule p {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0 0 20px;
+  max-width: 320px;
 }
 
 .ics-actions {
