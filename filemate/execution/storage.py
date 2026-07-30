@@ -7,9 +7,35 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+import time
+import functools
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+
+
+# ──────────────────────────────────────────────
+#  写操作重试（多线程并发写入时自动重试）
+# ──────────────────────────────────────────────
+
+def _retry_on_lock(
+    max_attempts: int = 3,
+    backoff: float = 0.05,
+) -> Callable:
+    """装饰器：遇到 database is locked 自动重试。"""
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return fn(*args, **kwargs)
+                except sqlite3.OperationalError as exc:
+                    if "locked" in str(exc).lower() and attempt < max_attempts:
+                        time.sleep(backoff * attempt)
+                        continue
+                    raise
+        return wrapper
+    return decorator
 
 
 # ──────────────────────────────────────────────
@@ -104,6 +130,7 @@ class SQLiteStorage:
                 str(self.db_path),
                 check_same_thread=False,
                 detect_types=sqlite3.PARSE_DECLTYPES,
+                timeout=30,  # 等待写锁释放（秒），不立刻报 SQLITE_BUSY
             )
             conn.row_factory = sqlite3.Row
             conn.execute("PRAGMA journal_mode=WAL")
@@ -131,6 +158,7 @@ class SQLiteStorage:
     # sessions 表
     # ------------------------------------------------------------------
 
+    @_retry_on_lock()
     def create_session(self, session_id: str, source_path: str) -> None:
         conn = self._conn()
         conn.execute(
@@ -139,6 +167,7 @@ class SQLiteStorage:
         )
         conn.commit()
 
+    @_retry_on_lock()
     def update_session(self, session_id: str, **kwargs: Any) -> None:
         """按字段名更新 session。自动刷新 updated_at。
 
@@ -204,6 +233,7 @@ class SQLiteStorage:
         ).fetchone()
         return row is not None
 
+    @_retry_on_lock()
     def record_hash(self, file_hash: str, session_id: str) -> None:
         """记录文件哈希（新建或更新处理时间+计数）。
 
@@ -238,6 +268,7 @@ class SQLiteStorage:
     # operation_log 表
     # ------------------------------------------------------------------
 
+    @_retry_on_lock()
     def log_operation(
         self,
         session_id: str,
@@ -281,6 +312,7 @@ class SQLiteStorage:
     # user_rules 表
     # ------------------------------------------------------------------
 
+    @_retry_on_lock()
     def add_rule(
         self,
         rule_type: str,

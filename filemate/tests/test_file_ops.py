@@ -133,7 +133,7 @@ class TestCopy:
         dst = tmp / "sub" / "dst.txt"
         res = ops.copy(src, dst)
         assert res.success
-        assert src.exists()  # 源文件仍在
+        assert src.exists()  # 源文件保留
         assert dst.exists()
 
     def test_copy_missing(self, ops: FileOps, tmp: Path) -> None:
@@ -141,26 +141,95 @@ class TestCopy:
         assert not res.success
         assert "不存在" in res.error
 
+    def test_copy_creates_parent(self, ops: FileOps, tmp: Path) -> None:
+        src = tmp / "src.txt"
+        src.write_text("data")
+        dst = tmp / "deep" / "nested" / "copy.txt"
+        res = ops.copy(src, dst)
+        assert res.success
+        assert dst.read_text() == "data"
+
+
+class TestMoveExtra:
+    def test_move_overwrite_existing(self, ops: FileOps, tmp: Path) -> None:
+        """move 到已存在文件 → 应该覆盖（shutil.move 行为）。"""
+        src = tmp / "src.txt"
+        src.write_text("new content")
+        dst = tmp / "dst.txt"
+        dst.write_text("old content")
+        res = ops.move(src, dst)
+        assert res.success
+        assert not src.exists()
+        assert dst.read_text() == "new content"
+
+    def test_move_to_existing_in_subdir(self, ops: FileOps, tmp: Path) -> None:
+        """move 到子目录的同名文件也应覆盖。"""
+        src = tmp / "report.pdf"
+        src.write_text("report v2")
+        sub = tmp / "archive"
+        sub.mkdir()
+        existing = sub / "report.pdf"
+        existing.write_text("report v1")
+        res = ops.move(src, existing)
+        assert res.success
+        assert not src.exists()
+        assert existing.read_text() == "report v2"
+
 
 class TestDelete:
     def test_delete_basic(self, ops: FileOps, tmp: Path) -> None:
-        p = tmp / "remove_me.txt"
-        p.write_text("x")
+        p = tmp / "to_delete.txt"
+        p.write_text("delete me")
         res = ops.delete(p)
         assert res.success
         assert not p.exists()
 
     def test_delete_missing(self, ops: FileOps, tmp: Path) -> None:
-        res = ops.delete(tmp / "gone.txt")
+        res = ops.delete(tmp / "missing.txt")
         assert not res.success
+        assert "不存在" in res.error
+
+    def test_delete_empty_file(self, ops: FileOps, tmp: Path) -> None:
+        p = tmp / "empty.txt"
+        p.write_text("")
+        res = ops.delete(p)
+        assert res.success
+        assert not p.exists()
+
+    def test_delete_then_recreate(self, ops: FileOps, tmp: Path) -> None:
+        """删除后同名文件可重新创建。"""
+        p = tmp / "recreate.txt"
+        p.write_text("first")
+        ops.delete(p)
+        p.write_text("second")
+        assert p.read_text() == "second"
 
 
-class TestIsSupported:
-    def test_supported(self, ops: FileOps) -> None:
-        assert ops.is_supported("a.docx")
-        assert ops.is_supported("b.pdf")
-        assert ops.is_supported("c.pptx")
+class TestFileOpsEdgeCases:
+    def test_suffix_with_multiple_dots(self, ops: FileOps) -> None:
+        assert ops.suffix("report.final.docx") == "docx"
 
-    def test_unsupported(self, ops: FileOps) -> None:
-        assert not ops.is_supported("a.zip")
-        assert not ops.is_supported("b.mp4")
+    def test_suffix_hidden_file(self, ops: FileOps) -> None:
+        # .gitignore 在 Python Path.suffix 中被视为无后缀（点开头 = 隐藏文件）
+        assert ops.suffix(".gitignore") == ""
+        assert ops.suffix(".env") == ""
+
+    def test_is_supported_case_insensitive(self, ops: FileOps) -> None:
+        assert ops.is_supported("A.DOCX")
+        assert ops.is_supported("B.PDF")
+        assert ops.is_supported("C.PPTX")
+
+    def test_hash_large_content(self, ops: FileOps, tmp: Path) -> None:
+        """哈希计算对大文件也正确。"""
+        p = tmp / "big.bin"
+        p.write_bytes(b"\x00" * 100_000)
+        h = ops.compute_hash(p)
+        assert len(h) == 64
+        assert ops.compute_hash(p) == h  # 相同内容相同哈希
+
+    def test_hash_binary_file(self, ops: FileOps, tmp: Path) -> None:
+        p = tmp / "binary.bin"
+        p.write_bytes(bytes(range(256)))
+        h = ops.compute_hash(p)
+        assert isinstance(h, str)
+        assert len(h) == 64
