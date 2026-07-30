@@ -8,13 +8,21 @@
 from __future__ import annotations
 
 import asyncio
+import textwrap
 import time
 from pathlib import Path
 
 import pytest
 
 from filemate.perception import FileParser
+from filemate.perception.chart_parser import (
+    Chart,
+    ChartDataPoint,
+    ChartParser,
+    ChartType,
+)
 from filemate.perception.ocr import OCRBackend
+from filemate.perception.table_reader import Table, TableCell, TableReader
 from filemate.perception.watcher import FileWatcher
 
 # ──────────────────────────────────────────────
@@ -491,3 +499,336 @@ class TestOCRBackend:
         # 不实际调用 recognize（避免下载模型），仅验证属性
         assert ocr.lang == "ch"
         assert ocr.ocr_version == "PP-OCRv6"
+
+
+# ══════════════════════════════════════════════
+#  TableReader 测试
+# ══════════════════════════════════════════════
+
+
+class TestTableReaderContract:
+    """TableReader 契约与边界测试。"""
+
+    def test_init_handlers(self) -> None:
+        """初始化时应注册 docx/doc/pdf/pptx/ppt 五种格式处理器。"""
+        reader = TableReader()
+        assert "docx" in reader._handlers
+        assert "doc" in reader._handlers
+        assert "pdf" in reader._handlers
+        assert "pptx" in reader._handlers
+        assert "ppt" in reader._handlers
+
+    def test_unknown_suffix_returns_empty(self, tmp_path: Path) -> None:
+        """不支持的格式返回空列表，不抛异常。"""
+        reader = TableReader()
+        p = tmp_path / "data.xyz"
+        p.write_text("not a real file")
+        result = reader.extract_tables(p)
+        assert result == []
+
+    def test_nonexistent_file_handled(self) -> None:
+        """文件不存在时应优雅处理，不崩溃。"""
+        reader = TableReader()
+        result = reader.extract_tables("/no/such/file.docx")
+        assert isinstance(result, list)
+        assert result == []
+
+
+class TestTableDataclass:
+    """Table / TableCell 数据类的行为测试。"""
+
+    def test_tablecell_defaults(self) -> None:
+        c = TableCell(row=0, col=0, text="hello")
+        assert c.row == 0
+        assert c.col == 0
+        assert c.text == "hello"
+        assert c.is_header is False
+        assert c.is_merged is False
+
+    def test_table_to_markdown_basic(self) -> None:
+        """to_markdown() 应生成正确格式的 Markdown 表格。"""
+        cells = [
+            TableCell(0, 0, "姓名", is_header=True),
+            TableCell(0, 1, "成绩", is_header=True),
+            TableCell(1, 0, "张三"),
+            TableCell(1, 1, "95"),
+        ]
+        t = Table(table_id="t1", rows=2, cols=2, cells=cells, caption="成绩表")
+        md = t.to_markdown()
+        assert "**成绩表**" in md
+        assert "| 姓名 | 成绩 |" in md
+        assert "| 张三 | 95 |" in md
+
+    def test_extract_headers(self) -> None:
+        cells = [
+            TableCell(0, 0, "A", is_header=True),
+            TableCell(0, 1, "B", is_header=False),
+            TableCell(0, 2, "C", is_header=True),
+        ]
+        t = Table(table_id="t", rows=1, cols=3, cells=cells)
+        assert t.extract_headers() == ["A", "C"]
+
+    def test_extract_data_rows(self) -> None:
+        """extract_data_rows() 应以表头为 key 返回字典列表（含标题行）。"""
+        cells = [
+            TableCell(0, 0, "课程", is_header=True),
+            TableCell(0, 1, "分数", is_header=True),
+            TableCell(1, 0, "高数"),
+            TableCell(1, 1, "90"),
+            TableCell(2, 0, "英语"),
+            TableCell(2, 1, "85"),
+        ]
+        t = Table(table_id="t", rows=3, cols=2, cells=cells)
+        rows = t.extract_data_rows()
+        # extract_data_rows 包含所有行（含标题行）
+        assert len(rows) >= 2
+        assert {"课程": "高数", "分数": "90"} in rows
+        assert {"课程": "英语", "分数": "85"} in rows
+
+
+class TestTableReaderReal:
+    """用 datasets/raw/ 真实文件测试 TableReader。"""
+
+    @pytest.mark.skipif(not DATASETS_DIR.is_dir(), reason="datasets/raw/ 目录不存在")
+    def test_word_table_extraction(self) -> None:
+        """从含有表格的 .docx 提取表格。"""
+        reader = TableReader()
+        f = DATASETS_DIR / "附件1：辅导员助理岗位申报表 - 副本(1).docx"
+        if not f.exists():
+            pytest.skip("测试文件不存在")
+        tables = reader.extract_tables(f)
+        assert len(tables) >= 1, f"应从申报表 docx 中提取至少 1 个表格，实际 {len(tables)}"
+        t = tables[0]
+        assert t.rows > 0
+        assert t.cols > 0
+        assert len(t.cells) > 0
+        # 第一行含空格分隔的姓名
+        first_row_texts = [c.text for c in t.cells if c.row == 0]
+        assert any("姓" in h for h in first_row_texts), f"第一行应含姓: {first_row_texts}"
+
+    @pytest.mark.skipif(not DATASETS_DIR.is_dir(), reason="datasets/raw/ 目录不存在")
+    def test_ppt_table_extraction(self) -> None:
+        """从含有表格的 .pptx 提取表格。"""
+        reader = TableReader()
+        f = DATASETS_DIR / "附件1- 全国大学生英语竞赛参赛者报名流程-格式转换..pptx"
+        if not f.exists():
+            pytest.skip("测试文件不存在")
+        tables = reader.extract_tables(f)
+        assert len(tables) >= 1, f"应从 PPT 中提取至少 1 个表格，实际 {len(tables)}"
+        # 至少有一个多行多列表格
+        multi = [t for t in tables if t.rows >= 2 and t.cols >= 2]
+        assert len(multi) >= 1, f"应至少有一个 2x2 以上的表格，实际多列表格: {len(multi)}"
+
+    @pytest.mark.skipif(not DATASETS_DIR.is_dir(), reason="datasets/raw/ 目录不存在")
+    def test_table_markdown_output(self) -> None:
+        """真实表格 to_markdown() 生成的格式能被正确解析。"""
+        reader = TableReader()
+        f = DATASETS_DIR / "附件1：辅导员助理岗位申报表 - 副本(1).docx"
+        if not f.exists():
+            pytest.skip("测试文件不存在")
+        tables = reader.extract_tables(f)
+        assert tables
+        md = tables[0].to_markdown()
+        # Markdown 表格应有分隔行（|---| 或 | --- |）
+        assert "---" in md, f"Markdown 表格缺少分隔行: {md[:100]}"
+        assert "|" in md
+
+    @pytest.mark.skipif(not DATASETS_DIR.is_dir(), reason="datasets/raw/ 目录不存在")
+    def test_extract_task_tables(self) -> None:
+        """extract_task_tables() 应通过关键词匹配找到与任务相关的表格。"""
+        reader = TableReader()
+        # 英语竞赛报名流程 pptx 中有"报名"等内容
+        f = DATASETS_DIR / "附件1- 全国大学生英语竞赛参赛者报名流程-格式转换..pptx"
+        if not f.exists():
+            pytest.skip("测试文件不存在")
+        tasks = reader.extract_task_tables(f)
+        # 不强制一定有，但至少不崩溃且返回合法结构
+        assert isinstance(tasks, list)
+        for item in tasks:
+            assert "type" in item
+            assert "table" in item
+            assert item["type"] in ("caption_match", "header_match", "content_match")
+
+
+# ══════════════════════════════════════════════
+#  ChartParser 测试
+# ══════════════════════════════════════════════
+
+
+class TestChartParserContract:
+    """ChartParser 契约与边界测试。"""
+
+    def test_init_handlers(self) -> None:
+        parser = ChartParser()
+        assert "docx" in parser._handlers
+        assert "pptx" in parser._handlers
+        assert "pdf" in parser._handlers
+
+    def test_unknown_suffix_returns_empty(self, tmp_path: Path) -> None:
+        parser = ChartParser()
+        p = tmp_path / "data.xyz"
+        p.write_text("not a real file")
+        result = parser.extract_charts(p)
+        assert result == []
+
+    def test_nonexistent_file_handled(self) -> None:
+        parser = ChartParser()
+        result = parser.extract_charts("/no/such/file.pptx")
+        assert isinstance(result, list)
+        assert result == []
+
+
+class TestChartTypeDetection:
+    """图表类型检测逻辑测试。"""
+
+    def test_detect_flowchart(self) -> None:
+        parser = ChartParser()
+        assert parser._detect_chart_type("流程图") == ChartType.FLOWCHART
+        assert parser._detect_chart_type("处理步骤") == ChartType.FLOWCHART
+        assert parser._detect_chart_type("Process Overview") == ChartType.FLOWCHART
+
+    def test_detect_organization(self) -> None:
+        parser = ChartParser()
+        assert parser._detect_chart_type("组织架构图") == ChartType.ORGANIZATION
+        assert parser._detect_chart_type("System Structure") == ChartType.ORGANIZATION
+
+    def test_detect_timeline(self) -> None:
+        parser = ChartParser()
+        assert parser._detect_chart_type("项目时间线") == ChartType.TIMELINE
+        assert parser._detect_chart_type("Development Schedule") == ChartType.TIMELINE
+
+    def test_detect_mindmap(self) -> None:
+        parser = ChartParser()
+        assert parser._detect_chart_type("思维导图") == ChartType.MINDMAP
+
+    def test_detect_unknown(self) -> None:
+        parser = ChartParser()
+        assert parser._detect_chart_type("随便什么标题") == ChartType.UNKNOWN
+
+
+class TestChartDataclass:
+    """Chart / ChartDataPoint 数据类行为测试。"""
+
+    def test_chart_to_task_elements(self) -> None:
+        c = Chart(
+            chart_id="c1",
+            chart_type=ChartType.PIE_CHART,
+            title="成绩分布",
+            data_points=[
+                ChartDataPoint(label="优秀", percentage=20.0),
+                ChartDataPoint(label="良好", percentage=50.0),
+                ChartDataPoint(label="及格", percentage=30.0),
+            ],
+        )
+        elements = c.to_task_elements()
+        # 应包含标题 + 3 个数据点
+        assert len(elements) == 4
+        assert elements[0] == {"type": "chart_title", "text": "成绩分布"}
+        assert elements[1]["label"] == "优秀"
+        assert elements[1]["percentage"] == 20.0
+
+
+class TestChartTextInference:
+    """从文本推断图表的逻辑测试（不依赖真实文件）。"""
+
+    def test_infer_pie_chart_from_percentages(self) -> None:
+        """含百分比的列表应被识别为饼图。"""
+        parser = ChartParser()
+        # 注意：_infer_charts_from_text 仅当遇到非列表行时才触发图表分析，
+        # 因此列表末尾需要一行非列表文本。
+        text = textwrap.dedent("""\
+        成绩分布
+        1 优秀 20%
+        2 良好 50%
+        3 及格 30%
+        ---""")
+        charts = parser._infer_charts_from_text(text, "test")
+        assert len(charts) >= 1
+        pie = [c for c in charts if c.chart_type == ChartType.PIE_CHART]
+        assert len(pie) >= 1, f"应识别出饼图，实际: {[(c.chart_type.name, c.title) for c in charts]}"
+
+    def test_infer_bar_chart_from_quantities(self) -> None:
+        """含量词的列表应被识别为柱状图。"""
+        parser = ChartParser()
+        text = textwrap.dedent("""\
+        参赛人数统计
+        1 计算机学院 120人
+        2 电气学院 95人
+        3 机械学院 80人
+        ---""")
+        charts = parser._infer_charts_from_text(text, "test")
+        has_bar_or_pie = any(
+            c.chart_type in (ChartType.BAR_CHART, ChartType.PIE_CHART) for c in charts
+        )
+        assert has_bar_or_pie, f"应识别出柱状图或饼图: {[(c.chart_type.name,) for c in charts]}"
+
+    def test_infer_flowchart_from_steps(self) -> None:
+        """含步骤关键词的列表应被识别为流程图。"""
+        parser = ChartParser()
+        text = textwrap.dedent("""\
+        报名流程
+        • 第一步 登录系统
+        • 第二步 填写信息
+        • 第三步 提交审核
+        • 第四步 等待通知
+        ---""")
+        charts = parser._infer_charts_from_text(text, "test")
+        flow = [c for c in charts if c.chart_type == ChartType.FLOWCHART]
+        assert len(flow) >= 1, f"应识别出流程图: {[(c.chart_type.name,) for c in charts]}"
+
+    def test_infer_timeline_from_dates(self) -> None:
+        """含日期的列表应被识别为时间线。"""
+        parser = ChartParser()
+        text = textwrap.dedent("""\
+        项目日程
+        1 2026年7月20日 需求分析
+        2 2026年8月3日 原型设计
+        3 2026年8月24日 中期检查
+        ---""")
+        charts = parser._infer_charts_from_text(text, "test")
+        tl = [c for c in charts if c.chart_type == ChartType.TIMELINE]
+        assert len(tl) >= 1, f"应识别出时间线: {[(c.chart_type.name,) for c in charts]}"
+
+    def test_empty_text_returns_empty(self) -> None:
+        parser = ChartParser()
+        charts = parser._infer_charts_from_text("", "test")
+        assert charts == []
+
+
+class TestChartParserReal:
+    """用 datasets/raw/ 真实文件测试 ChartParser。"""
+
+    @pytest.mark.skipif(not DATASETS_DIR.is_dir(), reason="datasets/raw/ 目录不存在")
+    def test_ppt_chart_extraction_no_crash(self) -> None:
+        """从 PPT 提取图表不应崩溃（即使没有真正的 chart shape）。"""
+        parser = ChartParser()
+        f = DATASETS_DIR / "附件1- 全国大学生英语竞赛参赛者报名流程-格式转换..pptx"
+        if not f.exists():
+            pytest.skip("测试文件不存在")
+        charts = parser.extract_charts(f)
+        assert isinstance(charts, list)
+
+    @pytest.mark.skipif(not DATASETS_DIR.is_dir(), reason="datasets/raw/ 目录不存在")
+    def test_pdf_chart_extraction_no_crash(self) -> None:
+        """从 PDF 提取图表不应崩溃。"""
+        parser = ChartParser()
+        files = _real_files("pdf", max_count=3)
+        if not files:
+            pytest.skip("没有可用的 PDF 测试文件")
+        for f in files:
+            charts = parser.extract_charts(f)
+            assert isinstance(charts, list)
+
+    @pytest.mark.skipif(not DATASETS_DIR.is_dir(), reason="datasets/raw/ 目录不存在")
+    def test_extract_task_charts(self) -> None:
+        """extract_task_charts() 返回合法结构。"""
+        parser = ChartParser()
+        files = _real_files("pptx", max_count=1)
+        if not files:
+            pytest.skip("没有可用的 PPT 测试文件")
+        tasks = parser.extract_task_charts(files[0])
+        assert isinstance(tasks, list)
+        for item in tasks:
+            assert "type" in item
+            assert "chart" in item
+            assert item["type"] in ("title_match", "data_match")
