@@ -145,3 +145,105 @@ def test_wrong_answer_resets_mastered_question(tmp_path: Path) -> None:
     assert len(pending) == 1
     assert pending[0]["correct_streak"] == 0
     assert pending[0]["interval_days"] == 0
+
+
+# ── A1 新增：旧格式兼容与新逻辑回归测试 ──────────────────────────
+
+
+class TestCheckAnswerWithOldFormat:
+    """check_answer 需兼容旧 Artifact 的 {type, question, answer} 格式。"""
+
+    def test_choice_question_with_old_type_field(self):
+        """旧格式 'type': '选择题' 应映射为 choice 判题。"""
+        old_q = {"type": "选择题", "question": "TCP 几次握手？", "answer": "三次"}
+        assert check_answer(old_q, "三次") is True
+        assert check_answer(old_q, "两次") is False
+
+    def test_fill_question_with_old_type_field(self):
+        """旧格式 'type': '填空题' 应映射为 fill 判题。"""
+        old_q = {"type": "填空题", "question": "TCP 使用__握手", "answer": "三次"}
+        assert check_answer(old_q, "三次握手") is True
+        assert check_answer(old_q, "两次") is False
+
+    def test_short_answer_with_old_type_field(self):
+        """旧格式中非选择/填空类型降级为 short_answer。"""
+        old_q = {"type": "简答题", "question": "什么是 TCP？", "answer": "传输控制协议"}
+        assert check_answer(old_q, "传输控制协议") is True
+        assert check_answer(old_q, "不知道") is False
+
+    def test_judge_question_maps_to_short_answer(self):
+        """旧格式 '判断题' 无 options，降级为 short_answer 关键词匹配。"""
+        old_q = {"type": "判断题", "question": "TCP 可靠吗？", "answer": "可靠"}
+        assert check_answer(old_q, "可靠") is True
+
+    def test_calc_type_maps_to_short_answer_via_adapter(self):
+        """路由层将旧 '计算题' type 映射为 short_answer 后判题正常。"""
+        mapped = {
+            "question_type": "short_answer",
+            "stem": "TCP 三次握手的目的是什么？",
+            "answer": "确认双方收发能力",
+        }
+        assert check_answer(mapped, "确认双方收发能力") is True
+        assert check_answer(mapped, "不知道") is False
+
+    def test_old_format_question_field_used_as_stem(self):
+        """旧格式的 'question' 字段应作为题干参与判题。"""
+        old_q = {"type": "填空题", "question": "答案是__", "answer": "42"}
+        # fill 类型：answer 在 submitted 中
+        assert check_answer(old_q, "答案是42") is True
+
+    def test_empty_answer_rejected_for_choice(self):
+        assert check_answer({"question_type": "choice", "answer": "A"}, "") is False
+
+    def test_empty_answer_rejected_for_fill(self):
+        assert check_answer({"question_type": "fill", "answer": "线性表"}, "") is False
+
+    def test_empty_answer_rejected_for_short_answer(self):
+        assert check_answer({"question_type": "short_answer", "answer": "栈"}, "") is False
+
+
+class TestGenerateQuestionsNormalizesNewFields:
+    """_normalize 产出新字段格式，且去重按 stem。"""
+
+    def test_normalize_adds_subject_and_knowledge_point(self):
+        from filemate.study.generator import _normalize
+
+        result = _normalize(
+            [
+                {
+                    "stem": "矩阵乘法满足什么性质？",
+                    "options": ["A. 结合律", "B. 交换律"],
+                    "answer": "A",
+                }
+            ],
+            subject="数学",
+            knowledge_point="线性代数",
+        )
+        assert result[0]["subject"] == "数学"
+        assert result[0]["knowledge_point"] == "线性代数"
+        assert result[0]["question_type"] == "choice"
+        assert result[0]["stem"] == "矩阵乘法满足什么性质？"
+        assert result[0]["options"] == ["A. 结合律", "B. 交换律"]
+        assert result[0]["answer"] == "A"
+        assert "analysis" in result[0]
+
+    def test_normalize_deduplicates_by_stem(self):
+        from filemate.study.generator import _dedupe
+
+        items = [
+            {"stem": "同一题干", "answer": "A"},
+            {"stem": "同一题干", "answer": "B"},
+            {"stem": "不同题干", "answer": "C"},
+        ]
+        result = _dedupe(items, count=10)
+        assert len(result) == 2
+        assert result[0]["stem"] == "同一题干"
+        assert result[1]["stem"] == "不同题干"
+
+    def test_normalize_defaults_missing_fields(self):
+        from filemate.study.generator import _normalize
+
+        result = _normalize([{"stem": "只有题干"}], subject="", knowledge_point="")
+        assert result[0]["question_type"] == "choice"
+        assert result[0]["answer"] == ""
+        assert result[0]["analysis"] == ""
