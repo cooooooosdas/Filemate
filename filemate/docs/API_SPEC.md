@@ -382,6 +382,7 @@ HTTP 错误同样保持该结构：参数错误使用 `400/422`，资源不存�
 | `GET` | `/knowledge/sources` | 列出本地资料源 | 不返回大段 `raw_text`，返回 `text_length` |
 | `GET` | `/knowledge/sources/{source_id}` | 获取资料源详情 | 包含解析正文与元数据 |
 | `GET` | `/knowledge/sources/{source_id}/artifacts` | 查询资料派生产物 | 支持 `artifact_type` 与 `limit` |
+| `DELETE` | `/knowledge/sources/{source_id}` | 预览并删除资料及其派生产物 | 级联删除派生数据；仅清理托管上传副本 |
 
 AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。服务重启后，这三个标识仍然有效。
 
@@ -411,6 +412,18 @@ AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。�
 
 ---
 
+## 4.7.1 知识资料删除语义
+
+`DELETE /knowledge/sources/{source_id}` 提供「预览 → 确认 → 删除」的安全资料生命周期：
+
+- **预览**：删除前返回受影响的 `artifacts`、`chunks`、`contexts`、`quiz_attempts`、`wrong_questions`、`study_plans` 数量。
+- **级联删除**：依赖 SQLite 外键 `ON DELETE CASCADE`，删除 `sources` 行后派生数据不可查询；其他 Source 不受影响。
+- **托管副本清理**：仅当 `source_path` 位于 `FILEMATE_UPLOAD_DIR` 内（`resolve()` 后仍在其下）时，才随删除清理物理文件；符号链接与路径穿越逃逸到目录外的文件不会被删除。
+- **外部文件保护**：用户原始文件、归档文件及其他 Source 引用文件绝不删除，返回 `external_files_untouched=true`。
+- **幂等**：重复删除返回 `404`，不重复清理；托管文件已不存在时返回 `exists=false, removed=false`，仍视为成功。
+
+---
+
 ## 4.8 文件处理、知识库与学习闭环补充 API
 
 下表按 `server.py` 现役路由整理，用于补齐 4.6/4.7 未覆盖的接口。
@@ -423,6 +436,7 @@ AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。�
 | `GET` | `/sessions/{session_id}/ics` | 获取确认后的 `.ics` 内容 | 无 |
 | `GET` | `/knowledge/artifacts/{artifact_id}` | 获取单个 AI 产物 | 无 |
 | `PATCH` | `/knowledge/artifacts/{artifact_id}` | 更新产物标题与内容 | 写入 `artifacts` |
+| `DELETE` | `/knowledge/sources/{source_id}` | 预览并删除资料及其派生产物 | 级联删除；仅清理 `FILEMATE_UPLOAD_DIR` 内托管副本 |
 | `GET` | `/knowledge/search` | 跨资料检索 | 无 |
 | `POST` | `/quiz/attempts` | 提交作答并判题 | 写入 `quiz_attempts`，更新错题 |
 | `GET` | `/wrongbook` | 查询错题列表 | 无 |

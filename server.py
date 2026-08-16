@@ -83,6 +83,48 @@ async def _save_upload(file: UploadFile) -> tuple[Path, int]:
     file_path.write_bytes(content)
     return file_path, len(content)
 
+
+def _managed_file_status(
+    path_value: str | None,
+    *,
+    remove: bool = False,
+) -> dict[str, Any]:
+    """判断或清理托管上传副本是否位于 FILEMATE_UPLOAD_DIR 内。
+
+    resolve 后再判断相对关系，防止符号链接与路径穿越逃逸到上传目录之外。
+    remove=True 时仅删除目录内的真实文件，并尝试清理上传时生成的空 uuid 目录。
+    外部原文件、归档文件一律不删。
+    """
+    result: dict[str, Any] = {
+        "path": str(path_value) if path_value else None,
+        "managed": False,
+        "exists": False,
+        "removed": False,
+    }
+    if not path_value:
+        return result
+    try:
+        candidate = Path(path_value).expanduser().resolve(strict=False)
+    except OSError:
+        return result
+    result["path"] = str(candidate)
+    root = UPLOAD_ROOT.resolve(strict=False)
+    if not candidate.is_relative_to(root):
+        return result
+    result["managed"] = True
+    result["exists"] = candidate.exists()
+    if remove and candidate.exists() and candidate.is_file():
+        try:
+            candidate.unlink()
+            result["removed"] = True
+            parent = candidate.parent
+            if parent != root and parent.is_relative_to(root):
+                parent.rmdir()
+        except OSError as exc:
+            logger.warning("删除托管副本失败: %s (%s)", candidate, exc)
+    return result
+
+
 # 初始化数据库
 _storage = SQLiteStorage(DATABASE_PATH)
 _storage.init_schema()
@@ -584,6 +626,44 @@ def search_knowledge(
         item["source_name"] = source_names.get(item["source_id"], "未知资料")
         item["excerpt"] = item.pop("content")[:280]
     return ApiResponse(success=True, data=results)
+
+
+@app.delete("/knowledge/sources/{source_id}", response_model=ApiResponse)
+def delete_knowledge_source(source_id: str):
+    """预览并删除一份知识资料及其派生数据。
+
+    先返回（并执行）删除影响，再仅清理 FILEMATE_UPLOAD_DIR 内的托管副本；
+    用户外部原文件、归档文件与其他 Source 引用文件不会被删除。幂等：重复删除
+    返回 404（与“资源不存在”一致），不重复清理。
+    """
+    preview = _storage.preview_source_deletion(source_id)
+    if preview is None:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    file_status = _managed_file_status(preview.get("source_path"), remove=False)
+
+    deleted = _storage.delete_source(source_id)
+    if deleted is None:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    if file_status["managed"] and file_status["exists"]:
+        file_status = _managed_file_status(preview.get("source_path"), remove=True)
+        logger.info(
+            "清理托管副本 source_id=%s path=%s removed=%s",
+            source_id,
+            file_status["path"],
+            file_status["removed"],
+        )
+
+    return ApiResponse(
+        success=True,
+        data={
+            "source_id": source_id,
+            "affected": deleted["affected"],
+            "managed_file": file_status,
+            "external_files_untouched": not file_status["managed"],
+        },
+    )
 
 
 # =============== AI 工具箱 API ===============

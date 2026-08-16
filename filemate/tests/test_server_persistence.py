@@ -665,3 +665,130 @@ def test_mock_interview_progresses_and_persists(
     assert analytics["interview_count"] == 1
     assert analytics["average_interview_score"] > 0
     assert "内容" in analytics["interview_dimensions"]
+
+
+def test_delete_source_cleans_managed_inbox_file(
+    server_module: tuple[ModuleType, SQLiteStorage],
+) -> None:
+    module, storage = server_module
+    inbox = module.UPLOAD_ROOT
+    managed_dir = inbox / "upload-uuid"
+    managed_dir.mkdir(parents=True, exist_ok=True)
+    managed_file = managed_dir / "讲义.txt"
+    managed_file.write_text("托管副本", encoding="utf-8")
+
+    source_id = storage.save_source(
+        original_name="讲义.txt",
+        source_path=str(managed_file),
+        raw_text="托管副本",
+        file_hash="managed-hash",
+    )
+
+    with TestClient(module.app) as client:
+        response = client.delete(f"/knowledge/sources/{source_id}")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["managed_file"]["managed"] is True
+    assert data["managed_file"]["removed"] is True
+    assert not managed_file.exists()
+    assert storage.get_source(source_id) is None
+
+
+def test_delete_source_spares_external_file(
+    server_module: tuple[ModuleType, SQLiteStorage],
+    tmp_path: Path,
+) -> None:
+    module, storage = server_module
+    external = tmp_path / "用户原文件.txt"
+    external.write_text("用户原文件", encoding="utf-8")
+
+    source_id = storage.save_source(
+        original_name="用户原文件.txt",
+        source_path=str(external),
+        raw_text="用户原文件",
+    )
+
+    with TestClient(module.app) as client:
+        response = client.delete(f"/knowledge/sources/{source_id}")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["managed_file"]["managed"] is False
+    assert data["external_files_untouched"] is True
+    assert external.exists()
+    assert storage.get_source(source_id) is None
+
+
+def test_delete_source_does_not_follow_symlink_escape(
+    server_module: tuple[ModuleType, SQLiteStorage],
+    tmp_path: Path,
+) -> None:
+    module, storage = server_module
+    inbox = module.UPLOAD_ROOT
+    inbox.mkdir(parents=True, exist_ok=True)
+    external = tmp_path / "真正外部.txt"
+    external.write_text("外部文件", encoding="utf-8")
+    link = inbox / "escape.txt"
+    try:
+        link.symlink_to(external)
+    except OSError:
+        pytest.skip("需要符号链接创建权限")
+
+    source_id = storage.save_source(
+        original_name="escape.txt",
+        source_path=str(link),
+        raw_text="外部文件",
+    )
+
+    with TestClient(module.app) as client:
+        response = client.delete(f"/knowledge/sources/{source_id}")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["managed_file"]["managed"] is False
+    assert external.exists()
+
+
+def test_delete_source_is_idempotent_404(
+    server_module: tuple[ModuleType, SQLiteStorage],
+) -> None:
+    module, storage = server_module
+    source_id = storage.save_source(
+        original_name="重复.txt",
+        source_path="/tmp/重复.txt",
+        raw_text="内容",
+    )
+
+    with TestClient(module.app) as client:
+        first = client.delete(f"/knowledge/sources/{source_id}")
+        second = client.delete(f"/knowledge/sources/{source_id}")
+
+    assert first.status_code == 200
+    assert second.status_code == 404
+    assert second.json()["success"] is False
+
+
+def test_delete_source_when_managed_file_already_missing(
+    server_module: tuple[ModuleType, SQLiteStorage],
+) -> None:
+    module, storage = server_module
+    inbox = module.UPLOAD_ROOT
+    inbox.mkdir(parents=True, exist_ok=True)
+    missing = inbox / "已消失.txt"
+
+    source_id = storage.save_source(
+        original_name="已消失.txt",
+        source_path=str(missing),
+        raw_text="内容",
+    )
+
+    with TestClient(module.app) as client:
+        response = client.delete(f"/knowledge/sources/{source_id}")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["managed_file"]["managed"] is True
+    assert data["managed_file"]["exists"] is False
+    assert data["managed_file"]["removed"] is False
+    assert storage.get_source(source_id) is None

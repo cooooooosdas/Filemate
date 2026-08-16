@@ -6,12 +6,15 @@ Schema 与《项目总纲 v1.0》§3.6 对齐。
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 import threading
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────────
 #  Schema（与 项目总纲 §3.6 保持一致）
@@ -768,6 +771,67 @@ class SQLiteStorage:
             (workspace_id, limit),
         ).fetchall()
         return [self._decode_row(row, ("metadata",)) for row in rows]
+
+    def preview_source_deletion(self, source_id: str) -> dict[str, Any] | None:
+        """预览删除一个资料源会级联影响的派生数据，不执行删除。
+
+        返回资料源基本信息与各级联表的受影响行数。source 不存在时返回 None。
+        仅统计数据层影响；托管文件是否随删除清理由调用方（server 层）判断。
+        """
+        source = self.get_source(source_id)
+        if source is None:
+            return None
+        conn = self._conn()
+        counts = {
+            "artifacts": conn.execute(
+                "SELECT COUNT(*) FROM artifacts WHERE source_id=?", (source_id,)
+            ).fetchone()[0],
+            "chunks": conn.execute(
+                "SELECT COUNT(*) FROM document_chunks WHERE source_id=?", (source_id,)
+            ).fetchone()[0],
+            "contexts": conn.execute(
+                "SELECT COUNT(*) FROM document_contexts WHERE source_id=?", (source_id,)
+            ).fetchone()[0],
+            "quiz_attempts": conn.execute(
+                "SELECT COUNT(*) FROM quiz_attempts WHERE source_id=?", (source_id,)
+            ).fetchone()[0],
+            "wrong_questions": conn.execute(
+                "SELECT COUNT(*) FROM wrong_questions WHERE source_id=?", (source_id,)
+            ).fetchone()[0],
+            "study_plans": conn.execute(
+                "SELECT COUNT(*) FROM study_plans WHERE source_id=?", (source_id,)
+            ).fetchone()[0],
+        }
+        return {
+            "source_id": source_id,
+            "original_name": source.get("original_name"),
+            "source_path": source.get("source_path"),
+            "media_type": source.get("media_type"),
+            "affected": {key: int(value) for key, value in counts.items()},
+        }
+
+    def delete_source(self, source_id: str) -> dict[str, Any] | None:
+        """删除资料源及其全部派生数据，依赖外键级联。
+
+        删除前先统计受影响数量用于日志与返回。source 不存在时返回 None，
+        由调用方决定是否视为幂等删除。
+        """
+        preview = self.preview_source_deletion(source_id)
+        if preview is None:
+            return None
+        with self._write_lock:
+            conn = self._conn()
+            cur = conn.execute("DELETE FROM sources WHERE source_id=?", (source_id,))
+            conn.commit()
+        if cur.rowcount == 0:
+            return None
+        logger.info(
+            "删除资料源 source_id=%s original_name=%r affected=%s",
+            source_id,
+            preview["original_name"],
+            preview["affected"],
+        )
+        return preview
 
     def save_artifact(
         self,
