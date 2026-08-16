@@ -1,4 +1,4 @@
-"""文件操作测试。TODO(徐书和 + 胡希)"""
+"""文件操作测试。"""
 from __future__ import annotations
 
 import hashlib

@@ -18,7 +18,8 @@ class BatchProcessor:
         ----------
         worker:
             一个 *异步可调用对象*，接收单个 path 返回 dict。
-            实际使用中传入 PipelineWorker.process_one。
+            调用方自行实现该异步 worker，例如从解析到归档的单文件处理协程。
+            BatchProcessor 不管理 Session 生命周期，也不依赖任何特定 Worker 类。
         concurrency:
             最大并发数。默认 2（避免并发文件 I/O 冲突）。
         """

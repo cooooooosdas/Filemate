@@ -1,7 +1,7 @@
 # 执行层（execution）
 
 > 负责人：徐书和
-> 状态：✅ 已完成
+> 状态：核心功能完成；知识资料删除与数据生命周期（A3）开发中
 
 ## 功能说明
 
@@ -150,7 +150,7 @@ import asyncio
 from filemate.execution import BatchProcessor
 
 async def process_one(path: str) -> dict:
-    # 实际使用时，这里是 PipelineWorker 的单个文件处理逻辑
+    # 调用方自定义的异步 worker：接收文件路径，返回处理结果 dict
     return {"path": path, "success": True}
 
 async def main():
