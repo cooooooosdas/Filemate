@@ -15,6 +15,14 @@ venv/
 .env
 .env.local
 
+# ── Node / 前端工具 ──
+node_modules/
+.playwright-cli/
+*.tsbuildinfo
+_working/
+output/
+.pytest_cache/
+
 # ── 编辑器 / OS ──
 .vscode/
 .idea/
@@ -26,6 +34,8 @@ Desktop.ini
 # ── 项目数据（不入库）──
 filemate.db
 filemate.db-journal
+.filemate-data/
+archive/
 datasets/raw/*
 datasets/long_text/*
 !datasets/raw/.gitkeep
@@ -39,5 +49,23 @@ __paddle__/
 logs/
 *.log
 *.ics
-test_result*.json
+# 测试结果 JSON 不入库（分类 / 实体 / 里程碑 / 命名四份 + W4 联调）
+test_*result*.json
+*_result.json
 filemate.db*
+
+# ── 本地设计与调试残留（不入库）──
+.impeccable/
+*_screenshot.png
+FileMate_2.0_Kickoff_Plan*.html
+meeting_*.html
+/package.json
+/package-lock.json
+/test_ai_tools.txt
+/test_debug*.py
+/test_direct_api.py
+/test_simple_call.py
+/test_simulation.py
+/test_step_api*.py
+/test_yunzhisheng_api.py
+/filemate/使用说明.txt

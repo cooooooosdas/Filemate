@@ -12,9 +12,10 @@
 | 模块 | 文件 | 职责 |
 |------|------|------|
 | **FileOps** | `file_ops.py` | 文件 I/O 基础操作（移动/重命名/复制/删除/哈希/后缀判断） |
-| **SQLiteStorage** | `storage.py` | SQLite 数据库（4 张表：sessions / processed_files / operation_log / user_rules） |
+| **SQLiteStorage** | `storage.py` | 版本化 SQLite 数据库，持久化 Session、资料源、AI 产物与问答上下文 |
 | **CalendarBuilder** | `scheduler.py` | 生成 RFC 5545 兼容 .ics 日历文件 |
 | **Archiver** | `archiver.py` | 按"课程/分类"二级目录归档文件 |
+| **ConfirmationExecutor** | `confirmation_executor.py` | 最终确认后的事务式归档、日历写入、幂等与撤销 |
 | **BatchProcessor** | `batch_processor.py` | 并发批量处理（信号量限流 + 进度回调） |
 
 ## 依赖安装
@@ -73,6 +74,25 @@ storage.log_operation("sid-1", "classify", "课件 0.92")
 
 # 用户规则
 storage.add_rule("category_override", "实验.*", "作业", priority=5)
+
+# 同一份资料可派生多个 AI 产物，并在重启后继续问答
+source_id = storage.save_source(
+    original_name="操作系统讲义.pdf",
+    source_path="/path/to/操作系统讲义.pdf",
+    raw_text="讲义解析后的正文",
+    file_hash="sha256...",
+)
+artifact_id = storage.save_artifact(
+    source_id=source_id,
+    artifact_type="summary",
+    content="AI 摘要内容",
+)
+storage.save_document_context(
+    ctx_id="ctx-1",
+    source_id=source_id,
+    artifact_id=artifact_id,
+    context_text="讲义解析后的正文",
+)
 ```
 
 ### CalendarBuilder
@@ -150,6 +170,8 @@ asyncio.run(main())
 
 ## 数据库 Schema
 
+数据库由 `schema_migrations` 管理版本；当前为 **v3**。已有数据库启动时会幂等补齐新表，不需要删除原数据。
+
 ### sessions
 
 | 字段 | 类型 | 说明 |
@@ -203,8 +225,23 @@ asyncio.run(main())
 | priority | INTEGER | 优先级（越大越先匹配） |
 | enabled | INTEGER | 1=启用 0=禁用 |
 
-## 已知问题
+### AI 学习资产
+
+| 表 | 作用 | 关键关系 |
+|------|------|------|
+| `workspaces` | 学习工作区；默认创建 `local` | 一个工作区包含多个资料源 |
+| `sources` | 原始资料及解析正文，按文件哈希稳定复用 | `workspace_id → workspaces` |
+| `artifacts` | 摘要、知识卡、题目、笔记、学习计划 | `source_id → sources` |
+| `document_contexts` | 可恢复的文档上下文和聊天历史 | `source_id → sources`，`artifact_id → artifacts` |
+
+### execution_records
+
+记录最终确认产生的文件系统副作用。状态流为 `pending → applied → undone`，失败则进入 `failed`。同一个 Session 同时最多存在一条 `pending/applied` 记录，从数据库层阻止重复执行。
+
+关键字段包括原路径、归档路径、日历路径、执行前后快照、错误、应用时间和撤销时间。确认时若归档或日历任一步失败，文件会自动回滚；撤销时若原位置已被占用，则拒绝覆盖。
+
+## 后续事项
 
 - `BatchProcessor` 依赖调用方传入异步 worker，自身不管理 session 生命周期
-- 去重仅基于文件哈希，语义去重（Embedding 相似度）为 W5 可选增强，暑期暂不实现
-- `user_rules` 表已在 schema 中定义但规则引擎的读取链路尚未对接（等理解层 W3 完成后接入）
+- 当前资料复用基于文件哈希；跨文件的语义去重与向量检索将在知识库阶段接入
+- `user_rules` 已具备 CRUD，自动学习用户修正规则仍需接入确认闭环

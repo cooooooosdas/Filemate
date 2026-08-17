@@ -42,9 +42,23 @@ class LLMClient:
 
     @staticmethod
     def _build(config: LLMConfig) -> BaseLLMProvider:
-        name = (config.provider or "step_speed").lower()
-        if name == "step_speed":
+        name = (config.provider or "auto").lower()
+
+        # 自动根据 base_url 检测 provider 类型
+        if not name or name == "auto":
+            base_url = (config.base_url or "").lower()
+            if "stepfun" in base_url or "step" in base_url:
+                name = "step"
+            elif "deepseek" in base_url:
+                name = "deepseek"
+            elif "openai" in base_url:
+                name = "openai"
+            else:
+                name = "step"  # 默认使用 step
+
+        if name in ("step", "step_speed", "step_plan"):
             return StepSpeedProvider(config)
+
         raise LLMConfigError(f"不支持的 LLM 供应商: {name}")
 
     # ------------------------------------------------------------------

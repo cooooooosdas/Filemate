@@ -39,6 +39,7 @@ class Namer:
         task: str,
         deadline: str,
         status: str = _DEFAULT_STATUS,
+        extra_entities: dict[str, Any] | None = None,
     ) -> str:
         """生成规范文件名。
 
@@ -47,21 +48,30 @@ class Namer:
         category : str
             课件 / 作业 / 竞赛通知 / 考试通知 / 参考资料 / 大创通知 / 待确认
         course : str
-            课程名（如"操作系统"）
+            课程名（如"操作系统"）。竞赛/大创/行政通知没有课程名，此时留空并
+            由 extra_entities 里的主办方补位，见下。
         task : str
             任务描述（如"实验三"）
         deadline : str
             截止日期（"YYYY-MM-DD" 或 "MMDD"）
         status : str
             状态（默认"待处理"）
+        extra_entities : dict | None
+            EntityExtractor 的 extra_entities。course 为空时，从中取主办方
+            （organizer / 发文单位等）补位第一段，避免生成「未分类」。
 
         Returns
         -------
         str — 不含扩展名的文件名
         """
-        # 归一化
+        # 归一化。course 为空时回退到主办方 —— 竞赛/大创/行政通知没有课程名，
+        # 直接填「未分类」会让文件名对用户失去意义（W4 联调实测：20 份中 11 份
+        # 第一段为「未分类」，命名通过率仅 15%）。
         category = category if category in _VALID_CATEGORIES else "待确认"
-        course = self._clean(course) or "未分类"
+        course = self._clean(course)
+        if not course:
+            course = self._pick_organizer(extra_entities)
+        course = course or "未分类"
         task = self._clean(task) or "未命名"
         status = self._clean(status) or _DEFAULT_STATUS
 
@@ -91,6 +101,27 @@ class Namer:
         s = re.sub(r"\s+", " ", s)
         return s
 
+    # extra_entities 里可能承载主办方的键名（LLM 用词不统一，按优先级尝试）
+    _ORGANIZER_KEYS = (
+        "organizer", "organizers", "发文单位", "主办方", "主办单位",
+        "host", "publisher", "department", "issuer",
+    )
+    # 主办方名过长时截断到这个长度（"安徽理工大学计算机科学与工程学院团委" → 前 12 字）
+    _ORGANIZER_MAX = 12
+
+    @classmethod
+    def _pick_organizer(cls, extra: dict[str, Any] | None) -> str:
+        """course 缺失时，从 extra_entities 里挑主办方补位。挑不到返回空串。"""
+        if not isinstance(extra, dict) or not extra:
+            return ""
+        for key in cls._ORGANIZER_KEYS:
+            val = extra.get(key)
+            if isinstance(val, str) and val.strip():
+                name = cls._clean(val)
+                if name:
+                    return name[:cls._ORGANIZER_MAX]
+        return ""
+
     @staticmethod
     def _format_deadline(raw: str) -> str:
         """YYYY-MM-DD → MMDD；已是 MMDD 或空则原样返回。"""
@@ -105,7 +136,7 @@ class Namer:
         return raw.replace("-", "")[:6] or "待定"
 
     def _maybe_refine_task(self, task: str, category: str, course: str) -> str:
-        """如果 task 过长（> 20 字），尝试用 LLM 精简。"""
+        """如果 task 过长（> 15 字），尝试用 LLM 精简。"""
         if len(task) <= 15:
             return task
         try:

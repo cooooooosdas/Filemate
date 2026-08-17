@@ -32,6 +32,7 @@ class AgentMode(Enum):
     SERIAL = auto()    # 串行
     PARALLEL = auto()  # 并行
     CONDITIONAL = auto()  # 条件
+    SERIAL_THEN_PARALLEL = auto()  # 先串行后并行
 
 
 @dataclass
@@ -280,8 +281,97 @@ class AgentCoordinator:
         elif mode == AgentMode.CONDITIONAL:
             # 条件模式需要额外的 condition_fn 参数，这里简化处理
             return self.run_serial(session, context)
+        elif mode == AgentMode.SERIAL_THEN_PARALLEL:
+            # 需要额外参数，使用默认配置
+            return self.run_serial(session, context)
         else:
             raise ValueError(f"未知执行模式: {mode}")
+
+    def run_serial_then_parallel(
+        self,
+        session: ProcessingSession,
+        serial_agents: list[Agent],
+        parallel_agents: list[Agent],
+        context: Optional[dict] = None,
+        max_workers: Optional[int] = None,
+    ) -> list[AgentResult]:
+        """先串行执行一部分Agent，再并行执行其余Agent。
+
+        执行流程：
+        1. 串行执行 serial_agents（比如 [ParseAgent]）
+        2. 将串行结果注入 context
+        3. 并行执行 parallel_agents（比如 [ClassifyAgent, ExtractAgent, GenerateNameAgent]）
+
+        Parameters
+        ----------
+        session : ProcessingSession
+            当前会话。
+        serial_agents : list[Agent]
+            需要先串行执行的 Agent 列表。
+        parallel_agents : list[Agent]
+            需要后并行执行的 Agent 列表。
+        context : dict, optional
+            共享上下文。
+        max_workers : int, optional
+            并行执行的最大线程数。
+
+        Returns
+        -------
+        list[AgentResult]
+            所有 Agent 的执行结果（串行结果在前，并行结果在后）。
+        """
+        results = []
+        context = context or {}
+
+        # Step 1: 串行执行
+        logger.info("[%s] 开始串行执行 %d 个 Agent",
+                   session.session_id, len(serial_agents))
+        for agent in serial_agents:
+            result = agent(session, context)
+            results.append(result)
+            if result.success and result.output is not None:
+                context[agent.name] = result.output
+            if not result.success and not self.config.continue_on_failure:
+                logger.warning("[%s] Agent %s 失败，停止执行",
+                              session.session_id, agent.name)
+                break
+
+        # Step 2: 并行执行
+        if not parallel_agents:
+            return results
+
+        max_workers = max_workers or self.config.max_workers
+        logger.info("[%s] 开始并行执行 %d 个 Agent",
+                    session.session_id, len(parallel_agents))
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(agent, session, context): agent
+                for agent in parallel_agents
+            }
+
+            for future in as_completed(futures):
+                agent = futures[future]
+                try:
+                    result = future.result(timeout=self.config.timeout)
+                    results.append(result)
+                    logger.info("[%s] Agent %s 完成: success=%s, duration=%.2fs",
+                                session.session_id, agent.name,
+                                result.success, result.duration)
+                except Exception as exc:
+                    logger.error("[%s] Agent %s 异常: %s",
+                                 session.session_id, agent.name, exc)
+                    results.append(AgentResult(
+                        agent_name=agent.name,
+                        success=False,
+                        error=str(exc),
+                    ))
+
+        # 按添加顺序排序结果（串行结果在前，并行结果按原顺序）
+        serial_results = [r for r in results if r.agent_name in [a.name for a in serial_agents]]
+        parallel_results = [r for r in results if r.agent_name in [a.name for a in parallel_agents]]
+        results = serial_results + parallel_results
+        return results
 
     # =====================================================================
     # 聚合结果
@@ -416,3 +506,54 @@ def create_full_coordinator() -> AgentCoordinator:
         .add_agent(ExtractAgent())
         .add_agent(GenerateNameAgent())
     )
+
+
+def create_parallel_coordinator(
+    serial_agents: Optional[list[Agent]] = None,
+    parallel_agents: Optional[list[Agent]] = None,
+) -> tuple[AgentCoordinator, list[Agent], list[Agent]]:
+    """创建支持"先串行后并行"模式的协调器。
+
+    返回协调器实例，以及串行Agent列表和平行Agent列表，
+    方便外部调用 run_serial_then_parallel 方法。
+
+    Parameters
+    ----------
+    serial_agents : list[Agent], optional
+        需要串行执行的 Agent 列表。默认为 [ParseAgent()]。
+    parallel_agents : list[Agent], optional
+        需要并行执行的 Agent 列表。
+        默认为 [ClassifyAgent(), ExtractAgent(), GenerateNameAgent()]。
+
+    Returns
+    -------
+    tuple[AgentCoordinator, list[Agent], list[Agent]]
+        (协调器实例, 串行Agent列表, 并行Agent列表)
+
+    Example
+    -------
+    >>> coordinator, serial, parallel = create_parallel_coordinator()
+    >>> results = coordinator.run_serial_then_parallel(session, serial, parallel)
+    """
+    # 默认串行：仅 ParseAgent
+    if serial_agents is None:
+        serial_agents = [ParseAgent()]
+
+    # 默认并行：Classify + Extract + GenerateName
+    if parallel_agents is None:
+        parallel_agents = [
+            ClassifyAgent(),
+            ExtractAgent(),
+            GenerateNameAgent()
+        ]
+
+    config = CoordinatorConfig(mode=AgentMode.SERIAL_THEN_PARALLEL)
+    coordinator = AgentCoordinator(config)
+
+    # 添加所有 Agent（虽然执行顺序由 run_serial_then_parallel 控制）
+    for agent in serial_agents:
+        coordinator.add_agent(agent)
+    for agent in parallel_agents:
+        coordinator.add_agent(agent)
+
+    return coordinator, serial_agents, parallel_agents

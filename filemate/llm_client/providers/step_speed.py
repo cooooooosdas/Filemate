@@ -51,19 +51,43 @@ class StepSpeedProvider(BaseLLMProvider):
         timeout: float = 60.0,
     ) -> str:
         """发起一次 Step API 调用，返回纯文本回复。"""
-        url = f"{self.config.base_url.rstrip('/')}/chat/completions"
+        # 判断使用哪种API端点
+        base_url_lower = self.config.base_url.lower()
+
+        # 云知声 (unisound) 使用 /v1/messages
+        if "unisound" in base_url_lower or "anthropic" in base_url_lower:
+            url = f"{self.config.base_url.rstrip('/')}/v1/messages"
+            payload: dict[str, Any] = {
+                "model": self.config.model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+        # Step Plan 使用 /v1/messages
+        elif "step_plan" in base_url_lower:
+            url = f"{self.config.base_url.rstrip('/')}/messages"
+            payload = {
+                "model": self.config.model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+        # 其他使用 Chat Completions API
+        else:
+            url = f"{self.config.base_url.rstrip('/')}/chat/completions"
+            payload = {
+                "model": self.config.model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+            if response_format:
+                payload["response_format"] = response_format
+
         headers = {
             "Authorization": f"Bearer {self.config.api_key}",
             "Content-Type": "application/json",
         }
-        payload: dict[str, Any] = {
-            "model": self.config.model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
-        if response_format:
-            payload["response_format"] = response_format
 
         logger.debug("Step API 调用: %s | messages=%d 条", url, len(messages))
 
@@ -85,7 +109,20 @@ class StepSpeedProvider(BaseLLMProvider):
 
         body = resp.json()
         try:
-            text = body["choices"][0]["message"]["content"]
+            # 根据API类型解析响应
+            # Chat Completions: body["choices"][0]["message"]["content"]
+            # Messages API (云知声/Step): body["content"][0]["text"] 或 body["content"][1]["text"]
+            text = ""
+            if "content" in body and isinstance(body["content"], list):
+                for item in body["content"]:
+                    if item.get("type") == "text":
+                        text = item.get("text", "")
+                        break
+                    # 跳过thinking类型
+                    elif item.get("type") == "thinking":
+                        continue
+            elif "choices" in body:
+                text = body["choices"][0]["message"]["content"]
         except (KeyError, IndexError) as exc:
             raise LLMAPIError(f"Step API 响应格式异常: {body}") from exc
 

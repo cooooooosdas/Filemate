@@ -1,0 +1,197 @@
+:root {
+  color-scheme: light;
+  --bg-base: #f5f8f4;
+  --bg-surface: #ffffff;
+  --bg-elevated: #edf4ee;
+  --bg-hover: #e5efe7;
+  --text-primary: #183229;
+  --text-secondary: #4d655b;
+  --text-muted: #6d8077;
+  --border-subtle: #d7e3d9;
+  --border-strong: #bfd0c3;
+  --accent: #2f7d55;
+  --accent-hover: #256847;
+  --accent-soft: #e5f1e8;
+  --accent-border: #b9d4c0;
+  --success: #2f7d55;
+  --warning: #9a651d;
+  --danger: #b44b4b;
+  --radius-control: 10px;
+  --radius-panel: 14px;
+  --radius-dialog: 16px;
+  --sidebar-width: 252px;
+  --sidebar-width-collapsed: 66px;
+  --topbar-height: 72px;
+  --motion-fast: 160ms cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-panel: 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  --z-sticky: 20;
+  --z-sidebar: 30;
+  --font-sans: "MiSans", "HarmonyOS Sans SC", "Alibaba PuHuiTi 3", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --el-color-primary: #2f7d55;
+  --el-color-primary-light-3: #5a9875;
+  --el-color-primary-light-5: #86b69a;
+  --el-color-primary-light-7: #b6d3c0;
+  --el-color-primary-light-9: #e8f2ea;
+  --el-color-primary-dark-2: #256847;
+  --el-bg-color: #ffffff;
+  --el-bg-color-overlay: #ffffff;
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color-light: #edf4ee;
+  --el-fill-color-lighter: #f5f8f4;
+  --el-text-color-primary: #183229;
+  --el-text-color-regular: #4d655b;
+  --el-text-color-secondary: #6d8077;
+  --el-border-color: #bfd0c3;
+  --el-border-color-light: #d7e3d9;
+  --el-border-color-lighter: #e6eee8;
+  --el-border-radius-base: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--bg-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a,
+button,
+[role="button"] {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.skip-link {
+  position: fixed;
+  z-index: 1000;
+  top: 8px;
+  left: 8px;
+  padding: 9px 13px;
+  color: #ffffff;
+  background: var(--accent);
+  border-radius: 8px;
+  transform: translateY(-150%);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.el-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  color: var(--bg-base);
+  background: var(--accent);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 8px;
+}
+
+.el-button {
+  min-height: 40px;
+  border-radius: var(--radius-control);
+}
+
+.el-button--primary {
+  color: #ffffff;
+  font-weight: 650;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.el-card,
+.el-dialog {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: none;
+}
+
+.el-card {
+  border-radius: var(--radius-panel);
+}
+
+.el-dialog {
+  border-radius: var(--radius-dialog);
+}
+
+.el-dialog__header,
+.el-dialog__footer {
+  border-color: var(--border-subtle);
+}
+
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  background: var(--bg-elevated);
+  box-shadow: 0 0 0 1px var(--border-subtle) inset;
+}
+
+.el-table {
+  --el-table-bg-color: var(--bg-surface);
+  --el-table-tr-bg-color: var(--bg-surface);
+  --el-table-header-bg-color: var(--bg-elevated);
+  --el-table-row-hover-bg-color: var(--bg-hover);
+  --el-table-border-color: var(--border-subtle);
+  --el-table-text-color: var(--text-secondary);
+  --el-table-header-text-color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

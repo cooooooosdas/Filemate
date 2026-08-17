@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "filemate-campus-twin"
+version = "1.2.0"
+description = "面向大学生学习、科研、竞赛与求职的个人知识和能力智能体"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "FileMate Team" }]
+dependencies = [
+    "watchdog>=4.0",
+    "PyPDF2>=3.0",
+    "pdfplumber>=0.10",
+    "python-docx>=1.1",
+    "python-pptx>=0.6",
+    "requests>=2.31",
+    "gradio>=4.44",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
+    "python-dotenv>=1.0",
+    "icalendar>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "black>=24.0",
+    "ruff>=0.5",
+]
+ocr = ["PaddleOCR>=2.7; platform_system != 'Windows'"]
+desktop = ["pyinstaller>=6.0"]
+
+[project.scripts]
+filemate = "main:main"
+filemate-server = "server:run_server"
+
+[tool.setuptools]
+py-modules = ["main", "server"]
+
+[tool.setuptools.packages.find]
+include = ["filemate*"]
+exclude = ["filemate.tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["filemate/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-ra"
+markers = [
+    "e2e: 需要真实 LLM API Key 与数据样本的端到端测试",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100

@@ -1,0 +1,5 @@
+feedback_id,area,target_hash,rating,context_json,created_at,updated_at
+demo-1,retrieval,target-a,1,"{""rank"":1,""score"":3.2}",2026-08-09T08:00:00+00:00,2026-08-09T08:00:00+00:00
+demo-2,retrieval,target-b,1,"{""rank"":2,""score"":2.4}",2026-08-09T08:01:00+00:00,2026-08-09T08:01:00+00:00
+demo-3,retrieval,target-c,-1,"{""rank"":3,""score"":1.2}",2026-08-09T08:02:00+00:00,2026-08-09T08:02:00+00:00
+demo-4,tutor,target-d,1,"{""mode"":""socratic""}",2026-08-09T08:03:00+00:00,2026-08-09T08:03:00+00:00

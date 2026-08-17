@@ -21,9 +21,6 @@ def _make_classifier(llm_client_stub=None):
     return Classifier(llm_client_stub, rules_path=None)
 
 
-from filemate.core.categories import CATEGORIES
-
-
 class TestClassifierContract:
     """验证分类器输出符合接口契约。"""
 
@@ -36,7 +33,8 @@ class TestClassifierContract:
     def test_category_in_set(self) -> None:
         clf = _make_classifier()
         result = clf.classify("随便什么文本")
-        assert result["category"] in set(CATEGORIES), f"category={result['category']} 不合法"
+        valid = {"课件", "作业", "竞赛通知", "考试通知", "参考资料", "大创通知", "待确认"}
+        assert result["category"] in valid, f"category={result['category']} 不合法"
 
     def test_confidence_range(self) -> None:
         clf = _make_classifier()
@@ -44,12 +42,21 @@ class TestClassifierContract:
         assert 0.0 <= result["confidence"] <= 1.0
 
     def test_keyword_hit_high_confidence(self) -> None:
-        """关键词命中 → 置信度应 ≥ 0.8（规则引擎兜底逻辑）。"""
+        """关键词命中 → 置信度落在规则引擎区间内。
+
+        v2 规则引擎公式（classifier.py `_rule_match`）::
+
+            confidence = min(0.55 + 命中数 * 0.10, 0.92)
+
+        即 1 次命中 0.65、2 次 0.75、3 次 0.85，上限 0.92。
+        下限必须高于 LLM 兜底的默认 0.5，才能体现"规则比 LLM 更可信"。
+        """
         clf = _make_classifier()
         result = clf.classify("本周作业第三章习题")
-        # 规则引擎若命中"作业"关键词，confidence 应较高
-        if result["category"] == "作业":
-            assert result["confidence"] >= 0.8
+        if result.get("method") == "rule":
+            assert 0.65 <= result["confidence"] <= 0.92, (
+                f"规则命中置信度 {result['confidence']} 超出 v2 区间 [0.65, 0.92]"
+            )
 
 
 class TestClassifierEdgeCases:

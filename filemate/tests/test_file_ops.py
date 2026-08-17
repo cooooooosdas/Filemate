@@ -2,13 +2,11 @@
 from __future__ import annotations
 
 import hashlib
-import os
-import tempfile
 from pathlib import Path
 
 import pytest
 
-from filemate.execution.file_ops import FileOps, OpResult
+from filemate.execution.file_ops import FileOps
 
 
 @pytest.fixture()
@@ -56,6 +54,23 @@ class TestMove:
         res = ops.move(src, dst)
         assert res.success
         assert dst.exists()
+
+    def test_move_never_overwrites_existing_target(
+        self,
+        ops: FileOps,
+        tmp: Path,
+    ) -> None:
+        src = tmp / "src.txt"
+        dst = tmp / "dst.txt"
+        src.write_text("source")
+        dst.write_text("destination")
+
+        res = ops.move(src, dst)
+
+        assert not res.success
+        assert "目标已存在" in res.error
+        assert src.read_text() == "source"
+        assert dst.read_text() == "destination"
 
 
 class TestRename:
@@ -133,7 +148,7 @@ class TestCopy:
         dst = tmp / "sub" / "dst.txt"
         res = ops.copy(src, dst)
         assert res.success
-        assert src.exists()  # 源文件仍在
+        assert src.exists()  # 源文件保留
         assert dst.exists()
 
     def test_copy_missing(self, ops: FileOps, tmp: Path) -> None:
@@ -141,26 +156,84 @@ class TestCopy:
         assert not res.success
         assert "不存在" in res.error
 
+    def test_copy_creates_parent(self, ops: FileOps, tmp: Path) -> None:
+        src = tmp / "src.txt"
+        src.write_text("data")
+        dst = tmp / "deep" / "nested" / "copy.txt"
+        res = ops.copy(src, dst)
+        assert res.success
+        assert dst.read_text() == "data"
+
 
 class TestDelete:
     def test_delete_basic(self, ops: FileOps, tmp: Path) -> None:
-        p = tmp / "remove_me.txt"
-        p.write_text("x")
+        p = tmp / "to_delete.txt"
+        p.write_text("delete me")
         res = ops.delete(p)
         assert res.success
         assert not p.exists()
 
     def test_delete_missing(self, ops: FileOps, tmp: Path) -> None:
-        res = ops.delete(tmp / "gone.txt")
+        res = ops.delete(tmp / "missing.txt")
         assert not res.success
+        assert "不存在" in res.error
+
+    def test_delete_empty_file(self, ops: FileOps, tmp: Path) -> None:
+        p = tmp / "empty.txt"
+        p.write_text("")
+        res = ops.delete(p)
+        assert res.success
+        assert not p.exists()
+
+    def test_delete_then_recreate(self, ops: FileOps, tmp: Path) -> None:
+        """删除后同名文件可重新创建。"""
+        p = tmp / "recreate.txt"
+        p.write_text("first")
+        ops.delete(p)
+        p.write_text("second")
+        assert p.read_text() == "second"
 
 
-class TestIsSupported:
-    def test_supported(self, ops: FileOps) -> None:
-        assert ops.is_supported("a.docx")
-        assert ops.is_supported("b.pdf")
-        assert ops.is_supported("c.pptx")
+class TestFileOpsEdgeCases:
+    def test_suffix_with_multiple_dots(self, ops: FileOps) -> None:
+        assert ops.suffix("report.final.docx") == "docx"
 
-    def test_unsupported(self, ops: FileOps) -> None:
-        assert not ops.is_supported("a.zip")
-        assert not ops.is_supported("b.mp4")
+    def test_suffix_hidden_file(self, ops: FileOps) -> None:
+        # .gitignore 在 Python Path.suffix 中被视为无后缀（点开头 = 隐藏文件）
+        assert ops.suffix(".gitignore") == ""
+        assert ops.suffix(".env") == ""
+
+    def test_is_supported_case_insensitive(self, ops: FileOps) -> None:
+        assert ops.is_supported("A.DOCX")
+        assert ops.is_supported("B.PDF")
+        assert ops.is_supported("C.PPTX")
+
+    def test_hash_large_content(self, ops: FileOps, tmp: Path) -> None:
+        """哈希计算对大文件也正确。"""
+        p = tmp / "big.bin"
+        p.write_bytes(b"\x00" * 100_000)
+        h = ops.compute_hash(p)
+        assert len(h) == 64
+        assert ops.compute_hash(p) == h  # 相同内容相同哈希
+
+    def test_hash_binary_file(self, ops: FileOps, tmp: Path) -> None:
+        p = tmp / "binary.bin"
+        p.write_bytes(bytes(range(256)))
+        h = ops.compute_hash(p)
+        assert isinstance(h, str)
+        assert len(h) == 64
+
+    def test_validate_filename_rejects_traversal(self, ops: FileOps) -> None:
+        with pytest.raises(ValueError, match="路径分隔符"):
+            ops.validate_filename("../secret.pdf")
+
+    def test_validate_filename_rejects_windows_reserved_name(
+        self,
+        ops: FileOps,
+    ) -> None:
+        with pytest.raises(ValueError, match="保留名称"):
+            ops.validate_filename("CON.txt")
+
+    def test_sanitize_course_segment(self, ops: FileOps) -> None:
+        assert ops.sanitize_path_segment("计算机/网络", "未分类") == "计算机-网络"
+        assert ops.sanitize_path_segment("..", "未分类") == "未分类"

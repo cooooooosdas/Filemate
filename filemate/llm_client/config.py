@@ -17,7 +17,9 @@ class LLMConfig:
 
     @classmethod
     def from_env(cls) -> LLMConfig:
+        import os
         return cls(
+            provider=os.environ.get("LLM_PROVIDER", "auto"),
             api_key=os.environ.get("LLM_API_KEY", ""),
             base_url=os.environ.get("LLM_BASE_URL", ""),
             model=os.environ.get("LLM_MODEL", ""),

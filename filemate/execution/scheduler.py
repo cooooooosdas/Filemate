@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +55,11 @@ class CalendarBuilder:
         return cal.to_ical()
 
     def save(self, events: Sequence[CalendarEvent], out_path: str | Path) -> Path:
-        """写入 .ics 文件，返回输出路径。"""
+        """写入 .ics 文件（RFC 5545 要求 CRLF 换行），返回输出路径。"""
         data = self.build(events)
+        # 确保 CRLF 换行（RFC 5545 §3.1）
+        if b"\r\n" not in data:
+            data = data.replace(b"\n", b"\r\n")
         p = Path(out_path)
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(data)
@@ -78,7 +81,8 @@ class CalendarBuilder:
         """
         for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d"):
             try:
-                return datetime.strptime(value, fmt)
+                local_timezone = datetime.now(tz=timezone.utc).astimezone().tzinfo
+                return datetime.strptime(value, fmt).replace(tzinfo=local_timezone)
             except ValueError:
                 continue
         raise ValueError(

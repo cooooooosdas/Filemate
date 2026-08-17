@@ -1,0 +1,26 @@
+======================================
+    FileMate 本地开发启动器
+======================================
+
+【使用方法】
+1. 首次运行：powershell -ExecutionPolicy Bypass -File scripts/dev.ps1 -Setup
+2. 日常运行：双击“启动FileMate.bat”
+3. 停止服务：powershell -ExecutionPolicy Bypass -File scripts/stop-dev.ps1
+
+【功能说明】
+- 自动启动后端服务 (localhost:8001)
+- 自动启动前端服务 (localhost:5173)
+- 自动打开浏览器访问
+
+【注意事项】
+- 需要 Python 3.10+ 与 Node.js 20.19+
+- 首次脚本会自动安装 Python 与前端依赖
+- AI 功能需要复制 .env.example 为 .env 并配置 LLM_API_KEY
+- 确保端口 8001 和 5173 未被其他程序占用
+
+【技术栈】
+- 前端: Vue3 + Vite + Element Plus
+- 后端: FastAPI + Python
+- AI: StepFun（通过统一 LLM 配置，可替换供应商）
+
+======================================

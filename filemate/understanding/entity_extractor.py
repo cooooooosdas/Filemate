@@ -41,8 +41,12 @@ class EntityExtractor:
         prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
         snippet = text[:4000]
 
-        # 第一次：max_tokens=1000；失败后重试 max_tokens=2000
-        for attempt, max_tokens in [(1, 1000), (2, 2000)]:
+        # W4 联调发现两类失败，均导致整份样本字段全丢：
+        #   1. LLM 返回空字符串 '' —— 原 2 次重试顶不住，需 3 次
+        #   2. JSON 在 extra_entities 嵌套对象处被截断 —— max_tokens 不足
+        # 故重试 2→3 次，max_tokens 起点 1000→1500 并递增到 4000。
+        attempts = [(1, 1500), (2, 2500), (3, 4000)]
+        for attempt, max_tokens in attempts:
             try:
                 result = self.llm.call_structured(
                     prompt=prompt,
@@ -63,13 +67,13 @@ class EntityExtractor:
                 if deadline and not self._looks_like_date(deadline):
                     logger.debug("deadline 格式异常，丢弃: %s", deadline)
                     out["deadline"] = None
-                out["extra_entities"] = result.get("extra_entities") or {}
+                out["extra_entities"] = self._flatten(result.get("extra_entities"))
                 return out
             except Exception as exc:
                 logger.warning("实体抽取第%d次失败: %s", attempt, exc)
                 continue
 
-        logger.error("实体抽取在 %d 次尝试后全部失败", 2)
+        logger.error("实体抽取在 %d 次尝试后全部失败", len(attempts))
         return {k: None for k in ENTITY_FIELDS[:-1]} | {"extra_entities": {}}
 
     # ------------------------------------------------------------------
@@ -80,3 +84,24 @@ class EntityExtractor:
     def _looks_like_date(value: str) -> bool:
         import re
         return bool(re.match(r"^\d{4}-\d{2}-\d{2}$", value.strip()))
+
+    @staticmethod
+    def _flatten(raw: Any) -> dict[str, Any]:
+        """把 extra_entities 压平成一层键值对。
+
+        LLM 有时在 extra_entities 里嵌套子对象（如 `"contact": {"name": ...}`），
+        既会撑爆 max_tokens 导致 JSON 截断，也让下游读取不可预期。此处压平为
+        `contact.name` 形式，列表转逗号连接的字符串。
+        """
+        if not isinstance(raw, dict):
+            return {}
+        flat: dict[str, Any] = {}
+        for key, val in raw.items():
+            if isinstance(val, dict):
+                for sub_key, sub_val in val.items():
+                    flat[f"{key}.{sub_key}"] = sub_val
+            elif isinstance(val, list):
+                flat[key] = ", ".join(str(v) for v in val)
+            else:
+                flat[key] = val
+        return flat

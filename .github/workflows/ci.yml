@@ -1,0 +1,147 @@
+name: FileMate CI
+
+on:
+  push:
+    branches: [main, master, "codex/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend · Python 3.11
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      - name: Install project
+        run: uv sync --extra dev
+      - name: Static checks
+        run: >-
+          uv run ruff check
+          server.py main.py
+          filemate/execution
+          filemate/tests/test_storage.py
+          filemate/tests/test_file_ops.py
+          filemate/tests/test_archiver.py
+          filemate/tests/test_confirmation_executor.py
+          filemate/tests/test_server_persistence.py
+          filemate/tests/test_retrieval.py
+          filemate/tests/test_study.py
+          filemate/study
+          filemate/understanding/interview.py
+          filemate/understanding/retrieval.py
+          evaluation/run_evaluation.py
+          evaluation/analyze_study.py
+          evaluation/analyze_feedback.py
+      - name: Unit and integration tests
+        run: uv run pytest filemate/tests -q -m "not e2e"
+      - name: Build Python package
+        run: uv build
+      - name: Run offline product evaluation
+        run: uv run python evaluation/run_evaluation.py --output _working/evaluation-report.json
+      - name: Validate user-study analysis pipeline
+        run: >-
+          uv run python evaluation/analyze_study.py
+          --annotations evaluation/datasets/retrieval_annotations.example.csv
+          --study evaluation/datasets/user_study.example.csv
+          --output _working/user-study-example-report.json
+      - name: Validate anonymous feedback analysis pipeline
+        run: >-
+          uv run python evaluation/analyze_feedback.py
+          evaluation/datasets/product_feedback.example.csv
+          --output _working/product-feedback-example-report.json
+      - name: Upload evaluation evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: FileMate-offline-evaluation
+          path: |
+            _working/evaluation-report.json
+            _working/user-study-example-report.json
+            _working/product-feedback-example-report.json
+          if-no-files-found: error
+
+  frontend:
+    name: Frontend · Node 24
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: filemate/web
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: filemate/web/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Type-check and build
+        run: npm run build
+
+  desktop:
+    name: Desktop · Windows installer
+    if: github.event_name == 'workflow_dispatch'
+    needs: [backend, frontend]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: "requirements-desktop.txt"
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: filemate/web/package-lock.json
+      - name: Select Rust MSVC toolchain
+        run: rustup default stable-x86_64-pc-windows-msvc
+      - name: Install frontend dependencies
+        working-directory: filemate/web
+        run: npm ci
+      - name: Build Sidecar
+        working-directory: filemate/web
+        run: npm run desktop:sidecar
+      - name: Smoke-test Sidecar
+        working-directory: filemate/web
+        run: npm run desktop:smoke-sidecar
+      - name: Build NSIS and MSI installers
+        working-directory: filemate/web
+        run: npm run desktop:bundle
+      - name: Smoke-test silent install, runtime, and uninstall
+        shell: pwsh
+        run: >-
+          ./scripts/smoke_windows_installer.ps1
+          -BundleRoot ./filemate/web/src-tauri/target/release/bundle
+          -EvidencePath ./_working/installer-smoke-evidence.json
+      - name: Upload Windows installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: FileMate-Windows-installers
+          path: filemate/web/src-tauri/target/release/bundle/**/*
+          if-no-files-found: error
+      - name: Upload desktop acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: FileMate-desktop-acceptance-evidence
+          path: |
+            _working/**/*evidence.json
+            _working/**/*.log
+          if-no-files-found: warn

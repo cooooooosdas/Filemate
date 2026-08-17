@@ -1,0 +1,14 @@
+[
+  {"id":"os-process","document":"--- 第 1 页 ---\n进程是资源分配的基本单位。\n--- 第 2 页 ---\n线程是处理器调度的基本单位。","query":"CPU 调度的基本单位是什么","expected_page":2},
+  {"id":"network-tcp","document":"--- 第 1 页 ---\nUDP 是无连接协议。\n--- 第 2 页 ---\nTCP 通过三次握手建立可靠连接。","query":"TCP 怎样建立连接","expected_page":2},
+  {"id":"database-acid","document":"--- 第 1 页 ---\n索引用于加速查询。\n--- 第 2 页 ---\n事务具有原子性、一致性、隔离性和持久性。","query":"事务的 ACID 特性","expected_page":2},
+  {"id":"algorithm-sort","document":"--- 第 1 页 ---\n二分查找要求序列有序。\n--- 第 2 页 ---\n归并排序的时间复杂度是 O(n log n)。","query":"归并排序时间复杂度","expected_page":2},
+  {"id":"ml-overfit","document":"--- 第 1 页 ---\n训练集用于拟合模型。\n--- 第 2 页 ---\n正则化和数据增强可以缓解过拟合。","query":"如何缓解模型过拟合","expected_page":2},
+  {"id":"software-test","document":"--- 第 1 页 ---\n单元测试验证最小代码单元。\n--- 第 2 页 ---\n集成测试验证模块协作。","query":"什么测试验证模块之间协作","expected_page":2},
+  {"id":"math-derivative","document":"--- 第 1 页 ---\n极限描述趋近过程。\n--- 第 2 页 ---\n导数刻画函数的瞬时变化率。","query":"函数瞬时变化率由什么刻画","expected_page":2},
+  {"id":"compiler-lexer","document":"--- 第 1 页 ---\n词法分析将字符流转换为记号流。\n--- 第 2 页 ---\n语法分析构建抽象语法树。","query":"字符流怎样转换成 token","expected_page":1},
+  {"id":"security-hash","document":"--- 第 1 页 ---\n哈希函数用于完整性校验。\n--- 第 2 页 ---\n对称加密使用同一密钥加密和解密。","query":"如何校验数据完整性","expected_page":1},
+  {"id":"project-risk","document":"--- 第 1 页 ---\n里程碑用于检查阶段成果。\n--- 第 2 页 ---\n风险矩阵按照概率和影响评估风险。","query":"风险矩阵依据什么评估","expected_page":2},
+  {"id":"rag-citation","document":"--- 第 1 页 ---\n向量检索寻找语义相近片段。\n--- 第 2 页 ---\n引用定位让用户核验回答来源。","query":"怎样让用户核验答案来源","expected_page":2},
+  {"id":"calendar-ics","document":"--- 第 1 页 ---\nRFC 5545 定义 iCalendar 数据格式。\n--- 第 2 页 ---\n截止日期应转换为带提醒的日历事件。","query":"iCalendar 遵循哪个规范","expected_page":1}
+]

@@ -1,5 +1,7 @@
 # FileMate 开发指南
 
+> ⚠️ 历史文档提示：本文仍保留早期 Gradio 入门内容。现役主链为 FastAPI + Vue 3，Gradio 仅作为兼容入口；开发入口请以根目录 `README.md` 和 `filemate/docs/API_SPEC.md` 为准。
+
 > 面向团队成员：如何开始写代码、调试、提交。
 > 有任何问题 → 群里 @胡希。
 
@@ -49,7 +51,7 @@ git checkout -b feat/你的名字
 | 汤新阳 | `python -c "from filemate.perception import FileParser; ..."` 能跑通 |
 | 张金宝 | 写一个分类 Prompt，在 10 份样本上测试 |
 | 徐书和 | `python -c "from filemate.execution import SQLiteStorage; ..."` 能跑通 |
-| 余恒 | `python -m filemate.ui.app` 能弹出一个 Gradio 页面 |
+| 余恒 | `scripts/dev.ps1` 能同时启动 FastAPI 与 Vue，浏览器打开 `http://localhost:5173` |
 | 杨乐 | 通读本文件和 `README.md`，有问题直接问胡希 |
 
 ---
@@ -262,38 +264,32 @@ class Classifier:
 
 ### UI 层（余恒）
 
-**目标：** 四个 Tab 的 Gradio 界面。
+**目标：** Vue 3 学习工作台，连接本地 FastAPI。
 
-**Tab 结构：**
+**现役入口：**
 
-| Tab | 功能 | 后端接口 |
-|---|---|---|
-| 导入 | 文件上传 + 文件列表 | `BackendAPI.submit(path)` |
-| 分类预览 | 建议分类 + 置信度 + 确认/修改按钮 | `BackendAPI.get_queue()` |
-| 命名预览 | 原始名 vs 建议名 + 编辑框 | `BackendAPI.confirm(session_id, accepted, edits)` |
-| 日程预览 | 时间轴视图 + 导出 .ics | `BackendAPI.get_operations(session_id)` |
+- 前端源码：`filemate/web/src/`
+- 页面路由：`filemate/web/src/router/index.ts`
+- API 封装：`filemate/web/src/services/api.ts`
+- 共享类型：`filemate/web/src/types/`
+- 设计系统：`design-system/filemate/MASTER.md`
 
-**最小可行界面（先跑通这个）：**
+**最小可行开发流程：**
 
-```python
-import gradio as gr
-from filemate.ui.backend_api import BackendAPI
-
-api = BackendAPI(pipeline_worker, state_store)
-
-with gr.Blocks(title="FileMate") as demo:
-    f = gr.File()
-    out = gr.Textbox(label="处理结果")
-    btn = gr.Button("处理")
-    btn.click(lambda files: api.submit(files[0].name), inputs=f, outputs=out)
-
-demo.launch()
+```powershell
+cd filemate/web
+npm ci
+npm run dev
 ```
 
-**开发技巧：**
-- Gradio 官方文档：https://www.gradio.app/docs
-- 用 `gr.Timer(interval=2)` 每 2 秒刷新一次队列状态
-- `gradio` 支持 `pip install "gradio[fetch]"` 开启文件下载功能
+FastAPI 默认监听 `http://127.0.0.1:8001`，Vue 开发服务默认 `http://localhost:5173`，已配置代理。
+
+**开发要求：**
+
+- 保持浅色自然绿设计系统，不使用暗色主界面、紫粉渐变或 Emoji 功能图标。
+- 所有异步结果要处理 loading / empty / error / retry 状态。
+- 修改 API 后同步更新 `services/api.ts`、类型和 API 文档。
+- 完成前运行 `npm run build` 与项目完整 `scripts/verify.ps1`。
 
 ---
 

@@ -47,19 +47,22 @@ class MilestoneDetector:
                     logger.debug("里程碑识别返回非数组: %s", type(result))
                     continue
                 # 规范：只保留有 date 字段的记录，按 order 排序
+                # 去重键用 (event, date)：同一天可能有多个不同节点
+                # （如"报名截止"和"初赛开始"同为 2026-08-01），只按 date 去重会丢事件
                 events = []
-                seen_dates: set[str] = set()
+                seen: set[tuple[str, str]] = set()
                 for idx, item in enumerate(result):
                     event = str(item.get("event", "")).strip()
                     date = str(item.get("date", "")).strip()
                     order = item.get("order", idx + 1)
-                    if event and self._looks_like_date(date) and date not in seen_dates:
+                    key = (event, date)
+                    if event and self._looks_like_date(date) and key not in seen:
                         events.append({
                             "event": event,
                             "date": date,
-                            "order": int(order),
+                            "order": self._safe_order(order, idx),
                         })
-                        seen_dates.add(date)
+                        seen.add(key)
                 events.sort(key=lambda x: x["order"])
                 # 强制重排为连续序号
                 for i, ev in enumerate(events, 1):
@@ -81,3 +84,12 @@ class MilestoneDetector:
     def _looks_like_date(value: str) -> bool:
         import re
         return bool(re.match(r"^\d{4}-\d{2}-\d{2}$", str(value).strip()))
+
+    @staticmethod
+    def _safe_order(value: Any, idx: int) -> int:
+        """order 转 int。LLM 偶发返回"第一"/null，此时退回下标，避免整批丢弃。"""
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            logger.debug("order 非法，退回下标: %r", value)
+            return idx + 1

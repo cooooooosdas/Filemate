@@ -111,6 +111,115 @@ class BackendAPI:
             logger.error("process_file 失败: %s", exc)
             raise RuntimeError(f"处理失败: {exc}") from exc
 
+    def process_file_parallel(
+        self,
+        file_path: str,
+        *,
+        skip_calendar: bool = False,
+    ) -> ProcessingSession:
+        """并行模式处理单个文件（使用多Agent并行执行）。
+
+        执行流程：
+        1. ParseAgent 串行执行（解析文件）
+        2. ClassifyAgent + ExtractAgent + GenerateNameAgent 并行执行
+
+        Parameters
+        ----------
+        file_path : str
+            待处理文件的路径（绝对或相对路径）。
+        skip_calendar : bool, optional
+            是否跳过 .ics 日程生成。默认 False。
+
+        Returns
+        -------
+        ProcessingSession
+            处理后的会话对象。
+
+        Raises
+        ------
+        FileNotFoundError
+            文件不存在时抛出。
+        RuntimeError
+            处理过程中发生其他错误时抛出。
+        """
+        from filemate.core.agent_coordinator import (
+            create_parallel_coordinator,
+            ParseAgent,
+            ClassifyAgent,
+            ExtractAgent,
+            GenerateNameAgent,
+        )
+        from filemate.llm_client import LLMClient, LLMConfig
+        from filemate.perception import FileParser
+        from filemate.execution.scheduler import CalendarBuilder, CalendarBuilder
+        from filemate.execution.file_ops import FileOps
+        from filemate.execution.archiver import Archiver
+        from filemate.execution.storage import SQLiteStorage
+        from pathlib import Path
+
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"文件不存在: {file_path}")
+
+        try:
+            # 初始化存储
+            storage = SQLiteStorage(self.db_path)
+            storage.init_schema()
+
+            # 初始化LLM
+            llm_config = LLMConfig.from_env()
+            llm = LLMClient(llm_config)
+
+            # 注册LLM供Agent使用
+            from filemate.core.registry import get_registry
+            registry = get_registry()
+            registry._llm = llm
+
+            # 创建session
+            session_id = uuid.uuid4().hex[:12]
+            session = ProcessingSession(session_id=session_id, source_path=str(path))
+            storage.create_session(session_id, str(path))
+
+            # 创建并行协调器
+            coordinator, serial_agents, parallel_agents = create_parallel_coordinator()
+
+            # 执行：Parse串行 → Classify+Extract+GenName并行
+            results = coordinator.run_serial_then_parallel(
+                session, serial_agents, parallel_agents
+            )
+
+            # 记录日志
+            for r in results:
+                status_str = "✓" if r.success else "✗"
+                logger.info(
+                    "[%s] Agent %s 完成: %s (%.2fs)",
+                    session_id, r.agent_name, status_str, r.duration
+                )
+                storage.log_operation(
+                    session_id,
+                    r.agent_name,
+                    r.error if not r.success else "success"
+                )
+
+            # 如果用户需要日历生成（可选）
+            if not skip_calendar:
+                # 简单日历生成
+                calendar = CalendarBuilder()
+                if session.milestones:
+                    ics_path = path.with_suffix('.ics')
+                    calendar.build(session.milestones, str(ics_path))
+                    logger.info("[%s] 生成日历: %s", session_id, ics_path)
+
+            # 保存最终状态
+            storage.update_session(session_id, **session.to_dict())
+
+            logger.info("process_file_parallel: %s -> session %s (并行模式)", path.name, session_id)
+            return session
+
+        except Exception as exc:
+            logger.error("process_file_parallel 失败: %s", exc)
+            raise RuntimeError(f"并行处理失败: {exc}") from exc
+
     def process_files(
         self,
         file_paths: list[str],

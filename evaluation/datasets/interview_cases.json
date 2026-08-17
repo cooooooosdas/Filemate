@@ -1,0 +1,7 @@
+[
+  {"id":"brief","question":"请介绍项目贡献","answer":"参与开发。","min_score":30,"max_score":45},
+  {"id":"basic","question":"请介绍项目贡献","answer":"我负责后端接口开发，完成了数据存储和基础测试，并按时交付功能。","min_score":42,"max_score":65},
+  {"id":"structured","question":"请介绍项目贡献","answer":"项目初期队友无法稳定运行系统，我负责梳理后端接口、数据库迁移和启动流程，增加环境诊断与自动化回归测试，最终让团队成员可以使用一个命令启动前后端，并将核心回归稳定在二百六十项以上。","min_score":65,"max_score":95},
+  {"id":"conflict","question":"如何处理团队冲突","answer":"我先分别确认双方目标和事实，再组织会议列出三个可选方案，按照用户价值、工期和风险共同评分，最终确定折中方案并记录负责人和验收时间。","min_score":55,"max_score":90},
+  {"id":"empty-like","question":"为什么适合这个岗位","answer":"因为我很喜欢。","min_score":30,"max_score":48}
+]

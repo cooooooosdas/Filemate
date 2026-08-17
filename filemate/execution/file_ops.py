@@ -7,6 +7,7 @@ import logging
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
+from typing import ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,16 @@ class OpResult:
 
 class FileOps:
     """文件操作工具（纯函数式接口，副作用尽量少）。"""
+
+    INVALID_WINDOWS_CHARS: ClassVar[frozenset[str]] = frozenset('<>:"/\\|?*')
+    RESERVED_WINDOWS_NAMES: ClassVar[set[str]] = {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        *(f"COM{index}" for index in range(1, 10)),
+        *(f"LPT{index}" for index in range(1, 10)),
+    }
 
     # ------------------------------------------------------------------
     # 目录
@@ -41,6 +52,10 @@ class FileOps:
         dst_p = Path(dst)
         if not src_p.exists():
             return OpResult(False, f"源文件不存在: {src}", "")
+        if src_p.resolve() == dst_p.resolve():
+            return OpResult(True, "", str(dst_p))
+        if dst_p.exists():
+            return OpResult(False, f"目标已存在: {dst_p}", "")
         try:
             dst_p.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(src_p), str(dst_p))
@@ -121,6 +136,35 @@ class FileOps:
     def suffix(path: str | Path) -> str:
         """返回小写扩展名（不含点）。"""
         return Path(path).suffix.lstrip(".").lower()
+
+    @classmethod
+    def validate_filename(cls, name: str) -> str:
+        """校验单个文件名并阻止路径穿越与 Windows 非法名称。"""
+        candidate = name.strip()
+        if not candidate or candidate in {".", ".."}:
+            raise ValueError("文件名不能为空")
+        if any(char in cls.INVALID_WINDOWS_CHARS for char in candidate):
+            raise ValueError("文件名不能包含路径分隔符或系统非法字符")
+        if any(ord(char) < 32 for char in candidate):
+            raise ValueError("文件名不能包含控制字符")
+        if candidate.endswith((" ", ".")):
+            raise ValueError("文件名不能以空格或句点结尾")
+        if Path(candidate).stem.upper() in cls.RESERVED_WINDOWS_NAMES:
+            raise ValueError("文件名是系统保留名称")
+        return candidate
+
+    @classmethod
+    def sanitize_path_segment(cls, value: str, fallback: str) -> str:
+        """把用户可编辑文本收敛为安全目录名。"""
+        cleaned = "".join(
+            "-" if char in cls.INVALID_WINDOWS_CHARS or ord(char) < 32 else char
+            for char in value.strip()
+        ).strip(" .")
+        if not cleaned or cleaned in {".", ".."}:
+            return fallback
+        if cleaned.upper() in cls.RESERVED_WINDOWS_NAMES:
+            return fallback
+        return cleaned[:80]
 
     @staticmethod
     def is_supported(path: str | Path) -> bool:

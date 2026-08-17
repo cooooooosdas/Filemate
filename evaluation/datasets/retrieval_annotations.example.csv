@@ -1,0 +1,13 @@
+item_id,annotator,expected_page,answerable
+q01,A,2,1
+q01,B,2,1
+q02,A,1,1
+q02,B,1,1
+q03,A,3,1
+q03,B,2,1
+q04,A,NA,0
+q04,B,NA,0
+q05,A,4,1
+q05,B,4,1
+q06,A,2,1
+q06,B,2,1

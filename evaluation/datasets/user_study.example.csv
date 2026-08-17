@@ -1,0 +1,6 @@
+participant_id,condition,pre_correct,post_correct,pre_minutes,post_minutes,sus_q1,sus_q2,sus_q3,sus_q4,sus_q5,sus_q6,sus_q7,sus_q8,sus_q9,sus_q10
+P001,filemate,6,9,38,26,5,1,5,1,4,2,5,1,4,1
+P002,filemate,5,8,42,30,4,2,5,1,4,1,4,2,5,1
+P003,filemate,7,9,35,25,5,1,4,2,5,1,5,1,4,2
+P004,filemate,4,8,46,31,4,1,5,2,4,2,5,1,4,1
+P005,filemate,6,10,40,27,5,2,4,1,5,1,4,1,5,1

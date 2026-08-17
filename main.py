@@ -29,24 +29,18 @@ from pathlib import Path
 if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
     try:
         sys.stdout.reconfigure(encoding="utf-8")
-    except Exception:
+    except (AttributeError, OSError, ValueError):
         pass
 
+from filemate.core.session import ProcessingSession, SessionStatus
+from filemate.execution.archiver import Archiver
+from filemate.execution.file_ops import FileOps
+from filemate.execution.scheduler import CalendarBuilder, CalendarEvent
+from filemate.execution.storage import SQLiteStorage
 from filemate.llm_client import LLMClient, LLMConfig
 from filemate.perception import FileParser
 from filemate.perception.ocr import OCRBackend
-from filemate.understanding import (
-    Classifier,
-    EntityExtractor,
-    MilestoneDetector,
-    Namer,
-)
-from filemate.execution.scheduler import CalendarBuilder, CalendarEvent
-from filemate.execution.file_ops import FileOps, OpResult
-from filemate.execution.archiver import Archiver
-from filemate.execution.storage import SQLiteStorage
-from filemate.core.session import ProcessingSession, SessionStatus
-from filemate.core.pipeline import PipelineWorker
+from filemate.understanding import Classifier, EntityExtractor, MilestoneDetector, Namer
 
 logger = logging.getLogger(__name__)
 
@@ -153,24 +147,35 @@ def _make_stages(
     generate_name.__name__ = "generate_name"  # type: ignore[attr-defined]
     stages.append(generate_name)
 
-    # 阶段 6：日历
+    # 阶段 6：只生成日历预览；真正写盘与归档由确认执行器原子完成
     if not skip_calendar:
         def calendar_(session: ProcessingSession) -> ProcessingSession:
-            events = []
+            events: list[dict[str, str]] = []
             for m in session.milestones:
-                events.append(CalendarEvent(
-                    summary=f"[{session.category}] {m.get('event', '')}",
-                    start=m.get("date", ""),
-                    description=f"来源: {Path(session.source_path).name}",
-                ))
-            if events:
-                out = Path(session.source_path).with_suffix(".ics")
-                calendar.save(events, out)
-                session.entities["ics_path"] = str(out)
-                storage.log_operation(session.session_id, "calendar", str(out))
+                events.append(
+                    {
+                        "summary": f"[{session.category}] {m.get('event', '')}",
+                        "start": m.get("date", ""),
+                        "description": f"来源: {Path(session.source_path).name}",
+                    }
+                )
+            session.entities["calendar_enabled"] = True
+            session.entities["calendar_preview"] = events
+            storage.log_operation(
+                session.session_id,
+                "calendar_preview",
+                f"{len(events)} events",
+            )
             return session
         calendar_.__name__ = "calendar"  # type: ignore[attr-defined]
         stages.append(calendar_)
+    else:
+        def disable_calendar(session: ProcessingSession) -> ProcessingSession:
+            session.entities["calendar_enabled"] = False
+            session.entities["calendar_preview"] = []
+            return session
+        disable_calendar.__name__ = "calendar_disabled"  # type: ignore[attr-defined]
+        stages.append(disable_calendar)
 
     # 阶段 7：归档（用户确认后才真正移动，此处只做预览）
     # 实际移动逻辑在确认层，此处留空占位
@@ -219,6 +224,8 @@ def _build_args() -> argparse.Namespace:
     p.add_argument("--no-calendar", action="store_true", help="跳过 .ics 生成")
     p.add_argument("--db", default="filemate.db", help="SQLite 路径（默认 filemate.db）")
     p.add_argument("-v", "--verbose", action="store_true", help="DEBUG 日志")
+    p.add_argument("--check", action="store_true",
+                   help="环境检查模式：验证各模块可导入、Schema 可初始化、.ics 可生成（不处理真实文件）")
     return p.parse_args()
 
 
@@ -241,7 +248,7 @@ async def process_single(
     file_ops = FileOps()
     storage = SQLiteStorage(db_path)
     storage.init_schema()  # 初始化数据库表
-    archiver = Archiver(Path(".").resolve() / "archive", file_ops)
+    archiver = Archiver(Path.cwd() / "archive", file_ops)
 
     # 构造 session
     session_id = uuid.uuid4().hex[:12]
@@ -258,7 +265,7 @@ async def process_single(
     for stage in stages:
         try:
             session = stage(session)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - 阶段边界必须收敛第三方异常
             session.error = f"{getattr(stage, '__name__', 'unknown')} 失败: {exc}"
             session.transition(SessionStatus.FAILED)
             logger.error("[%s] 阶段失败: %s", session.session_id, session.error)
@@ -312,6 +319,11 @@ def main() -> None:
             print("\n[watch] 已停止")
         return
 
+    # check 模式 — 仅验证执行层模块
+    if args.check:
+        ok = _run_check(args.db)
+        sys.exit(0 if ok else 1)
+
     # 单文件模式
     if not args.path:
         print("Usage: python main.py <file_path> [--watch-dir <dir>]")
@@ -357,7 +369,115 @@ def main() -> None:
     if session.error:
         print(f"  错误:      {session.error}")
     print(f"  session:   {session.session_id}")
-    print(f"  状态:      {'✅ 处理完成' if not session.error else '❌ 处理失败'}")
+    print(f"  状态:      {'[OK] 处理完成' if not session.error else '[FAIL] 处理失败'}")
+
+
+def _run_check(db_path: str) -> bool:
+    """环境检查模式：验证执行层各模块可正常初始化和运行。"""
+    import tempfile
+
+    print("FileMate 环境检查")
+    print("=" * 40)
+
+    all_ok = True
+
+    # 1. SQLiteStorage 初始化 + Schema
+    print("\n[1/5] SQLiteStorage ...", end=" ")
+    try:
+        storage = SQLiteStorage(db_path)
+        storage.init_schema()
+        sid = "check-test"
+        storage.create_session(sid, "/check/test.docx")
+        storage.update_session(sid, status="done", category="课件", confidence=0.9)
+        row = storage.get_session(sid)
+        assert row is not None and row["category"] == "课件"
+        print("OK")
+    except Exception as exc:  # noqa: BLE001 - 自检需汇总所有模块错误
+        print(f"FAIL: {exc}")
+        all_ok = False
+
+    # 2. FileOps 基本操作
+    print("[2/5] FileOps ...", end=" ")
+    try:
+        ops = FileOps()
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "test.txt"
+            p.write_text("hello")
+            h = ops.compute_hash(p)
+            assert len(h) == 64
+            res = ops.copy(p, Path(td) / "copy.txt")
+            assert res.success
+            res = ops.rename(Path(td) / "copy.txt", "renamed.txt")
+            assert res.success
+            res = ops.delete(Path(td) / "renamed.txt")
+            assert res.success
+        print("OK")
+    except Exception as exc:  # noqa: BLE001 - 自检需汇总所有模块错误
+        print(f"FAIL: {exc}")
+        all_ok = False
+
+    # 3. CalendarBuilder .ics 生成
+    print("[3/5] CalendarBuilder ...", end=" ")
+    try:
+        cal = CalendarBuilder()
+        events = [
+            CalendarEvent(summary="大创申报截止", start="2026-09-15", location="线上"),
+            CalendarEvent(summary="中期检查", start="2026-12-01T14:00"),
+        ]
+        data = cal.build(events)
+        assert b"BEGIN:VCALENDAR" in data
+        assert b"SUMMARY:" in data
+        print("OK")
+    except Exception as exc:  # noqa: BLE001 - 自检需汇总所有模块错误
+        print(f"FAIL: {exc}")
+        all_ok = False
+
+    # 4. Archiver
+    print("[4/5] Archiver ...", end=" ")
+    try:
+        ops2 = FileOps()
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td) / "archive"
+            archiver = Archiver(base, ops2)
+            src = Path(td) / "hw.docx"
+            src.write_text("第三章习题")
+            result = archiver.archive("chk-1", "作业", "操作系统", "[操作系统]-[作业]-[习题].docx", src)
+            assert result.success
+            dest = base / "操作系统" / "作业" / "[操作系统]-[作业]-[习题].docx"
+            assert dest.exists()
+        print("OK")
+    except Exception as exc:  # noqa: BLE001 - 自检需汇总所有模块错误
+        print(f"FAIL: {exc}")
+        all_ok = False
+
+    # 5. operation_log 写入（新签名兼容）
+    print("[5/5] operation_log ...", end=" ")
+    try:
+        storage.log_operation(sid, "classify", "课件 0.9",
+                              input_snapshot='{"category":"课件","confidence":0.9}',
+                              model_used="step-3.7-speed",
+                              latency_ms=1200)
+        ops_log = storage.get_operations(sid)
+        assert len(ops_log) >= 1
+        # 验证新字段存在
+        latest = ops_log[-1]
+        assert latest.get("input_snapshot") is not None or "input_snapshot" in str(ops_log)
+        print("OK")
+    except Exception as exc:  # noqa: BLE001 - 自检需汇总所有模块错误
+        print(f"FAIL: {exc}")
+        all_ok = False
+
+    # clean
+    storage.close()
+    Path(db_path).unlink(missing_ok=True)
+
+    print()
+    print("=" * 40)
+    if all_ok:
+        print("[PASS] 环境检查全部通过 — 执行层对接正常")
+    else:
+        print("[FAIL] 存在未通过项，见上方详情")
+    return all_ok
 
 
 if __name__ == "__main__":

@@ -8,9 +8,13 @@ PaddleOCR>=2.7; platform_system != "Windows"  # Windows 环境按需安装
 
 # ── 理解层 ──
 requests>=2.31
+python-dotenv>=1.0
 
 # ── 确认层 ──
 gradio>=4.44
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
 
 # ── 执行层 ──
 icalendar>=6.0

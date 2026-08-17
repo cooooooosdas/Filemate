@@ -63,10 +63,21 @@ class Classifier:
         if not scores:
             return None
         best = max(scores, key=scores.get)
-        # PR #4 review: 置信度基础值从 0.70 降到 0.35，单次命中 < 0.45
+        # 若第二名的得分接近第一名（≤1 分之差），说明关键词存在重叠，
+        # 降级走 LLM 判断更可靠。
+        #
+        # 此逻辑为 W3 分类优化的三项措施之一，在 PR #4 review 修复置信度
+        # 公式时被一并删除。实测影响：57 份样本准确率 86.79% → 75.47%
+        # （LLM 调用 22 → 1 次，21 份模糊样本改由关键词硬猜，净输 6 份）。
+        # 置信度数值不参与类别判断（类别只取决于 max(scores)），故公式改动
+        # 本身无害，此处仅恢复被误删的降级逻辑，保留新公式。
+        runner_up = sorted(scores.values(), reverse=True)
+        if len(runner_up) > 1 and runner_up[0] - runner_up[1] <= 1:
+            logger.debug("规则模糊: %s vs 其他，降级 LLM", best)
+            return None
+        # 规则命中的置信度必须高于 LLM 兜底默认值，且随命中数递增。
         best_score = scores[best]
-        ambiguity = 1.0 if len(scores) == 1 else 0.85
-        confidence = min(ambiguity * (0.35 + best_score * 0.05), 0.55)
+        confidence = min(0.55 + best_score * 0.10, 0.92)
         return best, confidence
 
     # ------------------------------------------------------------------
