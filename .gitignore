@@ -36,9 +36,7 @@ filemate.db
 filemate.db-journal
 .filemate-data/
 archive/
-datasets/raw/*
 datasets/long_text/*
-!datasets/raw/.gitkeep
 !datasets/long_text/.gitkeep
 
 # ── OCR 模型缓存 ──
