@@ -328,6 +328,9 @@ async def process_file(
         result["_local_file_path"] = str(file_path)
         _sessions[session.session_id] = result
 
+        # 阶段级失败（损坏/加密文件）→ 返回 success=False，前端 ElMessage.error 已就绪
+        if session.error:
+            return ApiResponse(success=False, data=result, error=session.error)
         return ApiResponse(success=True, data=result)
     except Exception as exc:
         logger.exception("处理失败: %s", file.filename)

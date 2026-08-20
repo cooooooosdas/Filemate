@@ -78,6 +78,13 @@ def _make_stages(
         raw_text = parsed.get("raw_text", "")
         meta = parsed.get("metadata", {})
 
+        # 解析失败（损坏文件/加密 PDF）→ 直接中断，不浪费 LLM 调用
+        if parsed.get("error"):
+            session.entities["raw_text"] = raw_text
+            session.entities["metadata"] = meta
+            storage.log_operation(session.session_id, "parse", f"FAILED: {parsed['error']}")
+            raise ValueError(parsed["error"])
+
         # 空文本 + 图片型 PDF → 尝试 OCR
         if not raw_text.strip() and meta.get("suffix") == "pdf" and meta.get("text_pages", 1) == 0:
             if _ocr.available:
