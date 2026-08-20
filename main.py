@@ -39,7 +39,9 @@ from filemate.execution.scheduler import CalendarBuilder, CalendarEvent
 from filemate.execution.storage import SQLiteStorage
 from filemate.llm_client import LLMClient, LLMConfig
 from filemate.perception import FileParser
+from filemate.perception.chart_parser import ChartParser
 from filemate.perception.ocr import OCRBackend
+from filemate.perception.table_reader import TableReader
 from filemate.understanding import Classifier, EntityExtractor, MilestoneDetector, Namer
 
 logger = logging.getLogger(__name__)
@@ -67,6 +69,8 @@ def _make_stages(
 
     # 阶段 1：解析文件（图片型 PDF 自动 OCR 回退）
     _ocr = OCRBackend()  # 全局单例，懒加载
+    _table_reader = TableReader()
+    _chart_parser = ChartParser()
 
     def parse(session: ProcessingSession) -> ProcessingSession:
         source = session.source_path
@@ -85,6 +89,38 @@ def _make_stages(
                     logger.warning("[%s] OCR 未识别到文字", session.session_id)
             else:
                 logger.info("[%s] 图片型 PDF，OCR 不可用（PaddleOCR 未安装），跳过", session.session_id)
+
+        # 提取表格 → Markdown 追加到 raw_text
+        try:
+            tables = _table_reader.extract_tables(source)
+            if tables:
+                table_md = "\n\n".join(
+                    t.to_markdown() for t in tables if t.to_markdown()
+                )
+                if table_md:
+                    raw_text += f"\n\n--- 表格数据 ---\n{table_md}"
+                    meta["tables"] = len(tables)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[%s] 表格提取失败: %s", session.session_id, exc)
+
+        # 提取图表 → 文本追加到 raw_text
+        try:
+            charts = _chart_parser.extract_charts(source)
+            if charts:
+                chart_lines = []
+                for ch in charts:
+                    if ch.title:
+                        chart_lines.append(f"图表: {ch.title}")
+                    if ch.description:
+                        chart_lines.append(f"说明: {ch.description}")
+                    for el in ch.to_task_elements():
+                        if el.get("text"):
+                            chart_lines.append(f"  - {el['text']}")
+                if chart_lines:
+                    raw_text += "\n\n--- 图表数据 ---\n" + "\n".join(chart_lines)
+                    meta["charts"] = len(charts)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[%s] 图表提取失败: %s", session.session_id, exc)
 
         session.entities["raw_text"] = raw_text
         session.entities["metadata"] = meta
