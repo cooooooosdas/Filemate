@@ -11,34 +11,73 @@
         </div>
       </template>
 
-      <el-table :data="history" v-loading="loading" stripe>
-        <el-table-column prop="session_id" label="ID" width="100" />
-        <el-table-column label="文件" min-width="200">
-          <template #default="{ row }">
-            {{ getFileName(row.execution?.dest_path || row.source_path) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="category" label="分类" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getCategoryType(row.category)" size="small">
-              {{ row.category || '待确认' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="suggested_name" label="建议名" min-width="200" />
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" size="small">
-              {{ getStatusText(row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" width="180" />
-        <el-table-column label="操作" width="210" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" size="small" @click="viewDetail(row)">
-              查看
-            </el-button>
+      <div class="history-table">
+        <el-table :data="history" v-loading="loading" stripe>
+          <el-table-column prop="session_id" label="ID" width="100" />
+          <el-table-column label="文件" min-width="200">
+            <template #default="{ row }">
+              {{ getFileName(row.execution?.dest_path || row.source_path) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="category" label="分类" width="100">
+            <template #default="{ row }">
+              <el-tag :type="getCategoryType(row.category)" size="small">
+                {{ row.category || '待确认' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="suggested_name" label="建议名" min-width="200" />
+          <el-table-column prop="status" label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="getStatusType(row.status)" size="small">
+                {{ getStatusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="created_at" label="创建时间" width="180" />
+          <el-table-column label="操作" width="210" fixed="right">
+            <template #default="{ row }">
+              <el-button type="primary" size="small" @click="viewDetail(row)">
+                查看
+              </el-button>
+              <el-button
+                v-if="row.can_undo"
+                type="warning"
+                size="small"
+                :loading="undoingId === row.session_id"
+                @click="undoExecution(row)"
+              >
+                撤销
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <!-- 移动端卡片列表（<768px 显示） -->
+      <div class="history-cards" v-loading="loading">
+        <p v-if="!loading && history.length === 0" class="cards-empty">暂无处理记录</p>
+        <article v-for="row in history" :key="row.session_id" class="history-card">
+          <div class="card-top">
+            <div class="card-file">
+              <strong class="card-filename">{{ getFileName(row.execution?.dest_path || row.source_path) }}</strong>
+              <span class="card-suggest">{{ row.suggested_name }}</span>
+            </div>
+            <div class="card-tags">
+              <el-tag :type="getCategoryType(row.category)" size="small">
+                {{ row.category || '待确认' }}
+              </el-tag>
+              <el-tag :type="getStatusType(row.status)" size="small">
+                {{ getStatusText(row.status) }}
+              </el-tag>
+            </div>
+          </div>
+          <div class="card-meta">
+            <span class="card-id">{{ row.session_id }}</span>
+            <span class="card-date">{{ row.created_at }}</span>
+          </div>
+          <div class="card-actions">
+            <el-button type="primary" size="small" @click="viewDetail(row)">查看</el-button>
             <el-button
               v-if="row.can_undo"
               type="warning"
@@ -48,9 +87,9 @@
             >
               撤销
             </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+          </div>
+        </article>
+      </div>
     </el-card>
   </div>
 </template>
@@ -245,5 +284,94 @@ async function undoExecution(row: HistoryItem) {
 
 :deep(.el-table__row--striped) {
   background: var(--bg-base) !important;
+}
+
+/* 移动端卡片列表：桌面隐藏，<768px 显示 */
+.history-cards {
+  display: none;
+}
+
+.history-card {
+  padding: 14px;
+  margin-bottom: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-panel);
+}
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.card-file {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-filename {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.card-suggest {
+  font-size: 12px;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.card-tags {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-meta {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.card-id {
+  font-family: var(--font-mono);
+}
+
+.card-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.cards-empty {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+@media (max-width: 767px) {
+  .history-table {
+    display: none;
+  }
+
+  .history-cards {
+    display: block;
+  }
+
+  .history-card .el-button {
+    min-width: 88px;
+  }
 }
 </style>

@@ -14,14 +14,14 @@
         </template>
 
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :span="12" :xs="24">
             <el-card shadow="hover">
               <template #header>原始文件名</template>
               <div class="filename">{{ currentFile.source_path.split(/[/\\]/).pop() }}</div>
             </el-card>
           </el-col>
 
-          <el-col :span="12">
+          <el-col :span="12" :xs="24">
             <el-card shadow="hover">
               <template #header>建议文件名</template>
               <div class="filename suggested">{{ currentFile.suggested_name }}</div>

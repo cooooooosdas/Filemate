@@ -10,6 +10,7 @@
     </header>
 
     <div v-if="loading" class="state" aria-live="polite">正在计算今日学习顺序…</div>
+    <DataState v-else-if="error" :error="error" @retry="load" />
     <template v-else-if="data">
       <section class="summary" aria-label="今日学习概览">
         <article><span>推荐任务</span><strong>{{ data.items.length }}</strong><small>按薄弱程度排序</small></article>
@@ -59,9 +60,11 @@ import {
   type TodayReview,
   type TodayReviewItem
 } from '../services/api'
+import DataState from '../components/DataState.vue'
 
 const data = ref<TodayReview | null>(null)
 const loading = ref(true)
+const error = ref('')
 const answers = ref<Record<string, string>>({})
 const results = ref<Record<string, string>>({})
 const working = ref<Set<string>>(new Set())
@@ -74,8 +77,9 @@ const setWorking = (itemId: string, active: boolean) => {
 
 const load = async () => {
   loading.value = true
+  error.value = ''
   try { data.value = await getTodayReview() }
-  catch (error: any) { ElMessage.error(error.message || '今日学习队列加载失败') }
+  catch (e: any) { error.value = e?.message || '今日学习队列加载失败'; ElMessage.error(error.value) }
   finally { loading.value = false }
 }
 

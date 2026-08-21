@@ -4,8 +4,12 @@
       title="请先在导入页面上传文件"
       type="info"
       :closable="false"
-      v-if="!currentFile"
+      v-if="!currentFile && !loadError"
     />
+
+    <el-card v-else-if="loadError">
+      <DataState :error="loadError" @retry="loadSession" />
+    </el-card>
 
     <template v-else>
       <el-card>
@@ -43,9 +47,9 @@
           <el-divider />
 
           <div class="ics-actions">
-            <el-button type="primary" @click="downloadIcs">
+            <el-button type="primary" :loading="icsLoading" @click="downloadIcs">
               <el-icon><Download /></el-icon>
-              下载 .ics 文件
+              {{ icsLoading ? '下载中…' : '下载 .ics 文件' }}
             </el-button>
           </div>
         </div>
@@ -63,9 +67,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Download, Calendar, Clock, Upload } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts/core'
 import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
@@ -73,13 +78,17 @@ import { CanvasRenderer } from 'echarts/renderers'
 import type { Milestone } from '../types'
 import { useFileStore } from '../stores/fileStore'
 import { getSession, getIcsContent, downloadIcs as downloadIcsApi } from '../services/api'
+import DataState from '../components/DataState.vue'
 
 echarts.use([BarChart, GridComponent, TooltipComponent, CanvasRenderer])
 
 const route = useRoute()
 const fileStore = useFileStore()
 const chartRef = ref<HTMLElement>()
+let chartInstance: ReturnType<typeof echarts.init> | null = null
 const milestones = ref<Milestone[]>([])
+const icsLoading = ref(false)
+const loadError = ref('')
 const currentFile = computed(() => fileStore.currentFile)
 
 watch(currentFile, (file) => {
@@ -89,13 +98,32 @@ watch(currentFile, (file) => {
   }
 })
 
-onMounted(async () => {
+function handleChartResize() {
+  chartInstance?.resize()
+}
+
+async function loadSession() {
   const sessionId = route.query.session as string
-  if (sessionId) {
+  if (!sessionId) return
+  loadError.value = ''
+  try {
     const session = await getSession(sessionId)
     fileStore.setCurrentFile(session)
+  } catch (e: any) {
+    loadError.value = e?.message || '日程加载失败'
   }
+}
+
+onMounted(async () => {
+  await loadSession()
   initChart()
+  window.addEventListener('resize', handleChartResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleChartResize)
+  chartInstance?.dispose()
+  chartInstance = null
 })
 
 function getTimelineType(idx: number): 'primary' | 'success' | 'warning' | 'danger' {
@@ -105,11 +133,15 @@ function getTimelineType(idx: number): 'primary' | 'success' | 'warning' | 'dang
 
 async function downloadIcs() {
   if (!currentFile.value) return
+  icsLoading.value = true
   try {
     const content = await getIcsContent(currentFile.value.session_id)
     downloadIcsApi(content, `${currentFile.value.suggested_name}.ics`)
-  } catch (e) {
-    console.error('Failed to download ICS:', e)
+    ElMessage.success('日历文件已下载')
+  } catch (e: any) {
+    ElMessage.error(e?.message || '日历文件下载失败，请重试')
+  } finally {
+    icsLoading.value = false
   }
 }
 
@@ -121,7 +153,11 @@ function initChart() {
 function updateChart() {
   if (!chartRef.value || milestones.value.length === 0) return
 
-  const chart = echarts.init(chartRef.value)
+  // 只 init 一次，后续用 setOption 更新，避免重复初始化告警与实例泄漏
+  if (!chartInstance) {
+    chartInstance = echarts.init(chartRef.value)
+  }
+  const chart = chartInstance
 
   const dates = milestones.value.map(m => m.date)
   const events = milestones.value.map(m => m.event)

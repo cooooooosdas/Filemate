@@ -5,6 +5,7 @@
       <button class="filter" @click="showMastered = !showMastered; load()">{{ showMastered ? '查看待复习' : '查看已掌握' }}</button>
     </header>
     <div v-if="loading" class="empty">正在加载…</div>
+    <DataState v-else-if="error" :error="error" @retry="load" />
     <div v-else-if="!items.length" class="empty">{{ showMastered ? '暂无已掌握题目' : '暂无错题，继续保持' }}</div>
     <article v-for="item in items" :key="item.wrong_id" class="wrong-card">
       <div class="meta"><span>{{ item.question.type }}</span><span>错误 {{ item.error_count }} 次</span><span>复习 {{ item.review_count }} 次</span><span>{{ reviewLabel(item) }}</span></div>
@@ -24,16 +25,19 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getWrongbook, submitQuizAttempt, type WrongQuestion } from '../services/api'
+import DataState from '../components/DataState.vue'
 
 const items = ref<WrongQuestion[]>([])
 const loading = ref(true)
+const error = ref('')
 const showMastered = ref(false)
 const answers = ref<Record<string, string>>({})
 const results = ref<Record<string, string>>({})
 const load = async () => {
   loading.value = true
+  error.value = ''
   try { items.value = await getWrongbook(showMastered.value) }
-  catch (error: any) { ElMessage.error(error.message || '加载失败') }
+  catch (e: any) { error.value = e?.message || '加载失败'; ElMessage.error(error.value) }
   finally { loading.value = false }
 }
 onMounted(load)

@@ -1053,6 +1053,56 @@ const exportCardsAsCsv = () => {
   font-size: 14px;
 }
 .tutor-modes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px;border-bottom:1px solid var(--border-subtle);background:var(--bg-base)}.tutor-modes button{display:flex;align-items:flex-start;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--border-subtle);border-radius:9px;background:var(--bg-surface);color:var(--text-secondary);text-align:left;cursor:pointer}.tutor-modes button.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}.tutor-modes b{font-size:13px}.tutor-modes span{font-size:11px;color:var(--text-muted)}@media(max-width:560px){.tutor-modes{grid-template-columns:1fr}.tutor-modes button{flex-direction:row;align-items:center;justify-content:space-between}}
+
+/* 移动端（375px）适配 */
+@media (max-width: 640px) {
+  .tab-btn {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  .upload-zone {
+    padding: 24px 16px;
+  }
+
+  .config-row {
+    flex-wrap: wrap;
+  }
+
+  .config-row input[type="range"] {
+    min-width: 160px;
+  }
+
+  .result-section {
+    padding: 16px;
+  }
+
+  .result-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .btn-primary,
+  .btn-chat,
+  .send-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .export-actions {
+    flex-wrap: wrap;
+  }
+
+  .export-actions .btn-secondary {
+    flex: 1;
+    min-width: 44px;
+  }
+
+  .chat-message {
+    max-width: 92%;
+  }
+}
+
 </style>
 
 <style scoped>

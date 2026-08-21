@@ -16,7 +16,7 @@
         </template>
 
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :span="12" :xs="24">
             <el-card shadow="hover">
               <template #header>
                 <span>分类结果</span>
@@ -32,7 +32,7 @@
             </el-card>
           </el-col>
 
-          <el-col :span="12">
+          <el-col :span="12" :xs="24">
             <el-card shadow="hover">
               <template #header>
                 <span>修改分类</span>
@@ -62,20 +62,29 @@
       <!-- ECharts 饼图：分类统计 -->
       <el-card style="margin-top: 20px">
         <template #header>
-          <span>分类分布（待实现）</span>
+          <span>分类分布</span>
         </template>
-        <div ref="chartRef" style="height: 300px"></div>
+        <div class="chart-wrap">
+          <div ref="chartRef" v-loading="chartLoading" style="height: 300px"></div>
+          <div v-if="chartError" class="chart-state" role="alert">
+            <span>{{ chartError }}</span>
+            <el-button size="small" @click="loadDistribution">重试</el-button>
+          </div>
+          <div v-else-if="!chartLoading && distribution.length === 0" class="chart-state">
+            <span>暂无分类统计数据，处理资料后自动生成。</span>
+          </div>
+        </div>
       </el-card>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Collection } from '@element-plus/icons-vue'
-import { getSession, updateSessionDraft } from '../services/api'
+import { getHistory, getSession, updateSessionDraft } from '../services/api'
 import { useFileStore } from '../stores/fileStore'
 import type { Category } from '../types'
 import * as echarts from 'echarts/core'
@@ -88,10 +97,14 @@ echarts.use([PieChart, LegendComponent, TooltipComponent, CanvasRenderer])
 const route = useRoute()
 const fileStore = useFileStore()
 const chartRef = ref<HTMLElement>()
+let chartInstance: ReturnType<typeof echarts.init> | null = null
 
 const currentFile = computed(() => fileStore.currentFile)
 const selectedCategory = ref<Category | ''>('')
 const confirming = ref(false)
+const distribution = ref<{ name: string; value: number }[]>([])
+const chartLoading = ref(false)
+const chartError = ref('')
 
 watch(currentFile, (file) => {
   if (file) {
@@ -99,12 +112,24 @@ watch(currentFile, (file) => {
   }
 })
 
+function handleChartResize() {
+  chartInstance?.resize()
+}
+
 onMounted(() => {
   const sessionId = route.query.session as string
   if (sessionId) {
     loadSession(sessionId)
   }
   initChart()
+  loadDistribution()
+  window.addEventListener('resize', handleChartResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleChartResize)
+  chartInstance?.dispose()
+  chartInstance = null
 })
 
 async function loadSession(sessionId: string) {
@@ -135,8 +160,47 @@ async function confirmCategory() {
 
 function initChart() {
   if (!chartRef.value) return
+  // 只 init 一次，后续用 setOption 更新
+  chartInstance = echarts.init(chartRef.value)
+  updateChart()
+}
 
-  const chart = echarts.init(chartRef.value)
+// 从历史记录实时聚合分类分布（复用真实接口 getHistory）
+async function loadDistribution() {
+  chartLoading.value = true
+  chartError.value = ''
+  try {
+    const history = await getHistory(undefined, 100)
+    const counts: Record<string, number> = {}
+    for (const item of history) {
+      const cat = item.category || '待确认'
+      counts[cat] = (counts[cat] || 0) + 1
+    }
+    distribution.value = Object.entries(counts).map(([name, value]) => ({ name, value }))
+  } catch (e: any) {
+    chartError.value = e?.message || '分类统计加载失败'
+  } finally {
+    chartLoading.value = false
+    updateChart()
+  }
+}
+
+function updateChart() {
+  if (!chartRef.value || !chartInstance) return
+  const colorMap: Record<string, string> = {
+    课件: '#6366f1',
+    作业: '#ec4899',
+    竞赛通知: '#10b981',
+    考试通知: '#ef4444',
+    参考资料: '#f59e0b',
+    大创通知: '#8b5cf6',
+    待确认: '#9ca3af'
+  }
+  const data = distribution.value.map(d => ({
+    ...d,
+    itemStyle: { color: colorMap[d.name] || '#9ca3af' }
+  }))
+
   const option = {
     tooltip: {
       trigger: 'item',
@@ -180,23 +244,17 @@ function initChart() {
             show: true,
             fontSize: 14,
             fontWeight: 'bold',
-        color: '#183229'
+            color: '#183229'
           }
         },
         labelLine: {
-      lineStyle: { color: '#d7e3d9' }
+          lineStyle: { color: '#d7e3d9' }
         },
-        data: [
-          { value: 35, name: '课件', itemStyle: { color: '#6366f1' } },
-          { value: 28, name: '作业', itemStyle: { color: '#ec4899' } },
-          { value: 15, name: '竞赛通知', itemStyle: { color: '#10b981' } },
-          { value: 12, name: '考试通知', itemStyle: { color: '#ef4444' } },
-          { value: 10, name: '参考资料', itemStyle: { color: '#f59e0b' } }
-        ]
+        data
       }
     ]
   }
-  chart.setOption(option)
+  chartInstance.setOption(option)
 }
 </script>
 
@@ -219,5 +277,23 @@ function initChart() {
 .confidence {
   color: #888;
   font-size: 14px;
+}
+
+.chart-wrap {
+  position: relative;
+}
+
+.chart-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  color: #6d8077;
+  font-size: 13px;
+  background: var(--bg-surface);
 }
 </style>

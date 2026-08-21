@@ -26,6 +26,7 @@
     <section class="library">
       <div class="section-head"><h2>已入库资料</h2><span>{{ sources.length }} 份</span></div>
       <div v-if="loading" class="empty" aria-live="polite">正在读取本地知识库…</div>
+      <DataState v-else-if="error" :error="error" @retry="load" />
       <div v-else-if="sources.length" class="source-grid">
         <article v-for="source in sources" :key="source.source_id" class="source-card">
           <div class="file-mark">{{ suffix(source.original_name) }}</div>
@@ -64,12 +65,13 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { deleteKnowledgeSource, getKnowledgeArtifact, getKnowledgeArtifacts, getKnowledgeSources, searchKnowledge, submitProductFeedback, updateKnowledgeArtifact, type KnowledgeArtifact, type KnowledgeSearchResult, type KnowledgeSource } from '../services/api'
+import DataState from '../components/DataState.vue'
 
 const sources=ref<KnowledgeSource[]>([]); const results=ref<KnowledgeSearchResult[]>([]); const artifacts=ref<KnowledgeArtifact[]>([])
-const query=ref(''); const selectedSource=ref(''); const loading=ref(true); const searching=ref(false); const hasSearched=ref(false); const expandedSource=ref(''); const artifactLoading=ref(false)
+const query=ref(''); const selectedSource=ref(''); const loading=ref(true); const error=ref(''); const searching=ref(false); const hasSearched=ref(false); const expandedSource=ref(''); const artifactLoading=ref(false)
 const feedbackState=ref<Record<string,1|-1>>({})
 const selectedArtifact=ref<KnowledgeArtifact|null>(null); const editing=ref(false); const saving=ref(false); const draftTitle=ref(''); const draftContent=ref(''); const structuredContent=ref(false); const deletingSource=ref('')
-const load=async()=>{loading.value=true;try{sources.value=await getKnowledgeSources()}catch(error:any){ElMessage.error(error.message||'知识库加载失败')}finally{loading.value=false}}
+const load=async()=>{loading.value=true;error.value='';try{sources.value=await getKnowledgeSources()}catch(e:any){error.value=e?.message||'知识库加载失败';ElMessage.error(error.value)}finally{loading.value=false}}
 const search=async()=>{if(!query.value)return;searching.value=true;try{results.value=await searchKnowledge(query.value,selectedSource.value||undefined);hasSearched.value=true}catch(error:any){ElMessage.error(error.message||'检索失败')}finally{searching.value=false}}
 const rateResult=async(result:KnowledgeSearchResult,index:number,rating:1|-1)=>{try{await submitProductFeedback('retrieval',`${query.value}:${result.chunk_id}`,rating,{rank:index+1,score:result.score,query_length:query.value.length,query_token_count:query.value.trim().split(/\s+/).filter(Boolean).length,result_type:'chunk'});feedbackState.value[result.chunk_id]=rating;ElMessage.success('匿名相关性反馈已记录')}catch(error:any){ElMessage.error(error.message||'反馈保存失败')}}
 const toggleArtifacts=async(sourceId:string)=>{if(expandedSource.value===sourceId){expandedSource.value='';return}expandedSource.value=sourceId;artifactLoading.value=true;try{artifacts.value=await getKnowledgeArtifacts(sourceId)}catch(error:any){ElMessage.error(error.message||'产物加载失败')}finally{artifactLoading.value=false}}
