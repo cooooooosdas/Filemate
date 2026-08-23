@@ -293,6 +293,43 @@ class TestRealPDFParser:
             if "error" in result:
                 print(f"  ⚠ {f.name}: {result['error']}")
 
+    @pytest.mark.skipif(
+        not DATASETS_DIR.is_dir(), reason="datasets/raw/ 目录不存在"
+    )
+    def test_encrypted_pdf_returns_friendly_error(
+        self, parser: FileParser, tmp_path: Path,
+    ) -> None:
+        """加密 PDF 应返回友好错误提示，而不是静默空文本。"""
+        src = _real_files("pdf", max_count=1)
+        if not src:
+            pytest.skip("没有可用的 .pdf 测试文件")
+        try:
+            from PyPDF2 import PdfReader, PdfWriter
+        except ImportError:
+            try:
+                from pypdf import PdfReader, PdfWriter  # type: ignore[no-redef]
+            except ImportError as exc:
+                pytest.skip(f"PyPDF2/pypdf 未安装，无法构造加密 PDF: {exc}")
+        src_path = src[0]
+        enc_path = tmp_path / f"encrypted_{src_path.name}"
+        try:
+            reader = PdfReader(str(src_path))
+            writer = PdfWriter()
+            for page in reader.pages:
+                writer.add_page(page)
+            writer.encrypt("test_password_123")
+            with enc_path.open("wb") as f:
+                writer.write(f)
+        except Exception as exc:
+            pytest.skip(f"无法构造加密 PDF: {exc}")
+
+        result = parser.parse(enc_path)
+        assert "error" in result, "加密 PDF 应返回 error 字段"
+        assert "已加密" in result["error"], (
+            f"错误信息应提示加密: {result.get('error')}"
+        )
+        assert result["raw_text"] == ""
+
 
 class TestRealPPTParser:
     """用 datasets/raw/ 中的真实 .pptx 文件验证 PPTParser。"""

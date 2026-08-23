@@ -58,6 +58,10 @@ class FileParser:
             logger.exception("解析失败: %s", p)
             return self._error(p, f"解析异常: {exc}")
 
+        # 解析器上报错误（加密 PDF 等）→ 透传 error
+        if (result or {}).get("error"):
+            return self._error(p, result["error"])
+
         # 规范输出
         raw = (result or {}).get("raw_text", "") or ""
         if len(raw) > self._MAX_CHARS:

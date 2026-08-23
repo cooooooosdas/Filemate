@@ -19,6 +19,15 @@ class PDFParser:
     def parse(self, path: str | Path) -> dict:
         p = Path(path)
 
+        # 加密 PDF 检测 → 直接拒绝，提示用户自行解密
+        if self._is_encrypted(p):
+            logger.info("加密 PDF，拒绝解析: %s", p.name)
+            return {
+                "raw_text": "",
+                "metadata": {"suffix": "pdf", "encrypted": True},
+                "error": "PDF 已加密，请先解密后重新上传",
+            }
+
         # ── 第一引擎：pdfplumber ──
         result_plumber: dict | None = None
         total_pages = 0
@@ -76,6 +85,26 @@ class PDFParser:
             "PDF 解析需要 pdfplumber 或 PyPDF2。"
             "运行: pip install pdfplumber PyPDF2"
         )
+
+    # ------------------------------------------------------------------
+    # 加密检测
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_encrypted(p: Path) -> bool:
+        """检测 PDF 是否加密。"""
+        try:
+            from PyPDF2 import PdfReader
+        except ImportError:
+            try:
+                from pypdf import PdfReader  # type: ignore[no-redef]
+            except ImportError:
+                return False  # 无法检测，不阻断
+        try:
+            reader = PdfReader(str(p))
+            return reader.is_encrypted
+        except Exception:
+            return False  # 检测失败，不阻断
 
     # ------------------------------------------------------------------
     # pdfplumber 实现
