@@ -282,6 +282,29 @@ def test_api_errors_use_stable_envelope(
     assert no_undo.json()["error"] == "没有可撤销的已执行操作"
 
 
+def test_unhandled_exception_uses_stable_envelope(
+    server_module: tuple[ModuleType, SQLiteStorage],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """未捕获异常也应返回统一结构，而非 FastAPI 默认 detail。"""
+    module, _ = server_module
+
+    def boom(session_id: str) -> None:
+        raise RuntimeError("db exploded")
+
+    monkeypatch.setattr(module._storage, "get_session", boom)
+
+    with TestClient(module.app, raise_server_exceptions=False) as client:
+        response = client.get("/sessions/any")
+
+    assert response.status_code == 500
+    body = response.json()
+    assert body["success"] is False
+    assert body["data"] is None
+    assert body["error"] == "服务器内部错误"
+    assert "detail" not in body
+
+
 def test_desktop_shutdown_requires_local_token(
     server_module: tuple[ModuleType, SQLiteStorage],
 ) -> None:

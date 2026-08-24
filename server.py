@@ -212,6 +212,21 @@ async def validation_exception_handler(
         content={"success": False, "data": None, "error": message},
     )
 
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(
+    request: Request,
+    exc: Exception,
+) -> JSONResponse:
+    """未捕获异常兜底：保持统一结构，日志留痕但不向客户端泄露内部细节。"""
+    del request
+    logger.exception("未捕获异常: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={"success": False, "data": None, "error": "服务器内部错误"},
+    )
+
+
 # 内存存储 session（简化版，后续可以连数据库）
 _sessions: dict[str, dict] = {}
 
