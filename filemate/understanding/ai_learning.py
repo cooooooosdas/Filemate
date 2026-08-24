@@ -21,6 +21,12 @@ from filemate.llm_client import LLMClient
 logger = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────────
+# 检索阈值
+# ──────────────────────────────────────────────
+
+_MIN_RELEVANCE_SCORE = 0.5  # BM25 得分低于此值的 chunk 视为不相关
+
+# ──────────────────────────────────────────────
 # 轻量 BM25 检索（自包含，不依赖 retrieval.py）
 # ──────────────────────────────────────────────
 
@@ -29,12 +35,13 @@ _HAN = re.compile(r"[一-鿿]+")
 
 
 def _tokenize(text: str) -> list[str]:
-    """中英文混合分词：英文词 + 中文单字/双字。"""
+    """中英文混合分词：英文词 + 中文双字/三字词（过滤单字噪音）。"""
     lowered = text.lower()
     tokens = _LATIN.findall(lowered)
     for run in _HAN.findall(lowered):
-        tokens.append(run)
+        # 跳过单字，保留双字及以上 n-gram
         tokens.extend(run[i : i + 2] for i in range(len(run) - 1))
+        tokens.extend(run[i : i + 3] for i in range(len(run) - 2))
     return tokens
 
 
@@ -78,7 +85,12 @@ def bm25_rank(
         s = _bm25_score(qtokens, dtokens)
         scored.append((s, chunk))
     scored.sort(key=lambda x: x[0], reverse=True)
-    return [c for _, c in scored[:limit]]
+    ranked = []
+    for s, c in scored[:limit]:
+        chunk = dict(c)
+        chunk["score"] = round(s, 6)
+        ranked.append(chunk)
+    return ranked
 
 
 # ──────────────────────────────────────────────
@@ -256,6 +268,12 @@ class LearningRetriever:
         # 5. 语义重排
         final = rerank_chunks(query, merged, self._llm, top_k=limit)
 
+        # 5.5 过滤低分结果（低于阈值的视为不相关）
+        final = [
+            chunk for chunk in final
+            if chunk.get("score", 0) >= _MIN_RELEVANCE_SCORE
+        ]
+
         # 6. 补充来源名称
         for chunk in final:
             src = source_map.get(chunk.get("source_id", ""), {})
@@ -367,15 +385,33 @@ class AILearningChat:
         if mode == "reinforce":
             # 检索知识库
             search_results = self._retriever.search(user_message)
+
+            # 无依据拒答：知识库中无相关资料时，不调用 LLM
+            if not search_results:
+                reply = "知识库中没有找到相关资料，无法回答此问题。建议您先上传相关课程资料到知识库。"
+                assistant_msg_id = uuid.uuid4().hex[:12]
+                self._storage.add_ai_message(
+                    message_id=assistant_msg_id,
+                    session_id=session_id,
+                    role="assistant",
+                    content=reply,
+                    citations=[],
+                    mode=mode,
+                )
+                return {
+                    "role": "assistant",
+                    "content": reply,
+                    "citations": [],
+                    "message_id": assistant_msg_id,
+                    "answerable": False,
+                }
+
             citations = [
                 {
                     "source_id": r.get("source_id", ""),
                     "source_name": r.get("source_name", ""),
                     "excerpt": r.get("excerpt", "")[:200],
-                    "score": round(_bm25_score(
-                        _tokenize(user_message),
-                        _tokenize(str(r.get("content", "")))
-                    ), 3),
+                    "score": round(r.get("score", 0), 3),
                 }
                 for r in search_results
             ]
