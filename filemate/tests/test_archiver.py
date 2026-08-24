@@ -1,4 +1,4 @@
-"""归档器测试。TODO(徐书和)"""
+"""归档器测试。"""
 from __future__ import annotations
 
 from pathlib import Path

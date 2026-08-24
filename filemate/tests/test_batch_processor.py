@@ -1,4 +1,4 @@
-"""批量处理器测试。TODO(徐书和)"""
+"""批量处理器测试。"""
 from __future__ import annotations
 
 import asyncio

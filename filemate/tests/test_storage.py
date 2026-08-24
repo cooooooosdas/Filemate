@@ -1,4 +1,4 @@
-"""SQLiteStorage 独立单元测试。TODO(徐书和)"""
+"""SQLiteStorage 独立单元测试。"""
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
@@ -410,6 +410,70 @@ class TestKnowledgePersistence:
         assert storage.delete_document_context("ctx-delete")
         assert storage.get_document_context("ctx-delete") is None
         assert not storage.delete_document_context("ctx-delete")
+
+
+class TestSourceDeletion:
+    def _seed_source(self, storage: SQLiteStorage, *, name: str) -> str:
+        source_id = storage.save_source(
+            original_name=name,
+            source_path=f"/managed/{name}",
+            raw_text="正文",
+            file_hash=name,
+        )
+        artifact_id = storage.save_artifact(
+            source_id=source_id,
+            artifact_type="summary",
+            content="摘要",
+        )
+        storage.save_document_context(
+            ctx_id=f"ctx-{name}",
+            source_id=source_id,
+            artifact_id=artifact_id,
+            context_text="上下文",
+        )
+        storage.replace_source_chunks(
+            source_id,
+            [{"chunk_index": 0, "content": "片段"}],
+        )
+        return source_id
+
+    def test_preview_nonexistent_returns_none(
+        self,
+        storage: SQLiteStorage,
+    ) -> None:
+        assert storage.preview_source_deletion("missing") is None
+
+    def test_preview_counts_derived_data(self, storage: SQLiteStorage) -> None:
+        source_id = self._seed_source(storage, name="a.txt")
+        preview = storage.preview_source_deletion(source_id)
+        assert preview is not None
+        assert preview["original_name"] == "a.txt"
+        assert preview["affected"]["artifacts"] == 1
+        assert preview["affected"]["chunks"] == 1
+        assert preview["affected"]["contexts"] == 1
+
+    def test_delete_source_cascades_and_spares_others(
+        self,
+        storage: SQLiteStorage,
+    ) -> None:
+        source_a = self._seed_source(storage, name="a.txt")
+        source_b = self._seed_source(storage, name="b.txt")
+
+        result = storage.delete_source(source_a)
+        assert result is not None
+        assert storage.get_source(source_a) is None
+        assert storage.list_artifacts(source_id=source_a) == []
+        assert storage.list_source_chunks(source_a) == []
+        # 其他资料源不受影响
+        assert storage.get_source(source_b) is not None
+        assert len(storage.list_artifacts(source_id=source_b)) == 1
+        assert len(storage.list_source_chunks(source_b)) == 1
+
+    def test_delete_source_nonexistent_returns_none(
+        self,
+        storage: SQLiteStorage,
+    ) -> None:
+        assert storage.delete_source("missing") is None
 
 
 class TestPersistentStudyPlans:

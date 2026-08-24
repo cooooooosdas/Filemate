@@ -642,6 +642,33 @@ export async function getKnowledgeSources(limit = 100): Promise<KnowledgeSource[
   throw new Error(response.error || '获取知识库失败')
 }
 
+export interface SourceDeletionResult {
+  source_id: string
+  affected: {
+    artifacts: number
+    chunks: number
+    contexts: number
+    quiz_attempts: number
+    wrong_questions: number
+    study_plans: number
+  }
+  managed_file: {
+    path: string | null
+    managed: boolean
+    exists: boolean
+    removed: boolean
+  }
+  external_files_untouched: boolean
+}
+
+export async function deleteKnowledgeSource(sourceId: string): Promise<SourceDeletionResult> {
+  const response = await api.delete<any, ApiResponse<SourceDeletionResult>>(
+    `/knowledge/sources/${sourceId}`
+  )
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '删除资料失败')
+}
+
 export async function getKnowledgeArtifacts(sourceId: string): Promise<KnowledgeArtifact[]> {
   const response = await api.get<any, ApiResponse<KnowledgeArtifact[]>>(
     `/knowledge/sources/${sourceId}/artifacts`
