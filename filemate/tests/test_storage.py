@@ -1,13 +1,14 @@
 """SQLiteStorage 独立单元测试。"""
 from __future__ import annotations
 
+import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
-from filemate.execution.storage import SQLiteStorage
+from filemate.execution.storage import _MIGRATIONS, SQLiteStorage
 
 
 @pytest.fixture()
@@ -24,6 +25,71 @@ def storage(tmp_path: Path) -> SQLiteStorage:
 # ──────────────────────────────────────────────
 
 
+def _apply_migrations_upto(db_path: Path, upto: int) -> None:
+    """手动应用 1..upto 迁移，模拟旧版本库。"""
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS schema_migrations (
+               version INTEGER PRIMARY KEY,
+               name TEXT NOT NULL,
+               applied_at TEXT NOT NULL DEFAULT
+                          (strftime('%Y-%m-%dT%H:%M:%S','now')))"""
+    )
+    conn.commit()
+    for version, name, script in _MIGRATIONS:
+        if version > upto:
+            break
+        conn.executescript(
+            f"BEGIN IMMEDIATE;\n{script}\n"
+            f"INSERT INTO schema_migrations (version, name) VALUES ({version}, '{name}');\n"
+            "COMMIT;"
+        )
+    conn.close()
+
+
+class TestMigrationUpgrade:
+    def test_upgrade_from_old_version(self, tmp_path: Path) -> None:
+        """v5 旧库逐级升级到 v8，且 v6~v8 的新表/新字段确实建立。"""
+        db = tmp_path / "old.db"
+        _apply_migrations_upto(db, 5)
+
+        s = SQLiteStorage(db)
+        s.init_schema()
+
+        assert s.get_schema_version() == 8
+        assert [m["version"] for m in s.list_migrations()] == [1, 2, 3, 4, 5, 6, 7, 8]
+
+        conn = s._conn()
+        tables = {
+            r["name"]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        assert "study_plans" in tables       # v6
+        assert "product_feedback" in tables  # v7
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(wrong_questions)")}
+        assert "next_review_at" in cols       # v8 字段
+        s.close()
+
+    def test_failed_migration_rolls_back(self, tmp_path: Path) -> None:
+        """v8 迁移失败时回滚，不留下 version 记录，可重试。"""
+        db = tmp_path / "broken.db"
+        _apply_migrations_upto(db, 7)
+
+        # 破坏 v8 依赖：删掉 wrong_questions 表，让 ALTER 失败
+        conn = sqlite3.connect(db)
+        conn.execute("DROP TABLE wrong_questions")
+        conn.commit()
+        conn.close()
+
+        s = SQLiteStorage(db)
+        with pytest.raises(sqlite3.OperationalError):
+            s.init_schema()
+
+        assert s.get_schema_version() == 7
+        assert [m["version"] for m in s.list_migrations()] == [1, 2, 3, 4, 5, 6, 7]
+        s.close()
+
+
 class TestSchemaInit:
     def test_init_is_idempotent(self, storage: SQLiteStorage) -> None:
         """init_schema 可重复调用不报错。"""
@@ -31,6 +97,14 @@ class TestSchemaInit:
         # 不应抛异常
         sess = storage.get_session("any")
         assert sess is None
+
+    def test_init_schema_leaves_no_dangling_transaction(
+        self,
+        storage: SQLiteStorage,
+    ) -> None:
+        """init_schema 后连接不处于事务中（回归 database is locked）。"""
+        conn = storage._conn()
+        assert conn.in_transaction is False
 
     def test_tables_exist(self, storage: SQLiteStorage) -> None:
         conn = storage._conn()

@@ -239,3 +239,37 @@ def test_undo_refuses_to_overwrite_original_location(
     assert source.read_text(encoding="utf-8") == "new occupant"
     assert Path(applied["dest_path"]).read_text(encoding="utf-8") == "original"
     assert storage.get_active_execution("session-exec") is not None
+
+
+def test_recover_after_interrupted_archive(
+    storage: SQLiteStorage,
+    tmp_path: Path,
+) -> None:
+    """归档完成后进程崩溃（record 停在 pending）→ 再次 execute 恢复并 finalize。"""
+    source = tmp_path / "lesson.pdf"
+    source.write_bytes(b"content")
+    session = create_ready_session(storage, source)
+    archive_dir = tmp_path / "archive"
+    dest = archive_dir / "操作系统" / "课件" / "第一章进程管理.pdf"
+
+    # 模拟崩溃现场：文件已归档，但 execution record 停在 pending
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    source.rename(dest)
+    storage.start_execution(
+        session_id="session-exec",
+        source_path=str(source),
+        dest_path=str(dest),
+        input_snapshot={"source_path": str(source), "source_exists": False},
+    )
+
+    executor = ConfirmationExecutor(
+        storage=storage,
+        archive_dir=archive_dir,
+        calendar=FakeCalendar(),
+    )
+    applied = executor.execute(session)
+
+    assert applied["status"] == "applied"
+    assert dest.exists()
+    assert not source.exists()
+    assert storage.get_session("session-exec")["status"] == "confirmed"
