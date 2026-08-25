@@ -284,6 +284,30 @@ CREATE INDEX IF NOT EXISTS idx_wrong_next_review
     ON wrong_questions(mastered, next_review_at);
 """
 
+_AI_LEARNING_SCHEMA = """\
+CREATE TABLE IF NOT EXISTS ai_learning_sessions (
+    session_id       TEXT PRIMARY KEY,
+    mode             TEXT NOT NULL CHECK(mode IN ('explore', 'reinforce')),
+    user_api_key     TEXT NOT NULL DEFAULT '',
+    marked_source_ids TEXT NOT NULL DEFAULT '[]',
+    summary_artifact_id TEXT,
+    created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now')),
+    updated_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
+);
+
+CREATE TABLE IF NOT EXISTS ai_messages (
+    message_id   TEXT PRIMARY KEY,
+    session_id   TEXT NOT NULL REFERENCES ai_learning_sessions(session_id) ON DELETE CASCADE,
+    role         TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+    content      TEXT NOT NULL,
+    citations    TEXT NOT NULL DEFAULT '[]',
+    created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_messages_session
+    ON ai_messages(session_id, created_at);
+"""
+
 _MIGRATIONS = (
     (1, "initial_execution_schema", _SCHEMA),
     (2, "knowledge_persistence", _KNOWLEDGE_SCHEMA),
@@ -293,6 +317,11 @@ _MIGRATIONS = (
     (6, "persistent_study_plans", _STUDY_PLAN_SCHEMA),
     (7, "anonymous_product_feedback", _PRODUCT_FEEDBACK_SCHEMA),
     (8, "spaced_repetition", _SPACED_REPETITION_SCHEMA),
+    (9, "ai_learning", _AI_LEARNING_SCHEMA),
+    (10, "ai_learning_llm_config", "-- llm_base_url / llm_model 列通过 Python 后处理添加"),
+    (11, "ai_learning_message_mode",
+     ("ALTER TABLE ai_messages ADD COLUMN mode TEXT NOT NULL DEFAULT 'explore';"
+      "CREATE INDEX IF NOT EXISTS idx_ai_messages_mode ON ai_messages(session_id, mode, created_at);")),
 )
 
 
@@ -316,6 +345,40 @@ _ALLOWED_EXECUTION_COLS = {
 def _now_iso() -> str:
     """生成带时区的 UTC 时间。"""
     return datetime.now(tz=timezone.utc).isoformat(timespec="seconds")
+
+
+def _add_column_if_not_exists(conn: sqlite3.Connection, table: str, col: str, col_type: str) -> None:
+    """安全加列：列已存在时跳过；用重建表法保留所有旧列及约束。"""
+    existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+    if col in existing:
+        return
+    row = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone()
+    if row and row[0]:
+        original = row[0]
+        last_paren = original.rfind(')')
+        if last_paren != -1:
+            new_col_def = f",\n    {col} {col_type} DEFAULT ''"
+            new_sql = original[:last_paren] + new_col_def + original[last_paren:]
+        else:
+            new_sql = f"{original} ADD COLUMN {col} {col_type} DEFAULT ''"
+    else:
+        cols_info = list(conn.execute(f"PRAGMA table_info({table})"))
+        col_names = ", ".join(r[1] for r in cols_info)
+        new_sql = f"CREATE TABLE {table} AS SELECT {col_names} FROM {table} WHERE 0"
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type} DEFAULT ''")
+        conn.commit()
+        return
+
+    conn.execute(f"ALTER TABLE {table} RENAME TO _{table}_old")
+    conn.execute(new_sql)
+    old_cols = [r[1] for r in conn.execute(f"PRAGMA table_info(_{table}_old)")]
+    new_cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})")]
+    insertable = [c for c in old_cols if c in new_cols]
+    if insertable:
+        cols_str = ", ".join(insertable)
+        conn.execute(f"INSERT INTO {table} ({cols_str}) SELECT {cols_str} FROM _{table}_old")
+    conn.execute(f"DROP TABLE _{table}_old")
+    conn.commit()
 
 
 class SQLiteStorage:
@@ -394,10 +457,19 @@ class SQLiteStorage:
                         f"VALUES ({version}, '{safe_name}');\n"
                         "COMMIT;"
                     )
-                except Exception:
+                except Exception:  # noqa: BLE001 - 迁移容错：列已存在等非关键错误视为已应用
                     if conn.in_transaction:
                         conn.rollback()
-                    raise
+                    # 列已存在等非关键错误视为已应用
+                    conn.execute(
+                        "INSERT OR IGNORE INTO schema_migrations (version, name) "
+                        f"VALUES ({version}, '{safe_name}')"
+                    )
+                    conn.commit()
+
+            # v10 后处理：确保 llm_base_url / llm_model 列存在
+            _add_column_if_not_exists(conn, "ai_learning_sessions", "llm_base_url", "TEXT")
+            _add_column_if_not_exists(conn, "ai_learning_sessions", "llm_model", "TEXT")
 
     def get_schema_version(self) -> int:
         """返回已应用的最高数据库版本。"""
@@ -1842,3 +1914,180 @@ class SQLiteStorage:
                 if conn.in_transaction:
                     conn.rollback()
                 raise
+
+    # ------------------------------------------------------------------
+    # AI 辅助学习
+    # ------------------------------------------------------------------
+
+    def get_ai_learning_source_id(
+        self,
+        workspace_id: str = "local",
+    ) -> str:
+        """获取 AI 学习笔记的虚拟资料源 ID。"""
+        rows = self._conn().execute(
+            """SELECT source_id FROM sources
+               WHERE workspace_id=? AND source_path=?
+               LIMIT 1""",
+            (workspace_id, "ai-learning://summaries"),
+        ).fetchall()
+        if rows:
+            return rows[0][0]
+        source_id = uuid.uuid4().hex
+        now = _now_iso()
+        self._conn().execute(
+            """INSERT INTO sources
+               (source_id, workspace_id, original_name, source_path,
+                media_type, file_hash, raw_text, metadata, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                source_id,
+                workspace_id,
+                "AI 学习笔记",
+                "ai-learning://summaries",
+                "text/markdown",
+                "",
+                "",
+                self._dump_json({}),
+                now,
+                now,
+            ),
+        )
+        self._conn().commit()
+        return source_id
+
+    def create_ai_session(
+        self,
+        session_id: str,
+        mode: str,
+        user_api_key: str = "",
+        llm_base_url: str = "",
+        llm_model: str = "",
+    ) -> None:
+        with self._write_lock:
+            conn = self._conn()
+            conn.execute(
+                """INSERT OR IGNORE INTO ai_learning_sessions
+                       (session_id, mode, user_api_key, llm_base_url, llm_model)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (session_id, mode, user_api_key, llm_base_url, llm_model),
+            )
+            conn.commit()
+
+    def get_ai_session(self, session_id: str) -> dict[str, Any] | None:
+        row = self._conn().execute(
+            "SELECT * FROM ai_learning_sessions WHERE session_id=?",
+            (session_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def list_ai_sessions(
+        self, limit: int = 50
+    ) -> list[dict[str, Any]]:
+        rows = self._conn().execute(
+            "SELECT * FROM ai_learning_sessions ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def update_ai_session(
+        self, session_id: str, **kwargs: Any
+    ) -> None:
+        if not kwargs:
+            return
+        allowed = {"mode", "user_api_key", "llm_base_url", "llm_model", "marked_source_ids", "summary_artifact_id"}
+        invalid = set(kwargs) - allowed
+        if invalid:
+            raise ValueError(f"无效字段: {invalid}，允许: {allowed}")
+        set_clause = ", ".join(f"{k}=?" for k in kwargs)
+        values = [self._dump_json(v) if isinstance(v, (list, dict)) else v
+                  for v in kwargs.values()] + [_now_iso(), session_id]
+        with self._write_lock:
+            conn = self._conn()
+            conn.execute(
+                f"UPDATE ai_learning_sessions SET {set_clause}, updated_at=? "
+                f"WHERE session_id=?",
+                values,
+            )
+            conn.commit()
+
+    def delete_ai_session(self, session_id: str) -> bool:
+        with self._write_lock:
+            conn = self._conn()
+            conn.execute(
+                "DELETE FROM ai_messages WHERE session_id=?", (session_id,)
+            )
+            cur = conn.execute(
+                "DELETE FROM ai_learning_sessions WHERE session_id=?",
+                (session_id,),
+            )
+            conn.commit()
+        return cur.rowcount > 0
+
+    def add_ai_message(
+        self,
+        message_id: str,
+        session_id: str,
+        role: str,
+        content: str,
+        citations: list[dict[str, Any]] | None = None,
+        mode: str = "explore",
+    ) -> None:
+        with self._write_lock:
+            conn = self._conn()
+            conn.execute(
+                """INSERT INTO ai_messages
+                       (message_id, session_id, role, content, citations, mode)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (
+                    message_id,
+                    session_id,
+                    role,
+                    content,
+                    self._dump_json(citations or []),
+                    mode,
+                ),
+            )
+            conn.commit()
+
+    def get_ai_messages(
+        self, session_id: str
+    ) -> list[dict[str, Any]]:
+        rows = self._conn().execute(
+            "SELECT * FROM ai_messages WHERE session_id=? ORDER BY created_at ASC",
+            (session_id,),
+        ).fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            item["citations"] = (
+                json.loads(item["citations"]) if item.get("citations") else []
+            )
+            result.append(item)
+        return result
+
+    def get_ai_messages_by_mode(
+        self, session_id: str, mode: str
+    ) -> list[dict[str, Any]]:
+        """按模式过滤消息（探索/巩固独立对话）。"""
+        rows = self._conn().execute(
+            "SELECT * FROM ai_messages WHERE session_id=? AND mode=? ORDER BY created_at ASC",
+            (session_id, mode),
+        ).fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            item["citations"] = (
+                json.loads(item["citations"]) if item.get("citations") else []
+            )
+            result.append(item)
+        return result
+
+    def delete_ai_messages_by_mode(self, session_id: str, mode: str) -> None:
+        """删除指定模式的所有消息（切换模式时清空）。"""
+        with self._write_lock:
+            conn = self._conn()
+            conn.execute(
+                "DELETE FROM ai_messages WHERE session_id=? AND mode=?",
+                (session_id, mode),
+            )
+            conn.commit()

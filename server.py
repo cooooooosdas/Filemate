@@ -1569,6 +1569,300 @@ async def ai_chat(request: ChatRequest):
         raise HTTPException(status_code=502, detail="AI 问答失败") from exc
 
 
+# =============== AI 辅助学习 ===============
+
+def _make_llm_for_learning(api_key: str, base_url: str, model: str) -> LLMClient:
+    """根据用户自带的 API 配置构建 LLMClient。"""
+    from filemate.llm_client import LLMClient, LLMConfig
+    # 如果用户没提供 key，回退到系统默认配置
+    if not api_key:
+        env = LLMConfig.from_env()
+        api_key = env.api_key or api_key
+        base_url = env.base_url or base_url
+        model = env.model or model
+    cfg = LLMConfig(
+        provider="auto",
+        api_key=api_key,
+        base_url=base_url,
+        model=model,
+        timeout=120.0,
+        max_retries=2,
+    )
+    return LLMClient(cfg)
+
+
+class AILearningSessionCreate(BaseModel):
+    mode: Literal["explore", "reinforce"] = "explore"
+    user_api_key: str = ""
+    llm_base_url: str = ""
+    llm_model: str = ""
+
+
+class AILearningMessage(BaseModel):
+    content: str
+    file_text: str | None = None
+
+
+class AILearningSummary(BaseModel):
+    format: Literal["markdown"] = "markdown"
+
+
+class AILearningSettingsUpdate(BaseModel):
+    user_api_key: str = ""
+    llm_base_url: str = ""
+    llm_model: str = ""
+
+
+class AILearningModeUpdate(BaseModel):
+    mode: str
+
+
+class AILearningConfigValidate(BaseModel):
+    user_api_key: str = ""
+    llm_base_url: str = ""
+    llm_model: str = ""
+
+
+@app.post("/ai/learning/sessions", response_model=ApiResponse)
+def create_ai_learning_session(req: AILearningSessionCreate):
+    """创建 AI 学习会话（立即返回，不阻塞 LLM）。"""
+    session_id = uuid.uuid4().hex[:12]
+    _storage.create_ai_session(
+        session_id=session_id,
+        mode=req.mode,
+        user_api_key=req.user_api_key,
+        llm_base_url=req.llm_base_url,
+        llm_model=req.llm_model,
+    )
+    return ApiResponse(success=True, data={"session_id": session_id, "mode": req.mode})
+
+
+@app.get("/ai/learning/sessions", response_model=ApiResponse)
+def list_ai_learning_sessions(limit: int = Query(50, ge=1, le=100)):
+    """获取 AI 学习会话列表。"""
+    sessions = _storage.list_ai_sessions(limit=limit)
+    return ApiResponse(success=True, data=sessions)
+
+
+@app.get("/ai/learning/sessions/{session_id}", response_model=ApiResponse)
+def get_ai_learning_session(session_id: str):
+    """获取 AI 学习会话详情（含消息历史）。"""
+    session = _storage.get_ai_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    messages = _storage.get_ai_messages(session_id)
+    session["messages"] = messages
+    return ApiResponse(success=True, data=session)
+
+
+@app.get("/ai/learning/sessions/{session_id}/download")
+def download_ai_learning_session(session_id: str, mode: str = ""):
+    """导出对话为 Markdown 文件（公式保留 LaTeX 源码）。"""
+    import tempfile
+
+    from fastapi.responses import FileResponse
+
+    session = _storage.get_ai_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="会话不存在")
+
+    # 按模式过滤
+    if mode:
+        messages = _storage.get_ai_messages_by_mode(session_id, mode)
+        mode_label = "探索" if mode == "explore" else "巩固"
+        filename = f"{mode_label}学习笔记_{session_id[:8]}.md"
+    else:
+        messages = _storage.get_ai_messages(session_id)
+        filename = f"AI学习对话_{session_id[:8]}.md"
+
+    if not messages:
+        raise HTTPException(status_code=400, detail="对话为空，无法导出")
+
+    mode_title = {"explore": "探索全新领域", "reinforce": "加强已有知识"}.get(mode, "全部对话")
+
+    lines = [
+        f"# {mode_title} - 学习对话记录",
+        "",
+        f"> 会话 ID: {session_id}",
+        f"> 导出时间: {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S')}",
+        f"> 消息数: {len(messages)}",
+        "",
+        "---",
+        "",
+    ]
+
+    for m in messages:
+        role_label = "用户" if m["role"] == "user" else "AI 助手"
+        lines.append(f"### {role_label}")
+        lines.append("")
+        lines.append(m["content"])
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+
+    content = "\n".join(lines)
+
+    # 写入临时文件（delete=False 保留文件供 FileResponse 读取）
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".md", delete=False, encoding="utf-8"
+    ) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+    return FileResponse(
+        path=tmp_path,
+        filename=filename,
+        media_type="text/markdown; charset=utf-8",
+    )
+
+
+@app.post("/ai/learning/sessions/{session_id}/validate-config", response_model=ApiResponse)
+def validate_ai_learning_config(session_id: str, req: AILearningConfigValidate):
+    """验证 LLM 配置是否可用（直接发 HTTP 请求，避免 LLMClient  overhead）。"""
+    import requests as _requests
+
+    api_key = req.user_api_key or os.environ.get("LLM_API_KEY", "")
+    base_url = (req.llm_base_url or os.environ.get("LLM_BASE_URL", "")).rstrip("/")
+    model = req.llm_model or os.environ.get("LLM_MODEL", "")
+
+    if not api_key:
+        raise HTTPException(status_code=400, detail="请填写 API Key")
+
+    # 根据 base_url 判断端点
+    if "step_plan" in base_url:
+        url = f"{base_url}/messages"
+    elif "unisound" in base_url or "anthropic" in base_url:
+        url = f"{base_url}/v1/messages"
+    else:
+        url = f"{base_url}/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": "OK"}],
+        "max_tokens": 1,
+        "temperature": 0,
+    }
+
+    try:
+        resp = _requests.post(url, headers=headers, json=payload, timeout=15)
+        if resp.status_code == 200:
+            return ApiResponse(success=True, data={"message": "API 可用"})
+        if resp.status_code == 401:
+            raise HTTPException(status_code=400, detail="API Key 无效，请检查")
+        raise HTTPException(status_code=400, detail=f"API 返回异常 (HTTP {resp.status_code})")
+    except _requests.Timeout:
+        raise HTTPException(status_code=400, detail="API 连接超时，请检查 URL 和网络")
+    except _requests.ConnectionError:
+        raise HTTPException(status_code=400, detail="无法连接到 API 服务器，请检查 Base URL")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("LLM 配置验证失败: %s", exc)
+        raise HTTPException(status_code=400, detail="API 信息异常，请检查配置") from exc
+
+
+@app.put("/ai/learning/sessions/{session_id}/settings", response_model=ApiResponse)
+def update_ai_learning_settings(session_id: str, req: AILearningSettingsUpdate):
+    """更新 AI 学习会话的 LLM 配置（API Key / Base URL / 模型名）。"""
+    session = _storage.get_ai_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    _storage.update_ai_session(
+        session_id=session_id,
+        user_api_key=req.user_api_key,
+        llm_base_url=req.llm_base_url,
+        llm_model=req.llm_model,
+    )
+    return ApiResponse(success=True, data={"message": "配置已保存"})
+
+
+@app.put("/ai/learning/sessions/{session_id}/mode", response_model=ApiResponse)
+def update_ai_learning_mode(session_id: str, req: AILearningModeUpdate):
+    """更新 AI 学习会话的模式（探索 / 巩固）。"""
+    session = _storage.get_ai_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    if req.mode not in ("explore", "reinforce"):
+        raise HTTPException(status_code=400, detail="模式无效，必须是 explore 或 reinforce")
+    _storage.update_ai_session(session_id=session_id, mode=req.mode)
+    return ApiResponse(success=True, data={"mode": req.mode})
+
+
+@app.post("/ai/learning/sessions/{session_id}/messages", response_model=ApiResponse)
+async def send_ai_learning_message(session_id: str, req: AILearningMessage):
+    """发送消息到 AI 学习会话。"""
+    from filemate.understanding.ai_learning import AILearningChat
+
+    session = _storage.get_ai_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="会话不存在")
+
+    # 持久化用户消息（带上当前模式）
+    current_mode = session.get("mode", "explore")
+    _storage.add_ai_message(
+        message_id=uuid.uuid4().hex[:12],
+        session_id=session_id,
+        role="user",
+        content=req.content,
+        mode=current_mode,
+    )
+
+    # 构建 LLM：优先用 session 里的配置，再回退到环境变量
+    api_key = session.get("user_api_key", "") or os.environ.get("LLM_API_KEY", "")
+    llm_base_url = session.get("llm_base_url", "") or os.environ.get("LLM_BASE_URL", "")
+    llm_model = session.get("llm_model", "") or os.environ.get("LLM_MODEL", "")
+    llm = _make_llm_for_learning(
+        api_key=api_key,
+        base_url=llm_base_url,
+        model=llm_model,
+    )
+    chat = AILearningChat(_storage, llm)
+
+    try:
+        reply = chat.chat(
+            session_id=session_id,
+            user_message=req.content,
+            mode=session["mode"],
+            uploaded_file_text=req.file_text or "",
+        )
+        return ApiResponse(success=True, data=reply)
+    except Exception as exc:
+        logger.exception("AI学习对话失败")
+        raise HTTPException(status_code=502, detail="AI 学习对话失败") from exc
+
+
+@app.post("/ai/learning/sessions/{session_id}/summary", response_model=ApiResponse)
+async def summarize_ai_learning_session(session_id: str):
+    """总结对话并写入知识库。"""
+    from filemate.understanding.ai_learning import AILearningChat
+
+    session = _storage.get_ai_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="会话不存在")
+
+    api_key = session.get("user_api_key", "") or os.environ.get("LLM_API_KEY", "")
+    llm_base_url = session.get("llm_base_url", "") or os.environ.get("LLM_BASE_URL", "")
+    llm_model = session.get("llm_model", "") or os.environ.get("LLM_MODEL", "")
+    llm = _make_llm_for_learning(
+        api_key=api_key,
+        base_url=llm_base_url,
+        model=llm_model,
+    )
+    chat = AILearningChat(_storage, llm)
+
+    try:
+        result = chat.generate_summary(session_id)
+        return ApiResponse(success=True, data=result)
+    except ValueError:
+        raise
+    except Exception as exc:
+        logger.exception("生成总结失败")
+        raise HTTPException(status_code=502, detail="生成总结失败") from exc
+
+
 # =============== Main ===============
 
 def run_server() -> None:

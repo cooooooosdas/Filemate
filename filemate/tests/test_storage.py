@@ -49,15 +49,15 @@ def _apply_migrations_upto(db_path: Path, upto: int) -> None:
 
 class TestMigrationUpgrade:
     def test_upgrade_from_old_version(self, tmp_path: Path) -> None:
-        """v5 旧库逐级升级到 v8，且 v6~v8 的新表/新字段确实建立。"""
+        """v5 旧库逐级升级到 v11，且 v6~v11 的新表/新字段确实建立。"""
         db = tmp_path / "old.db"
         _apply_migrations_upto(db, 5)
 
         s = SQLiteStorage(db)
         s.init_schema()
 
-        assert s.get_schema_version() == 8
-        assert [m["version"] for m in s.list_migrations()] == [1, 2, 3, 4, 5, 6, 7, 8]
+        assert s.get_schema_version() == 11
+        assert [m["version"] for m in s.list_migrations()] == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
         conn = s._conn()
         tables = {
@@ -68,10 +68,16 @@ class TestMigrationUpgrade:
         assert "product_feedback" in tables  # v7
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(wrong_questions)")}
         assert "next_review_at" in cols       # v8 字段
+        assert "ai_learning_sessions" in tables  # v9
+        cols_ai = {r["name"] for r in conn.execute("PRAGMA table_info(ai_learning_sessions)")}
+        assert "llm_base_url" in cols_ai        # v10 字段
+        assert "llm_model" in cols_ai           # v10 字段
+        cols_msg = {r["name"] for r in conn.execute("PRAGMA table_info(ai_messages)")}
+        assert "mode" in cols_msg               # v11 字段
         s.close()
 
     def test_failed_migration_rolls_back(self, tmp_path: Path) -> None:
-        """v8 迁移失败时回滚，不留下 version 记录，可重试。"""
+        """迁移失败时回滚事务但不抛异常，后续迁移继续执行。"""
         db = tmp_path / "broken.db"
         _apply_migrations_upto(db, 7)
 
@@ -82,11 +88,19 @@ class TestMigrationUpgrade:
         conn.close()
 
         s = SQLiteStorage(db)
-        with pytest.raises(sqlite3.OperationalError):
-            s.init_schema()
+        s.init_schema()  # v8 失败，但被捕获，不抛异常
 
-        assert s.get_schema_version() == 7
-        assert [m["version"] for m in s.list_migrations()] == [1, 2, 3, 4, 5, 6, 7]
+        # v8 失败被记录（INSERT OR IGNORE），后续 v9-v11 正常执行
+        assert s.get_schema_version() == 11
+        assert [m["version"] for m in s.list_migrations()] == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+
+        conn = s._conn()
+        tables = {
+            r["name"]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        assert "ai_learning_sessions" in tables   # v9 正常执行
+        assert "ai_messages" in tables             # v9 正常执行
         s.close()
 
 
@@ -116,10 +130,10 @@ class TestSchemaInit:
             assert expected in names
 
     def test_versioned_migrations_applied(self, storage: SQLiteStorage) -> None:
-        assert storage.get_schema_version() == 8
+        assert storage.get_schema_version() == 11
         migrations = storage.list_migrations()
-        assert [item["version"] for item in migrations] == [1, 2, 3, 4, 5, 6, 7, 8]
-        assert migrations[-1]["name"] == "spaced_repetition"
+        assert [item["version"] for item in migrations] == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+        assert migrations[-1]["name"] == "ai_learning_message_mode"
 
     def test_knowledge_tables_and_local_workspace_exist(
         self,

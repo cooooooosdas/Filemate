@@ -832,3 +832,136 @@ export async function updateStudyPlanDay(
   if (response.success && response.data) return response.data
   throw new Error(response.error || '学习进度保存失败')
 }
+
+// =============== AI 辅助学习 API ===============
+
+import type {
+  AISession,
+  AISessionCreateResponse,
+  AICitation,
+  AISummaryResult
+} from '../types'
+
+export interface AILearningSessionCreateParams {
+  mode: 'explore' | 'reinforce'
+  userApiKey: string
+  llmBaseUrl: string
+  llmModel: string
+}
+
+export async function createAILearningSession(
+  params: AILearningSessionCreateParams
+): Promise<AISessionCreateResponse> {
+  const response = await api.post<any, ApiResponse<AISessionCreateResponse>>(
+    '/ai/learning/sessions',
+    {
+      mode: params.mode,
+      user_api_key: params.userApiKey,
+      llm_base_url: params.llmBaseUrl,
+      llm_model: params.llmModel,
+    }
+  )
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '创建学习会话失败')
+}
+
+export interface AILearningSettingsParams {
+  userApiKey: string
+  llmBaseUrl: string
+  llmModel: string
+}
+
+export async function validateAILearningConfig(
+  sessionId: string,
+  params: AILearningSettingsParams
+): Promise<{ message: string }> {
+  const response = await api.post<any, ApiResponse<{ message: string }>>(
+    `/ai/learning/sessions/${sessionId}/validate-config`,
+    {
+      user_api_key: params.userApiKey,
+      llm_base_url: params.llmBaseUrl,
+      llm_model: params.llmModel,
+    }
+  )
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || 'API 验证失败')
+}
+
+export async function updateAILearningSettings(
+  sessionId: string,
+  params: AILearningSettingsParams
+): Promise<{ message: string }> {
+  const response = await api.put<any, ApiResponse<{ message: string }>>(
+    `/ai/learning/sessions/${sessionId}/settings`,
+    {
+      user_api_key: params.userApiKey,
+      llm_base_url: params.llmBaseUrl,
+      llm_model: params.llmModel,
+    }
+  )
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '保存配置失败')
+}
+
+export async function updateAILearningMode(
+  sessionId: string,
+  mode: 'explore' | 'reinforce'
+): Promise<{ mode: string }> {
+  const response = await api.put<any, ApiResponse<{ mode: string }>>(
+    `/ai/learning/sessions/${sessionId}/mode`,
+    { mode }
+  )
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '切换模式失败')
+}
+
+export async function getAILearningSessions(limit = 50): Promise<AISession[]> {
+  const response = await api.get<any, ApiResponse<AISession[]>>(
+    `/ai/learning/sessions?limit=${limit}`
+  )
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '获取学习会话列表失败')
+}
+
+export async function getAILearningSession(
+  sessionId: string
+): Promise<AISession> {
+  const response = await api.get<any, ApiResponse<AISession>>(
+    `/ai/learning/sessions/${sessionId}`
+  )
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '获取学习会话失败')
+}
+
+export interface AILearningMessageParams {
+  content: string
+  fileText?: string
+}
+
+export async function sendAILearningMessage(
+  sessionId: string,
+  params: AILearningMessageParams
+): Promise<{ role: string; content: string; citations: AICitation[]; message_id: string }> {
+  const response = await api.post<any, ApiResponse<{
+    role: string
+    content: string
+    citations: AICitation[]
+    message_id: string
+  }>>(
+    `/ai/learning/sessions/${sessionId}/messages`,
+    { content: params.content, file_text: params.fileText || '' }
+  )
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '发送消息失败')
+}
+
+export async function summarizeAILearningSession(
+  sessionId: string
+): Promise<AISummaryResult> {
+  const response = await api.post<any, ApiResponse<AISummaryResult>>(
+    `/ai/learning/sessions/${sessionId}/summary`,
+    {}
+  )
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '生成总结失败')
+}
