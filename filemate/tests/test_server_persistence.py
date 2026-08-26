@@ -208,7 +208,7 @@ def test_cors_allows_local_frontend_but_not_arbitrary_origins(
     assert "access-control-allow-origin" not in rejected.headers
 
     health = client.get("/api/health")
-    assert health.json()["data"]["version"] == "1.2.0"
+    assert health.json()["data"]["version"] == "1.3.0-alpha"
 
 
 @pytest.mark.asyncio

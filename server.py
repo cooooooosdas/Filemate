@@ -160,7 +160,7 @@ class ProductFeedbackRequest(BaseModel):
 
 # =============== App ===============
 
-app = FastAPI(title="FileMate API", version="1.2.0")
+app = FastAPI(title="FileMate API", version="1.3.0-alpha")
 
 app.add_middleware(
     CORSMiddleware,
@@ -338,13 +338,13 @@ def _confirmation_executor() -> ConfirmationExecutor:
 
 @app.api_route("/", methods=["GET", "POST", "PUT", "DELETE"])
 def root():
-    return {"message": "FileMate API", "version": "1.2.0"}
+    return {"message": "FileMate API", "version": "1.3.0-alpha"}
 
 
 @app.get("/api/health", response_model=ApiResponse)
 def health_check():
     """供 Web 与桌面壳检测本地服务状态。"""
-    return ApiResponse(success=True, data={"version": "1.2.0"})
+    return ApiResponse(success=True, data={"version": "1.3.0-alpha"})
 
 
 @app.post("/internal/shutdown", response_model=ApiResponse, include_in_schema=False)
