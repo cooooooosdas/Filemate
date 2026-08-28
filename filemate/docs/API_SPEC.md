@@ -382,12 +382,14 @@ HTTP 错误同样保持该结构：参数错误使用 `400/422`，资源不存�
 | `POST` | `/ai/notes` | 生成结构化笔记 | `Source + notes Artifact + Context` |
 | `POST` | `/ai/study-plan` | 生成个性化复习计划 | `Source + study_plan Artifact + Context` |
 | `POST` | `/ai/chat` | 基于资料连续问答 | 追加 `document_contexts.chat_history` |
+| `GET` | `/ai/contexts` | 列出最近问答会话摘要 | `limit` 范围 1–200，不返回正文和完整历史 |
+| `GET` | `/ai/contexts/{ctx_id}` | 恢复单个问答会话 | 返回完整上下文、历史消息与结构化引用 |
 | `GET` | `/knowledge/sources` | 列出本地资料源 | 不返回大段 `raw_text`，返回 `text_length` |
 | `GET` | `/knowledge/sources/{source_id}` | 获取资料源详情 | 包含解析正文与元数据 |
 | `GET` | `/knowledge/sources/{source_id}/artifacts` | 查询资料派生产物 | 支持 `artifact_type` 与 `limit` |
 | `DELETE` | `/knowledge/sources/{source_id}` | 预览并删除资料及其派生产物 | 级联删除派生数据；仅清理托管上传副本 |
 
-AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。服务重启后，这三个标识仍然有效。
+AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。服务重启后，这三个标识仍然有效。`POST /ai/chat` 将 assistant 消息的 `citations` 与正文一并持久化，恢复历史会话后仍可核验引用来源。
 
 ---
 
@@ -475,3 +477,4 @@ AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。�
 | 2026-08-09 | v1.3 | 校准当前 v8 数据模型、归档冲突策略与线程安全说明 | Codex |
 | 2026-08-16 | v1.4 | 补齐现役 HTTP 路由表，修正命名阈值 20→15 | 杨乐 |
 | 2026-08-26 | v1.5 | 增加 SQLite v9 面试题库、CRUD 与选题来源合同 | YL / Codex |
+| 2026-08-28 | v1.6 | 增加 AI 会话列表与恢复合同、结构化引用持久化和列表限流 | AcMaster-MAX / Codex |

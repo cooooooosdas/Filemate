@@ -544,6 +544,22 @@ class TestKnowledgePersistence:
         assert len(sessions) == 1
         assert sessions[0]["ctx_id"] == "ctx-a"
 
+    def test_list_document_contexts_clamps_invalid_limit(
+        self, storage: SQLiteStorage
+    ) -> None:
+        for index in range(3):
+            storage.save_document_context(
+                ctx_id=f"ctx-limit-{index}",
+                context_text="很长的上下文" * 1000,
+                chat_history=[{"role": "user", "content": f"问题 {index}"}],
+            )
+
+        sessions = storage.list_document_contexts(limit=-1)
+
+        assert len(sessions) == 1
+        assert "context_text" not in sessions[0]
+        assert "chat_history" not in sessions[0]
+
 
 class TestSourceDeletion:
     def _seed_source(self, storage: SQLiteStorage, *, name: str) -> str:

@@ -402,10 +402,26 @@ export async function extractNotes(
 }
 
 // AI问答
+export interface AICitation {
+  id: number
+  source_id?: string
+  source_name: string
+  page_number?: number
+  chunk_index?: number
+  excerpt?: string
+  score?: number
+}
+
+export interface AIChatMessage {
+  role: string
+  content: string
+  citations?: AICitation[]
+}
+
 export interface AIChatRequest {
   ctx_id: string
   question: string
-  chat_history?: Array<{ role: string; content: string }>
+  chat_history?: AIChatMessage[]
   mode?: 'answer' | 'socratic' | 'feynman'
 }
 
@@ -414,20 +430,14 @@ export interface AIChatResponse {
   question: string
   answer: string
   mode: 'answer' | 'socratic' | 'feynman'
-  citations: Array<{
-    id: number
-    source_name: string
-    page_number?: number
-    chunk_index: number
-    excerpt: string
-  }>
-  chat_history: Array<{ role: string; content: string }>
+  citations: AICitation[]
+  chat_history: AIChatMessage[]
 }
 
 export async function askAI(
   ctx_id: string,
   question: string,
-  chat_history?: Array<{ role: string; content: string }>,
+  chat_history?: AIChatMessage[],
   mode: 'answer' | 'socratic' | 'feynman' = 'answer'
 ): Promise<AIChatResponse> {
   const response = await api.post<any, ApiResponse<AIChatResponse>>(
@@ -457,6 +467,17 @@ export interface AISessionSummary {
   metadata?: Record<string, any>
 }
 
+export interface AIContextDetail {
+  ctx_id: string
+  source_id?: string
+  artifact_id?: string
+  context_text: string
+  chat_history: AIChatMessage[]
+  metadata?: Record<string, unknown>
+  created_at?: string
+  updated_at?: string
+}
+
 export async function listAIContexts(sourceId?: string, limit = 50): Promise<AISessionSummary[]> {
   const params = new URLSearchParams()
   if (sourceId) params.set('source_id', sourceId)
@@ -468,8 +489,8 @@ export async function listAIContexts(sourceId?: string, limit = 50): Promise<AIS
   throw new Error(response.error || '获取会话列表失败')
 }
 
-export async function getAIContext(ctxId: string): Promise<any> {
-  const response = await api.get<any, ApiResponse<any>>(`/ai/contexts/${ctxId}`)
+export async function getAIContext(ctxId: string): Promise<AIContextDetail> {
+  const response = await api.get<any, ApiResponse<AIContextDetail>>(`/ai/contexts/${ctxId}`)
   if (response.success && response.data) return response.data
   throw new Error(response.error || '获取会话详情失败')
 }

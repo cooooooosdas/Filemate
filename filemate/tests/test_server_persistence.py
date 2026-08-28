@@ -529,8 +529,46 @@ def test_chat_uses_and_updates_persisted_history(
     persisted = storage.get_document_context("ctx-chat")["chat_history"]
     assert persisted[-2:] == [
         {"role": "user", "content": "为什么是三次？"},
-        {"role": "assistant", "content": "它属于计算机网络课程。"},
+        {
+            "role": "assistant",
+            "content": "它属于计算机网络课程。",
+            "citations": [],
+        },
     ]
+
+
+def test_ai_context_routes_validate_limit_and_restore_history(
+    server_module: tuple[ModuleType, SQLiteStorage],
+) -> None:
+    module, storage = server_module
+    storage.save_document_context(
+        ctx_id="ctx-history",
+        context_text="操作系统中的进程与线程。",
+        chat_history=[
+            {"role": "user", "content": "线程共享什么？"},
+            {
+                "role": "assistant",
+                "content": "共享进程地址空间。",
+                "citations": [{"id": 1, "source_name": "操作系统.pdf"}],
+            },
+        ],
+    )
+
+    with TestClient(module.app) as client:
+        listed = client.get("/ai/contexts", params={"limit": 1})
+        too_small = client.get("/ai/contexts", params={"limit": 0})
+        too_large = client.get("/ai/contexts", params={"limit": 201})
+        detail = client.get("/ai/contexts/ctx-history")
+        missing = client.get("/ai/contexts/missing")
+
+    assert listed.status_code == 200
+    assert listed.json()["data"][0]["message_count"] == 2
+    assert listed.json()["data"][0]["title"] == "线程共享什么？"
+    assert too_small.status_code == 422
+    assert too_large.status_code == 422
+    assert detail.status_code == 200
+    assert detail.json()["data"]["chat_history"][-1]["citations"][0]["id"] == 1
+    assert missing.status_code == 404
 
 
 def test_retrieval_search_and_wrongbook_flow(

@@ -1,10 +1,6 @@
 """资料切分与检索测试。"""
 
-from filemate.understanding.retrieval import _MIN_RELEVANCE_SCORE, rank_chunks, split_document
-
-
-def test_min_relevance_score_threshold() -> None:
-    assert _MIN_RELEVANCE_SCORE == 0.5
+from filemate.understanding.retrieval import rank_chunks, split_document
 
 
 def test_split_document_preserves_pdf_page() -> None:
@@ -78,20 +74,10 @@ def test_rank_chunks_chinese_tokenization() -> None:
 
 
 def test_rank_chunks_keeps_single_character_query_recall() -> None:
-    """单字查询在 BM25 下得分极低（高频字 IDF 小），低于 0.5 阈值被过滤属预期行为。
-
-    阈值校准依据（_MIN_RELEVANCE_SCORE = 0.5）:
-    - 对 retrieval_cases.json 的 41 条评测用例，真实意图查询平均长度 5.6 字，
-      最低得分约为 0.86（2 字词"队列"），均远高于 0.5；
-    - 单字如"栈"在测试文档中作为常用字出现，BM25 得分 <0.1，
-      这类结果对问答无实质帮助，过滤后可减少检索噪音；
-    - 0.5 阈值在真实评测集上不影响任何 Recall@1 / Recall@3（均 >95%），
-      故不降低、也不上调阈值。
-    """
-    # 单字"栈"作为查询：在含"栈"的文档中，BM25 得分低于 0.5，被过滤——符合预期
     chunks = split_document("栈是后进先出的数据结构，队列是先进先出的数据结构。", chunk_size=200)
     results = rank_chunks("栈", chunks)
-    assert results == []  # 单字召回被阈值过滤，是 BM25 的合理行为
+    assert results
+    assert "栈" in results[0]["content"]
 
 
 def test_rank_chunks_two_char_query_passes_threshold() -> None:
@@ -123,22 +109,12 @@ def test_rank_chunks_reverse_order() -> None:
     assert scores == sorted(scores, reverse=True)
 
 
-def test_rank_chunks_filters_below_threshold() -> None:
-    """得分低于 _MIN_RELEVANCE_SCORE 的 chunk 不返回。"""
-    # 两个完全不相关的内容，BM25 打分会很低
+def test_rank_chunks_filters_non_matching_content() -> None:
     chunks = [
         {"content": "苹果是一种水果", "chunk_index": 0},
         {"content": "香蕉是一种水果", "chunk_index": 1},
     ]
     results = rank_chunks("TCP 三次握手协议", chunks)
     assert results == []
-
-
-def test_rank_chunks_threshold_constant_importable() -> None:
-    """_MIN_RELEVANCE_SCORE 可从模块导入且为正数。"""
-    from filemate.understanding import retrieval
-
-    assert retrieval._MIN_RELEVANCE_SCORE > 0
-    assert isinstance(retrieval._MIN_RELEVANCE_SCORE, float)
 
 

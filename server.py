@@ -1107,7 +1107,9 @@ class StudyPlanDayRequest(BaseModel):
 
 def _answer_score(user_answer: str, reference_answer: str) -> float:
     """计算适用于客观题与短答案的稳定相似度。"""
-    normalize = lambda value: re.sub(r"[^\w\u4e00-\u9fff]", "", value.lower())
+    def normalize(value: str) -> str:
+        return re.sub(r"[^\w\u4e00-\u9fff]", "", value.lower())
+
     user = normalize(user_answer)
     reference = normalize(reference_answer)
     if not user or not reference:
@@ -1649,16 +1651,20 @@ async def ai_chat(request: ChatRequest):
             ctx_id,
             [
                 {"role": "user", "content": question},
-                {"role": "assistant", "content": answer},
+                {
+                    "role": "assistant",
+                    "content": answer,
+                    "citations": citations,
+                },
             ],
         )
 
         result = {
             "ctx_id": ctx_id,
-                "question": question,
-                "answer": answer,
-                "mode": request.mode,
-                "citations": citations,
+            "question": question,
+            "answer": answer,
+            "mode": request.mode,
+            "citations": citations,
             "chat_history": chat_history[-10:],
         }
 
@@ -1669,7 +1675,10 @@ async def ai_chat(request: ChatRequest):
 
 
 @app.get("/ai/contexts", response_model=ApiResponse)
-async def list_ai_contexts(source_id: str | None = None, limit: int = 50):
+async def list_ai_contexts(
+    source_id: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+):
     """列出 AI 问答会话列表（最近更新的排在前面）。"""
     try:
         sessions = _storage.list_document_contexts(source_id=source_id, limit=limit)

@@ -272,7 +272,16 @@
               <span class="message-role">
                 <el-icon><User v-if="msg.role === 'user'" /><Service v-else /></el-icon>
               </span>
-              <span class="message-content">{{ msg.content }}</span>
+              <div class="message-content">
+                {{ msg.content }}
+                <div v-if="msg.citations?.length" class="message-citations">
+                  <div v-for="citation in msg.citations" :key="citation.id" class="citation-item">
+                    <b>[引用{{ citation.id }}] {{ citation.source_name }}</b>
+                    <span v-if="citation.page_number"> · 第 {{ citation.page_number }} 页</span>
+                    <p v-if="citation.excerpt">{{ citation.excerpt }}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div class="chat-input-area">
@@ -347,7 +356,8 @@ import {
   getAIContext,
   type QuizAttemptResult,
   type KnowledgeCard,
-  type AISessionSummary
+  type AISessionSummary,
+  type AIChatMessage
 } from '../services/api'
 
 // 标签页配置
@@ -383,7 +393,7 @@ const isProcessing = ref(false)
 const result = ref<any>(null)
 const error = ref('')
 const chatQuestion = ref('')
-const chatHistory = ref<Array<{ role: string; content: string }>>([])
+const chatHistory = ref<AIChatMessage[]>([])
 const chatMode = ref<'answer' | 'socratic' | 'feynman'>('answer')
 const tutorModes = [
   { id: 'answer' as const, label: '证据问答', description: '结论与引用' },
@@ -547,6 +557,7 @@ const processFile = async () => {
 // 切换到问答模式
 const switchToChatMode = (ctxId: string) => {
   activeTab.value = 'chat'
+  currentCtxId.value = ctxId
   chatHistory.value = []
   if (result.value) {
     result.value = { ctx_id: ctxId }
@@ -571,12 +582,12 @@ const sendChatMessage = async () => {
       chatHistory.value.slice(0, -1),
       chatMode.value
     )
-    const sources = response.citations?.length
-      ? '\n\n引用：\n' + response.citations.map(c =>
-        `[引用${c.id}] ${c.source_name}${c.page_number ? ` · 第 ${c.page_number} 页` : ''}\n${c.excerpt}`
-      ).join('\n')
-      : ''
-    chatHistory.value.push({ role: 'assistant', content: response.answer + sources })
+    chatHistory.value.push({
+      role: 'assistant',
+      content: response.answer,
+      citations: response.citations
+    })
+    await loadSessions()
   } catch (e: any) {
     ElMessage.error(e.message || '问答失败')
   } finally {
@@ -1095,6 +1106,20 @@ onMounted(() => {
   color: var(--text-secondary);
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+.message-citations {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.citation-item p {
+  margin: 4px 0 0;
 }
 
 .chat-message.user .message-content {

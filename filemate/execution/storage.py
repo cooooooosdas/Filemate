@@ -1048,40 +1048,45 @@ class SQLiteStorage:
         limit: int = 50,
     ) -> list[dict[str, Any]]:
         """列出文档问答上下文会话摘要。"""
+        bounded_limit = min(max(int(limit), 1), 200)
+        summary_fields = """ctx_id, source_id, artifact_id,
+                          substr(context_text, 1, 60) AS context_preview,
+                          json_extract(chat_history, '$[0].content') AS first_message,
+                          COALESCE(json_array_length(chat_history), 0) AS message_count,
+                          metadata, created_at, updated_at"""
         if source_id:
             rows = self._conn().execute(
-                """SELECT ctx_id, source_id, artifact_id, context_text,
-                          chat_history, metadata, created_at, updated_at
-                   FROM document_contexts
-                   WHERE source_id=?
-                   ORDER BY updated_at DESC
-                   LIMIT ?""",
-                (source_id, limit),
+                f"""SELECT {summary_fields}
+                    FROM document_contexts
+                    WHERE source_id=?
+                    ORDER BY updated_at DESC
+                    LIMIT ?""",
+                (source_id, bounded_limit),
             ).fetchall()
         else:
             rows = self._conn().execute(
-                """SELECT ctx_id, source_id, artifact_id, context_text,
-                          chat_history, metadata, created_at, updated_at
-                   FROM document_contexts
-                   ORDER BY updated_at DESC
-                   LIMIT ?""",
-                (limit,),
+                f"""SELECT {summary_fields}
+                    FROM document_contexts
+                    ORDER BY updated_at DESC
+                    LIMIT ?""",
+                (bounded_limit,),
             ).fetchall()
         results = []
         for row in rows:
-            ctx = self._decode_row(row, ("chat_history", "metadata"))
-            history = ctx.get("chat_history") or []
-            first_user = next(
-                (m["content"] for m in history if m.get("role") == "user"),
-                "",
+            ctx = self._decode_row(row, ("metadata",))
+            first_message = ctx.get("first_message")
+            title = (
+                first_message[:60]
+                if isinstance(first_message, str) and first_message.strip()
+                else ctx.get("context_preview", "")
             )
             results.append(
                 {
                     "ctx_id": ctx["ctx_id"],
                     "source_id": ctx.get("source_id"),
                     "artifact_id": ctx.get("artifact_id"),
-                    "title": first_user[:60] if first_user else ctx.get("context_text", "")[:60],
-                    "message_count": len(history),
+                    "title": title,
+                    "message_count": int(ctx.get("message_count") or 0),
                     "created_at": ctx.get("created_at"),
                     "updated_at": ctx.get("updated_at"),
                     "metadata": ctx.get("metadata"),
