@@ -1668,6 +1668,26 @@ async def ai_chat(request: ChatRequest):
         raise HTTPException(status_code=502, detail="AI 问答失败") from exc
 
 
+@app.get("/ai/contexts", response_model=ApiResponse)
+async def list_ai_contexts(source_id: str | None = None, limit: int = 50):
+    """列出 AI 问答会话列表（最近更新的排在前面）。"""
+    try:
+        sessions = _storage.list_document_contexts(source_id=source_id, limit=limit)
+        return ApiResponse(success=True, data=sessions)
+    except Exception as exc:
+        logger.exception("列出 AI 会话失败")
+        raise HTTPException(status_code=502, detail="列出 AI 会话失败") from exc
+
+
+@app.get("/ai/contexts/{ctx_id}", response_model=ApiResponse)
+async def get_ai_context(ctx_id: str):
+    """获取单个 AI 问答会话的完整内容。"""
+    ctx = _storage.get_document_context(ctx_id)
+    if ctx is None:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    return ApiResponse(success=True, data=ctx)
+
+
 # =============== Main ===============
 
 def run_server() -> None:

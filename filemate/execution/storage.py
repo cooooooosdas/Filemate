@@ -1041,6 +1041,54 @@ class SQLiteStorage:
             self._conn().commit()
             return cur.rowcount > 0
 
+    def list_document_contexts(
+        self,
+        *,
+        source_id: str | None = None,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """列出文档问答上下文会话摘要。"""
+        if source_id:
+            rows = self._conn().execute(
+                """SELECT ctx_id, source_id, artifact_id, context_text,
+                          chat_history, metadata, created_at, updated_at
+                   FROM document_contexts
+                   WHERE source_id=?
+                   ORDER BY updated_at DESC
+                   LIMIT ?""",
+                (source_id, limit),
+            ).fetchall()
+        else:
+            rows = self._conn().execute(
+                """SELECT ctx_id, source_id, artifact_id, context_text,
+                          chat_history, metadata, created_at, updated_at
+                   FROM document_contexts
+                   ORDER BY updated_at DESC
+                   LIMIT ?""",
+                (limit,),
+            ).fetchall()
+        results = []
+        for row in rows:
+            ctx = self._decode_row(row, ("chat_history", "metadata"))
+            history = ctx.get("chat_history") or []
+            first_user = next(
+                (m["content"] for m in history if m.get("role") == "user"),
+                "",
+            )
+            results.append(
+                {
+                    "ctx_id": ctx["ctx_id"],
+                    "source_id": ctx.get("source_id"),
+                    "artifact_id": ctx.get("artifact_id"),
+                    "title": first_user[:60] if first_user else ctx.get("context_text", "")[:60],
+                    "message_count": len(history),
+                    "created_at": ctx.get("created_at"),
+                    "updated_at": ctx.get("updated_at"),
+                    "metadata": ctx.get("metadata"),
+                }
+            )
+        return results
+
     def replace_source_chunks(
         self,
         source_id: str,

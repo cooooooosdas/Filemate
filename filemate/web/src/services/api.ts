@@ -446,6 +446,34 @@ export async function askAI(
   throw new Error(response.error || 'AI问答失败')
 }
 
+export interface AISessionSummary {
+  ctx_id: string
+  source_id?: string
+  artifact_id?: string
+  title: string
+  message_count: number
+  created_at?: string
+  updated_at?: string
+  metadata?: Record<string, any>
+}
+
+export async function listAIContexts(sourceId?: string, limit = 50): Promise<AISessionSummary[]> {
+  const params = new URLSearchParams()
+  if (sourceId) params.set('source_id', sourceId)
+  params.set('limit', String(limit))
+  const response = await api.get<any, ApiResponse<AISessionSummary[]>>(
+    `/ai/contexts?${params.toString()}`
+  )
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '获取会话列表失败')
+}
+
+export async function getAIContext(ctxId: string): Promise<any> {
+  const response = await api.get<any, ApiResponse<any>>(`/ai/contexts/${ctxId}`)
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '获取会话详情失败')
+}
+
 export interface QuizAttemptResult {
   attempt_id: string
   is_correct: boolean

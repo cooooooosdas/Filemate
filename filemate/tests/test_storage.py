@@ -508,6 +508,42 @@ class TestKnowledgePersistence:
         assert storage.get_document_context("ctx-delete") is None
         assert not storage.delete_document_context("ctx-delete")
 
+    def test_list_document_contexts(self, storage: SQLiteStorage) -> None:
+        for i in range(3):
+            storage.save_document_context(
+                ctx_id=f"ctx-list-{i}",
+                context_text=f"上下文 {i}",
+                chat_history=[{"role": "user", "content": f"问题 {i}"}],
+            )
+        sessions = storage.list_document_contexts(limit=10)
+        assert len(sessions) == 3
+        titles = [s["title"] for s in sessions]
+        assert "问题 2" in titles
+        assert all(s["message_count"] == 1 for s in sessions)
+
+    def test_list_document_contexts_filters_by_source(
+        self, storage: SQLiteStorage
+    ) -> None:
+        source_a = storage.save_source(
+            original_name="src-a.txt",
+            source_path="/managed/src-a.txt",
+            raw_text="A",
+        )
+        source_b = storage.save_source(
+            original_name="src-b.txt",
+            source_path="/managed/src-b.txt",
+            raw_text="B",
+        )
+        storage.save_document_context(
+            ctx_id="ctx-a", source_id=source_a, context_text="A"
+        )
+        storage.save_document_context(
+            ctx_id="ctx-b", source_id=source_b, context_text="B"
+        )
+        sessions = storage.list_document_contexts(source_id=source_a)
+        assert len(sessions) == 1
+        assert sessions[0]["ctx_id"] == "ctx-a"
+
 
 class TestSourceDeletion:
     def _seed_source(self, storage: SQLiteStorage, *, name: str) -> str:
