@@ -95,6 +95,109 @@ def test_reverse_goal_persists_tasks_and_agent_evidence(
     assert restored["content"]["title"] == "完成 FileMate 竞赛答辩"
 
 
+def test_workspace_import_is_local_and_deduplicated(server_module, monkeypatch):
+    module, storage = server_module
+    import filemate.llm_client as llm
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("本地导入不能调用模型")
+
+    monkeypatch.setattr(llm.LLMClient, "call", unexpected)
+    with TestClient(module.app) as client:
+        payload = "光合作用将光能转化为化学能。".encode()
+        first = client.post("/knowledge/import", files={"file": ("课程.txt", payload)})
+        assert first.status_code == 200
+        source = first.json()["data"]
+        again = client.post("/knowledge/import", files={"file": ("课程.txt", payload)})
+        assert again.json()["data"]["source_id"] == source["source_id"]
+        assert len(storage.list_sources()) == 1
+        assert len(list(module.UPLOAD_ROOT.rglob("*.txt"))) == 1
+        context = client.post(f"/knowledge/sources/{source['source_id']}/contexts")
+        assert context.status_code == 200
+        ctx = context.json()["data"]
+        assert ctx["chat_history"] == []
+        assert ctx["source_id"] == source["source_id"]
+        assert storage.list_artifacts() == []
+        assert client.get(f"/ai/contexts/{ctx['ctx_id']}").status_code == 200
+
+
+@pytest.mark.parametrize("kind,content", [
+    ("summary", {"summary": "光合作用转化能量。"}),
+    ("notes", {"title": "光合作用", "sections": [{"title": "能量", "content": "光能转化为化学能"}]}),
+    ("knowledge_cards", [{"front": "能量如何转化？", "back": "光能转化为化学能"}]),
+])
+def test_workspace_generation_reuses_source_and_preserves_chat(
+    server_module, monkeypatch, kind, content,
+):
+    module, storage = server_module
+    import filemate.llm_client as llm
+
+    monkeypatch.setattr(llm.LLMConfig, "from_env", lambda: None)
+    monkeypatch.setattr(llm.LLMClient, "__init__", lambda *args: None)
+    monkeypatch.setattr(llm.LLMClient, "call", lambda *args, **kwargs: json.dumps(content))
+    sid = storage.save_source(original_name="课程.txt", source_path="/test/课程.txt", raw_text="光合作用转化能量。")
+    storage.save_document_context(ctx_id="existing", source_id=sid, context_text="光合作用转化能量。", chat_history=[{"role": "user", "content": "我的问题"}])
+    with TestClient(module.app) as client:
+        denied = client.post(f"/knowledge/sources/{sid}/artifacts", json={"artifact_type": kind})
+        assert denied.status_code == 422
+        response = client.post(f"/knowledge/sources/{sid}/artifacts", json={"artifact_type": kind, "allow_external_model": True})
+        assert response.status_code == 200
+        artifact = response.json()["data"]
+        assert artifact["source_id"] == sid
+        assert artifact["artifact_type"] == kind
+        assert len(storage.list_sources()) == 1
+        assert storage.get_document_context("existing")["chat_history"][0]["content"] == "我的问题"
+
+
+@pytest.mark.parametrize("output", ['not-json', '{}', '[]', '{"summary":""}'])
+def test_workspace_rejects_invalid_generation_without_artifact(server_module, monkeypatch, output):
+    module, storage = server_module
+    import filemate.llm_client as llm
+
+    monkeypatch.setattr(llm.LLMConfig, "from_env", lambda: None)
+    monkeypatch.setattr(llm.LLMClient, "__init__", lambda *args: None)
+    monkeypatch.setattr(llm.LLMClient, "call", lambda *args, **kwargs: output)
+    sid = storage.save_source(original_name="课程.txt", source_path="/test/课程.txt", raw_text="能量转化。")
+    with TestClient(module.app) as client:
+        response = client.post(f"/knowledge/sources/{sid}/artifacts", json={"artifact_type": "summary", "allow_external_model": True})
+        assert response.status_code == 502
+        assert storage.list_artifacts() == []
+        assert client.post("/knowledge/sources/missing/contexts").status_code == 404
+
+
+def test_workspace_question_generation_feeds_existing_quiz(server_module, monkeypatch):
+    module, storage = server_module
+    import filemate.llm_client as llm
+    from filemate import study
+
+    monkeypatch.setattr(llm.LLMConfig, "from_env", lambda: None)
+    monkeypatch.setattr(llm.LLMClient, "__init__", lambda *args: None)
+    monkeypatch.setattr(study, "generate_questions_with_llm", lambda **kwargs: [{
+        "question_type": "choice", "stem": "光合作用将光能转化为什么？",
+        "options": ["A. 化学能", "B. 声能"], "answer": "A", "analysis": "资料指出转化为化学能。",
+    }])
+    sid = storage.save_source(original_name="课程.txt", source_path="/test/课程.txt", raw_text="光能转化为化学能。")
+    with TestClient(module.app) as client:
+        response = client.post(f"/knowledge/sources/{sid}/artifacts", json={"artifact_type": "questions", "count": 5, "allow_external_model": True})
+        assert response.status_code == 200
+        aid = response.json()["data"]["artifact_id"]
+        result = client.post("/quiz/attempts", json={"artifact_id": aid, "question_index": 0, "user_answer": "B"})
+        assert result.status_code == 200
+        assert result.json()["data"]["is_correct"] is False
+        assert len(client.get("/wrongbook").json()["data"]) == 1
+        storage.delete_source(sid)
+        assert storage.save_source_artifact(source_id=sid, artifact_type="notes", content={}, title="已删除") is None
+
+
+def test_workspace_import_rejects_empty_text_and_cleans_copy(server_module):
+    module, storage = server_module
+    with TestClient(module.app) as client:
+        response = client.post("/knowledge/import", files={"file": ("blank.txt", b"   ")})
+        assert response.status_code == 422
+        assert storage.list_sources() == []
+        assert not list(module.UPLOAD_ROOT.rglob("*.txt"))
+
+
 @pytest.fixture()
 def server_module(
     tmp_path: Path,

@@ -71,12 +71,7 @@
         </div>
       </section>
 
-      <section class="backcast-rail" aria-label="目标反推流程">
-        <article v-for="(step, index) in backcastSteps" :key="step.title" :class="{ current: index === 3 }">
-          <span>{{ String(index + 1).padStart(2, '0') }}</span>
-          <div><strong>{{ step.title }}</strong><small>{{ step.detail }}</small></div>
-        </article>
-      </section>
+      <LearningPath :goal="activeGoal" :updating-task="updatingTask" @toggle="toggleTask" />
 
       <section class="evidence-layout">
         <article class="evidence-panel">
@@ -126,7 +121,7 @@
             </button>
             <div class="task-copy"><strong>{{ task.title }}</strong><p>{{ task.reason }}</p></div>
             <time :datetime="task.due_date">{{ formatDate(task.due_date) }} 前</time>
-            <button type="button" class="task-link" @click="router.push(task.route)">去完成</button>
+            <button type="button" class="task-link" @click="router.push(task.route === '/ai-tools' && activeGoal.source_id ? { path: task.route, query: { source: activeGoal.source_id } } : task.route)">去完成</button>
           </article>
         </div>
       </section>
@@ -145,6 +140,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import DataState from '../components/DataState.vue'
+import LearningPath from '../components/LearningPath.vue'
 import {
   createReverseGoal,
   getKnowledgeSources,
@@ -189,14 +185,6 @@ const canCreate = computed(() => form.value.title.length >= 2 && form.value.dead
 const completedCount = computed(() => activeGoal.value?.tasks.filter(task => task.status === 'completed').length || 0)
 const completionRate = computed(() => activeGoal.value?.tasks.length ? Math.round(completedCount.value / activeGoal.value.tasks.length * 100) : 0)
 const openGapCount = computed(() => activeGoal.value?.gaps.filter(gap => gap.status === 'gap').length || 0)
-const backcastSteps = computed(() => [
-  { title: '目标终点', detail: activeGoal.value?.title || '明确结果' },
-  { title: '能力要求', detail: `${activeGoal.value?.gaps.length || 0} 个可核对维度` },
-  { title: '真实证据', detail: activeGoal.value?.evidence_status === 'ready' ? '读取本机记录' : '样本不足，待评测' },
-  { title: '能力缺口', detail: `${openGapCount.value} 项待提升` },
-  { title: '行动任务', detail: `${activeGoal.value?.tasks.length || 0} 项分期执行` },
-  { title: '重新评估', detail: '完成后动态重排' }
-])
 
 const formatDate = (value: string) => new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric' }).format(new Date(`${value}T00:00:00`))
 const goalTypeLabel = (type: ReverseGoalType) => ({ exam: '课程考试', competition: '竞赛答辩', job: '求职面试', postgraduate: '保研复试', custom: '自定义目标' }[type])

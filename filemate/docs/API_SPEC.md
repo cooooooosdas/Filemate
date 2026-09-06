@@ -393,6 +393,9 @@ HTTP 错误同样保持该结构：参数错误使用 `400/422`，资源不存�
 | `GET` | `/ai/contexts` | 列出最近问答会话摘要 | `limit` 范围 1–200，不返回正文和完整历史 |
 | `GET` | `/ai/contexts/{ctx_id}` | 恢复单个问答会话 | 返回完整上下文、历史消息与结构化引用 |
 | `GET` | `/knowledge/sources` | 列出本地资料源 | 不返回大段 `raw_text`，返回 `text_length` |
+| `POST` | `/knowledge/import` | multipart `file` 仅本地解析入库，无模型调用；按哈希复用已有源 | 返回 Source 详情，失败/重复上传清理此次副本 |
+| `POST` | `/knowledge/sources/{source_id}/contexts` | 从已有资料新建可恢复会话，不自动生成内容 | Context；不覆盖旧对话 |
+| `POST` | `/knowledge/sources/{source_id}/artifacts` | JSON `artifact_type` 为 summary/notes/knowledge_cards/questions；`count` 为 1–10（默认5，上限非保证数量），必须明确 `allow_external_model=true` | Artifact 绑定原 Source；笔记/卡片/摘要输入最多前12000字，练习沿用现役出题链前2500字；metadata 标记覆盖范围与截断；生成失败502且不保存，资料在生成期间删除409 |
 | `GET` | `/knowledge/sources/{source_id}` | 获取资料源详情 | 包含解析正文与元数据 |
 | `GET` | `/knowledge/sources/{source_id}/artifacts` | 查询资料派生产物 | 支持 `artifact_type` 与 `limit` |
 | `GET` | `/knowledge/sources/{source_id}/lineage` | 查询六阶段学习资产链 | 只聚合真实持久化记录，不返回原文 |

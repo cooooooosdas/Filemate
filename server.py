@@ -579,6 +579,96 @@ def list_knowledge_sources(limit: int = Query(50, ge=1, le=200)):
     return ApiResponse(success=True, data=sources)
 
 
+@app.post("/knowledge/import", response_model=ApiResponse)
+async def import_learning_source(file: Annotated[UploadFile, File()]):
+    """仅在本地解析和入库，不调用外部模型。"""
+    from filemate.perception import FileParser
+    from filemate.understanding.retrieval import split_document
+
+    path, size = await _save_upload(file)
+    retained = False
+    try:
+        parsed = await run_in_threadpool(FileParser().parse, str(path))
+        text = parsed.get("raw_text", "")
+        if parsed.get("error") or not text.strip():
+            raise HTTPException(status_code=422, detail="无法提取正文，请使用包含文字的资料")
+        file_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+        stable_id = uuid.uuid5(uuid.NAMESPACE_URL, f"filemate:local:{file_hash}").hex
+        source = _storage.get_source(stable_id)
+        if source is None:
+            source_id = _storage.save_source(
+                original_name=path.name, source_path=str(path), raw_text=text,
+                media_type=mimetypes.guess_type(path.name)[0] or "",
+                file_hash=file_hash, metadata={"size_bytes": size},
+            )
+            retained = True
+            _storage.replace_source_chunks(source_id, split_document(text))
+            source = _storage.get_source(source_id)
+        return ApiResponse(success=True, data=source)
+    finally:
+        if not retained:
+            # 只清理此次上传生成的副本，不触碰用户原件或已有资料。
+            path.unlink(missing_ok=True)
+            path.parent.rmdir()
+
+
+@app.post("/knowledge/sources/{source_id}/contexts", response_model=ApiResponse)
+def start_source_context(source_id: str):
+    """为已有资料新建可恢复会话，不生成产物或调用模型。"""
+    source = _storage.get_source(source_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="资料不存在")
+    if not source["raw_text"].strip():
+        raise HTTPException(status_code=422, detail="资料没有可用正文，请重新导入")
+    ctx_id = uuid.uuid4().hex
+    _storage.save_document_context(
+        ctx_id=ctx_id, source_id=source_id, context_text=source["raw_text"],
+        metadata={"filename": source["original_name"], "origin": "learning_workspace"},
+    )
+    return ApiResponse(success=True, data=_storage.get_document_context(ctx_id))
+
+
+class WorkspaceArtifactRequest(BaseModel):
+    artifact_type: Literal["summary", "notes", "knowledge_cards", "questions"]
+    count: int = Field(default=5, ge=1, le=10)
+    allow_external_model: bool = False
+
+
+@app.post("/knowledge/sources/{source_id}/artifacts", response_model=ApiResponse)
+def generate_source_artifact(source_id: str, request: WorkspaceArtifactRequest):
+    """复用已入库正文，生成产物但不重建资料或清空会话。"""
+    from filemate.llm_client import LLMClient, LLMConfig
+    from filemate.understanding.workspace import generate_workspace_artifact
+
+    source = _storage.get_source(source_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="资料不存在")
+    if not request.allow_external_model:
+        raise HTTPException(status_code=422, detail="请先确认允许将资料正文发送给已配置的模型")
+    if not source["raw_text"].strip():
+        raise HTTPException(status_code=422, detail="资料没有可用正文")
+    try:
+        content = generate_workspace_artifact(
+            LLMClient(LLMConfig.from_env()), text=source["raw_text"],
+            title=source["original_name"], kind=request.artifact_type, count=request.count,
+        )
+    except Exception as exc:
+        logger.warning("学习产物生成失败 (%s)", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="生成失败，未保存无效内容，请稍后重试") from exc
+    labels = {"summary": "摘要", "notes": "笔记", "knowledge_cards": "知识卡", "questions": "练习题"}
+    input_limit = 2500 if request.artifact_type == "questions" else 12000
+    artifact = _storage.save_source_artifact(
+        source_id=source_id, artifact_type=request.artifact_type, content=content,
+        title=f"{source['original_name']} · {labels[request.artifact_type]}",
+        metadata={"origin": "learning_workspace", "external_model_authorized": True,
+                  "input_characters": min(len(source["raw_text"]), input_limit),
+                  "source_truncated": len(source["raw_text"]) > input_limit},
+    )
+    if artifact is None:
+        raise HTTPException(status_code=409, detail="生成期间资料已被删除，结果未保存")
+    return ApiResponse(success=True, data=artifact)
+
+
 @app.get("/knowledge/sources/{source_id}", response_model=ApiResponse)
 def get_knowledge_source(source_id: str):
     """读取单个资料源及其文本。"""

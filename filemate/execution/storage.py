@@ -1170,6 +1170,20 @@ class SQLiteStorage:
             self._conn().commit()
         return artifact_id
 
+    def save_source_artifact(
+        self, *, source_id: str, artifact_type: str, content: Any,
+        title: str, metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        """与资料删除互斥，避免长时间生成结束后重新写入孤立产物。"""
+        with self._write_lock:
+            if self.get_source(source_id) is None:
+                return None
+            artifact_id = self.save_artifact(
+                source_id=source_id, artifact_type=artifact_type, content=content,
+                title=title, metadata=metadata,
+            )
+            return self.get_artifact(artifact_id)
+
     def get_artifact(self, artifact_id: str) -> dict[str, Any] | None:
         """读取单个 AI 产物。"""
         row = self._conn().execute(

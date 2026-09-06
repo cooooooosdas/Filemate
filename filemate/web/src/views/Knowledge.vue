@@ -32,6 +32,7 @@
           <div class="file-mark">{{ suffix(source.original_name) }}</div>
           <div class="source-copy"><h3>{{ source.original_name }}</h3><p>{{ source.text_length.toLocaleString('zh-CN') }} 字 · {{ formatDate(source.created_at) }}</p></div>
           <div class="source-actions">
+            <router-link :to="{ path: '/ai-tools', query: { source: source.source_id } }" class="import-link">进入学习</router-link>
             <button type="button" :aria-expanded="expandedSource === source.source_id" @click="toggleArtifacts(source.source_id)">{{ expandedSource === source.source_id ? '收起产物' : '查看产物' }}</button>
             <button type="button" class="delete" :disabled="deletingSource === source.source_id" @click="confirmDelete(source)">{{ deletingSource === source.source_id ? '删除中…' : '删除' }}</button>
           </div>

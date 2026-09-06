@@ -120,7 +120,7 @@
       <div class="content-scroll">
         <router-view v-slot="{ Component }">
           <transition name="page-fade" mode="out-in">
-            <component :is="Component" :key="`${$route.fullPath}-${refreshToken}`" />
+            <component :is="Component" :key="`${$route.path === '/ai-tools' ? $route.path : $route.fullPath}-${refreshToken}`" />
           </transition>
         </router-view>
       </div>
@@ -240,7 +240,7 @@ const menuGroups = [
   {
     label: '学习与练习',
     items: [
-      { path: '/ai-tools', title: '资料理解', icon: Reading },
+      { path: '/ai-tools', title: '学习工作区', icon: Reading },
       { path: '/study-plan', title: '学习计划', icon: Reading },
       { path: '/goals', title: '目标反推', icon: Aim },
       { path: '/wrongbook', title: '错题复盘', icon: Tickets },

@@ -36,7 +36,7 @@ FileMate 是一个面向大学生的本地优先 AI 学习工作台。它把散�
 | 文件理解 | 文本解析、关键词/LLM 分类、课程与任务实体抽取、多里程碑识别、规范命名 | `filemate/perception/`、`filemate/understanding/` |
 | 可信执行 | 草稿编辑、最终确认、目标冲突保护、失败回滚、幂等确认、一键撤销 | `confirmation_executor.py` |
 | 日程管理 | 从截止日期和里程碑生成 RFC 5545 `.ics`，确认前只预览 | `scheduler.py`、`Schedule.vue` |
-| AI 工具 | 摘要、知识卡、练习题、结构化笔记、基于资料的问答、学习计划 | `ai_tools.py`、`AITools.vue` |
+| 学习工作区 | 资料/对话/产物同屏；本地导入一次，复用资料生成摘要、笔记、翻面卡片、逐题练习；会话深链恢复 | `workspace.py`、`LearningWorkspace.vue` |
 | 个人知识库 | 资料源、AI 产物、聊天上下文持久化；跨资料检索与引用；六阶段学习资产链 | `storage.py`、`retrieval.py`、`Knowledge.vue` |
 | 学习闭环 | 练习作答、自动错题本、掌握状态、间隔重复、今日复习队列 | `/quiz`、`/wrongbook`、`/review/today` |
 | 学习计划 | 根据考试日期生成日计划，持久记录每日完成状态，支持 CSV/ICS 导出 | `StudyPlan.vue` |

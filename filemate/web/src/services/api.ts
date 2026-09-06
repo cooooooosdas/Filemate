@@ -984,6 +984,37 @@ export interface KnowledgeArtifact {
   updated_at: string
 }
 
+export type WorkspaceArtifactKind = 'summary' | 'notes' | 'knowledge_cards' | 'questions'
+export type KnowledgeSourceDetail = KnowledgeSource & { raw_text: string }
+
+export async function getLearningSource(sourceId: string): Promise<KnowledgeSourceDetail> {
+  const response = await api.get<any, ApiResponse<KnowledgeSourceDetail>>(`/knowledge/sources/${sourceId}`)
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '资料读取失败')
+}
+
+export async function importLearningSource(file: File): Promise<KnowledgeSourceDetail> {
+  const body = new FormData()
+  body.append('file', file)
+  const response = await api.post<any, ApiResponse<KnowledgeSourceDetail>>('/knowledge/import', body, { headers: { 'Content-Type': 'multipart/form-data' } })
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '资料导入失败')
+}
+
+export async function createSourceContext(sourceId: string): Promise<AIContextDetail> {
+  const response = await api.post<any, ApiResponse<AIContextDetail>>(`/knowledge/sources/${sourceId}/contexts`)
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '会话创建失败')
+}
+
+export async function generateSourceArtifact(sourceId: string, artifactType: WorkspaceArtifactKind, count: number): Promise<KnowledgeArtifact> {
+  const response = await api.post<any, ApiResponse<KnowledgeArtifact>>(`/knowledge/sources/${sourceId}/artifacts`, {
+    artifact_type: artifactType, count, allow_external_model: true,
+  })
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '学习内容生成失败')
+}
+
 export interface KnowledgeLineageStage {
   key: 'source' | 'understanding' | 'practice' | 'review' | 'plan' | 'interview'
   label: string

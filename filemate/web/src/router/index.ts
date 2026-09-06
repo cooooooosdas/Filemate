@@ -46,8 +46,8 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/ai-tools',
     name: 'AITools',
-    component: () => import('../views/AITools.vue'),
-    meta: { title: '资料理解' }
+    component: () => import('../views/LearningWorkspace.vue'),
+    meta: { title: '学习工作区' }
   },
   {
     path: '/study-plan',
