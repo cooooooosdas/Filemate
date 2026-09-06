@@ -45,17 +45,21 @@ def evaluate_retrieval() -> dict[str, Any]:
 
 
 def evaluate_interview_fallback() -> dict[str, Any]:
-    """验证无模型时评分稳定落入预期区间。"""
+    """验证无模型时保留练习但不生成内容能力分。"""
     cases = _load("interview_cases.json")
     evaluator = InterviewEvaluator(None)
     passed = 0
     details = []
     for case in cases:
         result = evaluator.evaluate(case["question"], case["answer"], "通用岗位")
-        in_range = case["min_score"] <= result["score"] <= case["max_score"]
-        passed += int(in_range)
-        details.append({"id": case["id"], "score": result["score"], "expected_range": [case["min_score"], case["max_score"]], "passed": in_range})
-    return {"case_count": len(cases), "range_pass_rate": round(passed / len(cases), 4), "details": details}
+        safe = (
+            result["score"] is None
+            and result["scoring_mode"] == "local_fallback"
+            and not result["dimensions"]
+        )
+        passed += int(safe)
+        details.append({"id": case["id"], "score": result["score"], "passed": safe})
+    return {"case_count": len(cases), "unassessed_pass_rate": round(passed / len(cases), 4), "details": details}
 
 
 def main() -> None:

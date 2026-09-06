@@ -106,6 +106,16 @@ def test_check_answer_handles_choice_fill_and_short_answer() -> None:
     )
 
 
+@pytest.mark.parametrize(("kind", "reference", "submitted"), [
+    ("fill", "线性表", "线"), ("fill", "可靠", "不可靠"),
+    ("choice", "AC", "A"), ("choice", "A", "AB"),
+    ("short_answer", "可靠", "不可靠"), ("short_answer", "2", "12"),
+    ("short_answer", "先进后出", "先进"),
+])
+def test_incomplete_or_contradictory_answers_are_not_correct(kind, reference, submitted):
+    assert not check_answer({"question_type": kind, "answer": reference}, submitted)
+
+
 def test_short_answer_single_char_matches_exact() -> None:
     assert check_answer({"question_type": "short_answer", "answer": "2"}, "2")
     assert check_answer({"question_type": "short_answer", "answer": "2"}, "答案是 2")

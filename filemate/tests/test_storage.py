@@ -54,7 +54,7 @@ def _apply_migrations_upto(db_path: Path, upto: int) -> None:
 
 class TestMigrationUpgrade:
     def test_upgrade_from_old_version(self, tmp_path: Path) -> None:
-        """v5 旧库逐级升级到 v14，且现役表和字段确实建立。"""
+        """v5 旧库逐级升级到 v15，且现役表和字段确实建立。"""
         db = tmp_path / "old.db"
         _apply_migrations_upto(db, 5)
         legacy = sqlite3.connect(db)
@@ -70,9 +70,9 @@ class TestMigrationUpgrade:
         s = SQLiteStorage(db)
         s.init_schema()
 
-        assert s.get_schema_version() == 14
+        assert s.get_schema_version() == 15
         assert [m["version"] for m in s.list_migrations()] == [
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15
         ]
 
         conn = s._conn()
@@ -93,6 +93,7 @@ class TestMigrationUpgrade:
             r["name"] for r in conn.execute("PRAGMA table_info(interview_turns)")
         }
         assert "fluency_metrics" in turn_cols  # v13 字段
+        assert {"scoring_mode", "scoring_version"} <= turn_cols
         assert "agent_run_id" in interview_cols  # v14 字段
         assert {"agent_runs", "agent_steps", "agent_memories", "source_rights"} <= tables
         upgraded_interview = s.get_interview("legacy-interview")
@@ -127,7 +128,7 @@ class TestMigrationUpgrade:
         storage = SQLiteStorage(db)
         storage.init_schema()
 
-        assert storage.get_schema_version() == 14
+        assert storage.get_schema_version() == 15
         migrations = {item["version"]: item["name"] for item in storage.list_migrations()}
         assert migrations[9] == "ai_learning"
         assert migrations[12] == "interview_question_bank_compatibility"
@@ -168,6 +169,60 @@ class TestMigrationUpgrade:
         s.close()
 
 
+def test_legacy_interview_scores_preserved_but_not_reported(tmp_path):
+    db = tmp_path / "v14.db"
+    _apply_migrations_upto(db, 14)
+    with sqlite3.connect(db) as conn:
+        conn.execute("""INSERT INTO interview_sessions
+            (interview_id, target_role, scenario, difficulty, questions, overall_score)
+            VALUES ('old', '开发', '求职面试', '标准', '["题目"]', 90)""")
+        conn.execute("""INSERT INTO interview_turns
+            (turn_id, interview_id, question_index, question, answer, score, dimensions, feedback)
+            VALUES ('turn', 'old', 0, '题目', '旧回答', 90, '{"内容":90}', '旧反馈')""")
+    storage = SQLiteStorage(db)
+    storage.init_schema()
+    restored = storage.get_interview("old")
+    assert restored["overall_score"] is None
+    assert restored["turns"][0]["score"] is None
+    assert restored["turns"][0]["dimensions"] == {}
+    assert storage.get_learning_analytics()["average_interview_score"] is None
+    assert storage._conn().execute("SELECT score FROM interview_turns").fetchone()[0] == 90
+    storage.close()
+
+
+def test_scoped_analytics_and_assessment_provenance(storage):
+    first = storage.save_source(original_name="网络.txt", source_path="/local/网络.txt", raw_text="TCP")
+    second = storage.save_source(original_name="数据库.txt", source_path="/local/数据库.txt", raw_text="SQL")
+    artifact = storage.save_artifact(source_id=first, artifact_type="questions", content=[
+        {"question": "TCP?", "answer": "可靠传输"},
+    ])
+    storage.record_quiz_attempt(artifact_id=artifact, question_index=0,
+                                user_answer="错误", is_correct=False, score=0, feedback="重练")
+    run = storage.create_agent_run(task_type="interview", goal="练习", selected_agents=["面试 Agent"],
+                                   context_refs={"source_id": first})
+    session = storage.create_interview(target_role="开发", scenario="求职面试", difficulty="标准",
+                                       questions=["题一", "题二"], agent_run_id=run["run_id"])
+    for index, (score, mode) in enumerate([(None, "local_fallback"), (0, "llm")]):
+        storage.save_interview_turn(interview_id=session["interview_id"], question_index=index,
+                                    question=f"题{index}", answer="回答", score=score,
+                                    dimensions={"内容": 0} if mode == "llm" else {},
+                                    feedback="反馈", scoring_mode=mode)
+    focused = storage.get_learning_analytics(source_id=first)
+    assert focused["pending_wrong_count"] == 1
+    assert focused["assessed_interview_count"] == 1
+    assert focused["average_interview_score"] == 0
+    other = storage.get_learning_analytics(source_id=second)
+    assert other["source_count"] == 1
+    assert other["quiz_attempt_count"] == 0
+    assert other["pending_wrong_count"] == 0
+    assert other["interview_count"] == 0
+    assert other["average_interview_score"] is None
+    assert other["recent_interviews"] == []
+    restored = storage.get_interview(session["interview_id"])
+    assert restored["overall_score"] == 0
+    assert restored["assessed_turn_count"] == 1
+
+
 class TestSchemaInit:
     def test_init_is_idempotent(self, storage: SQLiteStorage) -> None:
         """init_schema 可重复调用不报错。"""
@@ -194,12 +249,12 @@ class TestSchemaInit:
             assert expected in names
 
     def test_versioned_migrations_applied(self, storage: SQLiteStorage) -> None:
-        assert storage.get_schema_version() == 14
+        assert storage.get_schema_version() == 15
         migrations = storage.list_migrations()
         assert [item["version"] for item in migrations] == [
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15
         ]
-        assert migrations[-1]["name"] == "trusted_agent_memory_and_rights"
+        assert migrations[-1]["name"] == "interview_scoring_provenance"
 
     def test_knowledge_tables_and_local_workspace_exist(
         self,

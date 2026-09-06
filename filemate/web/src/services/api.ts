@@ -546,7 +546,7 @@ export async function getWrongbook(mastered: boolean = false): Promise<WrongQues
 }
 
 export interface InterviewEvaluation {
-  score: number
+  score: number | null
   dimensions: Record<string, number>
   feedback: string
   scoring_mode?: 'llm' | 'local_fallback'
@@ -557,7 +557,9 @@ export interface InterviewTurn {
   question_index: number
   question: string
   answer: string
-  score: number
+  score: number | null
+  scoring_mode: 'llm' | 'local_fallback' | 'unknown'
+  scoring_version: string
   dimensions: Record<string, number>
   feedback: string
   fluency_metrics?: InterviewFluencyMetrics
@@ -590,7 +592,8 @@ export interface InterviewSession {
   question_ids: Array<string | null>
   current_index: number
   current_question: string | null
-  overall_score: number
+  overall_score: number | null
+  assessed_turn_count: number
   turns: InterviewTurn[]
   latest_evaluation?: InterviewEvaluation
   source_context?: {
@@ -614,6 +617,12 @@ export async function startInterview(
   })
   if (response.success && response.data) return response.data
   throw new Error(response.error || '创建模拟面试失败')
+}
+
+export async function getInterview(interviewId: string): Promise<InterviewSession> {
+  const response = await api.get<any, ApiResponse<InterviewSession>>(`/interviews/${encodeURIComponent(interviewId)}`)
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '恢复面试失败')
 }
 
 export async function answerInterview(
@@ -713,7 +722,8 @@ export interface LearningAnalytics {
     by_area: Record<string, { total: number; positive: number; positive_rate: number }>
   }
   interview_count: number
-  average_interview_score: number
+  average_interview_score: number | null
+  assessed_interview_count: number
   interview_dimensions: Record<string, number>
   recent_interviews: Array<{
     interview_id: string
@@ -721,7 +731,7 @@ export interface LearningAnalytics {
     scenario: string
     status: string
     current_index: number
-    overall_score: number
+    overall_score: number | null
     created_at: string
   }>
 }

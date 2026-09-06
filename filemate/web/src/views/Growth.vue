@@ -19,18 +19,18 @@
         <article><span>练习次数</span><strong>{{ data.quiz_attempt_count }}</strong><small>{{ data.mastered_wrong_count }} 道错题已掌握</small></article>
         <article><span>待复习错题</span><strong>{{ data.pending_wrong_count }}</strong><small>连续答对两次后移出</small></article>
         <article><span>计划完成度</span><strong>{{ format(data.study_completion_rate) }}%</strong><small>{{ data.completed_study_days }}/{{ data.total_study_days }} 个学习日已完成</small></article>
-        <article class="accent"><span>面试均分</span><strong>{{ format(data.average_interview_score) }}</strong><small>累计 {{ data.interview_count }} 场训练</small></article>
+        <article class="accent"><span>面试参考均分</span><strong>{{ format(data.average_interview_score) }}</strong><small>{{ data.interview_count }} 场训练 · {{ data.assessed_interview_count }} 场有模型评估</small></article>
       </section>
       <section class="grid">
-        <article class="panel ability"><div class="panel-head"><div><p class="eyebrow">能力画像</p><h2>面试能力表现</h2></div><span>基于全部回答</span></div>
+        <article class="panel ability"><div class="panel-head"><div><p class="eyebrow">能力画像</p><h2>面试能力表现</h2></div><span>仅统计有模型评估的回答</span></div>
           <div v-if="Object.keys(data.interview_dimensions).length" class="bars"><div v-for="(score,name) in data.interview_dimensions" :key="name"><label><span>{{ name }}</span><b>{{ format(score) }}</b></label><i><em :style="{width:`${score}%`}"></em></i></div></div>
-          <p v-else class="empty">完成一次模拟面试后生成能力画像</p>
+          <p v-else class="empty">暂无内容评估记录；本地练习仍会保存，不据此推断能力。</p>
         </article>
         <article class="panel loop"><h2>学习进度</h2><div class="loop-flow"><span>已存资料<b>{{ data.source_count }}</b></span><i>→</i><span>完成计划<b>{{ data.completed_study_days }}</b></span><i>→</i><span>掌握错题<b>{{ data.mastered_wrong_count }}</b></span></div><p>统计来自这台设备上保存的学习记录。</p></article>
       </section>
       <section class="panel evidence"><div><p class="eyebrow">真实使用反馈</p><h2>匿名产品反馈</h2><p>只统计匿名哈希、相关/不相关选择和数值指标，不导出问题原文、资料名或身份信息。</p></div><div class="evidence-metrics"><span><b>{{ data.product_feedback.total }}</b>有效标注</span><span><b>{{ format(data.product_feedback.positive_rate) }}%</b>正向率</span><button type="button" :disabled="!data.product_feedback.total" @click="exportFeedback">导出匿名 CSV</button></div></section>
       <section class="panel recent"><div class="panel-head"><div><p class="eyebrow">训练记录</p><h2>最近模拟面试</h2></div></div>
-        <div v-if="data.recent_interviews.length" class="table"><div v-for="item in data.recent_interviews" :key="item.interview_id" class="row"><div><b>{{ item.target_role }}</b><small>{{ item.scenario }} · 已完成 {{ item.current_index }}/5 题</small></div><span :class="item.status">{{ item.status === 'completed' ? '已完成' : '进行中' }}</span><strong>{{ format(item.overall_score) }}</strong></div></div>
+        <div v-if="data.recent_interviews.length" class="table"><div v-for="item in data.recent_interviews" :key="item.interview_id" class="row"><div><RouterLink :to="{ path: '/interview', query: { interview: item.interview_id } }"><b>{{ item.target_role }} · {{ item.status === 'completed' ? '回看回答' : '继续练习' }}</b></RouterLink><small>{{ item.scenario }} · 已答 {{ item.current_index }} 题</small></div><span :class="item.status">{{ item.status === 'completed' ? '已完成' : '进行中' }}</span><strong>{{ format(item.overall_score) }}</strong></div></div>
         <p v-else class="empty">暂无模拟面试记录</p>
       </section>
     </template>
@@ -51,7 +51,7 @@ import {
 } from '../composables/useCompanion'
 const data = ref<LearningAnalytics | null>(null); const loading = ref(true); const error = ref('')
 const recentEvent = ref<CompanionEvent | null>(getRecentCompanionEvent())
-const format = (value:number) => Math.round(value || 0)
+const format = (value:number | null) => value == null ? '待评估' : Math.round(value)
 const load = async () => { loading.value=true; error.value=''; try{data.value=await getLearningAnalytics()}catch(e:any){error.value=e?.message||'加载失败';ElMessage.error(error.value)}finally{loading.value=false} }
 const exportFeedback = async () => { try{await downloadAnonymousFeedback();ElMessage.success('匿名评测数据已导出')}catch(error:any){ElMessage.error(error.message||'导出失败')} }
 const companionGrowth = computed(() => data.value ? calculateCompanionGrowth({
@@ -81,7 +81,7 @@ const companion = computed((): {
   }
   const analytics = data.value
   const latest = analytics?.recent_interviews?.[0]
-  if (latest?.status === 'completed' && latest.overall_score < 60) {
+  if (latest?.status === 'completed' && latest.overall_score != null && latest.overall_score < 60) {
     return {
       mood: 'encouraging',
       title: '这次不是失败，是一张更清楚的训练地图',
@@ -91,7 +91,7 @@ const companion = computed((): {
       actionLabel: '再练一轮'
     }
   }
-  if (latest?.status === 'completed' && latest.overall_score >= 85) {
+  if (latest?.status === 'completed' && latest.overall_score != null && latest.overall_score >= 85) {
     return {
       mood: 'wink',
       title: '这轮表达已经很有说服力',

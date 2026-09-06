@@ -16,6 +16,8 @@ def _tokens(text: str) -> list[str]:
     """提取英文词及中文一至三字词，兼顾短查询召回。"""
     lowered = text.lower()
     tokens = LATIN_TOKEN.findall(lowered)
+    # 保留 B 树、C 语言等混合名称，避免安全过滤误伤只有单字的术语。
+    tokens.extend(re.sub(r"\s+", "", token) for token in re.findall(r"[a-z0-9_]+\s*[一-鿿]", lowered))
     for run in HAN_RUN.findall(lowered):
         tokens.extend(run)
         tokens.extend(run[index:index + 2] for index in range(len(run) - 1))
@@ -89,6 +91,10 @@ def rank_chunks(
     if not query_tokens or not chunks:
         return []
 
+    # 长查询只共享单字时通常没有足够检索意义；单字专有查询仍可用。
+    informative_tokens = {token for token in query_tokens if len(token) > 1}
+    informative_tokens -= {"什么", "为何", "为什么", "怎么", "如何", "是否", "请问", "哪些", "the", "is", "of", "a", "what", "how", "why"}
+
     documents = [_tokens(str(chunk.get("content", ""))) for chunk in chunks]
     average_length = sum(map(len, documents)) / max(1, len(documents))
     document_frequency: Counter[str] = Counter()
@@ -98,6 +104,8 @@ def rank_chunks(
     query_frequency = Counter(query_tokens)
     scored: list[dict[str, Any]] = []
     for chunk, document in zip(chunks, documents, strict=True):
+        if informative_tokens and not informative_tokens.intersection(document):
+            continue
         frequencies = Counter(document)
         score = 0.0
         for token, query_count in query_frequency.items():

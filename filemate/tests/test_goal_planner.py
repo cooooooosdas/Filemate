@@ -24,7 +24,7 @@ def test_reverse_goal_marks_missing_evidence_as_pending_evaluation() -> None:
     assert "样本不足时不生成趋势" in expression["evidence"]
 
 
-def test_reverse_goal_uses_weakest_interview_dimension_and_keeps_completion() -> None:
+def test_reverse_goal_uses_weakest_dimension_and_reopens_pending_wrong_task() -> None:
     plan = build_reverse_goal_plan(
         title="Java 实习面试",
         goal_type="job",
@@ -47,7 +47,7 @@ def test_reverse_goal_uses_weakest_interview_dimension_and_keeps_completion() ->
     weakest = next(item for item in plan["gaps"] if item["name"] == "当前短板")
     assert weakest["current"] == "表达流畅性 61 分"
     wrong_task = next(item for item in plan["tasks"] if item["task_id"] == "clear-due-wrong")
-    assert wrong_task["status"] == "completed"
+    assert wrong_task["status"] == "pending"
     final_day = datetime.now().astimezone().date() + timedelta(days=21)
     assert all(
         date.fromisoformat(item["due_date"]) <= final_day

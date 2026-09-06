@@ -15,7 +15,7 @@
 	}
 
 	@api {
-		path /api/* /process /sessions* /ai/* /knowledge* /quiz* /wrongbook* /interview* /interviews* /analytics* /review* /study-plans* /evaluation*
+		path /api/* /process /sessions* /ai/* /knowledge* /quiz* /wrongbook* /interview* /interviews* /analytics* /review* /study-plans* /evaluation* /goals* /trust* /agents*
 		not header Accept text/html*
 	}
 	handle @api {

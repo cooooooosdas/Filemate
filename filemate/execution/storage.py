@@ -395,6 +395,11 @@ ALTER TABLE interview_sessions
     ADD COLUMN agent_run_id TEXT REFERENCES agent_runs(run_id);
 """
 
+_INTERVIEW_SCORING_SCHEMA = """\
+ALTER TABLE interview_turns ADD COLUMN scoring_mode TEXT NOT NULL DEFAULT 'unknown';
+ALTER TABLE interview_turns ADD COLUMN scoring_version TEXT NOT NULL DEFAULT 'legacy';
+"""
+
 _MIGRATIONS = (
     (1, "initial_execution_schema", _SCHEMA),
     (2, "knowledge_persistence", _KNOWLEDGE_SCHEMA),
@@ -408,6 +413,7 @@ _MIGRATIONS = (
     (12, "interview_question_bank_compatibility", _INTERVIEW_BANK_REPAIR_SCHEMA),
     (13, "interview_fluency_metrics", _INTERVIEW_FLUENCY_SCHEMA),
     (14, "trusted_agent_memory_and_rights", _TRUSTED_AGENT_SCHEMA),
+    (15, "interview_scoring_provenance", _INTERVIEW_SCORING_SCHEMA),
 )
 
 
@@ -1602,6 +1608,16 @@ class SQLiteStorage:
             self._decode_row(turn, ("dimensions", "fluency_metrics"))
             for turn in turns
         ]
+        for turn in interview["turns"]:
+            if turn["scoring_mode"] != "llm":
+                turn["score"] = None
+                turn["dimensions"] = {
+                    key: value for key, value in turn["dimensions"].items()
+                    if key == "流畅性" and turn["scoring_mode"] == "local_fallback"
+                }
+        assessed = [t["score"] for t in interview["turns"] if t["score"] is not None]
+        interview["assessed_turn_count"] = len(assessed)
+        interview["overall_score"] = round(sum(assessed) / len(assessed), 2) if assessed else None
         return interview
 
     def save_interview_turn(
@@ -1611,10 +1627,12 @@ class SQLiteStorage:
         question_index: int,
         question: str,
         answer: str,
-        score: float,
+        score: float | None,
         dimensions: dict[str, float],
         feedback: str,
         fluency_metrics: dict[str, Any] | None = None,
+        scoring_mode: str = "unknown",
+        scoring_version: str = "v2",
     ) -> dict[str, Any]:
         """保存单轮面试评分并推进进度。"""
         interview = self.get_interview(interview_id)
@@ -1622,19 +1640,26 @@ class SQLiteStorage:
             raise ValueError("模拟面试不存在")
         next_index = question_index + 1
         completed = next_index >= len(interview["questions"])
-        scores = [float(turn["score"]) for turn in interview["turns"]] + [score]
+        if scoring_mode not in {"llm", "local_fallback", "unknown"}:
+            raise ValueError("未知评分来源")
+        if scoring_mode == "llm" and score is None:
+            raise ValueError("模型评分不能为空")
+        scores = [float(turn["score"]) for turn in interview["turns"] if turn["score"] is not None]
+        if scoring_mode == "llm" and score is not None:
+            scores.append(score)
         with self._write_lock:
             connection = self._conn()
             turn_id = uuid.uuid4().hex
             connection.execute(
                 """INSERT INTO interview_turns
                    (turn_id, interview_id, question_index, question, answer,
-                    score, dimensions, feedback, fluency_metrics)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    score, dimensions, feedback, fluency_metrics, scoring_mode, scoring_version)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     turn_id, interview_id, question_index, question, answer,
-                    score, self._dump_json(dimensions), feedback,
+                    score if scoring_mode == "llm" else 0, self._dump_json(dimensions), feedback,
                     self._dump_json(fluency_metrics or {}),
+                    scoring_mode, scoring_version,
                 ),
             )
             connection.execute(
@@ -1643,7 +1668,7 @@ class SQLiteStorage:
                 (
                     next_index,
                     "completed" if completed else "active",
-                    round(sum(scores) / len(scores), 2),
+                    round(sum(scores) / len(scores), 2) if scores else 0,
                     _now_iso(),
                     interview_id,
                 ),
@@ -2329,7 +2354,7 @@ class SQLiteStorage:
         ).fetchall()
         return [dict(row) for row in rows]
 
-    def get_learning_analytics(self) -> dict[str, Any]:
+    def get_learning_analytics(self, *, source_id: str | None = None) -> dict[str, Any]:
         """汇总学习资产、错题与模拟面试指标。"""
         connection = self._conn()
         scalar_queries = {
@@ -2344,17 +2369,37 @@ class SQLiteStorage:
                 "SELECT COUNT(*) FROM study_plans WHERE status='completed'"
             ),
         }
+        params = (source_id,) if source_id else ()
+        interview_scope = (
+            "agent_run_id IN (SELECT run_id FROM agent_runs "
+            "WHERE json_extract(context_refs, '$.source_id')=?)"
+        )
+
+        def scoped(query: str, *, interview: bool = False) -> str:
+            if not source_id:
+                return query
+            condition = interview_scope if interview else "source_id=?"
+            return query + (" AND " if " WHERE " in query else " WHERE ") + condition
+
         result = {
-            key: int(connection.execute(query).fetchone()[0])
-            for key, query in scalar_queries.items()
+            key: int(connection.execute(
+                scoped(query, interview=key == "interview_count"), params
+            ).fetchone()[0]) for key, query in scalar_queries.items()
         }
-        average = connection.execute(
-            "SELECT AVG(overall_score) FROM interview_sessions WHERE current_index > 0"
-        ).fetchone()[0]
-        result["average_interview_score"] = round(float(average or 0), 2)
+        assessed_query = (
+            "SELECT AVG(t.score) AS score FROM interview_turns t "
+            "WHERE t.scoring_mode='llm' AND t.interview_id IN ("
+            + scoped("SELECT interview_id FROM interview_sessions", interview=True)
+            + ") GROUP BY t.interview_id"
+        )
+        assessed_scores = [float(row["score"]) for row in connection.execute(assessed_query, params)]
+        result["assessed_interview_count"] = len(assessed_scores)
+        result["average_interview_score"] = (
+            round(sum(assessed_scores) / len(assessed_scores), 2) if assessed_scores else None
+        )
 
         study_rows = connection.execute(
-            "SELECT plan_data, completed_days FROM study_plans"
+            scoped("SELECT plan_data, completed_days FROM study_plans"), params
         ).fetchall()
         total_study_days = 0
         completed_study_days = 0
@@ -2376,7 +2421,12 @@ class SQLiteStorage:
 
         dimension_totals: dict[str, float] = {}
         dimension_counts: dict[str, int] = {}
-        rows = connection.execute("SELECT dimensions FROM interview_turns").fetchall()
+        rows = connection.execute(
+            "SELECT dimensions FROM interview_turns WHERE scoring_mode='llm' "
+            "AND interview_id IN ("
+            + scoped("SELECT interview_id FROM interview_sessions", interview=True) + ")",
+            params,
+        ).fetchall()
         for row in rows:
             try:
                 dimensions = json.loads(row["dimensions"])
@@ -2391,11 +2441,15 @@ class SQLiteStorage:
         }
 
         recent_rows = connection.execute(
-            """SELECT interview_id, target_role, scenario, status, current_index,
-                      overall_score, created_at
-               FROM interview_sessions ORDER BY updated_at DESC LIMIT 5"""
+            scoped("SELECT interview_id FROM interview_sessions", interview=True)
+            + " ORDER BY updated_at DESC LIMIT 5", params
         ).fetchall()
-        result["recent_interviews"] = [dict(row) for row in recent_rows]
+        fields = ("interview_id", "target_role", "scenario", "status", "current_index",
+                  "overall_score", "created_at", "assessed_turn_count")
+        result["recent_interviews"] = [
+            {key: interview[key] for key in fields}
+            for row in recent_rows if (interview := self.get_interview(row["interview_id"]))
+        ]
         return result
 
     # ------------------------------------------------------------------

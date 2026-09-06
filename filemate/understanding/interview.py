@@ -283,16 +283,10 @@ JSON 结构：{{"score": 0-100, "dimensions": {{"内容": 0-100, "结构": 0-100
                 "scoring_mode": "llm",
             }
         except Exception:  # noqa: BLE001 - 面试演示必须在模型不可用时降级
-            length_score = min(90.0, 35.0 + len(answer.strip()) * 0.35)
             result = {
-                "score": round(length_score, 2),
-                "dimensions": {
-                    "内容": round(length_score, 2),
-                    "结构": max(35.0, round(length_score - 8, 2)),
-                    "表达": min(88.0, round(length_score + 3, 2)),
-                    "岗位匹配": max(30.0, round(length_score - 12, 2)),
-                },
-                "feedback": "建议使用“情境—行动—结果”结构，并补充可量化成果。",
+                "score": None,
+                "dimensions": {},
+                "feedback": "回答已保存，内容质量尚未评估。可以继续练习，或结合原资料自行复盘。",
                 "scoring_mode": "local_fallback",
             }
         return self._with_fluency(result, answer, fluency_metrics)
@@ -344,8 +338,9 @@ JSON 结构：{{"score": 0-100, "dimensions": {{"内容": 0-100, "结构": 0-100
             ),
         )
         fluency_score = round(fluency_score, 2)
-        base_score = float(evaluation.get("score", 0))
-        evaluation["score"] = round(base_score * 0.85 + fluency_score * 0.15, 2)
+        if evaluation.get("score") is not None:
+            base_score = float(evaluation["score"])
+            evaluation["score"] = round(base_score * 0.85 + fluency_score * 0.15, 2)
         evaluation.setdefault("dimensions", {})["流畅性"] = fluency_score
         evaluation["fluency"] = {
             "duration_seconds": round(duration, 2),

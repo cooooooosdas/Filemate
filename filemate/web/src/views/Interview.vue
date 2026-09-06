@@ -5,8 +5,23 @@
         <h1>模拟面试训练</h1>
         <p>真实问题、即时追问、分项评分，把每一次回答变成可复盘的数据。</p>
       </div>
-      <span class="status-pill" aria-live="polite"><i></i>{{ session ? '面试进行中' : '准备就绪' }}</span>
+      <span class="status-pill" aria-live="polite"><i></i>{{ session?.status === 'completed' ? '本轮已完成' : session ? '面试进行中' : '准备就绪' }}</span>
     </header>
+
+    <section v-if="!session" class="resume-panel" aria-labelledby="resume-title">
+      <div class="resume-heading"><div><h2 id="resume-title">接着上次练</h2><p>已提交的回答会保留；未提交文字和本地录像不会在刷新后恢复。</p></div><button class="ghost" :disabled="historyLoading || loading" @click="loadRecent">刷新记录</button></div>
+      <p v-if="historyLoading" role="status">正在读取练习记录…</p>
+      <DataState v-else-if="historyError" :error="historyError" @retry="loadRecent" />
+      <div v-else-if="recentInterviews.length" class="resume-list">
+        <button v-for="item in recentInterviews" :key="item.interview_id" class="resume-item" :disabled="loading" @click="restoreInterview(item.interview_id)">
+          <span><b>{{ item.target_role }}</b><small>{{ item.scenario }} · 已答 {{ item.current_index }} 题</small></span>
+          <span class="resume-action">{{ item.status === 'completed' ? '回看回答' : '继续练习' }} →</span>
+        </button>
+      </div>
+      <p v-else class="resume-empty">还没有练习记录，从下方创建第一场面试。</p>
+      <p v-if="loading" role="status">正在准备面试…</p>
+      <DataState v-if="resumeError" :error="resumeError" @retry="restoreInterview(requestedInterviewId)" />
+    </section>
 
     <section v-if="!session" class="setup-card">
       <div class="setup-copy">
@@ -61,7 +76,7 @@
         </div>
 
         <div class="conversation-panel">
-          <div class="progress-row"><span>第 {{ Math.min(session.current_index + 1, session.questions.length) }} / {{ session.questions.length }} 题</span><strong>{{ session.overall_score ? `${session.overall_score.toFixed(0)} 分` : '待评分' }}</strong></div>
+          <div class="progress-row"><span>第 {{ Math.min(session.current_index + 1, session.questions.length) }} / {{ session.questions.length }} 题</span><strong>{{ displayScore(session.overall_score) }}</strong></div>
           <div class="progress"><i :style="{ width: `${session.current_index / session.questions.length * 100}%` }"></i></div>
 
           <div v-if="session.status === 'active'" class="question-block">
@@ -79,7 +94,7 @@
               <span><b>{{ liveCharsPerMinute }}</b> 字/分钟</span>
               <span><b>{{ fillerCount }}</b> 个口头语</span>
               <span><b>{{ longPauseCount }}</b> 次较长停顿</span>
-              <small>仅语音回答生成流畅度参考；最终分数中占 15%</small>
+              <small>仅语音回答生成流畅度参考；有内容评估时计入总分的 15%</small>
             </div>
             <div v-if="fluencyMarkers.length" class="live-timeline" aria-label="当前回答表达时间轴">
               <div class="timeline-track"><i v-for="marker in fluencyMarkers" :key="`${marker.kind}-${marker.second}`" :class="marker.kind" :style="{ left: markerPosition(marker.second, recordingDuration) }" /></div>
@@ -88,7 +103,7 @@
           </div>
 
           <div v-else class="completion">
-            <span class="score-ring">{{ session.overall_score.toFixed(0) }}</span>
+            <span class="score-ring" :class="{ unassessed: session.overall_score == null }">{{ session.overall_score == null ? '已记录' : session.overall_score.toFixed(0) }}</span>
             <div><p>本轮面试完成</p><h2>{{ scoreLabel }}</h2><button class="primary" @click="reset">再练一次</button></div>
           </div>
         </div>
@@ -106,14 +121,15 @@
       />
 
       <section v-if="session.latest_evaluation" class="evaluation">
-        <div class="evaluation-head"><div><p class="eyebrow">即时反馈</p><h2>{{ session.latest_evaluation.feedback }}</h2></div><strong>{{ session.latest_evaluation.score.toFixed(0) }}</strong></div>
+        <div class="evaluation-head"><div><p class="eyebrow">{{ session.latest_evaluation.scoring_mode === 'llm' ? '模型评估 · 仅供训练参考' : '本地练习 · 内容待评估' }}</p><h2>{{ session.latest_evaluation.feedback }}</h2></div><strong>{{ displayScore(session.latest_evaluation.score) }}</strong></div>
         <div class="dimension-grid"><div v-for="(score, name) in session.latest_evaluation.dimensions" :key="name"><span>{{ name }}</span><b>{{ score.toFixed(0) }}</b><i><em :style="{ width: `${score}%` }"></em></i></div></div>
       </section>
 
       <section v-if="session.turns.length" class="review-list">
         <h2>回答记录</h2>
         <details v-for="(turn, index) in session.turns" :key="turn.turn_id" :open="index === session.turns.length - 1">
-          <summary><span>Q{{ index + 1 }} · {{ turn.question }}</span><b>{{ turn.score.toFixed(0) }} 分</b></summary>
+          <summary><span>Q{{ index + 1 }} · {{ turn.question }}</span><b>{{ displayScore(turn.score) }}</b></summary>
+          <small>{{ turn.scoring_mode === 'llm' ? '模型评估 · 仅供训练参考' : turn.scoring_mode === 'local_fallback' ? '本地练习 · 不计入能力均分' : '历史评分来源未确认 · 不计入能力均分' }}</small>
           <p>{{ turn.answer }}</p><small>{{ turn.feedback }}</small>
           <div v-if="localRecordings[index]" class="local-replay">
             <div class="replay-head"><strong>本地录像回放</strong><span>仅保留在当前页面，未上传</span></div>
@@ -137,15 +153,19 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   answerInterview,
   getKnowledgeSources,
+  getInterview,
+  getLearningAnalytics,
   startInterview,
   type InterviewFluencyMarker,
   type InterviewFluencyMetrics,
   type InterviewSession,
-  type KnowledgeSource
+  type KnowledgeSource,
+  type LearningAnalytics
 } from '../services/api'
 import CompanionCard from '../components/CompanionCard.vue'
 import DataState from '../components/DataState.vue'
@@ -153,6 +173,14 @@ import { publishCompanionEvent, type CompanionMood } from '../composables/useCom
 import mascotUrl from '../assets/filemate-mascot.png'
 
 const form = ref({ targetRole: '', scenario: '求职面试', difficulty: '标准', sourceId: '' })
+const route = useRoute()
+const router = useRouter()
+const recentInterviews = ref<LearningAnalytics['recent_interviews']>([])
+const historyLoading = ref(false)
+const historyError = ref('')
+const resumeError = ref('')
+const requestedInterviewId = ref('')
+let disposed = false
 const knowledgeSources = ref<KnowledgeSource[]>([])
 const session = ref<InterviewSession | null>(null)
 const answer = ref('')
@@ -204,8 +232,11 @@ const markerPosition = (second: number, duration: number) => {
   return `${Math.max(0, Math.min(100, second / duration * 100))}%`
 }
 
+const displayScore = (value: number | null | undefined) => value == null ? '待评估' : `${value.toFixed(0)} 分`
+
 const scoreLabel = computed(() => {
-  const score = session.value?.overall_score || 0
+  const score = session.value?.overall_score
+  if (score == null) return '回答已保存，先回看一题，再继续练习'
   return score >= 85 ? '表现出色，可以进入实战' : score >= 70 ? '基础扎实，继续优化表达' : '已发现提升空间，建议再练一轮'
 })
 
@@ -215,7 +246,13 @@ const completionCompanion = computed((): {
   message: string
   evidence: string
 } => {
-  const score = session.value?.overall_score || 0
+  const score = session.value?.overall_score
+  if (score == null) return {
+    mood: 'happy',
+    title: '又完成了一次练习',
+    message: '内容质量尚未评估，可以对照资料回看自己的回答。',
+    evidence: `依据：已记录 ${session.value?.turns.length || 0} 次回答`
+  }
   if (score >= 85) return {
     mood: 'wink',
     title: '这轮表达已经具备实战说服力',
@@ -250,7 +287,14 @@ const speakQuestion = () => {
 const begin = async () => {
   loading.value = true
   error.value = ''
-  try { session.value = await startInterview(form.value.targetRole, form.value.scenario, form.value.difficulty, form.value.sourceId || undefined); setTimeout(speakQuestion, 180) }
+  try {
+    const created = await startInterview(form.value.targetRole, form.value.scenario, form.value.difficulty, form.value.sourceId || undefined)
+    if (disposed) return
+    session.value = created
+    resumeError.value = ''
+    await router.replace({ query: { interview: created.interview_id } })
+    speakQuestion()
+  }
   catch (e: any) { error.value = e?.message || '创建失败'; ElMessage.error(error.value) }
   finally { loading.value = false }
 }
@@ -264,12 +308,12 @@ const submit = async () => {
       answer.value,
       fluencyMetrics.value
     )
-    const latestScore = session.value.latest_evaluation?.score || 0
+    const latestScore = session.value.latest_evaluation?.score
     publishCompanionEvent({
-      mood: latestScore >= 85 ? 'wink' : latestScore >= 60 ? 'focused' : 'encouraging',
-      title: latestScore >= 85 ? '这一题回答得很有力量' : latestScore >= 60 ? '思路已经清楚，再补一层证据' : '这一题值得慢下来重新组织',
+      mood: latestScore == null ? 'happy' : latestScore >= 85 ? 'wink' : latestScore >= 60 ? 'focused' : 'encouraging',
+      title: latestScore == null ? '这一题的回答已保存' : latestScore >= 85 ? '这一题回答得很有力量' : latestScore >= 60 ? '思路已经清楚，再补一层证据' : '这一题值得慢下来重新组织',
       message: session.value.latest_evaluation?.feedback || '继续完成下一题，我会保留每轮证据。',
-      evidence: `依据：本题评分 ${Math.round(latestScore)} 分`,
+      evidence: latestScore == null ? '本地练习记录 · 内容质量待评估' : `依据：本题模型评分 ${Math.round(latestScore)} 分`,
       route: session.value.status === 'completed' ? '/growth' : '/interview',
       actionLabel: session.value.status === 'completed' ? '查看成长证据' : '继续面试'
     })
@@ -282,6 +326,30 @@ const submit = async () => {
     if (session.value.status === 'active') setTimeout(speakQuestion, 180)
   }
   catch (error: any) { ElMessage.error(error.message || '评分失败') }
+  finally { loading.value = false }
+}
+
+const loadRecent = async () => {
+  historyLoading.value = true
+  historyError.value = ''
+  try { recentInterviews.value = (await getLearningAnalytics()).recent_interviews }
+  catch { historyError.value = '练习记录暂时未能加载，可以重试；仍可新建面试。' }
+  finally { historyLoading.value = false }
+}
+
+const restoreInterview = async (interviewId: string) => {
+  if (!interviewId || loading.value) return
+  requestedInterviewId.value = interviewId
+  loading.value = true
+  resumeError.value = ''
+  try {
+    const restored = await getInterview(interviewId)
+    if (disposed) return
+    session.value = restored
+    form.value = { targetRole: restored.target_role, scenario: restored.scenario, difficulty: restored.difficulty, sourceId: restored.source_context?.source_id || '' }
+    answer.value = ''
+    await router.replace({ query: { interview: restored.interview_id } })
+  } catch { resumeError.value = '这场面试暂时无法恢复。请确认后端已启动，或从下方新建面试。' }
   finally { loading.value = false }
 }
 
@@ -473,8 +541,12 @@ const reset = () => {
   session.value = null
   answer.value = ''
   fluencyMarkers.value = []
+  resumeError.value = ''
+  void router.replace({ query: {} })
+  void loadRecent()
 }
 onBeforeUnmount(() => {
+  disposed = true
   recognition?.stop()
   stopVideoRecording(true)
   stopCamera()
@@ -483,6 +555,8 @@ onBeforeUnmount(() => {
   window.speechSynthesis?.cancel()
 })
 onMounted(async () => {
+  void loadRecent()
+  if (typeof route.query.interview === 'string') void restoreInterview(route.query.interview)
   try { knowledgeSources.value = await getKnowledgeSources(100) }
   catch { knowledgeSources.value = [] }
 })
@@ -637,6 +711,23 @@ onMounted(async () => {
 .marker-list i.filler { background: #3c7fb2; }
 .evidence-only-timeline > strong { margin-right: 8px; font-size: 11px; }
 .completion-companion { margin-top: 18px; }
+.resume-panel { margin-bottom: 24px; padding: 24px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 14px; }
+.resume-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.resume-heading h2 { margin: 0 0 8px; font-size: 20px; }
+.resume-heading p, .resume-empty { color: var(--text-secondary); font-size: 13px; }
+.resume-heading p { margin: 0 0 16px; }
+.resume-heading .ghost { white-space: nowrap; }
+.resume-list { display: grid; }
+.resume-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 4px; min-height: 64px; border: 0; border-top: 1px solid var(--border-subtle); text-align: left; background: transparent; color: var(--text-primary); cursor: pointer; }
+.resume-item:hover { background: var(--accent-soft); }
+.resume-item:disabled { opacity: .6; cursor: wait; }
+.resume-item b, .resume-item small { display: block; overflow-wrap: anywhere; }
+.resume-item small { margin-top: 6px; color: var(--text-secondary); }
+.resume-action { flex-shrink: 0; font-size: 13px; color: var(--accent); }
+@media (max-width: 600px) { .resume-panel { padding: 16px; } .resume-heading { flex-wrap: wrap; } }
+.score-ring { flex-shrink: 0; }
+.score-ring.unassessed { font-size: 22px; white-space: nowrap; text-align: center; }
+.evaluation-head > strong { flex-shrink: 0; white-space: nowrap; }
 .dimension-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
 
 @media (max-width: 800px) {

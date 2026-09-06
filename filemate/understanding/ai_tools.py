@@ -422,7 +422,7 @@ class AIChatbot:
             return str(result).strip()
         except Exception as exc:
             logger.error("AI问答失败: %s", exc)
-            return f"回答生成失败: {exc}"
+            raise RuntimeError("回答生成失败，请稍后重试") from exc
 
 
 class StudyPlanGenerator:

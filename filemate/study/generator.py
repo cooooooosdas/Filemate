@@ -216,14 +216,14 @@ def analyze_document_with_llm(
 
 
 def check_answer(question: Any, user_answer: str) -> bool:
-    """按题型判题：单选、填空、简答关键词重合。"""
+    """保守核对完整答案，拒绝截断、否定冲突和多选遗漏。"""
     answer = str(
-        question.get("answer")
+        question.get("answer") or ""
         if isinstance(question, dict)
         else getattr(question, "answer", "") or ""
     ).strip().lower()
     submitted = (user_answer or "").strip().lower()
-    if not answer:
+    if not answer or not submitted:
         return False
     question_type = str(
         question.get("question_type")
@@ -231,13 +231,27 @@ def check_answer(question: Any, user_answer: str) -> bool:
         else getattr(question, "question_type", "choice")
     ).strip()
     if question_type == "choice":
-        return bool(submitted) and submitted.startswith(answer[:1])
+        def choice_value(value: str) -> str:
+            match = re.fullmatch(r"([a-z])(?:[.、:：)）]\s*.+)?", value)
+            return match[1] if match else value
+
+        return choice_value(submitted) == choice_value(answer)
+    # 容许说明性前缀，不把更短的词片段或相反含义当成完整答案。
+    submitted = re.sub(r"^(?:答案(?:是|为)?|答)\s*[:：]?\s*", "", submitted)
+    if re.fullmatch(r"[+-]?\d+(?:\.\d+)?", answer):
+        return submitted == answer
     if question_type == "fill":
-        return bool(submitted) and (answer in submitted or submitted in answer)
+        return submitted.rstrip("。.!！") == answer.rstrip("。.!！")
+    if submitted.rstrip("。.!！") == answer.rstrip("。.!！"):
+        return True
+    if re.search(r"不|没|无|非|未|不能|not\b|never\b", submitted) and not re.search(
+        r"不|没|无|非|未|不能|not\b|never\b", answer
+    ):
+        return False
     answer_tokens = [w for w in re.split(r"[\s，。；、,.;]+", answer) if len(w) > 1]
     if not answer_tokens:
         if not submitted:
             return False
-        return answer in submitted or submitted in answer
+        return answer in submitted
     matched = sum(1 for token in answer_tokens if token in submitted)
-    return matched / len(answer_tokens) >= 0.5
+    return matched == len(answer_tokens)

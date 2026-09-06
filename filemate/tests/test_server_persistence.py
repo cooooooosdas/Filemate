@@ -106,6 +106,7 @@ def server_module(
     monkeypatch.setenv("FILEMATE_DB_PATH", str(tmp_path / "bootstrap.db"))
     monkeypatch.setenv("FILEMATE_UPLOAD_DIR", str(tmp_path / "runtime" / "inbox"))
     monkeypatch.setenv("FILEMATE_ARCHIVE_DIR", str(tmp_path / "archive"))
+    monkeypatch.setenv("FILEMATE_INTERVIEW_LOCAL_ONLY", "1")
     sys.modules.pop("server", None)
     module = importlib.import_module("server")
     module._storage.close()
@@ -544,8 +545,15 @@ def test_chat_uses_and_updates_persisted_history(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module, storage = server_module
+    source_id = storage.save_source(
+        original_name="网络.txt", source_path="/local/网络.txt",
+        raw_text="TCP 使用三次握手建立连接。",
+    )
+    from filemate.understanding.retrieval import split_document
+    storage.replace_source_chunks(source_id, split_document("TCP 使用三次握手建立连接。"))
     storage.save_document_context(
         ctx_id="ctx-chat",
+        source_id=source_id,
         context_text="TCP 使用三次握手建立连接。",
         chat_history=[{"role": "user", "content": "这是哪门课？"}],
     )
@@ -580,7 +588,7 @@ def test_chat_uses_and_updates_persisted_history(
                 chat_history=chat_history,
                 mode=mode,
             )
-            return "它属于计算机网络课程。"
+            return "TCP 使用三次握手。[引用1]"
 
     monkeypatch.setattr(llm_module, "LLMConfig", FakeConfig)
     monkeypatch.setattr(llm_module, "LLMClient", FakeClient)
@@ -597,8 +605,8 @@ def test_chat_uses_and_updates_persisted_history(
         )
 
     assert response.status_code == 200
-    assert response.json()["data"]["answer"] == "它属于计算机网络课程。"
-    assert received["context"] == "TCP 使用三次握手建立连接。"
+    assert response.json()["data"]["answer"] == "TCP 使用三次握手。[引用1]"
+    assert "TCP 使用三次握手建立连接。" in received["context"]
     assert received["chat_history"][0]["content"] == "这是哪门课？"
     assert received["mode"] == "socratic"
     persisted = storage.get_document_context("ctx-chat")["chat_history"]
@@ -606,10 +614,118 @@ def test_chat_uses_and_updates_persisted_history(
         {"role": "user", "content": "为什么是三次？"},
         {
             "role": "assistant",
-            "content": "它属于计算机网络课程。",
-            "citations": [],
+            "content": "TCP 使用三次握手。[引用1]",
+            "citations": response.json()["data"]["citations"],
         },
     ]
+
+
+@pytest.mark.parametrize("with_source", [False, True])
+def test_chat_without_evidence_does_not_call_model(server_module, monkeypatch, with_source):
+    module, storage = server_module
+    import filemate.understanding as understanding_module
+    from filemate.understanding.retrieval import split_document
+
+    source_id = None
+    if with_source:
+        source_id = storage.save_source(
+            original_name="网络.txt", source_path="/local/网络.txt", raw_text="TCP 使用三次握手建立连接。",
+        )
+        storage.replace_source_chunks(source_id, split_document("TCP 使用三次握手建立连接。"))
+    storage.save_document_context(
+        ctx_id="no-hit", source_id=source_id, context_text="TCP 使用三次握手建立连接。",
+    )
+
+    def unexpected_model(*args, **kwargs):
+        pytest.fail("无依据时不应创建或调用模型")
+
+    monkeypatch.setattr(understanding_module, "AIChatbot", unexpected_model)
+    with TestClient(module.app) as client:
+        response = client.post("/ai/chat", json={"ctx_id": "no-hit", "question": "量子纠缠相对论"})
+    assert response.status_code == 200
+    assert response.json()["data"]["answerable"] is False
+    assert response.json()["data"]["citations"] == []
+    history = storage.get_document_context("no-hit")["chat_history"]
+    assert len(history) == 2
+    assert "没有找到" in history[-1]["content"]
+
+
+@pytest.mark.parametrize("answer", ["TCP 使用三次握手。", "TCP 使用三次握手。[引用99]"])
+def test_chat_rejects_missing_or_unknown_citation(server_module, monkeypatch, answer):
+    module, storage = server_module
+    import filemate.llm_client as llm_module
+    import filemate.understanding as understanding_module
+    from filemate.understanding.retrieval import split_document
+
+    source_id = storage.save_source(original_name="网络.txt", source_path="/local/网络.txt", raw_text="TCP 使用三次握手建立连接。")
+    storage.replace_source_chunks(source_id, split_document("TCP 使用三次握手建立连接。"))
+    storage.save_document_context(ctx_id="bad-cite", source_id=source_id, context_text="TCP 使用三次握手。")
+    monkeypatch.setattr(llm_module.LLMConfig, "from_env", lambda: None)
+    monkeypatch.setattr(llm_module, "LLMClient", lambda config: None)
+
+    class FakeChatbot:
+        def __init__(self, llm):
+            pass
+
+        def answer(self, *args, **kwargs):
+            return answer
+
+    monkeypatch.setattr(understanding_module, "AIChatbot", FakeChatbot)
+    with TestClient(module.app) as client:
+        response = client.post("/ai/chat", json={"ctx_id": "bad-cite", "question": "TCP 三次握手"})
+    assert response.status_code == 502
+    assert not storage.get_document_context("bad-cite")["chat_history"]
+
+
+def test_slow_chat_keeps_health_endpoint_responsive(server_module, monkeypatch):
+    import asyncio
+    import threading
+
+    import httpx
+
+    import filemate.llm_client as llm_module
+    import filemate.understanding as understanding_module
+    from filemate.understanding.retrieval import split_document
+
+    module, storage = server_module
+    text = "TCP 使用三次握手建立连接。"
+    source_id = storage.save_source(original_name="网络.txt", source_path="/local/network.txt", raw_text=text)
+    storage.replace_source_chunks(source_id, split_document(text))
+    storage.save_document_context(ctx_id="slow-chat", source_id=source_id, context_text=text)
+    started, release = threading.Event(), threading.Event()
+    released_by_health = []
+    monkeypatch.setattr(llm_module.LLMConfig, "from_env", lambda: None)
+    monkeypatch.setattr(llm_module, "LLMClient", lambda config: None)
+
+    class SlowChatbot:
+        def __init__(self, llm):
+            pass
+
+        def answer(self, *args, **kwargs):
+            started.set()
+            released_by_health.append(release.wait(timeout=2))
+            return "TCP 使用三次握手。[引用1]"
+
+    monkeypatch.setattr(understanding_module, "AIChatbot", SlowChatbot)
+
+    async def exercise():
+        transport = httpx.ASGITransport(app=module.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            chat = asyncio.create_task(client.post("/ai/chat", json={"ctx_id": "slow-chat", "question": "TCP 三次握手"}))
+            try:
+                for _ in range(200):
+                    if started.is_set():
+                        break
+                    await asyncio.sleep(.01)
+                assert started.is_set()
+                health = await client.get("/api/health")
+                assert health.status_code == 200
+            finally:
+                release.set()
+            assert (await chat).status_code == 200
+
+    asyncio.run(exercise())
+    assert released_by_health == [True]
 
 
 def test_ai_context_routes_validate_limit_and_restore_history(
@@ -845,15 +961,18 @@ def test_mock_interview_progresses_and_persists(
     assert started["current_index"] == 0
     assert started["agent_run_id"]
     assert answered["current_index"] == 1
-    assert answered["latest_evaluation"]["score"] > 0
+    assert answered["latest_evaluation"]["score"] is None
     persisted = storage.get_interview(started["interview_id"])
     assert len(persisted["turns"]) == 1
+    assert persisted["turns"][0]["score"] is None
+    assert persisted["turns"][0]["scoring_mode"] == "local_fallback"
     assert "流畅性" in answered["latest_evaluation"]["dimensions"]
     assert persisted["turns"][0]["fluency_metrics"]["source"] == "speech_recognition"
     assert persisted["turns"][0]["fluency_metrics"]["markers"][0]["second"] == 6.2
     assert analytics["interview_count"] == 1
-    assert analytics["average_interview_score"] > 0
-    assert "内容" in analytics["interview_dimensions"]
+    assert analytics["average_interview_score"] is None
+    assert analytics["assessed_interview_count"] == 0
+    assert analytics["interview_dimensions"] == {}
     run = storage.get_agent_run(started["agent_run_id"])
     assert run is not None
     assert run["selected_agents"] == ["面试 Agent", "评价 Agent"]

@@ -22,6 +22,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from filemate.core.categories import CATEGORIES
 from filemate.execution.confirmation_executor import (
@@ -1366,7 +1367,7 @@ def create_reverse_goal(request: ReverseGoalRequest):
         goal_type=request.goal_type,
         deadline=request.deadline,
         target_score=request.target_score,
-        analytics=_storage.get_learning_analytics(),
+        analytics=_storage.get_learning_analytics(source_id=request.source_id),
         source_id=request.source_id,
         source_name=source.get("original_name") if source else None,
     )
@@ -1460,7 +1461,7 @@ def replan_reverse_goal(goal_id: str):
         goal_type=str(current["goal_type"]),
         deadline=deadline,
         target_score=current.get("target_score"),
-        analytics=_storage.get_learning_analytics(),
+        analytics=_storage.get_learning_analytics(source_id=source_id),
         source_id=source_id,
         source_name=source.get("original_name") if source else None,
         previous_tasks=current.get("tasks") or [],
@@ -1992,6 +1993,7 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
         dimensions=evaluation["dimensions"],
         feedback=evaluation["feedback"],
         fluency_metrics=evaluation.get("fluency"),
+        scoring_mode=evaluation["scoring_mode"],
     )
     run_id = interview.get("agent_run_id")
     if run_id:
@@ -2003,7 +2005,7 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
                 "question_index": index,
             },
             output_summary=(
-                f"第 {index + 1} 题得分 {evaluation['score']}；"
+                f"第 {index + 1} 题：{evaluation['score'] if evaluation['score'] is not None else '内容待评估'}；"
                 f"已记录 {len(evaluation['dimensions'])} 个评分维度"
             ),
         )
@@ -2014,7 +2016,7 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
             source_id=f"{interview_id}:{index}",
             summary=(
                 f"{interview['scenario']}第 {index + 1} 题得分 "
-                f"{evaluation['score']}，用于后续复盘"
+                f"{evaluation['score'] if evaluation['score'] is not None else '待评估'}，用于后续复盘"
             ),
             allowed_agents=["评价 Agent", "规划 Agent", "学习教练 Agent"],
         )
@@ -2057,6 +2059,17 @@ async def ai_chat(request: ChatRequest):
         source = _storage.get_source(ctx.get("source_id")) if ctx.get("source_id") else None
         chunks = _storage.list_source_chunks(ctx["source_id"]) if source else []
         matches = rank_chunks(question, chunks, limit=5)
+        if not matches:
+            answer = "当前资料中没有找到可核对的依据。请补充相关资料，或换一个更具体的问题。"
+            history = _storage.append_context_messages(ctx_id, [
+                {"role": "user", "content": question},
+                {"role": "assistant", "content": answer, "citations": []},
+            ])
+            return ApiResponse(success=True, data={
+                "ctx_id": ctx_id, "question": question, "answer": answer,
+                "mode": request.mode, "citations": [], "answerable": False,
+                "reason": "insufficient_evidence", "chat_history": history[-10:],
+            })
         if matches:
             context_parts = []
             for index, match in enumerate(matches, start=1):
@@ -2080,12 +2093,18 @@ async def ai_chat(request: ChatRequest):
         from filemate.understanding import AIChatbot
         chatbot = AIChatbot(llm)
         persisted_history = ctx.get("chat_history") or request.chat_history or []
-        answer = chatbot.answer(
+        answer = await run_in_threadpool(
+            chatbot.answer,
             question,
             context,
             chat_history=persisted_history,
             mode=request.mode,
         )
+        cited_ids = {int(value) for value in re.findall(r"\[引用\s*(\d+)\]", answer)}
+        allowed_ids = {item["id"] for item in citations}
+        if not cited_ids or not cited_ids <= allowed_ids:
+            raise ValueError("模型回答缺少有效引用，请重试")
+        citations = [item for item in citations if item["id"] in cited_ids]
         chat_history = _storage.append_context_messages(
             ctx_id,
             [
@@ -2102,6 +2121,7 @@ async def ai_chat(request: ChatRequest):
             "ctx_id": ctx_id,
             "question": question,
             "answer": answer,
+            "answerable": True,
             "mode": request.mode,
             "citations": citations,
             "chat_history": chat_history[-10:],

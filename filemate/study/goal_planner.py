@@ -54,8 +54,8 @@ def build_reverse_goal_plan(
     source_count = int(analytics.get("source_count", 0))
     quiz_attempts = int(analytics.get("quiz_attempt_count", 0))
     pending_wrong = int(analytics.get("pending_wrong_count", 0))
-    interview_count = int(analytics.get("interview_count", 0))
-    interview_score = float(analytics.get("average_interview_score", 0))
+    interview_count = int(analytics.get("assessed_interview_count", analytics.get("interview_count", 0)))
+    interview_score = float(analytics.get("average_interview_score") or 0)
     study_days = int(analytics.get("total_study_days", 0))
     study_rate = float(analytics.get("study_completion_rate", 0))
     dimensions = analytics.get("interview_dimensions", {}) or {}
@@ -147,7 +147,7 @@ def build_reverse_goal_plan(
     for index, item in enumerate(tasks):
         offset = min(total_days, max(1, math.ceil((index + 1) * total_days / pending_count)))
         item["due_date"] = (today + timedelta(days=offset)).isoformat()
-        if item["task_id"] in completed_ids:
+        if item["task_id"] in completed_ids and item["task_id"] != "clear-due-wrong":
             item["status"] = "completed"
 
     return {

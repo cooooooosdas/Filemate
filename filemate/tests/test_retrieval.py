@@ -66,6 +66,16 @@ def test_rank_chunks_no_match() -> None:
     assert results == []
 
 
+def test_rank_chunks_rejects_incidental_character_overlap() -> None:
+    chunks = split_document("TCP 通过三次握手建立可靠连接。")
+    assert rank_chunks("立方体为什么发光", chunks) == []  # 只共享“立”，不足以回答。
+
+
+def test_rank_chunks_preserves_mixed_language_term() -> None:
+    chunks = split_document("--- 第 1 页 ---\n二分查找需要有序。\n--- 第 2 页 ---\nB 树通过多路平衡减少磁盘 I/O。")
+    assert rank_chunks("B 树适合什么存储结构", chunks)[0]["page_number"] == 2
+
+
 def test_rank_chunks_chinese_tokenization() -> None:
     chunks = split_document("进程是资源分配单位。", chunk_size=200)
     results = rank_chunks("资源分配", chunks)
