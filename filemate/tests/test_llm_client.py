@@ -1,5 +1,6 @@
 import pytest
 
+import filemate.llm_client.config as config_module
 from filemate.llm_client.client import LLMClient
 from filemate.llm_client.config import LLMConfig
 from filemate.llm_client.exceptions import LLMAccessError, LLMConfigError
@@ -41,6 +42,19 @@ def test_default_config_uses_deepseek_v4_flash(
     assert config.provider == "deepseek"
     assert config.base_url == "https://api.deepseek.com"
     assert config.model == "deepseek-v4-flash"
+
+
+def test_config_uses_secure_store_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_API_KEY", "environment-key")
+    monkeypatch.setattr(
+        config_module,
+        "resolve_api_key",
+        lambda: ("secure-user-key", "secure_store"),
+    )
+
+    config = LLMConfig.from_env()
+
+    assert config.api_key == "secure-user-key"
 
 
 def test_unknown_legacy_config_is_rejected_without_sending_key() -> None:

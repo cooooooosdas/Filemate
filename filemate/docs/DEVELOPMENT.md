@@ -337,7 +337,7 @@ sqlite-utils filemate.db "SELECT * FROM sessions LIMIT 5"
 
 | 报错 | 原因 | 解决 |
 |---|---|---|
-| `LLM_API_KEY 未配置` | `.env` 不存在或 Key 为空 | 复制 `.env.example` → `.env`，填入 Key |
+| `DeepSeek API 密钥未配置` | 应用设置和环境变量均未配置 | 本机或桌面端在右上角“设置”中填写；服务器部署使用 `LLM_API_KEY` |
 | `不支持的格式: xxx` | 感知层还没实现该格式的解析器 | 先实现，或先用 Word/PDF |
 | `icalendar 未安装` | 缺依赖 | `pip install icalendar` |
 | `gradio` 导入失败 | 缺依赖 | `pip install gradio` |

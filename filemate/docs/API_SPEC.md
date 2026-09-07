@@ -481,6 +481,9 @@ AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。�
 | `PUT` | `/knowledge/sources/{source_id}/rights` | 更新资料授权与分享范围 | 写入授权、安全 Agent 轨迹和操作记忆 |
 | `DELETE` | `/agents/memories/{memory_id}` | 撤销一条共享记忆 | 软删除记忆并记录安全 Agent 轨迹 |
 | `GET` | `/api/health` | 健康检查 | 无 |
+| `GET` | `/settings/llm` | 读取 DeepSeek 配置状态，不返回密钥 | 仅允许本机回环地址 |
+| `PUT` | `/settings/llm` | 保存当前用户自己的 DeepSeek 密钥 | 写入操作系统安全凭据库；不进入数据库 |
+| `DELETE` | `/settings/llm` | 删除当前用户保存的 DeepSeek 密钥 | 删除系统凭据；环境变量配置不受影响 |
 
 说明：`POST /interviews` 创建面试时按场景和难度选择最近维护的启用题目，响应和持久化记录均包含与 `questions` 等长的 `question_ids`；静态回退题及 v8 旧会话对应 `null`。评分响应包含 `scoring_mode`，取值为 `llm` 或 `local_fallback`。
 
@@ -520,3 +523,4 @@ AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。�
 | 2026-09-02 | v1.10 | 增加 SQLite v13 面试流畅度证据、摄像头本地预览边界与可选请求合同 | Codex |
 | 2026-09-03 | v1.11 | 增加 SQLite v14 可信 Agent 轨迹、共享记忆撤销、资料授权与隐私中心接口 | Codex |
 | 2026-09-05 | v1.12 | 增加目标反推、资料学习资产链、本地录像时间轴和资料驱动面试合同 | Codex |
+| 2026-09-07 | v1.13 | 增加本机 DeepSeek 密钥安全配置接口，桌面端用户可自带密钥且不写入业务数据库 | Codex |

@@ -5,7 +5,7 @@
 FileMate 采用同一套 Vue 3 前端和 FastAPI 业务接口，按两阶段交付：
 
 1. **网站端先上线**：先做带访问密码的私有 Alpha，验证稳定性、数据安全和真实使用流程。
-2. **Windows 桌面端后交付**：网站功能冻结后，用现有 Tauri 2 壳打包为 NSIS/MSI 安装程序；桌面端继续复用相同页面与 API 合同。
+2. **Windows 桌面端后交付**：网站功能冻结后，用现有 Tauri 2 壳打包为 NSIS `.exe` 安装程序；桌面端继续复用相同页面与 API 合同。
 
 移动端不在当前范围内。网站与桌面端保持同样的任务入口、结果页和数据模型，但底层文件能力有所不同：网站端使用上传、下载和服务器工作区；桌面端通过本机 sidecar 访问用户明确选择的文件。浏览器安全模型不允许网页静默读写任意本地目录，因此不能把两者实现为完全相同的文件通道。
 
@@ -169,7 +169,7 @@ docker compose --env-file .env.production up -d --build
 
 1. 运行 `npm run desktop:sidecar`，用 PyInstaller 生成 FastAPI sidecar。
 2. 运行 `npm run desktop:smoke-sidecar`，验证 sidecar 启动、健康检查和退出。
-3. 运行 `npm run desktop:bundle`，由 Tauri 生成 NSIS `.exe` 和 MSI 安装包。
+3. 运行 `npm run desktop:bundle`，由 Tauri 生成 NSIS `.exe` 安装包。Alpha 版本号含文字预发布标识，不生成受 MSI 数字版本约束的产物。
 4. 在干净 Windows 10/11 虚拟机执行安装、升级、卸载和数据保留测试。
 5. 补代码签名证书，降低 SmartScreen 警告；发布安装包 SHA-256 校验值。
 

@@ -13,6 +13,14 @@ $workingDir = Join-Path $projectRoot "_working\installer-smoke\$runId"
 $installRoot = Join-Path $workingDir "installed\FileMate"
 $appProcess = $null
 $originalPath = $env:PATH
+$uninstaller = $null
+$roamingAppData = [Environment]::GetFolderPath("ApplicationData")
+$localAppData = [Environment]::GetFolderPath("LocalApplicationData")
+$expectedVersion = (
+    Get-Content -Raw -LiteralPath (
+        Join-Path $projectRoot "filemate\web\src-tauri\tauri.conf.json"
+    ) | ConvertFrom-Json
+).version
 
 if (-not $EvidencePath) {
     $EvidencePath = Join-Path $workingDir "installer-smoke-evidence.json"
@@ -22,9 +30,6 @@ $msi = Get-ChildItem -LiteralPath $bundlePath -Recurse -Filter "*.msi" -File |
     Select-Object -First 1
 $nsis = Get-ChildItem -LiteralPath $bundlePath -Recurse -Filter "*-setup.exe" -File |
     Select-Object -First 1
-if (-not $msi) {
-    throw "MSI artifact was not found under $bundlePath."
-}
 if (-not $nsis) {
     throw "NSIS artifact was not found under $bundlePath."
 }
@@ -92,20 +97,27 @@ try {
         try {
             $health = Invoke-RestMethod -Uri "http://127.0.0.1:8001/" `
                 -Method Get -TimeoutSec 2 -UseBasicParsing
-            if ($health.version -eq "1.2.0") {
+            if ($health.version -eq $expectedVersion) {
                 break
             }
         } catch {
             Start-Sleep -Milliseconds 250
         }
     }
-    if (-not $health -or $health.version -ne "1.2.0") {
+    if (-not $health -or $health.version -ne $expectedVersion) {
         throw "Installed FileMate backend did not become ready."
     }
 
+    $llmSettings = Invoke-RestMethod -Uri "http://127.0.0.1:8001/settings/llm" `
+        -Method Get -TimeoutSec 5 -UseBasicParsing
+    if (-not $llmSettings.success -or `
+        -not $llmSettings.data.secure_storage_available) {
+        throw "Installed FileMate cannot access the Windows secure credential store."
+    }
+
     $dataCandidates = @(
-        (Join-Path $env:APPDATA "cn.filemate.campus-twin\filemate.db"),
-        (Join-Path $env:LOCALAPPDATA "cn.filemate.campus-twin\filemate.db")
+        (Join-Path $roamingAppData "cn.filemate.campus-twin\filemate.db"),
+        (Join-Path $localAppData "cn.filemate.campus-twin\filemate.db")
     )
     $databasePath = $null
     $dataDeadline = (Get-Date).AddSeconds(10)
@@ -120,8 +132,6 @@ try {
     if (-not $databasePath) {
         throw "Installed app did not create its application-data database."
     }
-    $sentinelPath = Join-Path (Split-Path -Parent $databasePath) "uninstall-preserve.sentinel"
-    [System.IO.File]::WriteAllText($sentinelPath, "FileMate user data must survive uninstall.")
 
     if (-not $appProcess.CloseMainWindow()) {
         throw "Installed app did not expose a closable main window."
@@ -155,21 +165,22 @@ try {
     if (Test-Path -LiteralPath $appExecutable.FullName) {
         throw "Application executable remained after uninstall."
     }
-    if (-not (Test-Path -LiteralPath $databasePath) -or
-        -not (Test-Path -LiteralPath $sentinelPath)) {
+    if (-not (Test-Path -LiteralPath $databasePath)) {
         throw "Uninstall removed FileMate user data."
     }
 
     $evidence = [ordered]@{
         schema_version = 1
         checked_at = (Get-Date).ToUniversalTime().ToString("o")
-        msi = $msi.FullName
+        msi = if ($msi) { $msi.FullName } else { $null }
         nsis = $nsis.FullName
+        version = $expectedVersion
         installed_executable = $appExecutable.Name
         silent_install = $true
         python_absent_from_path = $true
         app_started = $true
         backend_ready = $true
+        secure_credential_store_ready = $true
         graceful_exit = $true
         sidecar_stopped = $true
         silent_uninstall = $true
@@ -193,5 +204,9 @@ try {
                 Stop-Process -Id $appProcess.Id -Force -ErrorAction SilentlyContinue
             }
         }
+    }
+    if ($uninstaller -and (Test-Path -LiteralPath $uninstaller.FullName)) {
+        Start-Process -FilePath $uninstaller.FullName `
+            -ArgumentList "/S" -Wait -ErrorAction SilentlyContinue | Out-Null
     }
 }

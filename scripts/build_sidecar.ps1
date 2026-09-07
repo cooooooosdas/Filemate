@@ -46,28 +46,65 @@ $previousUvCacheDir = $env:UV_CACHE_DIR
 $env:UV_CACHE_DIR = $uvCacheDir
 Push-Location $projectRoot
 try {
-    uv run --isolated --no-project `
-        --with-requirements requirements-desktop.txt `
-        --with "pyinstaller>=6.0" `
-        pyinstaller `
-        --noconfirm `
-        --clean `
-        --onefile `
-        --console `
-        --name $binaryName `
-        --distpath $binaryDir `
-        --workpath (Join-Path $workingDir "build") `
-        --specpath (Join-Path $workingDir "spec") `
-        --paths $projectRoot `
-        --hidden-import uvicorn.logging `
-        --hidden-import uvicorn.loops.auto `
-        --hidden-import uvicorn.protocols.http.auto `
-        --hidden-import uvicorn.protocols.websockets.auto `
-        --hidden-import uvicorn.lifespan.on `
-        --collect-data icalendar `
-        --add-data "$promptData;filemate/understanding/prompts" `
-        --add-data "$rulesData;filemate/understanding/rules" `
-        server.py
+    $venvPython = Join-Path $projectRoot ".venv\Scripts\python.exe"
+    if (Test-Path -LiteralPath $venvPython) {
+        uv pip install `
+            --python $venvPython `
+            --requirements requirements-desktop.txt `
+            "pyinstaller>=6.0"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Desktop build dependencies could not be installed."
+        }
+        $pyinstallerProgram = $venvPython
+        $pyinstallerPrefix = @("-m", "PyInstaller")
+    } else {
+        $pyinstallerProgram = (Get-Command uv).Source
+        $pyinstallerPrefix = @(
+            "run",
+            "--isolated",
+            "--no-project",
+            "--with-requirements",
+            "requirements-desktop.txt",
+            "--with",
+            "pyinstaller>=6.0",
+            "pyinstaller"
+        )
+    }
+
+    $pyinstallerArguments = @(
+        "--noconfirm"
+        "--clean"
+        "--onefile"
+        "--console"
+        "--name"
+        $binaryName
+        "--distpath"
+        $binaryDir
+        "--workpath"
+        (Join-Path $workingDir "build")
+        "--specpath"
+        (Join-Path $workingDir "spec")
+        "--paths"
+        $projectRoot
+        "--hidden-import"
+        "uvicorn.logging"
+        "--hidden-import"
+        "uvicorn.loops.auto"
+        "--hidden-import"
+        "uvicorn.protocols.http.auto"
+        "--hidden-import"
+        "uvicorn.protocols.websockets.auto"
+        "--hidden-import"
+        "uvicorn.lifespan.on"
+        "--collect-data"
+        "icalendar"
+        "--add-data"
+        "$promptData;filemate/understanding/prompts"
+        "--add-data"
+        "$rulesData;filemate/understanding/rules"
+        "server.py"
+    )
+    & $pyinstallerProgram @pyinstallerPrefix @pyinstallerArguments
     if ($LASTEXITCODE -ne 0) {
         throw "PyInstaller sidecar build failed."
     }

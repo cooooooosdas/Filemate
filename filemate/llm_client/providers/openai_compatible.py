@@ -25,7 +25,7 @@ class OpenAICompatibleProvider(BaseLLMProvider):
 
     def __init__(self, config: LLMConfig) -> None:
         if not config.api_key:
-            raise LLMConfigError("LLM_API_KEY 未配置，请在 .env 中设置")
+            raise LLMConfigError("DeepSeek API 密钥未配置，请在应用设置中填写")
         if not config.base_url:
             raise LLMConfigError("LLM_BASE_URL 未配置，请在 .env 中设置")
         if not config.model:

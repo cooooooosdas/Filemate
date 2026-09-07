@@ -7,7 +7,7 @@
 - Node.js 24
 - Rust stable-msvc（最低 1.77.2）
 - uv 与 Python 3.10–3.12
-- Windows WebView2；生成 MSI 还需要 Tauri 对应的 Windows 打包依赖
+- Windows WebView2；当前 Alpha 版本输出 NSIS `.exe` 安装程序
 
 ## 构建
 
@@ -28,6 +28,6 @@ npm run desktop:dev
 
 - SQLite、待确认 Inbox：系统应用数据目录中的 FileMate 目录。
 - 已确认归档：用户“文档/FileMate”目录。
-- API Key：从启动进程的环境变量或后续设置模块读取，不写入安装包。
+- API Key：用户可在应用设置中写入 Windows 安全凭据库，或由部署环境变量提供；不写入安装包、浏览器或业务数据库。
 
 退出桌面程序时，Rust 宿主向仅监听回环地址的后端发送一次性令牌关闭请求；随后终止 Sidecar 作为兜底，防止后台残留。

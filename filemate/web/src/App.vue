@@ -126,7 +126,7 @@
       </div>
     </main>
 
-    <el-dialog v-model="showSettings" title="应用设置" width="min(480px, calc(100vw - 32px))">
+    <el-dialog v-model="showSettings" title="应用设置" width="min(660px, calc(100vw - 32px))">
       <div class="settings-list">
         <div class="setting-row">
           <el-icon><Monitor /></el-icon>
@@ -155,6 +155,7 @@
           </el-tag>
         </div>
       </div>
+      <LLMSettingsPanel :backend-connected="backendConnected" />
       <template #footer>
         <el-button @click="showSettings = false">关闭</el-button>
       </template>
@@ -201,6 +202,7 @@ import {
   Search
 } from '@element-plus/icons-vue'
 import Logo from './components/Logo.vue'
+import LLMSettingsPanel from './components/LLMSettingsPanel.vue'
 import { checkHealth } from './services/api'
 
 const route = useRoute()

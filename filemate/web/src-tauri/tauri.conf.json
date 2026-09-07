@@ -32,7 +32,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "msi"],
+    "targets": ["nsis"],
     "publisher": "FileMate Student Innovation Team",
     "externalBin": ["binaries/filemate-server"],
     "icon": [

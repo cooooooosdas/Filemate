@@ -30,6 +30,13 @@ from filemate.execution.confirmation_executor import (
     ExecutionError,
 )
 from filemate.execution.storage import SQLiteStorage
+from filemate.llm_client.credential_store import (
+    CredentialStoreError,
+    delete_stored_api_key,
+    resolve_api_key,
+    secure_store_available,
+    set_stored_api_key,
+)
 from filemate.understanding.interview_bank_seed import SEED_QUESTIONS
 
 # 加载 .env 文件
@@ -138,6 +145,10 @@ class ApiResponse(BaseModel):
     success: bool
     data: Any = None
     error: str | None = None
+
+
+class LLMCredentialRequest(BaseModel):
+    api_key: str = Field(min_length=10, max_length=512)
 
 
 class ConfirmRequest(BaseModel):
@@ -345,6 +356,28 @@ def _confirmation_executor() -> ConfirmationExecutor:
     """使用当前服务存储与归档目录构造执行器。"""
     return ConfirmationExecutor(storage=_storage, archive_dir=ARCHIVE_DIR)
 
+
+def _require_local_settings_access(request: Request) -> None:
+    """模型密钥只能由回环地址上的本地应用管理。"""
+    client_host = request.client.host if request.client else ""
+    bind_host = os.getenv("FILEMATE_HOST", "127.0.0.1").strip().lower()
+    if client_host not in {"127.0.0.1", "::1", "localhost"}:
+        raise HTTPException(status_code=403, detail="模型密钥只能在本机应用中配置")
+    if bind_host not in {"127.0.0.1", "::1", "localhost"}:
+        raise HTTPException(status_code=403, detail="公网服务禁止通过界面修改模型密钥")
+
+
+def _llm_settings_status() -> dict[str, Any]:
+    """返回不包含密钥正文的模型配置状态。"""
+    api_key, source = resolve_api_key()
+    return {
+        "provider": "DeepSeek",
+        "model": os.getenv("LLM_MODEL", "deepseek-v4-flash"),
+        "configured": bool(api_key),
+        "source": source,
+        "secure_storage_available": secure_store_available(),
+    }
+
 # =============== Routes ===============
 
 @app.api_route("/", methods=["GET", "POST", "PUT", "DELETE"])
@@ -356,6 +389,41 @@ def root():
 def health_check():
     """供 Web 与桌面壳检测本地服务状态。"""
     return ApiResponse(success=True, data={"version": "1.3.0-alpha"})
+
+
+@app.get("/settings/llm", response_model=ApiResponse)
+def get_llm_settings(request: Request):
+    """读取本机模型配置状态，绝不返回密钥正文。"""
+    _require_local_settings_access(request)
+    return ApiResponse(success=True, data=_llm_settings_status())
+
+
+@app.put("/settings/llm", response_model=ApiResponse)
+def update_llm_settings(request: Request, data: LLMCredentialRequest):
+    """把用户自己的 DeepSeek 密钥写入操作系统安全凭据库。"""
+    _require_local_settings_access(request)
+    api_key = data.api_key.strip()
+    if len(api_key) < 10 or any(character.isspace() for character in api_key):
+        raise HTTPException(status_code=422, detail="API 密钥格式无效")
+    try:
+        set_stored_api_key(api_key)
+    except CredentialStoreError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return ApiResponse(success=True, data=_llm_settings_status())
+
+
+@app.delete("/settings/llm", response_model=ApiResponse)
+def remove_llm_settings(request: Request):
+    """删除当前系统用户保存的 DeepSeek 密钥。"""
+    _require_local_settings_access(request)
+    try:
+        removed = delete_stored_api_key()
+    except CredentialStoreError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return ApiResponse(
+        success=True,
+        data={**_llm_settings_status(), "removed": removed},
+    )
 
 
 @app.post("/internal/shutdown", response_model=ApiResponse, include_in_schema=False)

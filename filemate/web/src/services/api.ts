@@ -565,6 +565,37 @@ export interface InterviewTurn {
   fluency_metrics?: InterviewFluencyMetrics
 }
 
+export type LLMKeySource = 'secure_store' | 'environment' | 'none'
+
+export interface LLMSettingsStatus {
+  provider: 'DeepSeek'
+  model: string
+  configured: boolean
+  source: LLMKeySource
+  secure_storage_available: boolean
+  removed?: boolean
+}
+
+export async function getLLMSettings(): Promise<LLMSettingsStatus> {
+  const response = await api.get<any, ApiResponse<LLMSettingsStatus>>('/settings/llm')
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '模型设置读取失败')
+}
+
+export async function saveLLMApiKey(apiKey: string): Promise<LLMSettingsStatus> {
+  const response = await api.put<any, ApiResponse<LLMSettingsStatus>>('/settings/llm', {
+    api_key: apiKey
+  })
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '模型密钥保存失败')
+}
+
+export async function removeLLMApiKey(): Promise<LLMSettingsStatus> {
+  const response = await api.delete<any, ApiResponse<LLMSettingsStatus>>('/settings/llm')
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '模型密钥移除失败')
+}
+
 export interface InterviewFluencyMetrics {
   duration_seconds: number
   chars_per_minute?: number

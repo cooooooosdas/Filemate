@@ -30,6 +30,10 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      '^/settings': {
+        target: 'http://127.0.0.1:8001',
+        changeOrigin: true,
+      },
       '/ai/summarize': {
         target: 'http://127.0.0.1:8001',
         changeOrigin: true,

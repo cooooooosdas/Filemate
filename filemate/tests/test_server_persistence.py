@@ -734,6 +734,7 @@ def test_chat_without_evidence_does_not_call_model(server_module, monkeypatch, w
         source_id = storage.save_source(
             original_name="网络.txt", source_path="/local/网络.txt", raw_text="TCP 使用三次握手建立连接。",
         )
+
         storage.replace_source_chunks(source_id, split_document("TCP 使用三次握手建立连接。"))
     storage.save_document_context(
         ctx_id="no-hit", source_id=source_id, context_text="TCP 使用三次握手建立连接。",
@@ -751,6 +752,62 @@ def test_chat_without_evidence_does_not_call_model(server_module, monkeypatch, w
     history = storage.get_document_context("no-hit")["chat_history"]
     assert len(history) == 2
     assert "没有找到" in history[-1]["content"]
+
+
+def test_local_llm_settings_never_return_secret(
+    server_module: tuple[ModuleType, SQLiteStorage],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module, _ = server_module
+    state = {"key": ""}
+
+    def delete_key() -> bool:
+        removed = bool(state["key"])
+        state["key"] = ""
+        return removed
+
+    monkeypatch.setattr(module, "secure_store_available", lambda: True)
+    monkeypatch.setattr(
+        module,
+        "resolve_api_key",
+        lambda: (state["key"], "secure_store" if state["key"] else "none"),
+    )
+    monkeypatch.setattr(
+        module,
+        "set_stored_api_key",
+        lambda api_key: state.update(key=api_key),
+    )
+    monkeypatch.setattr(module, "delete_stored_api_key", delete_key)
+
+    with TestClient(module.app, client=("127.0.0.1", 51000)) as client:
+        empty = client.get("/settings/llm")
+        saved = client.put(
+            "/settings/llm",
+            json={"api_key": "sk-user-owned-secret"},
+        )
+        removed = client.delete("/settings/llm")
+
+    assert empty.status_code == 200
+    assert empty.json()["data"]["configured"] is False
+    assert saved.status_code == 200
+    assert saved.json()["data"]["configured"] is True
+    assert "sk-user-owned-secret" not in saved.text
+    assert removed.status_code == 200
+    assert removed.json()["data"]["configured"] is False
+
+
+def test_remote_client_cannot_manage_llm_secret(
+    server_module: tuple[ModuleType, SQLiteStorage],
+) -> None:
+    module, _ = server_module
+    with TestClient(module.app, client=("203.0.113.10", 51000)) as client:
+        response = client.put(
+            "/settings/llm",
+            json={"api_key": "sk-user-owned-secret"},
+        )
+
+    assert response.status_code == 403
+    assert response.json()["error"] == "模型密钥只能在本机应用中配置"
 
 
 @pytest.mark.parametrize("answer", ["TCP 使用三次握手。", "TCP 使用三次握手。[引用99]"])

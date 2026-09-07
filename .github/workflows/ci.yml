@@ -121,7 +121,7 @@ jobs:
       - name: Smoke-test Sidecar
         working-directory: filemate/web
         run: npm run desktop:smoke-sidecar
-      - name: Build NSIS and MSI installers
+      - name: Build NSIS installer
         working-directory: filemate/web
         run: npm run desktop:bundle
       - name: Smoke-test silent install, runtime, and uninstall
