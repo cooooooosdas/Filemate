@@ -810,6 +810,29 @@ def test_remote_client_cannot_manage_llm_secret(
     assert response.json()["error"] == "模型密钥只能在本机应用中配置"
 
 
+def test_root_rejects_state_changing_methods(
+    server_module: tuple[ModuleType, SQLiteStorage],
+) -> None:
+    module, _ = server_module
+    with TestClient(module.app) as client:
+        response = client.post("/")
+
+    assert response.status_code == 405
+
+
+def test_untrusted_host_is_rejected(
+    server_module: tuple[ModuleType, SQLiteStorage],
+) -> None:
+    module, _ = server_module
+    with TestClient(module.app) as client:
+        response = client.get(
+            "/api/health",
+            headers={"host": "attacker.example"},
+        )
+
+    assert response.status_code == 400
+
+
 @pytest.mark.parametrize("answer", ["TCP 使用三次握手。", "TCP 使用三次握手。[引用99]"])
 def test_chat_rejects_missing_or_unknown_citation(server_module, monkeypatch, answer):
     module, storage = server_module

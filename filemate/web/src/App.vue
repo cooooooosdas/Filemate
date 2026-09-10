@@ -123,6 +123,11 @@
             <component :is="Component" :key="`${$route.path === '/ai-tools' ? $route.path : $route.fullPath}-${refreshToken}`" />
           </transition>
         </router-view>
+        <footer class="site-footer" aria-label="网站备案与使用说明">
+          <span>© 2026 FileMate</span>
+          <a href="https://beian.miit.gov.cn" target="_blank" rel="noopener noreferrer">皖ICP备2026029928号-1</a>
+          <span>公开体验环境，请勿上传敏感或未经授权的资料</span>
+        </footer>
       </div>
     </main>
 
@@ -637,6 +642,35 @@ onUnmounted(() => { window.removeEventListener('keydown', handleShortcut); windo
   padding: 28px 36px 48px;
   overflow: auto;
   background: var(--bg-base);
+}
+
+.site-footer {
+  width: min(1180px, 100%);
+  margin: 44px auto 0;
+  padding: 18px 16px 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 18px;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.site-footer a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.site-footer a:hover,
+.site-footer a:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .settings-list {

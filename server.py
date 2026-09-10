@@ -23,6 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from filemate.core.categories import CATEGORIES
 from filemate.execution.confirmation_executor import (
@@ -63,6 +64,34 @@ DATABASE_PATH = Path(
     os.getenv("FILEMATE_DB_PATH", str(DATA_DIR / "filemate.db"))
 ).expanduser().resolve()
 SHUTDOWN_TOKEN = os.getenv("FILEMATE_SHUTDOWN_TOKEN", "")
+
+
+def _env_list(name: str, default: list[str]) -> list[str]:
+    """读取逗号分隔的环境变量列表。"""
+    raw_value = os.getenv(name, "")
+    values = [item.strip() for item in raw_value.split(",") if item.strip()]
+    return values or default
+
+
+APP_ENV = os.getenv("FILEMATE_ENV", "development").strip().lower()
+IS_PRODUCTION = APP_ENV == "production"
+ALLOWED_HOSTS = _env_list(
+    "FILEMATE_ALLOWED_HOSTS",
+    ["localhost", "127.0.0.1", "test", "testserver", "tauri.localhost"],
+)
+CORS_ORIGINS = _env_list(
+    "FILEMATE_CORS_ORIGINS",
+    [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+        "tauri://localhost",
+        "http://tauri.localhost",
+        "https://tauri.localhost",
+    ],
+)
 _uvicorn_server: Any = None
 ARCHIVE_DIR = Path(
     os.getenv(
@@ -182,23 +211,22 @@ class SourceRightsRequest(BaseModel):
 
 # =============== App ===============
 
-app = FastAPI(title="FileMate API", version="1.3.0-alpha")
+app = FastAPI(
+    title="FileMate API",
+    version="1.3.0-alpha",
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+    openapi_url=None if IS_PRODUCTION else "/openapi.json",
+)
+
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5173",
-        "http://localhost:4173",
-        "http://127.0.0.1:4173",
-        "tauri://localhost",
-        "http://tauri.localhost",
-        "https://tauri.localhost",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Accept", "Content-Type", "X-FileMate-Shutdown-Token"],
 )
 
 
@@ -380,7 +408,7 @@ def _llm_settings_status() -> dict[str, Any]:
 
 # =============== Routes ===============
 
-@app.api_route("/", methods=["GET", "POST", "PUT", "DELETE"])
+@app.get("/")
 def root():
     return {"message": "FileMate API", "version": "1.3.0-alpha"}
 
