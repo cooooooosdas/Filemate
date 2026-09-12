@@ -3,8 +3,8 @@
 FileMate 是一个面向大学生的本地优先 AI 学习工作台。它把散落的课程资料转化为可追踪、可复习、可验证的学习资产，并通过“资料导入 → AI 理解 → 用户确认 → 学习计划 → 练习与错题 → 复习与成长分析”形成完整闭环。
 
 > 项目类型：国家级大学生创新创业训练计划项目
-> 当前版本：`v1.3.0-alpha` Alpha Freeze
-> 当前基线日期：2026-08-27
+> 当前版本：`v1.3.0-alpha.1` 安全加固版
+> 当前基线日期：2026-09-12
 > 初步版本截止：2026-08-31
 > 最终版本截止：2026-09-30
 
@@ -44,6 +44,7 @@ FileMate 是一个面向大学生的本地优先 AI 学习工作台。它把散�
 | 模拟面试 | 摄像头/麦克风独立授权、本地录像回放、语音流畅度与时间轴、资料驱动追问、本地降级 | `interview.py`、`Interview.vue` |
 | 可信 Agent | 面试、目标与授权任务按需选择角色；记录真实步骤、来源标识与输出摘要；共享记忆可撤销 | `trusted_agents.py`、`TrustCenter.vue` |
 | 版权与隐私 | 资料默认未确认且仅自己可用；授权声明、分享边界与记忆撤销可视化 | `/trust/overview`、`source_rights` |
+| 网站访客隔离 | 生产环境为每个浏览器签发不可伪造的 HttpOnly 匿名设备身份，并使用独立 SQLite、上传和归档目录 | `server.py`、`test_server_tenant_isolation.py` |
 | 成长数据 | 真实行为统计、匿名反馈导出；学习伙伴表情与阶段由本地学习证据驱动 | `Growth.vue`、`evaluation/` |
 | 多端工程 | Vue Web、FastAPI Sidecar、Tauri 2 桌面工程、CLI | `filemate/web/`、`server.py`、`main.py` |
 
@@ -60,9 +61,9 @@ FileMate 是一个面向大学生的本地优先 AI 学习工作台。它把散�
 ### 2.3 尚未实现，不得对外宣称已完成
 
 - Neo4j 知识图谱、Chroma/其他向量数据库和完整 GraphRAG。
-- 用户注册、云端账户同步、多人协作权限体系。
+- 用户注册、跨设备账户同步、找回身份和多人协作权限体系；当前匿名设备身份不等同于正式账号。
 - 可替换的数字人供应商和实时口型驱动。
-- Docker/云端生产部署、正式监控告警和多租户隔离。
+- 正式监控告警、数据库配额和基于账号的多租户授权；当前仅完成匿名设备级隔离。
 - 大规模真实用户实验结论；当前 100% 离线指标只代表小型合成回归集。
 
 ## 3. 两个月交付规划
@@ -99,7 +100,7 @@ FileMate 是一个面向大学生的本地优先 AI 学习工作台。它把散�
 
 - Windows 队友执行 `scripts/dev.ps1 -Setup` 后可启动前后端。
 - 所有高影响文件操作必须先预览确认，不覆盖已有目标，并可撤销。
-- 数据写入 SQLite v14，关闭并重启后仍能读取。
+- 数据写入 SQLite v15，关闭并重启后仍能读取。
 - 非 e2e 后端测试不得少于当前 `370 passed` 基线；新增功能必须新增测试。
 - `npm run build`、CI 静态检查和离线评测通过。
 - P0 缺陷为 0；P1 缺陷必须有负责人、复现步骤和明确截止日期。
@@ -152,7 +153,7 @@ flowchart LR
     A --> E["确认执行器：预览 / 确认 / 回滚 / 撤销"]
     A --> K["学习服务：检索 / 练习 / 错题 / 计划 / 面试"]
     E --> F["本地文件系统 / ICS"]
-    P --> S["SQLite v14"]
+    P --> S["SQLite v15"]
     E --> S
     K --> S
 ```
@@ -203,7 +204,7 @@ Source（原始资料）
 | 本地 API | FastAPI、Uvicorn、Pydantic | 默认监听 `127.0.0.1:8001` |
 | 桌面壳 | Tauri 2、Rust | 工程已建立；安装包仅手动验收 |
 | 核心语言 | Python 3.10+ | 推荐 3.11/3.12；统一 UTF-8 |
-| 数据存储 | SQLite WAL，schema v14 | 本地优先、版本迁移、线程连接管理 |
+| 数据存储 | SQLite WAL，schema v15 | 本地优先、版本迁移、线程连接管理；生产环境按匿名设备分库 |
 | 文件解析 | PyPDF2、pdfplumber、python-docx、python-pptx | PaddleOCR 为可选依赖 |
 | 检索 | 本地分块 + BM25 风格词法评分 | 支持页码/片段引用；无外部向量库 |
 | LLM | DeepSeek V4 Flash；OpenAI 兼容 HTTP API | 通过 `LLMClient` 和 Provider 适配层接入 |
@@ -262,7 +263,7 @@ FileMate/
 | `server.py` | HTTP 合同、参数校验、服务编排、统一错误 | 重复实现底层领域算法 |
 | `web` | 用户交互、状态反馈、响应式布局、API 调用 | 直接读取 SQLite 或本地任意路径 |
 
-## 7. SQLite v14 数据模型
+## 7. SQLite v15 数据模型
 
 数据库由 `schema_migrations` 管理，`init_schema()` 必须保持幂等。不要直接修改已经发布的迁移；新增字段或表必须增加新版本迁移和升级测试。
 
@@ -280,6 +281,7 @@ FileMate/
 | v12 | 题库兼容修复 | 修复未合并实验迁移曾占用 v9-v11 的本地数据库；v10-v11 不作为正式迁移复用 |
 | v13 | `interview_turns.fluency_metrics` | 持久化语音回答时长、字速、口头语、较长停顿和流畅度参考分 |
 | v14 | `agent_runs`、`agent_steps`、`agent_memories`、`source_rights` | 真实 Agent 轨迹、可撤销摘要记忆、资料授权与分享边界 |
+| v15 | `interview_turns.scoring_mode`、`scoring_version` | 区分模型评分、本地降级与历史未知来源，避免把降级结果误报为模型评分 |
 
 关键关系：
 

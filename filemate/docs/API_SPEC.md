@@ -313,7 +313,7 @@ storage = SQLiteStorage(db_path="filemate.db")
 storage.init_schema()
 ```
 
-**数据库版本：** `schema_migrations` 记录已应用迁移，当前 schema 为 v9。`init_schema()` 可对旧数据库安全、幂等升级。
+**数据库版本：** `schema_migrations` 记录已应用迁移，当前 schema 为 v15。`init_schema()` 可对旧数据库安全、幂等升级。
 
 **核心表：**
 
@@ -382,6 +382,10 @@ storage.init_schema()
 
 HTTP 错误同样保持该结构：参数错误使用 `400/422`，资源不存在使用 `404`，执行冲突使用 `409`，AI 上游失败使用 `502`。前端必须读取 `error` 字段，不依赖 FastAPI 默认的 `detail`。
 
+生产环境默认启用 `FILEMATE_IDENTITY_MODE=anonymous`。服务端首次响应签发 `HttpOnly`、`Secure`、`SameSite=Lax` 的签名设备 Cookie；前端请求必须使用 `withCredentials=true`。每个设备身份使用独立 SQLite、上传目录和归档目录，任一资源 ID 在其他身份下统一返回 `404`。该机制是匿名设备隔离，不是登录账号：清除 Cookie 或更换浏览器后无法自动恢复原身份。开发和桌面 Sidecar 默认使用 `local` 模式。
+
+携带 `Origin` 的状态变更请求只接受 `FILEMATE_CORS_ORIGINS` 白名单来源。资料 API 不返回 `source_path`、`workspace_id` 等服务器内部字段；`.ics` 只允许从当前身份已应用的执行记录读取，且路径必须位于该身份归档目录内。
+
 | 方法 | 路径 | 作用 | 持久化结果 |
 |---|---|---|---|
 | `POST` | `/ai/summarize` | 生成摘要 | `Source + summary Artifact + Context` |
@@ -393,10 +397,10 @@ HTTP 错误同样保持该结构：参数错误使用 `400/422`，资源不存�
 | `GET` | `/ai/contexts` | 列出最近问答会话摘要 | `limit` 范围 1–200，不返回正文和完整历史 |
 | `GET` | `/ai/contexts/{ctx_id}` | 恢复单个问答会话 | 返回完整上下文、历史消息与结构化引用 |
 | `GET` | `/knowledge/sources` | 列出本地资料源 | 不返回大段 `raw_text`，返回 `text_length` |
-| `POST` | `/knowledge/import` | multipart `file` 仅本地解析入库，无模型调用；按哈希复用已有源 | 返回 Source 详情，失败/重复上传清理此次副本 |
+| `POST` | `/knowledge/import` | multipart `file` 仅本地解析入库，无模型调用；按哈希复用已有源 | 返回过滤内部路径后的 Source 详情，失败/重复上传清理此次副本 |
 | `POST` | `/knowledge/sources/{source_id}/contexts` | 从已有资料新建可恢复会话，不自动生成内容 | Context；不覆盖旧对话 |
 | `POST` | `/knowledge/sources/{source_id}/artifacts` | JSON `artifact_type` 为 summary/notes/knowledge_cards/questions；`count` 为 1–10（默认5，上限非保证数量），必须明确 `allow_external_model=true` | Artifact 绑定原 Source；笔记/卡片/摘要输入最多前12000字，练习沿用现役出题链前2500字；metadata 标记覆盖范围与截断；生成失败502且不保存，资料在生成期间删除409 |
-| `GET` | `/knowledge/sources/{source_id}` | 获取资料源详情 | 包含解析正文与元数据 |
+| `GET` | `/knowledge/sources/{source_id}` | 获取资料源详情 | 包含解析正文与元数据，不返回服务器绝对路径和内部工作区字段 |
 | `GET` | `/knowledge/sources/{source_id}/artifacts` | 查询资料派生产物 | 支持 `artifact_type` 与 `limit` |
 | `GET` | `/knowledge/sources/{source_id}/lineage` | 查询六阶段学习资产链 | 只聚合真实持久化记录，不返回原文 |
 | `DELETE` | `/knowledge/sources/{source_id}` | 预览并删除资料及其派生产物 | 级联删除派生数据；仅清理托管上传副本 |
@@ -501,7 +505,7 @@ AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。�
 }
 ```
 
-服务端根据回答字数和时长重新计算字速，并把流畅度作为 15% 的低权重参考分写入 `dimensions.流畅性`；文字回答或不足 2 秒的语音不会生成流畅度结论。摄像头与麦克风录像只保存在当前浏览器页的 Blob URL 中，不上传、不写入 v14 数据库，刷新即清除；时间轴只持久化口头语/长停顿的类型与时间点。面试创建和逐题评价同时写入真实 Agent 轨迹；轨迹只保存题号、会话 ID 和评分摘要，不复制回答原文。资料驱动面试仅在资料权利确认为本人、授权或公开时向模型发送最多 2000 字符摘录，否则只使用本地文件名。
+服务端根据回答字数和时长重新计算字速，并把流畅度作为 15% 的低权重参考分写入 `dimensions.流畅性`；文字回答或不足 2 秒的语音不会生成流畅度结论。摄像头与麦克风录像只保存在当前浏览器页的 Blob URL 中，不上传、不写入 v15 数据库，刷新即清除；时间轴只持久化口头语/长停顿的类型与时间点。面试创建和逐题评价同时写入真实 Agent 轨迹；轨迹只保存题号、会话 ID 和评分摘要，不复制回答原文。资料驱动面试仅在资料权利确认为本人、授权或公开时向模型发送最多 2000 字符摘录，否则只使用本地文件名。
 
 ---
 
@@ -522,5 +526,6 @@ AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。�
 | 2026-08-28 | v1.9 | 默认模型统一迁移至 `deepseek-v4-flash`，移除 Step 系列运行时分支并拒绝旧配置 | Codex |
 | 2026-09-02 | v1.10 | 增加 SQLite v13 面试流畅度证据、摄像头本地预览边界与可选请求合同 | Codex |
 | 2026-09-03 | v1.11 | 增加 SQLite v14 可信 Agent 轨迹、共享记忆撤销、资料授权与隐私中心接口 | Codex |
+| 2026-09-12 | v1.12 | 增加生产匿名设备身份、独立数据目录、跨用户越权回归、可信 Origin 校验和内部路径过滤 | Codex |
 | 2026-09-05 | v1.12 | 增加目标反推、资料学习资产链、本地录像时间轴和资料驱动面试合同 | Codex |
 | 2026-09-07 | v1.13 | 增加本机 DeepSeek 密钥安全配置接口，桌面端用户可自带密钥且不写入业务数据库 | Codex |
