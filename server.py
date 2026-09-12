@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import csv
 import hashlib
 import hmac
@@ -11,7 +12,11 @@ import logging
 import mimetypes
 import os
 import re
+import secrets
+import threading
 import uuid
+from collections import OrderedDict
+from contextvars import ContextVar
 from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -25,6 +30,7 @@ from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from filemate import __version__
 from filemate.core.categories import CATEGORIES
 from filemate.execution.confirmation_executor import (
     ConfirmationExecutor,
@@ -64,6 +70,15 @@ DATABASE_PATH = Path(
     os.getenv("FILEMATE_DB_PATH", str(DATA_DIR / "filemate.db"))
 ).expanduser().resolve()
 SHUTDOWN_TOKEN = os.getenv("FILEMATE_SHUTDOWN_TOKEN", "")
+IDENTITY_MODE = os.getenv(
+    "FILEMATE_IDENTITY_MODE",
+    "anonymous" if os.getenv("FILEMATE_ENV", "development").strip().lower()
+    == "production" else "local",
+).strip().lower()
+if IDENTITY_MODE not in {"local", "anonymous"}:
+    raise RuntimeError("FILEMATE_IDENTITY_MODE 只能是 local 或 anonymous")
+IDENTITY_COOKIE_NAME = "filemate_identity"
+IDENTITY_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
 
 def _env_list(name: str, default: list[str]) -> list[str]:
@@ -100,6 +115,144 @@ ARCHIVE_DIR = Path(
     )
 ).expanduser().resolve()
 
+_TenantContext = tuple[str, Path, Path]
+_tenant_context: ContextVar[_TenantContext | None] = ContextVar(
+    "filemate_tenant_context",
+    default=None,
+)
+MAX_OPEN_TENANT_STORAGES = max(
+    8,
+    int(os.getenv("FILEMATE_MAX_OPEN_TENANT_STORAGES", "32")),
+)
+TENANT_STORAGE_CACHE_LIMIT = MAX_OPEN_TENANT_STORAGES
+_tenant_storages: OrderedDict[str, SQLiteStorage] = OrderedDict()
+_active_tenants: dict[str, int] = {}
+_tenant_storage_lock = threading.RLock()
+
+
+def _load_identity_secret() -> bytes:
+    """读取或生成本机身份签名密钥。"""
+    configured = os.getenv("FILEMATE_IDENTITY_SECRET", "").strip()
+    if configured:
+        if len(configured) < 32:
+            raise RuntimeError("FILEMATE_IDENTITY_SECRET 至少需要 32 个字符")
+        return configured.encode("utf-8")
+
+    secret_path = DATA_DIR / "identity.secret"
+    secret_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        encoded = base64.urlsafe_b64encode(secrets.token_bytes(32))
+        with secret_path.open("xb") as file_handle:
+            file_handle.write(encoded)
+        try:
+            secret_path.chmod(0o600)
+        except OSError:
+            logger.warning("无法收紧身份密钥文件权限: %s", secret_path)
+    except FileExistsError:
+        pass
+    secret = secret_path.read_bytes().strip()
+    if len(secret) < 32:
+        raise RuntimeError("身份签名密钥文件无效")
+    return secret
+
+
+_identity_secret = _load_identity_secret() if IDENTITY_MODE == "anonymous" else b""
+
+
+def _sign_identity(identity_id: str) -> str:
+    """签发不可伪造的匿名身份 cookie。"""
+    signature = hmac.new(
+        _identity_secret,
+        identity_id.encode("ascii"),
+        hashlib.sha256,
+    ).digest()
+    encoded = base64.urlsafe_b64encode(signature).decode("ascii").rstrip("=")
+    return f"{identity_id}.{encoded}"
+
+
+def _verify_identity_cookie(value: str | None) -> str | None:
+    """校验并返回匿名身份。"""
+    if not value or "." not in value:
+        return None
+    identity_id, signature = value.rsplit(".", 1)
+    if not re.fullmatch(r"u_[0-9a-f]{32}", identity_id):
+        return None
+    expected = _sign_identity(identity_id).rsplit(".", 1)[1]
+    return identity_id if hmac.compare_digest(signature, expected) else None
+
+
+def _tenant_storage(identity_id: str) -> SQLiteStorage:
+    """延迟初始化单个匿名身份的独立数据库。"""
+    with _tenant_storage_lock:
+        storage = _tenant_storages.get(identity_id)
+        if storage is not None:
+            _tenant_storages.move_to_end(identity_id)
+            return storage
+        tenant_root = DATA_DIR / "users" / identity_id
+        storage = SQLiteStorage(tenant_root / "filemate.db")
+        storage.init_schema()
+        storage.ensure_interview_questions(SEED_QUESTIONS)
+        _tenant_storages[identity_id] = storage
+        _evict_tenant_storages()
+        return storage
+
+
+def _evict_tenant_storages() -> None:
+    """关闭最久未使用且没有在途请求的租户连接。"""
+    while len(_tenant_storages) > MAX_OPEN_TENANT_STORAGES:
+        evicted = False
+        for identity_id, storage in tuple(_tenant_storages.items()):
+            if _active_tenants.get(identity_id, 0) > 0:
+                continue
+            del _tenant_storages[identity_id]
+            storage.close()
+            evicted = True
+            break
+        if not evicted:
+            break
+
+
+def _close_tenant_storages() -> None:
+    """关闭所有已打开的租户数据库连接。"""
+    with _tenant_storage_lock:
+        for storage in _tenant_storages.values():
+            storage.close()
+        _tenant_storages.clear()
+        _active_tenants.clear()
+
+
+class _StorageRouter:
+    """按当前请求身份选择 SQLiteStorage。"""
+
+    def __init__(self, local_storage: SQLiteStorage) -> None:
+        self.local_storage = local_storage
+
+    def __getattr__(self, name: str) -> Any:
+        context = _tenant_context.get()
+        storage = (
+            _tenant_storage(context[0])
+            if context is not None else self.local_storage
+        )
+        return getattr(storage, name)
+
+
+def _current_identity_id() -> str:
+    """返回当前请求的身份键。"""
+    context = _tenant_context.get()
+    return context[0] if context is not None else "local"
+
+
+def _current_upload_root() -> Path:
+    """返回当前身份的托管上传目录。"""
+    context = _tenant_context.get()
+    return context[1] if context is not None else UPLOAD_ROOT
+
+
+def _current_archive_dir() -> Path:
+    """返回当前身份的归档目录。"""
+    context = _tenant_context.get()
+    return context[2] if context is not None else ARCHIVE_DIR
+
 
 async def _save_upload(file: UploadFile) -> tuple[Path, int]:
     """校验并保存上传文件，隔离同名文件与路径穿越。"""
@@ -115,7 +268,7 @@ async def _save_upload(file: UploadFile) -> tuple[Path, int]:
     if not content:
         raise HTTPException(status_code=400, detail="文件内容为空")
 
-    upload_dir = UPLOAD_ROOT / uuid.uuid4().hex
+    upload_dir = _current_upload_root() / uuid.uuid4().hex
     upload_dir.mkdir(parents=True, exist_ok=True)
     file_path = upload_dir / filename
     file_path.write_bytes(content)
@@ -146,7 +299,7 @@ def _managed_file_status(
     except OSError:
         return result
     result["path"] = str(candidate)
-    root = UPLOAD_ROOT.resolve(strict=False)
+    root = _current_upload_root().resolve(strict=False)
     if not candidate.is_relative_to(root):
         return result
     result["managed"] = True
@@ -164,9 +317,10 @@ def _managed_file_status(
 
 
 # 初始化数据库
-_storage = SQLiteStorage(DATABASE_PATH)
-_storage.init_schema()
-_storage.ensure_interview_questions(SEED_QUESTIONS)
+_local_storage = SQLiteStorage(DATABASE_PATH)
+_local_storage.init_schema()
+_local_storage.ensure_interview_questions(SEED_QUESTIONS)
+_storage: SQLiteStorage | _StorageRouter = _StorageRouter(_local_storage)
 
 # =============== Models ===============
 
@@ -213,7 +367,7 @@ class SourceRightsRequest(BaseModel):
 
 app = FastAPI(
     title="FileMate API",
-    version="1.3.0-alpha",
+    version=__version__,
     docs_url=None if IS_PRODUCTION else "/docs",
     redoc_url=None if IS_PRODUCTION else "/redoc",
     openapi_url=None if IS_PRODUCTION else "/openapi.json",
@@ -224,10 +378,71 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Accept", "Content-Type", "X-FileMate-Shutdown-Token"],
 )
+
+
+@app.middleware("http")
+async def reject_untrusted_browser_origins(request: Request, call_next):
+    """阻止不受信网页向本地 Sidecar 或网站 API 发起状态变更。"""
+    origin = request.headers.get("origin")
+    if (
+        request.method not in {"GET", "HEAD", "OPTIONS"}
+        and origin
+        and origin not in CORS_ORIGINS
+    ):
+        return JSONResponse(
+            status_code=403,
+            content={
+                "success": False,
+                "data": None,
+                "error": "请求来源不受信任",
+            },
+        )
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def isolate_anonymous_workspace(request: Request, call_next):
+    """在公网模式下把每个匿名浏览器路由到独立数据目录。"""
+    if IDENTITY_MODE == "local":
+        return await call_next(request)
+
+    identity_id = _verify_identity_cookie(
+        request.cookies.get(IDENTITY_COOKIE_NAME)
+    )
+    should_issue_cookie = identity_id is None
+    if identity_id is None:
+        identity_id = f"u_{uuid.uuid4().hex}"
+    tenant_root = DATA_DIR / "users" / identity_id
+    context = (identity_id, tenant_root / "inbox", tenant_root / "archive")
+    with _tenant_storage_lock:
+        _active_tenants[identity_id] = _active_tenants.get(identity_id, 0) + 1
+    token = _tenant_context.set(context)
+    try:
+        response = await call_next(request)
+    finally:
+        _tenant_context.reset(token)
+        with _tenant_storage_lock:
+            remaining = _active_tenants.get(identity_id, 1) - 1
+            if remaining > 0:
+                _active_tenants[identity_id] = remaining
+            else:
+                _active_tenants.pop(identity_id, None)
+            _evict_tenant_storages()
+    if should_issue_cookie:
+        response.set_cookie(
+            key=IDENTITY_COOKIE_NAME,
+            value=_sign_identity(identity_id),
+            max_age=IDENTITY_COOKIE_MAX_AGE,
+            httponly=True,
+            secure=IS_PRODUCTION,
+            samesite="lax",
+            path="/",
+        )
+    return response
 
 
 @app.exception_handler(HTTPException)
@@ -278,7 +493,17 @@ async def unhandled_exception_handler(
 
 
 # 内存存储 session（简化版，后续可以连数据库）
-_sessions: dict[str, dict] = {}
+_sessions: dict[tuple[str, str], dict] = {}
+
+
+def _session_cache_get(session_id: str) -> dict[str, Any] | None:
+    """读取当前身份的 Session 缓存。"""
+    return _sessions.get((_current_identity_id(), session_id))
+
+
+def _session_cache_set(session_id: str, value: dict[str, Any]) -> None:
+    """写入当前身份的 Session 缓存。"""
+    _sessions[(_current_identity_id(), session_id)] = value
 
 
 def _deserialize_session(session: dict[str, Any]) -> dict[str, Any]:
@@ -376,13 +601,13 @@ def _apply_session_edits(
     updated = _storage.get_session(session_id)
     if updated is None:
         raise RuntimeError("Session 更新后不可读")
-    _sessions[session_id] = _deserialize_session(updated)
+    _session_cache_set(session_id, _deserialize_session(updated))
     return _enrich_session(updated)
 
 
 def _confirmation_executor() -> ConfirmationExecutor:
     """使用当前服务存储与归档目录构造执行器。"""
-    return ConfirmationExecutor(storage=_storage, archive_dir=ARCHIVE_DIR)
+    return ConfirmationExecutor(storage=_storage, archive_dir=_current_archive_dir())
 
 
 def _require_local_settings_access(request: Request) -> None:
@@ -410,13 +635,13 @@ def _llm_settings_status() -> dict[str, Any]:
 
 @app.get("/")
 def root():
-    return {"message": "FileMate API", "version": "1.3.0-alpha"}
+    return {"message": "FileMate API", "version": __version__}
 
 
 @app.get("/api/health", response_model=ApiResponse)
 def health_check():
     """供 Web 与桌面壳检测本地服务状态。"""
-    return ApiResponse(success=True, data={"version": "1.3.0-alpha"})
+    return ApiResponse(success=True, data={"version": __version__})
 
 
 @app.get("/settings/llm", response_model=ApiResponse)
@@ -490,13 +715,14 @@ async def process_file(
 
         result = session.to_dict()
         result["_local_file_path"] = str(file_path)
-        _sessions[session.session_id] = result
+        _session_cache_set(session.session_id, result)
 
         # 阶段级失败（损坏/加密文件）→ 返回 success=False，前端 ElMessage.error 已就绪
         if session.error:
             return ApiResponse(success=False, data=result, error=session.error)
         return ApiResponse(success=True, data=result)
     except Exception as exc:
+        _managed_file_status(str(file_path), remove=True)
         logger.exception("处理失败: %s", file.filename)
         raise HTTPException(status_code=500, detail="文件处理失败") from exc
 
@@ -504,7 +730,7 @@ async def process_file(
 @app.get("/sessions/{session_id}", response_model=ApiResponse)
 def get_session(session_id: str):
     """获取 session 详情。"""
-    session = _sessions.get(session_id)
+    session = _session_cache_get(session_id)
     if not session:
         # 尝试从数据库读取
         session = _storage.get_session(session_id)
@@ -535,7 +761,7 @@ def confirm_session(
     data: ConfirmRequest,
 ):
     """最终确认并执行，或拒绝本次处理结果。"""
-    session = _sessions.get(session_id) or _storage.get_session(session_id)
+    session = _session_cache_get(session_id) or _storage.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
@@ -544,7 +770,7 @@ def confirm_session(
         _storage.log_operation(session_id, "reject", detail="用户跳过")
         updated = _storage.get_session(session_id)
         if updated is not None:
-            _sessions[session_id] = _deserialize_session(updated)
+            _session_cache_set(session_id, _deserialize_session(updated))
         return ApiResponse(
             success=True,
             data={
@@ -589,7 +815,7 @@ def confirm_session(
 
     updated = _storage.get_session(session_id)
     if updated is not None:
-        _sessions[session_id] = _deserialize_session(updated)
+        _session_cache_set(session_id, _deserialize_session(updated))
     return ApiResponse(
         success=True,
         data={
@@ -612,7 +838,7 @@ def undo_session_execution(session_id: str):
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     updated = _storage.get_session(session_id)
     if updated is not None:
-        _sessions[session_id] = _deserialize_session(updated)
+        _session_cache_set(session_id, _deserialize_session(updated))
     return ApiResponse(
         success=True,
         data={
@@ -651,17 +877,32 @@ def list_sessions(
 @app.get("/sessions/{session_id}/ics", response_model=ApiResponse)
 def get_ics(session_id: str):
     """获取 .ics 日历文件内容。"""
-    session = _sessions.get(session_id) or _storage.get_session(session_id)
-    if not session:
+    if _storage.get_session(session_id) is None:
         raise HTTPException(status_code=404, detail="Session not found")
-
-    session = _deserialize_session(session)
-    ics_path = session.get("ics_path") or session.get("entities", {}).get("ics_path")
-    if not ics_path or not Path(ics_path).exists():
+    execution = _storage.get_active_execution(session_id)
+    ics_path_value = execution.get("ics_path") if execution else None
+    if not ics_path_value:
         raise HTTPException(status_code=404, detail="ICS file not found")
-
-    content = Path(ics_path).read_text(encoding="utf-8")
+    ics_path = Path(str(ics_path_value)).expanduser().resolve(strict=False)
+    allowed_root = _current_archive_dir().resolve(strict=False)
+    if ics_path.suffix.lower() != ".ics" or not ics_path.is_relative_to(allowed_root):
+        raise HTTPException(status_code=403, detail="ICS file path is outside workspace")
+    if not ics_path.is_file():
+        raise HTTPException(status_code=404, detail="ICS file not found")
+    content = ics_path.read_text(encoding="utf-8")
     return ApiResponse(success=True, data=content)
+
+
+def _public_source(
+    source: dict[str, Any],
+    *,
+    include_text: bool = False,
+) -> dict[str, Any]:
+    """过滤内部工作区与服务器文件系统字段。"""
+    hidden = {"source_path", "workspace_id"}
+    if not include_text:
+        hidden.add("raw_text")
+    return {key: value for key, value in source.items() if key not in hidden}
 
 
 @app.get("/knowledge/sources", response_model=ApiResponse)
@@ -669,7 +910,7 @@ def list_knowledge_sources(limit: int = Query(50, ge=1, le=200)):
     """列出本地工作区中的持久化资料源。"""
     sources = []
     for source in _storage.list_sources(limit=limit):
-        item = {key: value for key, value in source.items() if key != "raw_text"}
+        item = _public_source(source)
         item["text_length"] = len(source.get("raw_text", ""))
         sources.append(item)
     return ApiResponse(success=True, data=sources)
@@ -700,7 +941,10 @@ async def import_learning_source(file: Annotated[UploadFile, File()]):
             retained = True
             _storage.replace_source_chunks(source_id, split_document(text))
             source = _storage.get_source(source_id)
-        return ApiResponse(success=True, data=source)
+        return ApiResponse(
+            success=True,
+            data=_public_source(source, include_text=True),
+        )
     finally:
         if not retained:
             # 只清理此次上传生成的副本，不触碰用户原件或已有资料。
@@ -771,7 +1015,10 @@ def get_knowledge_source(source_id: str):
     source = _storage.get_source(source_id)
     if source is None:
         raise HTTPException(status_code=404, detail="Source not found")
-    return ApiResponse(success=True, data=source)
+    return ApiResponse(
+        success=True,
+        data=_public_source(source, include_text=True),
+    )
 
 
 @app.get("/knowledge/sources/{source_id}/lineage", response_model=ApiResponse)
@@ -780,7 +1027,13 @@ def get_knowledge_source_lineage(source_id: str):
     lineage = _storage.get_source_lineage(source_id)
     if lineage is None:
         raise HTTPException(status_code=404, detail="资料不存在")
-    return ApiResponse(success=True, data=lineage)
+    public_lineage = dict(lineage)
+    if isinstance(public_lineage.get("source"), dict):
+        public_lineage["source"] = _public_source(
+            public_lineage["source"],
+            include_text=True,
+        )
+    return ApiResponse(success=True, data=public_lineage)
 
 
 @app.put("/knowledge/sources/{source_id}/rights", response_model=ApiResponse)
@@ -1039,6 +1292,7 @@ async def ai_summarize(
 ):
     """AI摘要生成：上传PDF/文档，生成AI摘要笔记。"""
     file_path, _ = await _save_upload(file)
+    retained = False
     logger.info("[AI Summarize] Received file: %s", file_path.name)
 
     try:
@@ -1067,6 +1321,7 @@ async def ai_summarize(
             title=f"{file_path.stem} · 摘要",
             metadata={"max_length": max_length},
         )
+        retained = True
 
         result = {
             "ctx_id": ctx_id,
@@ -1083,6 +1338,9 @@ async def ai_summarize(
             raise
         logger.exception("AI摘要生成失败: %s", file.filename)
         raise HTTPException(status_code=502, detail="AI 摘要生成失败") from exc
+    finally:
+        if not retained:
+            _managed_file_status(str(file_path), remove=True)
 
 
 @app.post("/ai/knowledge-cards", response_model=ApiResponse)
@@ -1093,6 +1351,7 @@ async def ai_knowledge_cards(
 ):
     """AI知识卡生成：上传PDF/文档，生成AI知识卡片。"""
     file_path, _ = await _save_upload(file)
+    retained = False
     logger.info("[AI Knowledge Cards] Received file: %s", file_path.name)
 
     try:
@@ -1121,6 +1380,7 @@ async def ai_knowledge_cards(
             title=f"{file_path.stem} · 知识卡",
             metadata={"count": len(cards), "card_format": card_format},
         )
+        retained = True
 
         result = {
             "ctx_id": ctx_id,
@@ -1137,6 +1397,9 @@ async def ai_knowledge_cards(
             raise
         logger.exception("AI知识卡生成失败: %s", file.filename)
         raise HTTPException(status_code=502, detail="AI 知识卡生成失败") from exc
+    finally:
+        if not retained:
+            _managed_file_status(str(file_path), remove=True)
 
 
 @app.post("/ai/questions", response_model=ApiResponse)
@@ -1147,6 +1410,7 @@ async def ai_questions(
 ):
     """AI题目提取：上传PDF/文档，提取练习题目。"""
     file_path, _ = await _save_upload(file)
+    retained = False
     logger.info("[AI Questions] Received file: %s", file_path.name)
 
     try:
@@ -1231,6 +1495,7 @@ async def ai_questions(
             title=f"{file_path.stem} · 练习题",
             metadata={"count": len(questions), "types": types_list or []},
         )
+        retained = True
 
         result = {
             "ctx_id": ctx_id,
@@ -1247,6 +1512,9 @@ async def ai_questions(
             raise
         logger.exception("AI题目提取失败: %s", file.filename)
         raise HTTPException(status_code=502, detail="AI 题目生成失败") from exc
+    finally:
+        if not retained:
+            _managed_file_status(str(file_path), remove=True)
 
 
 @app.post("/ai/notes", response_model=ApiResponse)
@@ -1256,6 +1524,7 @@ async def ai_notes(
 ):
     """AI笔记提取：上传PDF/文档，提取结构化笔记。"""
     file_path, _ = await _save_upload(file)
+    retained = False
     logger.info("[AI Notes] Received file: %s", file_path.name)
 
     try:
@@ -1284,6 +1553,7 @@ async def ai_notes(
             title=f"{file_path.stem} · 结构化笔记",
             metadata={"format": format},
         )
+        retained = True
 
         result = {
             "ctx_id": ctx_id,
@@ -1299,6 +1569,9 @@ async def ai_notes(
             raise
         logger.exception("AI笔记提取失败: %s", file.filename)
         raise HTTPException(status_code=502, detail="AI 笔记生成失败") from exc
+    finally:
+        if not retained:
+            _managed_file_status(str(file_path), remove=True)
 
 
 @app.post("/ai/study-plan", response_model=ApiResponse)
@@ -1311,6 +1584,7 @@ async def ai_study_plan(
 ):
     """根据课程资料和考试日期生成个性化复习计划。"""
     file_path, _ = await _save_upload(file)
+    retained = False
     logger.info("[AI Study Plan] Received file: %s", file_path.name)
 
     try:
@@ -1343,6 +1617,7 @@ async def ai_study_plan(
             title=plan.get("title", f"{file_path.stem} · 学习计划"),
             metadata={"exam_date": exam_date, "daily_minutes": daily_minutes},
         )
+        retained = True
         saved_plan = _storage.create_study_plan(
             artifact_id=artifact_id,
             source_id=source_id,
@@ -1365,6 +1640,9 @@ async def ai_study_plan(
             raise
         logger.exception("AI学习计划生成失败: %s", file_path.name)
         raise HTTPException(status_code=502, detail="AI 学习计划生成失败") from exc
+    finally:
+        if not retained:
+            _managed_file_status(str(file_path), remove=True)
 
 
 class ChatRequest(BaseModel):
@@ -2170,17 +2448,22 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
         interview["target_role"],
         request.fluency_metrics.model_dump() if request.fluency_metrics else None,
     )
-    updated = _storage.save_interview_turn(
-        interview_id=interview_id,
-        question_index=index,
-        question=question,
-        answer=request.answer.strip(),
-        score=evaluation["score"],
-        dimensions=evaluation["dimensions"],
-        feedback=evaluation["feedback"],
-        fluency_metrics=evaluation.get("fluency"),
-        scoring_mode=evaluation["scoring_mode"],
-    )
+    try:
+        updated = _storage.save_interview_turn(
+            interview_id=interview_id,
+            question_index=index,
+            question=question,
+            answer=request.answer.strip(),
+            score=evaluation["score"],
+            dimensions=evaluation["dimensions"],
+            feedback=evaluation["feedback"],
+            fluency_metrics=evaluation.get("fluency"),
+            scoring_mode=evaluation["scoring_mode"],
+        )
+    except ValueError as exc:
+        detail = str(exc)
+        status_code = 404 if detail == "模拟面试不存在" else 409
+        raise HTTPException(status_code=status_code, detail=detail) from exc
     run_id = interview.get("agent_run_id")
     if run_id:
         _storage.append_agent_step(

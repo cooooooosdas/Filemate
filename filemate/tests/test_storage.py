@@ -223,6 +223,29 @@ def test_scoped_analytics_and_assessment_provenance(storage):
     assert restored["assessed_turn_count"] == 1
 
 
+def test_duplicate_interview_turn_is_rejected(storage):
+    session = storage.create_interview(
+        target_role="开发",
+        scenario="求职面试",
+        difficulty="标准",
+        questions=["请介绍项目"],
+    )
+    kwargs = {
+        "interview_id": session["interview_id"],
+        "question_index": 0,
+        "question": "请介绍项目",
+        "answer": "回答",
+        "score": 80,
+        "dimensions": {"内容": 80},
+        "feedback": "继续补充",
+        "scoring_mode": "llm",
+    }
+    storage.save_interview_turn(**kwargs)
+
+    with pytest.raises(ValueError, match="模拟面试已完成|面试进度已更新"):
+        storage.save_interview_turn(**kwargs)
+
+
 class TestSchemaInit:
     def test_init_is_idempotent(self, storage: SQLiteStorage) -> None:
         """init_schema 可重复调用不报错。"""
@@ -966,6 +989,29 @@ class TestPersistentStudyPlans:
         plan = self._create_plan(storage)
         with pytest.raises(ValueError, match="学习日序号无效"):
             storage.set_study_plan_day(plan["plan_id"], 99, True)
+
+    def test_concurrent_day_updates_do_not_lose_progress(
+        self,
+        storage: SQLiteStorage,
+    ) -> None:
+        plan = self._create_plan(storage)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(
+                pool.map(
+                    lambda index: storage.set_study_plan_day(
+                        plan["plan_id"],
+                        index,
+                        True,
+                    ),
+                    (0, 1),
+                )
+            )
+
+        assert len(results) == 2
+        restored = storage.get_study_plan(plan["plan_id"])
+        assert restored is not None
+        assert restored["completed_days"] == [0, 1]
+        assert restored["status"] == "completed"
 
 
 class TestAnonymousProductFeedback:

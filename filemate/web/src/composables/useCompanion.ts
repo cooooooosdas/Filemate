@@ -35,7 +35,10 @@ interface CompanionEvidenceTotals {
   interview_count: number
 }
 
-const STORAGE_KEY = 'filemate:companion-event'
+// 学习事件可能包含任务标题或评分反馈，不能放进未绑定服务端身份的
+// localStorage。模块内缓存足以支持单次工作台会话中的页面跳转，也会在
+// 刷新或关闭页面后自动清除，避免匿名身份变化后显示上一位用户的内容。
+let recentEvent: CompanionEvent | null = null
 
 export function calculateCompanionGrowth(
   totals: CompanionEvidenceTotals
@@ -73,23 +76,17 @@ export function publishCompanionEvent(
   event: Omit<CompanionEvent, 'occurredAt'>
 ): CompanionEvent {
   const value = { ...event, occurredAt: new Date().toISOString() }
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
-  }
+  recentEvent = value
   return value
 }
 
 export function getRecentCompanionEvent(maxAgeHours = 12): CompanionEvent | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    const value = JSON.parse(raw) as CompanionEvent
-    const occurredAt = new Date(value.occurredAt).getTime()
-    const maxAge = maxAgeHours * 60 * 60 * 1000
-    if (!Number.isFinite(occurredAt) || Date.now() - occurredAt > maxAge) return null
-    return value
-  } catch {
+  if (!recentEvent) return null
+  const occurredAt = new Date(recentEvent.occurredAt).getTime()
+  const maxAge = maxAgeHours * 60 * 60 * 1000
+  if (!Number.isFinite(occurredAt) || Date.now() - occurredAt > maxAge) {
+    recentEvent = null
     return null
   }
+  return recentEvent
 }

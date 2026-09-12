@@ -144,6 +144,7 @@ onBeforeUnmount(() => {
 async function loadSession(sessionId: string) {
   sessionLoading.value = true
   sessionError.value = ''
+  fileStore.setCurrentFile(null)
   try {
     const session = await getSession(sessionId)
     fileStore.setCurrentFile(session)
@@ -156,7 +157,11 @@ async function loadSession(sessionId: string) {
 
 async function loadRequestedSession() {
   const sessionId = route.query.session as string | undefined
-  if (sessionId) await loadSession(sessionId)
+  if (sessionId) {
+    await loadSession(sessionId)
+    return
+  }
+  fileStore.setCurrentFile(null)
 }
 
 async function confirmCategory() {

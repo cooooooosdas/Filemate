@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from starlette.datastructures import UploadFile
 from starlette.requests import Request
 
+from filemate import __version__
 from filemate.core.session import ProcessingSession, SessionStatus
 from filemate.execution.storage import SQLiteStorage
 
@@ -387,7 +388,7 @@ def test_cors_allows_local_frontend_but_not_arbitrary_origins(
     assert "access-control-allow-origin" not in rejected.headers
 
     health = client.get("/api/health")
-    assert health.json()["data"]["version"] == "1.3.0-alpha"
+    assert health.json()["data"]["version"] == __version__
 
 
 @pytest.mark.asyncio

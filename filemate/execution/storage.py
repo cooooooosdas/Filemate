@@ -1649,20 +1649,28 @@ class SQLiteStorage:
         scoring_version: str = "v2",
     ) -> dict[str, Any]:
         """保存单轮面试评分并推进进度。"""
-        interview = self.get_interview(interview_id)
-        if interview is None:
-            raise ValueError("模拟面试不存在")
-        next_index = question_index + 1
-        completed = next_index >= len(interview["questions"])
         if scoring_mode not in {"llm", "local_fallback", "unknown"}:
             raise ValueError("未知评分来源")
         if scoring_mode == "llm" and score is None:
             raise ValueError("模型评分不能为空")
-        scores = [float(turn["score"]) for turn in interview["turns"] if turn["score"] is not None]
-        if scoring_mode == "llm" and score is not None:
-            scores.append(score)
         with self._write_lock:
             connection = self._conn()
+            interview = self.get_interview(interview_id)
+            if interview is None:
+                raise ValueError("模拟面试不存在")
+            if interview["status"] == "completed":
+                raise ValueError("模拟面试已完成")
+            if int(interview["current_index"]) != question_index:
+                raise ValueError("面试进度已更新，请刷新后继续")
+            next_index = question_index + 1
+            completed = next_index >= len(interview["questions"])
+            scores = [
+                float(turn["score"])
+                for turn in interview["turns"]
+                if turn["score"] is not None
+            ]
+            if scoring_mode == "llm" and score is not None:
+                scores.append(score)
             turn_id = uuid.uuid4().hex
             connection.execute(
                 """INSERT INTO interview_turns
@@ -1872,18 +1880,19 @@ class SQLiteStorage:
         plan: dict[str, Any],
     ) -> dict[str, Any]:
         """保存学习计划，并为每日完成状态建立持久化记录。"""
-        existing = self._conn().execute(
-            "SELECT plan_id FROM study_plans WHERE artifact_id=?",
-            (artifact_id,),
-        ).fetchone()
-        if existing is not None:
-            saved = self.get_study_plan(existing["plan_id"])
-            if saved is not None:
-                return saved
-
-        plan_id = uuid.uuid4().hex
         with self._write_lock:
-            self._conn().execute(
+            connection = self._conn()
+            existing = connection.execute(
+                "SELECT plan_id FROM study_plans WHERE artifact_id=?",
+                (artifact_id,),
+            ).fetchone()
+            if existing is not None:
+                saved = self.get_study_plan(existing["plan_id"])
+                if saved is not None:
+                    return saved
+
+            plan_id = uuid.uuid4().hex
+            connection.execute(
                 """INSERT INTO study_plans
                    (plan_id, artifact_id, source_id, title, exam_date,
                     daily_minutes, goal, plan_data)
@@ -1944,27 +1953,30 @@ class SQLiteStorage:
         completed: bool,
     ) -> dict[str, Any]:
         """更新单个学习日状态，并自动维护计划状态。"""
-        plan = self.get_study_plan(plan_id)
-        if plan is None:
-            raise ValueError("学习计划不存在")
-        days = plan["plan_data"].get("daily_plan", [])
-        if not 0 <= day_index < len(days):
-            raise ValueError("学习日序号无效")
-
-        completed_days = {int(item) for item in plan["completed_days"]}
-        if completed:
-            completed_days.add(day_index)
-        else:
-            completed_days.discard(day_index)
-        normalized = sorted(completed_days)
-        status = "completed" if days and len(normalized) == len(days) else "active"
         with self._write_lock:
-            self._conn().execute(
+            plan = self.get_study_plan(plan_id)
+            if plan is None:
+                raise ValueError("学习计划不存在")
+            days = plan["plan_data"].get("daily_plan", [])
+            if not 0 <= day_index < len(days):
+                raise ValueError("学习日序号无效")
+
+            completed_days = {int(item) for item in plan["completed_days"]}
+            if completed:
+                completed_days.add(day_index)
+            else:
+                completed_days.discard(day_index)
+            normalized = sorted(completed_days)
+            status = (
+                "completed" if days and len(normalized) == len(days) else "active"
+            )
+            connection = self._conn()
+            connection.execute(
                 """UPDATE study_plans SET completed_days=?, status=?, updated_at=?
                    WHERE plan_id=?""",
                 (self._dump_json(normalized), status, _now_iso(), plan_id),
             )
-            self._conn().commit()
+            connection.commit()
         updated = self.get_study_plan(plan_id)
         if updated is None:
             raise RuntimeError("学习计划更新失败")
@@ -2085,7 +2097,8 @@ class SQLiteStorage:
             raise ValueError("Agent 任务类型和目标不能为空")
         run_id = uuid.uuid4().hex
         with self._write_lock:
-            self._conn().execute(
+            connection = self._conn()
+            connection.execute(
                 """INSERT INTO agent_runs
                    (run_id, task_type, goal, selected_agents, context_refs)
                    VALUES (?, ?, ?, ?, ?)""",
@@ -2097,7 +2110,7 @@ class SQLiteStorage:
                     self._dump_json(context_refs or {}),
                 ),
             )
-            self._conn().commit()
+            connection.commit()
         result = self.get_agent_run(run_id)
         if result is None:
             raise RuntimeError("Agent 运行记录创建失败")

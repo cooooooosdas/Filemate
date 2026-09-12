@@ -117,8 +117,12 @@ function handleChartResize() {
 
 async function loadSession() {
   const sessionId = route.query.session as string
-  if (!sessionId) return
+  if (!sessionId) {
+    fileStore.setCurrentFile(null)
+    return
+  }
   loadError.value = ''
+  fileStore.setCurrentFile(null)
   try {
     const session = await getSession(sessionId)
     fileStore.setCurrentFile(session)

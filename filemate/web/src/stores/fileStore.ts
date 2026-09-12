@@ -42,6 +42,8 @@ export const useFileStore = defineStore('file', () => {
   function clearFiles() {
     files.value = []
     currentFile.value = null
+    fileList.value = []
+    loading.value = false
     error.value = null
   }
 

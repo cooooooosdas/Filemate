@@ -12,6 +12,9 @@ import type {
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '',
+  // 生产环境由服务端签发 HttpOnly 匿名身份 Cookie。即使 API 与前端
+  // 分属不同源，请求也必须携带该 Cookie，否则会被分配到新的数据空间。
+  withCredentials: true,
   timeout: 120000, // 2分钟超时（AI生成需要更长时间）
   headers: {
     'Content-Type': 'application/json'
@@ -26,7 +29,9 @@ export async function checkHealth(): Promise<boolean> {
 // 请求拦截器
 api.interceptors.request.use(
   config => {
-    console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`)
+    if (import.meta.env.DEV) {
+      console.debug(`[API] ${config.method?.toUpperCase()} ${config.url}`)
+    }
     return config
   },
   error => Promise.reject(error)
@@ -41,7 +46,9 @@ api.interceptors.response.use(
       error.response?.data?.detail ||
       error.message ||
       '请求失败'
-    console.error('[API Error]', message)
+    if (import.meta.env.DEV) {
+      console.error('[API Error]', message)
+    }
     return Promise.reject(new Error(message))
   }
 )

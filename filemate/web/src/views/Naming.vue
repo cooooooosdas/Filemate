@@ -101,9 +101,13 @@ onMounted(loadRequestedSession)
 
 async function loadRequestedSession() {
   const sessionId = route.query.session as string | undefined
-  if (!sessionId) return
+  if (!sessionId) {
+    fileStore.setCurrentFile(null)
+    return
+  }
   loading.value = true
   loadError.value = ''
+  fileStore.setCurrentFile(null)
   try {
     const session = await getSession(sessionId)
     fileStore.setCurrentFile(session)
