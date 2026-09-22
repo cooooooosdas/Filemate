@@ -10,8 +10,40 @@ import type {
   ExecutionRecord
 } from '../types'
 
+function isLoopbackHost(hostname: string): boolean {
+  return ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(
+    hostname.toLowerCase()
+  )
+}
+
+function resolveApiBaseUrl(): string {
+  const configuredUrl = import.meta.env.VITE_API_URL?.trim()
+  if (!configuredUrl || typeof window === 'undefined') return configuredUrl || ''
+
+  const isDesktopShell =
+    window.location.protocol === 'tauri:' ||
+    window.location.hostname === 'tauri.localhost' ||
+    '__TAURI_INTERNALS__' in window
+
+  try {
+    const configuredHost = new URL(configuredUrl, window.location.origin).hostname
+    if (
+      isLoopbackHost(configuredHost) &&
+      !isLoopbackHost(window.location.hostname) &&
+      !isDesktopShell
+    ) {
+      // 防止误用桌面端构建变量时，让公网浏览器连接访问者自己的本机服务。
+      return ''
+    }
+  } catch {
+    return ''
+  }
+
+  return configuredUrl
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '',
+  baseURL: resolveApiBaseUrl(),
   // 生产环境由服务端签发 HttpOnly 匿名身份 Cookie。即使 API 与前端
   // 分属不同源，请求也必须携带该 Cookie，否则会被分配到新的数据空间。
   withCredentials: true,
