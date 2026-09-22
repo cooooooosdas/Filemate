@@ -2,6 +2,18 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
   {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/Auth.vue'),
+    meta: { title: '登录', layout: 'auth' }
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('../views/Auth.vue'),
+    meta: { title: '注册', layout: 'auth' }
+  },
+  {
     path: '/',
     name: 'Home',
     component: () => import('../views/Home.vue'),

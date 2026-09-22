@@ -1,5 +1,7 @@
 <template>
+  <router-view v-if="route.meta.layout === 'auth'" />
   <div
+    v-else
     class="app-shell"
     :class="{
       'sidebar-collapsed': sidebarCollapsed,
@@ -27,6 +29,12 @@
           <el-icon><Fold v-if="!sidebarCollapsed" /><Expand v-else /></el-icon>
         </button>
       </div>
+
+      <router-link class="space-switch" to="/knowledge" title="打开个人知识库">
+        <span class="space-icon"><el-icon><FolderOpened /></el-icon></span>
+        <span class="space-copy"><strong>个人学习空间</strong><small>资料 · 知识 · 成长</small></span>
+        <el-icon class="space-arrow"><ArrowRight /></el-icon>
+      </router-link>
 
       <nav class="nav-groups">
         <section v-for="group in menuGroups" :key="group.label" class="nav-group">
@@ -85,6 +93,7 @@
         </div>
 
         <div class="topbar-actions">
+          <router-link class="account-entry" to="/login" aria-label="登录 FileMate"><el-icon><User /></el-icon><span>登录</span></router-link>
           <button class="finder-trigger" aria-label="查找功能" @click="showFinder = true"><el-icon><Search /></el-icon><span>查找功能</span><kbd>Ctrl K</kbd></button>
           <button
             class="icon-button"
@@ -204,7 +213,9 @@ import {
   DataAnalysis,
   FolderOpened,
   Aim,
-  Search
+  Search,
+  User,
+  ArrowRight
 } from '@element-plus/icons-vue'
 import Logo from './components/Logo.vue'
 import LLMSettingsPanel from './components/LLMSettingsPanel.vue'
@@ -280,9 +291,14 @@ function trapMobileFocus(event: KeyboardEvent): void {
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
 }
 function handleShortcut(event: KeyboardEvent): void {
+  if (route.meta.layout === 'auth') return
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); mobileNavOpen.value = false; showFinder.value = !showFinder.value }
 }
-watch(() => route.fullPath, () => { mobileNavOpen.value = false })
+watch(() => route.fullPath, () => {
+  mobileNavOpen.value = false
+  if (route.meta.layout !== 'auth') void loadShellState()
+  else { showFinder.value = false; showSettings.value = false }
+})
 
 async function loadShellState(): Promise<void> {
   serviceChecking.value = true
@@ -317,8 +333,17 @@ async function toggleFullscreen(): Promise<void> {
   }
 }
 
-onMounted(() => { void loadShellState(); window.addEventListener('keydown', handleShortcut) })
+onMounted(() => {
+  void router.isReady().then(() => {
+    if (!isAuthPath(route.path)) void loadShellState()
+  })
+  window.addEventListener('keydown', handleShortcut)
+})
 onUnmounted(() => { window.removeEventListener('keydown', handleShortcut); window.clearTimeout(refreshTimer) })
+
+function isAuthPath(path: string): boolean {
+  return path === '/login' || path === '/register'
+}
 </script>
 
 <style scoped>
@@ -339,7 +364,7 @@ onUnmounted(() => { window.removeEventListener('keydown', handleShortcut); windo
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #edf2ed;
+  background: var(--bg-surface);
   border-right: 1px solid var(--border-subtle);
   z-index: var(--z-sidebar);
 }
@@ -439,10 +464,11 @@ onUnmounted(() => { window.removeEventListener('keydown', handleShortcut); windo
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 
 .nav-item {
+  position: relative;
   min-height: 44px;
   margin-bottom: 2px;
   padding: 0 12px;
@@ -453,7 +479,7 @@ onUnmounted(() => { window.removeEventListener('keydown', handleShortcut); windo
   border: 1px solid transparent;
   border-radius: var(--radius-control);
   text-decoration: none;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   transition: color var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast);
 }
@@ -465,10 +491,40 @@ onUnmounted(() => { window.removeEventListener('keydown', handleShortcut); windo
 
 .nav-item.router-link-active {
   color: var(--accent);
-  background: #dce9df;
+  background: var(--accent-soft);
   border-color: transparent;
   font-weight: 600;
 }
+
+.nav-item.router-link-active::before {
+  content: '';
+  position: absolute;
+  inset: 12px auto 12px 0;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.space-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 14px 10px;
+  padding: 12px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  text-decoration: none;
+}
+
+.space-switch:hover { border-color: var(--accent-border); }
+.space-icon { display: grid; place-items: center; width: 32px; height: 36px; flex-shrink: 0; color: var(--accent); background: var(--accent-soft); border-radius: 6px; font-size: 20px; }
+.space-copy { display: grid; gap: 5px; }
+.space-copy strong { font-size: 12px; font-weight: 600; }
+.space-copy small { font-size: 10px; color: var(--text-muted); }
+.space-arrow { margin-left: auto; color: var(--text-muted); font-size: 12px; }
+.sidebar-collapsed .space-switch { display: none; }
 
 .nav-item .el-icon {
   flex: 0 0 20px;
@@ -586,8 +642,8 @@ onUnmounted(() => { window.removeEventListener('keydown', handleShortcut); windo
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  background: var(--bg-base);
+  gap: 16px;
+  background: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
   z-index: var(--z-sticky);
 }
@@ -618,13 +674,35 @@ onUnmounted(() => { window.removeEventListener('keydown', handleShortcut); windo
   gap: 8px;
 }
 
+.account-entry {
+  min-height: 44px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast);
+}
+
+.account-entry:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
 .avatar {
   width: 40px;
   height: 40px;
   margin-left: 4px;
   overflow: hidden;
-  background: var(--brand-blue-soft);
-  border: 1px solid var(--brand-blue-border);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
   border-radius: 12px;
 }
 
@@ -869,6 +947,8 @@ onUnmounted(() => { window.removeEventListener('keydown', handleShortcut); windo
 }
 @media(max-width: 560px) {
   .workspace-label,.breadcrumb-divider,.finder-trigger span,.finder-trigger kbd { display: none; }
+  .account-entry { width: 44px; height: 44px; justify-content: center; padding: 0; }
+  .account-entry span { display: none; }
   .finder-trigger { width: 44px; height: 44px; justify-content: center; padding: 0; margin: 0; border: 0; }
   .topbar-actions { gap: 0; }
   .topbar { gap: 6px; padding: 0 12px; }
