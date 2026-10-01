@@ -61,12 +61,30 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/LearningWorkspace.vue'),
     meta: { title: '学习工作区' }
   },
+  ...(import.meta.env.VITE_ENABLE_DIGITAL_HUMAN === 'false' ? [{
+    path: '/digital-human',
+    redirect: '/ai-tools',
+  }] : [{
+    path: '/digital-human',
+    name: 'DigitalHuman',
+    component: () => import('../views/DigitalHuman.vue'),
+    meta: { title: 'AI 导师讲解' }
+  }]),
   {
     path: '/study-plan',
     name: 'StudyPlan',
     component: () => import('../views/StudyPlan.vue'),
     meta: { title: '学习计划' }
   },
+  ...(import.meta.env.VITE_ENABLE_KNOWLEDGE_GRAPH === 'false' ? [{
+    path: '/knowledge-graph',
+    redirect: '/ai-tools',
+  }] : [{
+    path: '/knowledge-graph',
+    name: 'KnowledgeGraph',
+    component: () => import('../views/KnowledgeGraph.vue'),
+    meta: { title: '我的知识图谱' }
+  }]),
   {
     path: '/goals',
     name: 'GoalPlanner',

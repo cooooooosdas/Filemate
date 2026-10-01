@@ -22,7 +22,7 @@
         <template v-else>
           <div ref="messageScroll" class="conversation-scroll" aria-live="polite">
             <div v-if="!context?.chat_history.length" class="conversation-intro"><span class="intro-line"></span><h3>不急着得到答案，<br />先找到你想理解的那一点。</h3><p>读原文、记笔记，或把卡住的概念交给我。回答会附上可核对的资料片段。</p><div class="starter-prompts"><button v-for="prompt in prompts" :key="prompt" @click="questionText = prompt; composer?.focus()">{{ prompt }}<el-icon><ArrowRight /></el-icon></button></div></div>
-            <article v-for="(message, i) in context?.chat_history" :key="i" class="message" :class="message.role"><small>{{ message.role === 'user' ? '我' : 'FileMate' }}</small><p>{{ message.content }}</p><div v-if="message.citations?.length" class="citations"><button v-for="citation in message.citations" :key="citation.id" @click="showCitation(citation)"><el-icon><Document /></el-icon>引用 {{ citation.id }} · {{ citation.page_number ? `第 ${citation.page_number} 页` : '原文片段' }}</button></div></article>
+            <article v-for="(message, i) in context?.chat_history" :key="i" class="message" :class="message.role"><small>{{ message.role === 'user' ? '我' : 'FileMate' }}</small><p>{{ message.content }}</p><div v-if="message.citations?.length" class="citations"><button v-for="citation in message.citations" :key="citation.id" @click="showCitation(citation)"><el-icon><Document /></el-icon>引用 {{ citation.id }} · {{ citation.page_number ? `第 ${citation.page_number} 页` : '原文片段' }}</button></div><router-link v-if="digitalHumanEnabled && message.role === 'assistant'" class="speak-answer" :to="{ path: '/digital-human', query: { ctx: context?.ctx_id, message: i } }"><el-icon><Microphone /></el-icon>让 AI 导师讲解</router-link></article>
             <p v-if="sending" class="pending" role="status">正在检索资料并组织回答…</p>
           </div>
           <div class="composer-area">
@@ -55,11 +55,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowRight, ChatDotRound, Document, FolderOpened, Notebook, Plus, Promotion, Reading, Search } from '@element-plus/icons-vue'
+import { ArrowRight, ChatDotRound, Document, FolderOpened, Microphone, Notebook, Plus, Promotion, Reading, Search } from '@element-plus/icons-vue'
 import LearningArtifact from '../components/LearningArtifact.vue'
 import { askAI, createSourceContext, generateSourceArtifact, getAIContext, getKnowledgeArtifacts, getKnowledgeSources, getLearningSource, importLearningSource, listAIContexts, type AICitation, type AIContextDetail, type AISessionSummary, type KnowledgeArtifact, type KnowledgeSource, type KnowledgeSourceDetail, type WorkspaceArtifactKind } from '../services/api'
 
 const route = useRoute(); const router = useRouter()
+const digitalHumanEnabled = import.meta.env.VITE_ENABLE_DIGITAL_HUMAN !== 'false'
 const sources = ref<KnowledgeSource[]>([]); const source = ref<KnowledgeSourceDetail | null>(null)
 const sessions = ref<AISessionSummary[]>([]); const context = ref<AIContextDetail | null>(null)
 const artifacts = ref<KnowledgeArtifact[]>([]); const activeArtifactId = ref('')
@@ -98,7 +99,11 @@ async function openRoute() {
     const active = restored || (history[0] ? await getAIContext(history[0].ctx_id) : await createSourceContext(id))
     if (token !== epoch) return
     source.value = detail; artifacts.value = contents; sessions.value = history; context.value = active
-    activeArtifactId.value = contents[0]?.artifact_id || ''
+    const requestedArtifact = typeof route.query.artifact === 'string' ? route.query.artifact : ''
+    activeArtifactId.value = contents.find(item => item.artifact_id === requestedArtifact)?.artifact_id || contents[0]?.artifact_id || ''
+    if (requestedArtifact && activeArtifactId.value === requestedArtifact) {
+      resourceTab.value = 'artifacts'; activePane.value = 'resources'
+    }
     if (!history.some(item => item.ctx_id === active.ctx_id)) {
       const updatedSessions = await listAIContexts(id)
       if (token !== epoch) return
@@ -107,7 +112,7 @@ async function openRoute() {
     if (token !== epoch) return
     // 已加载的 source / ctx 由监听器去重，只更新可恢复地址。
     if (route.query.ctx !== active.ctx_id || route.query.source !== id) {
-      await router.replace({ path: '/ai-tools', query: { source: id, ctx: active.ctx_id } })
+      await router.replace({ path: '/ai-tools', query: { source: id, ctx: active.ctx_id, ...(requestedArtifact ? { artifact: requestedArtifact } : {}) } })
     }
     await scrollBottom()
   } catch (cause) { if (token === epoch) error.value = message(cause) }
@@ -160,8 +165,14 @@ async function showCitation(item: AICitation) {
   await nextTick()
   sourceReader.value?.scrollTo({ top: 0 })
 }
-watch(() => [route.query.source, route.query.ctx], () => {
-  if (source.value?.source_id === route.query.source && context.value?.ctx_id === route.query.ctx) return
+watch(() => [route.query.source, route.query.ctx, route.query.artifact], () => {
+  if (source.value?.source_id === route.query.source && context.value?.ctx_id === route.query.ctx) {
+    const requested = typeof route.query.artifact === 'string' ? route.query.artifact : ''
+    if (requested && artifacts.value.some(item => item.artifact_id === requested)) {
+      activeArtifactId.value = requested; resourceTab.value = 'artifacts'; activePane.value = 'resources'
+    }
+    return
+  }
   void openRoute()
 })
 onMounted(reload)
@@ -174,4 +185,5 @@ onUnmounted(() => { epoch++ })
 @media(max-width:1200px){.desk{grid-template-columns:170px minmax(260px,1fr) minmax(270px,.9fr)}.conversation-heading,.conversation-scroll{padding:18px}.composer-area{padding:12px}.artifact-workbench,.source-reader{padding:14px}.conversation-intro h3{font-size:22px}.saved-indicator{display:none}}
 @media(max-width:1000px){.mobile-panes{display:flex;gap:6px;margin-bottom:12px}.mobile-panes button{flex:1;font-size:13px}.mobile-panes button[aria-pressed=true]{background:#2f7d55;color:white}.desk{display:block;height:calc(100dvh - 245px);min-height:620px}.desk>.source-pane,.desk>.conversation-pane,.desk>.resource-pane{display:none;height:100%;box-sizing:border-box;border:0}.desk[data-pane=sources]>.source-pane{display:flex}.desk[data-pane=chat]>.conversation-pane{display:flex}.desk[data-pane=resources]>.resource-pane{display:flex}.source-list button{font-size:14px}.source-list small{font-size:12px}.workspace-heading{align-items:start}.workspace-heading h1{font-size:23px}.workspace-heading p{font-size:12px}.workspace-heading>a{font-size:11px}.conversation-intro{max-width:560px}.resource-empty{justify-content:flex-start;padding-top:50px}}
 @media(max-width:480px){.learning-workspace{padding:4px 0 20px}.workspace-heading{flex-direction:column;gap:4px;margin-bottom:10px}.workspace-heading a{min-height:36px}.desk{min-height:620px}.conversation-heading{padding:16px}.conversation-scroll{padding:20px}.conversation-intro h3{font-size:24px}.resource-tabs{padding-left:15px}}
+.speak-answer{display:inline-flex;align-items:center;gap:6px;min-height:44px;margin-top:8px;padding:0 12px;border:1px solid #c7d9cb;border-radius:8px;color:#2f7d55;text-decoration:none;font-size:12px;font-weight:600}.speak-answer:hover{background:#edf4ee}
 </style>

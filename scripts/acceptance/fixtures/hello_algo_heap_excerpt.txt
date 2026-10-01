@@ -1,0 +1,10 @@
+《Hello 算法》8.1 堆 · 原文节选
+> 作者：靳宇栋（krahets）及贡献者
+> 来源：https://www.hello-algo.com/chapter_heap/heap/
+> 许可：https://github.com/krahets/hello-algo/blob/main/LICENSE （CC BY-NC-SA 4.0）
+> 采集日期：2026-10-01
+仅截取下列连续原句用于本地非商业学习验收，未改写句意；不是用户实验数据。
+
+# 堆
+堆作为完全二叉树的一个特例，具有以下特性。
+实际上，堆通常用于实现优先队列，大顶堆相当于元素按从大到小的顺序出队的优先队列。

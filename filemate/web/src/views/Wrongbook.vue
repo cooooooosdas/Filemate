@@ -13,7 +13,7 @@
       <router-link v-if="!showMastered" to="/ai-tools">从资料生成练习</router-link>
     </div>
     <article v-for="item in items" :key="item.wrong_id" class="wrong-card">
-      <div class="meta"><span>{{ item.question.type }}</span><span>错误 {{ item.error_count }} 次</span><span>复习 {{ item.review_count }} 次</span><span>{{ reviewLabel(item) }}</span></div>
+      <div class="meta"><span>{{ item.question.type }}</span><span>知识点：{{ item.knowledge_label }}</span><span>错误 {{ item.error_count }} 次</span><span>复习 {{ item.review_count }} 次</span><span>{{ reviewLabel(item) }}</span></div>
       <h2>{{ item.question.question }}</h2>
       <div v-if="item.question.options?.length" class="options">
         <span v-for="(option, oi) in item.question.options" :key="oi" class="option">{{ option }}</span>
@@ -30,6 +30,18 @@
         {{ item.question.explanation }}
       </p>
       <small>最近答案：{{ item.latest_answer || '未填写' }}</small>
+      <section class="diagnosis" aria-label="错因诊断">
+        <div class="diagnosis-heading">
+          <strong>这次主要卡在哪里？</strong>
+          <span>{{ item.error_cause_source === 'user' ? '已由你确认' : item.error_cause_source === 'rule' ? `本地规则建议 · ${Math.round(item.error_cause_confidence * 100)}%` : '待确认' }}</span>
+        </div>
+        <div class="diagnosis-fields">
+          <label><span>错因</span><select v-model="causeDrafts[item.wrong_id]" :name="`cause_${item.wrong_id}`"><option v-for="option in causeOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select></label>
+          <label class="note-field"><span>补充说明 <i>可选</i></span><textarea v-model.trim="noteDrafts[item.wrong_id]" :name="`cause_note_${item.wrong_id}`" maxlength="300" rows="2" placeholder="例如：能背出定义，但不会判断适用条件" /></label>
+          <button type="button" :disabled="savingDiagnosis === item.wrong_id" @click="saveDiagnosis(item)">{{ savingDiagnosis === item.wrong_id ? '正在保存…' : '保存错因' }}</button>
+        </div>
+        <small>修改错因后，依赖旧诊断的目标训练会提示重新规划。</small>
+      </section>
       <div v-if="!showMastered" class="retry">
         <input v-model="answers[item.wrong_id]" :name="`retry_${item.wrong_id}`" autocomplete="off" :aria-label="`重新回答：${item.question.question}`" placeholder="重新作答…" @keyup.enter="retry(item)" />
         <button :disabled="!answers[item.wrong_id]?.trim()" @click="retry(item)">提交复习</button>
@@ -43,7 +55,7 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CircleCheckFilled, Tickets } from '@element-plus/icons-vue'
-import { getWrongbook, submitQuizAttempt, type WrongQuestion } from '../services/api'
+import { getWrongbook, submitQuizAttempt, updateWrongDiagnosis, type WrongErrorCause, type WrongQuestion } from '../services/api'
 import DataState from '../components/DataState.vue'
 
 const items = ref<WrongQuestion[]>([])
@@ -53,10 +65,28 @@ const showMastered = ref(false)
 const answers = ref<Record<string, string>>({})
 const results = ref<Record<string, string>>({})
 const expanded = ref<Record<string, boolean>>({})
+const causeDrafts = ref<Record<string, WrongErrorCause>>({})
+const noteDrafts = ref<Record<string, string>>({})
+const savingDiagnosis = ref('')
+const causeOptions: Array<{ value: WrongErrorCause; label: string }> = [
+  { value: 'unconfirmed', label: '还不确定' },
+  { value: 'concept_gap', label: '概念没有真正理解' },
+  { value: 'memory_gap', label: '记忆遗漏或提取困难' },
+  { value: 'reasoning_break', label: '推理过程出现断点' },
+  { value: 'expression_gap', label: '知道但表达不清' },
+  { value: 'option_confusion', label: '相近选项或边界混淆' },
+  { value: 'careless', label: '审题或检查疏漏' }
+]
 const load = async () => {
   loading.value = true
   error.value = ''
-  try { items.value = await getWrongbook(showMastered.value) }
+  try {
+    items.value = await getWrongbook(showMastered.value)
+    for (const item of items.value) {
+      causeDrafts.value[item.wrong_id] = item.error_cause
+      noteDrafts.value[item.wrong_id] = item.error_cause_note || ''
+    }
+  }
   catch (e: any) { error.value = e?.message || '加载失败'; ElMessage.error(error.value) }
   finally { loading.value = false }
 }
@@ -65,10 +95,29 @@ const retry = async (item: WrongQuestion) => {
   const answer = answers.value[item.wrong_id]?.trim()
   if (!answer) return
   try {
-    const result = await submitQuizAttempt(item.artifact_id, item.question_index, answer)
+    const result = await submitQuizAttempt(item.artifact_id, item.question_index, answer, item.question.snapshot)
     results.value[item.wrong_id] = `${result.feedback}（相似度 ${Math.round(result.score * 100)}%）`
     if (result.is_correct) await load()
   } catch (error: any) { ElMessage.error(error.message || '提交失败') }
+}
+const saveDiagnosis = async (item: WrongQuestion) => {
+  savingDiagnosis.value = item.wrong_id
+  try {
+    const updated = await updateWrongDiagnosis(
+      item.wrong_id,
+      causeDrafts.value[item.wrong_id] || 'unconfirmed',
+      noteDrafts.value[item.wrong_id] || ''
+    )
+    const index = items.value.findIndex(current => current.wrong_id === item.wrong_id)
+    if (index >= 0) items.value.splice(index, 1, updated)
+    causeDrafts.value[item.wrong_id] = updated.error_cause
+    noteDrafts.value[item.wrong_id] = updated.error_cause_note
+    ElMessage.success('错因已保存，后续计划会按这个原因调整')
+  } catch (cause: any) {
+    ElMessage.error(cause?.message || '错因保存失败')
+  } finally {
+    savingDiagnosis.value = ''
+  }
 }
 const reviewLabel = (item: WrongQuestion) => {
   if (item.mastered) return '已掌握'
@@ -90,10 +139,11 @@ h1 { margin: 3px 0 8px; font-size: 30px; } header p { margin: 0; color: var(--te
 .option { background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 7px 10px; font-size: 13px; color: var(--text-primary); }
 .analysis-toggle { margin: 8px 0; padding: 6px 12px; border: 1px solid var(--accent-border); border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-size: 12px; cursor: pointer; }
 .analysis { margin-top: 8px; padding: 12px; background: var(--bg-surface); border: 1px dashed var(--border-subtle); border-radius: 10px; }
+.diagnosis { margin-top: 16px; padding: 16px; border: 1px solid var(--accent-border); border-radius: 12px; background: var(--accent-soft); }.diagnosis-heading { display: flex; justify-content: space-between; gap: 12px; align-items: center; }.diagnosis-heading span { color: var(--text-muted); font-size: 12px; }.diagnosis-fields { display: grid; grid-template-columns: minmax(180px,.8fr) minmax(260px,1.5fr) auto; gap: 12px; align-items: end; margin: 12px 0 8px; }.diagnosis-fields label { display: grid; gap: 6px; font-size: 12px; color: var(--text-secondary); }.diagnosis-fields i { font-style: normal; color: var(--text-muted); }.diagnosis-fields select,.diagnosis-fields textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-surface); color: var(--text-primary); padding: 9px 10px; font: inherit; }.diagnosis-fields textarea { resize: vertical; }.diagnosis-fields button { min-height: 40px; border: 0; border-radius: 8px; padding: 0 14px; color: #fff; background: var(--accent); cursor: pointer; }.diagnosis-fields button:disabled { opacity: .5; }
 .meta { display: flex; gap: 8px; flex-wrap: wrap; }.meta span { background: var(--accent-soft); color: var(--accent); padding: 4px 9px; border-radius: 999px; font-size: 12px; }
 .empty { padding: 70px; text-align: center; background: var(--bg-surface); border: 1px dashed var(--border-default); border-radius: 14px; color: var(--text-muted); }
 .retry { display: flex; gap: 8px; margin-top: 14px; }.retry input { flex: 1; border: 1px solid var(--border-default); border-radius: 9px; padding: 10px 12px; background: var(--bg-elevated); }.retry button { border: 0; border-radius: 9px; padding: 10px 14px; color: #fff; background: var(--accent); }.retry button:disabled { opacity: .45; }.result { color: var(--accent) !important; font-weight: 600; }
-@media (max-width: 640px) { header { align-items: start; flex-direction: column; }.wrongbook-page { padding: 18px; } }
+@media (max-width: 640px) { header { align-items: start; flex-direction: column; }.wrongbook-page { padding: 18px; }.diagnosis-fields { grid-template-columns: 1fr; }.diagnosis-heading { align-items: start; flex-direction: column; } }
 </style>
 
 <style scoped>

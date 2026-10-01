@@ -141,11 +141,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
 import DataState from '../components/DataState.vue'
 import {
   generateStudyPlan,
+  getStudyPlan,
   getStudyPlans,
   updateStudyPlanDay,
   type StudyPlan
@@ -164,6 +166,7 @@ const defaultExam = new Date()
 defaultExam.setDate(defaultExam.getDate() + 14)
 
 const selectedFile = ref<File | null>(null)
+const route = useRoute()
 const isDragging = ref(false)
 const isGenerating = ref(false)
 const error = ref('')
@@ -250,16 +253,25 @@ const toggleDay = async (index: number) => {
   }
 }
 
+let restoreEpoch = 0
 const restoreLatestPlan = async () => {
+  const epoch = ++restoreEpoch
+  plan.value = null; planId.value = ''; completedDays.value = new Set(); error.value = ''
   try {
-    const [latest] = await getStudyPlans(undefined, 1)
+    const requestedId = typeof route.query.plan === 'string' ? route.query.plan : ''
+    const latest = requestedId ? await getStudyPlan(requestedId) : (await getStudyPlans(undefined, 1))[0]
+    if (epoch !== restoreEpoch) return
     if (!latest) return
+    if (latest.status === 'archived') {
+      error.value = '这份计划已撤销，可从知识图谱恢复。'
+      return
+    }
     plan.value = latest.plan_data
     planId.value = latest.plan_id
     completedDays.value = new Set(latest.completed_days)
     restoredTitle.value = latest.title
-  } catch {
-    // 后端未启动时由全局服务状态提示，不阻塞页面表单。
+  } catch (cause) {
+    if (epoch === restoreEpoch) error.value = cause instanceof Error ? cause.message : '读取学习计划失败，请刷新重试。'
   }
 }
 
@@ -315,6 +327,8 @@ const exportIcs = () => {
 }
 
 onMounted(restoreLatestPlan)
+watch(() => route.query.plan, restoreLatestPlan)
+onUnmounted(() => { restoreEpoch++ })
 </script>
 
 <style scoped>

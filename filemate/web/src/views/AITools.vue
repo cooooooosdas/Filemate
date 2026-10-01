@@ -600,7 +600,8 @@ const submitAnswer = async (index: string | number) => {
     questionResults.value[index] = await submitQuizAttempt(
       result.value.artifact_id,
       Number(index),
-      questionAnswers.value[index]
+      questionAnswers.value[index],
+      result.value.questions?.[index]?.snapshot
     )
     ElMessage[questionResults.value[index].is_correct ? 'success' : 'warning'](
       questionResults.value[index].feedback

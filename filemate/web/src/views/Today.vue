@@ -3,7 +3,7 @@
     <header class="hero">
       <div>
         <h1>今日学习</h1>
-        <p>按轻重缓急排好顺序，从第一件开始。</p>
+        <p>结合复习期限、错因和你的时间，安排今天能完成的事。</p>
       </div>
       <button type="button" :disabled="loading" @click="load">{{ loading ? '刷新中…' : '刷新队列' }}</button>
     </header>
@@ -23,10 +23,21 @@
         :action-label="companionEvent.actionLabel"
       />
       <section class="summary" aria-label="今日学习概览">
-        <article><span>推荐任务</span><strong>{{ data.items.length }}</strong><small>按薄弱程度排序</small></article>
+        <article><span>推荐任务</span><strong>{{ data.items.length }}</strong><small>可按需要调整顺序</small></article>
         <article><span>预计用时</span><strong>{{ data.recommended_minutes }}</strong><small>分钟</small></article>
         <article><span>进行中计划</span><strong>{{ data.active_plan_count }}</strong><small>进度自动保存</small></article>
         <article><span>待复习错题</span><strong>{{ data.pending_wrong_count }}</strong><small>连续答对两次掌握</small></article>
+      </section>
+
+      <section class="coach-controls" aria-label="今日学习安排">
+        <div><h2>今天有多少时间？</h2><p>按现有任务时长排入预算；排不下的任务会保留在计划或错题本中。</p></div>
+        <form @submit.prevent="saveBudget">
+          <label for="available-minutes">可用时长</label>
+          <input id="available-minutes" v-model.number="availableInput" type="number" min="10" max="240" step="5" :disabled="savingPreferences" />
+          <span>分钟</span>
+          <button type="submit" :disabled="savingPreferences || availableInput === data.available_minutes">{{ savingPreferences ? '保存中…' : '重新安排' }}</button>
+        </form>
+        <p v-if="data.deferred_count" class="deferred-note">另有 {{ data.deferred_count }} 项在 {{ data.available_minutes }} 分钟预算外，可调整时长后重新安排。</p>
       </section>
 
       <section v-if="data.items.length" class="queue">
@@ -35,10 +46,11 @@
           <div class="order">{{ String(index + 1).padStart(2, '0') }}</div>
           <div class="task-main">
             <div class="task-meta"><span>{{ item.kind === 'plan_day' ? '计划任务' : '错题复习' }}</span><em>{{ item.duration_minutes }} 分钟</em><b v-if="item.priority === 'high'">优先</b></div>
+            <div class="reorder-actions" aria-label="调整任务顺序"><button type="button" :disabled="index === 0 || savingPreferences" :aria-label="`上移：${item.title}`" @click="moveTask(index, -1)">上移</button><button type="button" :disabled="index === data.items.length - 1 || savingPreferences" :aria-label="`下移：${item.title}`" @click="moveTask(index, 1)">下移</button></div>
             <h3>{{ item.title }}</h3>
             <p>{{ item.reason }}</p>
             <ul v-if="item.tasks?.length"><li v-for="task in item.tasks" :key="task">{{ task }}</li></ul>
-            <p v-if="item.explanation" class="hint">复习提示：{{ item.explanation }}</p>
+            <p v-if="item.explanation && results[item.item_id]" class="hint">复习提示：{{ item.explanation }}</p>
             <div v-if="item.kind === 'wrong_question'" class="retry">
               <label><span class="sr-only">重新回答这道错题</span><input v-model="answers[item.item_id]" :name="`today_${item.wrong_id}`" autocomplete="off" placeholder="先回忆，再输入答案…" @keyup.enter="retry(item)" /></label>
               <button type="button" :disabled="!answers[item.item_id]?.trim() || working.has(item.item_id)" @click="retry(item)">提交答案</button>
@@ -53,8 +65,9 @@
       </section>
 
       <section v-else class="empty">
-        <span><el-icon><CircleCheckFilled /></el-icon></span><h2>今天没有待完成的任务</h2><p>可以读一份新资料，或者为下次考试安排计划。</p>
-        <div><router-link to="/ai-tools">理解新资料</router-link><router-link class="secondary" to="/study-plan">创建学习计划</router-link></div>
+        <span><el-icon><CircleCheckFilled /></el-icon></span><h2>{{ data.deferred_count ? '当前时长排不下待办任务' : '今天没有待完成的任务' }}</h2><p>{{ data.deferred_count ? '增加上方可用时长，或从计划和错题本选择一项开始。' : '可以读一份新资料，或者为下次考试安排计划。' }}</p>
+        <div v-if="data.deferred_count"><router-link to="/wrongbook">打开错题本</router-link><router-link class="secondary" to="/study-plan">打开学习计划</router-link></div>
+        <div v-else><router-link to="/ai-tools">理解新资料</router-link><router-link class="secondary" to="/study-plan">创建学习计划</router-link></div>
       </section>
     </template>
   </div>
@@ -66,6 +79,7 @@ import { ElMessage } from 'element-plus'
 import { CircleCheckFilled } from '@element-plus/icons-vue'
 import {
   getTodayReview,
+  saveTodayReviewPreferences,
   submitQuizAttempt,
   updateStudyPlanDay,
   type TodayReview,
@@ -85,6 +99,8 @@ const answers = ref<Record<string, string>>({})
 const results = ref<Record<string, string>>({})
 const working = ref<Set<string>>(new Set())
 const companionEvent = ref<CompanionEvent | null>(null)
+const availableInput = ref(60)
+const savingPreferences = ref(false)
 
 const setWorking = (itemId: string, active: boolean) => {
   const next = new Set(working.value)
@@ -95,9 +111,44 @@ const setWorking = (itemId: string, active: boolean) => {
 const load = async () => {
   loading.value = true
   error.value = ''
-  try { data.value = await getTodayReview() }
+  try {
+    data.value = await getTodayReview()
+    availableInput.value = data.value.available_minutes
+  }
   catch (e: any) { error.value = e?.message || '今日学习队列加载失败'; ElMessage.error(error.value) }
   finally { loading.value = false }
+}
+
+const saveBudget = async () => {
+  if (!data.value || savingPreferences.value) return
+  if (!Number.isInteger(availableInput.value) || availableInput.value < 10 || availableInput.value > 240) {
+    ElMessage.warning('可用时长须为 10 至 240 分钟的整数')
+    return
+  }
+  savingPreferences.value = true
+  try {
+    data.value = await saveTodayReviewPreferences(availableInput.value, data.value.item_order)
+  } catch (e: any) { ElMessage.error(e?.message || '今日安排保存失败') }
+  finally { savingPreferences.value = false }
+}
+
+const moveTask = async (index: number, direction: -1 | 1) => {
+  if (!data.value || savingPreferences.value) return
+  const next = [...data.value.items]
+  const target = index + direction
+  if (target < 0 || target >= next.length) return
+  ;[next[index], next[target]] = [next[target], next[index]]
+  const selectedIds = new Set(next.map(item => item.item_id))
+  const itemOrder = [
+    ...next.map(item => item.item_id),
+    ...data.value.item_order.filter(id => !selectedIds.has(id))
+  ]
+  savingPreferences.value = true
+  try {
+    data.value = await saveTodayReviewPreferences(data.value.available_minutes, itemOrder)
+    availableInput.value = data.value.available_minutes
+  } catch (e: any) { ElMessage.error(e?.message || '任务顺序保存失败') }
+  finally { savingPreferences.value = false }
 }
 
 const completePlan = async (item: TodayReviewItem) => {
@@ -125,7 +176,7 @@ const retry = async (item: TodayReviewItem) => {
   if (!answer || !item.artifact_id || item.question_index === undefined) return
   setWorking(item.item_id, true)
   try {
-    const result = await submitQuizAttempt(item.artifact_id, item.question_index, answer)
+    const result = await submitQuizAttempt(item.artifact_id, item.question_index, answer, item.question_snapshot)
     results.value[item.item_id] = `${result.feedback}（匹配度 ${Math.round(result.score * 100)}%）`
     companionEvent.value = publishCompanionEvent({
       mood: result.is_correct ? 'wink' : 'encouraging',
@@ -208,6 +259,30 @@ onMounted(load)
   margin-bottom: 16px;
 }
 
+.coach-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 24px;
+  margin-top: 16px;
+  padding: 18px 22px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--bg-surface);
+}
+
+.coach-controls h2 { margin: 0 0 5px; font-size: 17px; }
+.coach-controls p { margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+.coach-controls form { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.coach-controls input { width: 70px; min-height: 44px; padding: 8px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-base); color: var(--text-primary); font: inherit; }
+.coach-controls button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--accent-border); border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; font: inherit; }
+.coach-controls button:disabled { opacity: .5; cursor: default; }
+.coach-controls .deferred-note { grid-column: 1 / -1; color: #80551d; }
+.reorder-actions { display: flex; gap: 6px; margin-top: 8px; }
+.reorder-actions button { min-width: 44px; min-height: 44px; padding: 8px 10px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-base); color: var(--accent); cursor: pointer; }
+.reorder-actions button:disabled { opacity: .45; cursor: default; }
+.coach-controls :is(input, button):focus-visible, .reorder-actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 .empty > span .el-icon {
   font-size: 28px;
 }
@@ -223,6 +298,8 @@ onMounted(load)
 }
 
 @media (max-width: 560px) {
+  .coach-controls { grid-template-columns: 1fr; padding: 16px; }
+  .coach-controls form { flex-wrap: wrap; }
   .hero {
     gap: 18px;
   }

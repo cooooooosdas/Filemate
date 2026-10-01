@@ -53,3 +53,50 @@ def test_reverse_goal_uses_weakest_dimension_and_reopens_pending_wrong_task() ->
         date.fromisoformat(item["due_date"]) <= final_day
         for item in plan["tasks"]
     )
+
+
+def test_reverse_goal_links_a_real_wrong_question_to_oral_practice() -> None:
+    plan = build_reverse_goal_plan(
+        title="理解数据库索引",
+        goal_type="exam",
+        deadline=datetime.now().astimezone().date() + timedelta(days=7),
+        target_score=None,
+        analytics={"source_count": 1, "pending_wrong_count": 1},
+        source_id="source-1",
+        source_name="数据库课件",
+        focus_wrong={
+            "wrong_id": "wrong-1",
+            "question": {"stem": "B+ 树为什么适合范围查询？", "answer": "叶子节点有序"},
+        },
+    )
+
+    oral_task = next(task for task in plan["tasks"] if task["task_id"] == "explain-wrong-aloud")
+    assert oral_task["route"] == "/interview"
+    assert oral_task["source_id"] == "source-1"
+    assert oral_task["focus_wrong_id"] == "wrong-1"
+    assert "范围查询" in oral_task["reason"]
+    assert "叶子节点有序" not in oral_task["reason"]
+
+
+def test_replan_reopens_oral_task_when_focus_wrong_changes() -> None:
+    plan = build_reverse_goal_plan(
+        title="理解数据库索引",
+        goal_type="exam",
+        deadline=datetime.now().astimezone().date() + timedelta(days=7),
+        target_score=None,
+        analytics={"source_count": 1, "pending_wrong_count": 1},
+        source_id="source-1",
+        previous_tasks=[{
+            "task_id": "explain-wrong-aloud",
+            "focus_wrong_id": "old-wrong",
+            "status": "completed",
+        }],
+        focus_wrong={
+            "wrong_id": "new-wrong",
+            "question": {"stem": "什么是聚簇索引？"},
+        },
+    )
+
+    oral_task = next(task for task in plan["tasks"] if task["task_id"] == "explain-wrong-aloud")
+    assert oral_task["focus_wrong_id"] == "new-wrong"
+    assert oral_task["status"] == "pending"

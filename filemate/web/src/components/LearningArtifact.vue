@@ -2,6 +2,7 @@
   <article class="learning-artifact">
     <header><div><small>{{ label }}</small><h3>{{ artifact.title }}</h3></div><button type="button" @click="download">导出</button></header>
     <p v-if="artifact.metadata?.source_truncated" class="notice">本次内容依据资料前 {{ artifact.metadata.input_characters }} 字生成，未覆盖全文。</p>
+    <p v-if="artifact.metadata?.read_only_snapshot" class="notice">这是修改前的历史题集，正文只读。复练仍保存到这份旧题证据，不影响新版题目的成绩。</p>
     <template v-if="artifact.artifact_type === 'knowledge_cards' && cards.length">
       <div class="pager"><span>知识卡 {{ index + 1 }} / {{ cards.length }}</span><div><button :disabled="index === 0" aria-label="上一张卡片" @click="move(-1)">上一张</button><button :disabled="index === cards.length - 1" aria-label="下一张卡片" @click="move(1)">下一张</button></div></div>
       <button class="flashcard" type="button" :aria-expanded="revealed" @click="revealed = !revealed">
@@ -53,7 +54,7 @@ async function submit() {
   const targetIndex = index.value
   saving.value = true; error.value = ''
   try {
-    const result = await submitQuizAttempt(targetId, targetIndex, answers.value[targetIndex]!)
+    const result = await submitQuizAttempt(targetId, targetIndex, answers.value[targetIndex]!, question.value)
     if (props.artifact.artifact_id === targetId) results.value[targetIndex] = result
   } catch (cause) { if (props.artifact.artifact_id === targetId) error.value = cause instanceof Error ? cause.message : '提交失败' }
   finally { saving.value = false }

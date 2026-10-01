@@ -2,8 +2,8 @@
   <div class="interview-page">
     <header class="page-head">
       <div>
-        <h1>模拟面试训练</h1>
-        <p>真实问题、即时追问、分项评分，把每一次回答变成可复盘的数据。</p>
+        <h1>口头讲解与模拟面试</h1>
+        <p>围绕资料与练习记录逐题表达，回看回答、语音节奏和可用的评估证据。</p>
       </div>
       <span class="status-pill" aria-live="polite"><i></i>{{ session?.status === 'completed' ? '本轮已完成' : session ? '面试进行中' : '准备就绪' }}</span>
     </header>
@@ -30,11 +30,13 @@
         <p>结构化提问结合浏览器语音能力，无需额外安装软件；也可以全程使用文字回答。</p>
       </div>
       <div class="form-grid">
-        <label>目标岗位或方向<input v-model="form.targetRole" name="target_role" autocomplete="off" placeholder="例如：Java 后端开发 / 软件杯答辩" /></label>
-        <label>面试场景<select v-model="form.scenario" name="interview_scenario"><option>求职面试</option><option>竞赛答辩</option><option>保研复试</option></select></label>
+        <label>训练主题或目标方向<input v-model="form.targetRole" name="target_role" autocomplete="off" placeholder="例如：数据库索引 / Java 后端开发" /></label>
+        <label>训练场景<select v-model="form.scenario" name="interview_scenario"><option>知识讲解</option><option>求职面试</option><option>竞赛答辩</option><option>保研复试</option></select></label>
         <label>难度<select v-model="form.difficulty" name="interview_difficulty"><option>入门</option><option>标准</option><option>压力面</option></select></label>
-        <label class="source-field">面试依据（可选）<select v-model="form.sourceId" name="interview_source"><option value="">不使用资料，按题库训练</option><option v-for="source in knowledgeSources" :key="source.source_id" :value="source.source_id">{{ source.original_name }}</option></select><small>主动选择后才会使用；授权未确认时只用资料名在本地组织问题。</small></label>
+        <label class="source-field">训练依据（可选）<select v-model="form.sourceId" name="interview_source" @change="focusWrongId = ''; originGoalId = ''"><option value="">不使用资料，按题库训练</option><option v-for="source in knowledgeSources" :key="source.source_id" :value="source.source_id">{{ source.original_name }}</option></select><small>主动选择后才会使用；授权未确认时只用资料名在本地组织问题。</small></label>
       </div>
+      <p v-if="focusWrongId && form.sourceId" class="focus-note">本轮首题会依据该资料中的一条待纠错练习组织；参考答案不会放进题目。</p>
+      <p v-if="form.scenario === '知识讲解'" class="focus-note">讲解会保存为练习记录；当前内容准确性待评估，语音节奏仅作参考。</p>
       <button class="primary" :disabled="loading || !form.targetRole.trim()" @click="begin">{{ loading ? '正在创建…' : '开始模拟面试' }}</button>
       <DataState v-if="error" :error="error" @retry="begin" />
     </section>
@@ -80,10 +82,11 @@
           <div class="progress"><i :style="{ width: `${session.current_index / session.questions.length * 100}%` }"></i></div>
 
           <div v-if="session.status === 'active'" class="question-block">
-            <p>面试官提问</p>
-            <span v-if="session.source_context?.source_name" class="source-evidence">依据：{{ session.source_context.source_name }} · {{ session.source_context.mode === 'authorized_excerpt' ? '已授权片段' : '仅本地资料名' }}</span>
+            <p>训练问题</p>
+            <span v-if="session.source_context?.source_name" class="source-evidence">依据：{{ session.source_context.source_name }} · {{ session.source_context.focus_wrong_id ? '待纠错练习首题' : session.source_context.mode === 'authorized_excerpt' ? '已授权片段' : '仅本地资料名' }}</span>
+            <span v-if="sourceEvidenceLabel" class="source-evidence source-location-evidence" :class="{ unavailable: session.source_context?.source_evidence?.status === 'unavailable' }">{{ sourceEvidenceLabel }}</span>
             <h2>{{ session.current_question }}</h2>
-            <textarea v-model="answer" name="interview_answer" autocomplete="off" aria-label="当前面试回答" rows="7" placeholder="建议用“情境—任务—行动—结果”结构回答…"></textarea>
+            <textarea v-model="answer" name="interview_answer" autocomplete="off" aria-label="当前训练回答" rows="7" :placeholder="session.scenario === '知识讲解' ? '先解释概念，再说明推理过程和一个例子…' : '建议用“情境—任务—行动—结果”结构回答…'"></textarea>
             <div class="answer-actions">
               <button class="voice" :class="{ recording }" @click="toggleRecording">{{ recording ? '停止录音' : '语音回答' }}</button>
               <span>{{ answer.length }} 字</span>
@@ -104,7 +107,7 @@
 
           <div v-else class="completion">
             <span class="score-ring" :class="{ unassessed: session.overall_score == null }">{{ session.overall_score == null ? '已记录' : session.overall_score.toFixed(0) }}</span>
-            <div><p>本轮面试完成</p><h2>{{ scoreLabel }}</h2><button class="primary" @click="reset">再练一次</button></div>
+            <div><p>本轮训练完成</p><h2>{{ scoreLabel }}</h2><button class="primary" @click="reset">再练一次</button><button v-if="session.source_context?.goal_id" class="ghost" @click="router.push({ path: '/goals', query: { goal: session.source_context.goal_id } })">返回目标复盘</button></div>
           </div>
         </div>
       </section>
@@ -172,9 +175,11 @@ import DataState from '../components/DataState.vue'
 import { publishCompanionEvent, type CompanionMood } from '../composables/useCompanion'
 import mascotUrl from '../assets/filemate-mascot.png'
 
-const form = ref({ targetRole: '', scenario: '求职面试', difficulty: '标准', sourceId: '' })
+const form = ref({ targetRole: '', scenario: '知识讲解', difficulty: '标准', sourceId: '' })
 const route = useRoute()
 const router = useRouter()
+const focusWrongId = ref(typeof route.query.focus === 'string' ? route.query.focus : '')
+const originGoalId = ref(typeof route.query.goal === 'string' ? route.query.goal : '')
 const recentInterviews = ref<LearningAnalytics['recent_interviews']>([])
 const historyLoading = ref(false)
 const historyError = ref('')
@@ -183,6 +188,16 @@ const requestedInterviewId = ref('')
 let disposed = false
 const knowledgeSources = ref<KnowledgeSource[]>([])
 const session = ref<InterviewSession | null>(null)
+const sourceEvidenceLabel = computed(() => {
+  const evidence = session.value?.source_context?.source_evidence
+  if (!evidence) return ''
+  if (evidence.status === 'unavailable') return evidence.reason
+  const location = [
+    evidence.page_number != null ? `第 ${evidence.page_number} 页` : '',
+    evidence.chunk_index != null ? `片段 ${evidence.chunk_index + 1}` : ''
+  ].filter(Boolean).join(' · ') || '已匹配资料片段'
+  return `定位：${location}；本地词法匹配，需核对原资料。`
+})
 const answer = ref('')
 const loading = ref(false)
 const error = ref('')
@@ -288,7 +303,7 @@ const begin = async () => {
   loading.value = true
   error.value = ''
   try {
-    const created = await startInterview(form.value.targetRole, form.value.scenario, form.value.difficulty, form.value.sourceId || undefined)
+    const created = await startInterview(form.value.targetRole, form.value.scenario, form.value.difficulty, form.value.sourceId || undefined, focusWrongId.value || undefined, originGoalId.value || undefined)
     if (disposed) return
     session.value = created
     resumeError.value = ''
@@ -347,6 +362,8 @@ const restoreInterview = async (interviewId: string) => {
     if (disposed) return
     session.value = restored
     form.value = { targetRole: restored.target_role, scenario: restored.scenario, difficulty: restored.difficulty, sourceId: restored.source_context?.source_id || '' }
+    focusWrongId.value = restored.source_context?.focus_wrong_id || ''
+    originGoalId.value = restored.source_context?.goal_id || ''
     answer.value = ''
     await router.replace({ query: { interview: restored.interview_id } })
   } catch { resumeError.value = '这场面试暂时无法恢复。请确认后端已启动，或从下方新建面试。' }
@@ -539,6 +556,8 @@ const reset = () => {
   stopCamera()
   clearLocalRecordings()
   session.value = null
+  focusWrongId.value = ''
+  originGoalId.value = ''
   answer.value = ''
   fluencyMarkers.value = []
   resumeError.value = ''
@@ -559,6 +578,15 @@ onMounted(async () => {
   if (typeof route.query.interview === 'string') void restoreInterview(route.query.interview)
   try { knowledgeSources.value = await getKnowledgeSources(100) }
   catch { knowledgeSources.value = [] }
+  if (typeof route.query.source === 'string' && knowledgeSources.value.some(source => source.source_id === route.query.source)) {
+    form.value.sourceId = route.query.source
+  }
+  if (['知识讲解', '求职面试', '竞赛答辩', '保研复试'].includes(String(route.query.scenario))) {
+    form.value.scenario = String(route.query.scenario)
+  }
+  if (typeof route.query.target === 'string') form.value.targetRole = route.query.target.slice(0, 120)
+  if (!form.value.sourceId) focusWrongId.value = ''
+  if (!focusWrongId.value) originGoalId.value = ''
 })
 </script>
 
@@ -575,6 +603,8 @@ onMounted(async () => {
 .source-field { grid-column: 1 / -1; }
 .source-field small { display: block; margin-top: 6px; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
 .source-evidence { display: inline-flex; margin-top: 3px; padding: 5px 8px; border: 1px solid var(--brand-blue-border); border-radius: 7px; background: var(--brand-blue-soft); color: var(--brand-blue-strong); font-size: 10px; }
+.source-location-evidence { display: flex; width: fit-content; border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent); }
+.source-location-evidence.unavailable { border-color: #efcfaa; background: #fff5e9; color: #80551d; }
 
 .camera-preview {
   position: relative;

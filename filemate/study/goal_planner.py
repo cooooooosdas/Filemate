@@ -39,6 +39,17 @@ def _task(
     }
 
 
+_ERROR_CAUSE_GUIDANCE = {
+    "concept_gap": ("概念缺口", "补全概念后口头解释", "先回到资料确认定义、边界和例子"),
+    "memory_gap": ("记忆遗漏", "主动回忆并口头复述", "先遮住答案主动回忆，再用自己的话复述"),
+    "reasoning_break": ("推理断点", "分步讲清推理链", "把条件、步骤和结论逐段讲清"),
+    "expression_gap": ("表达困难", "重组表达并完成讲解", "按结论、依据、例子重新组织表达"),
+    "option_confusion": ("选项混淆", "辨析选项并解释边界", "逐项说明正确条件和干扰项错在哪里"),
+    "careless": ("审题疏漏", "口述审题与检查步骤", "复盘关键词、限制条件和最后检查步骤"),
+    "unconfirmed": ("待确认", "确认错因并口头解释", "先在错题页确认原因，再按真实问题训练"),
+}
+
+
 def build_reverse_goal_plan(
     *,
     title: str,
@@ -49,6 +60,7 @@ def build_reverse_goal_plan(
     source_id: str | None = None,
     source_name: str | None = None,
     previous_tasks: list[dict[str, Any]] | None = None,
+    focus_wrong: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """用当前证据生成可解释目标路径，并保留已完成任务。"""
     source_count = int(analytics.get("source_count", 0))
@@ -125,6 +137,52 @@ def build_reverse_goal_plan(
         tasks.append(_task("baseline-quiz", "完成一组基线练习", "用真实作答识别薄弱点，不用主观自评代替。", "/ai-tools"))
     if pending_wrong:
         tasks.append(_task("clear-due-wrong", f"复习 {pending_wrong} 道待处理错题", "优先处理已有失败证据。", "/wrongbook"))
+    if source_id and focus_wrong:
+        question = focus_wrong.get("question") or {}
+        stem = (
+            str(question.get("stem") or question.get("question") or "").strip()
+            if isinstance(question, dict) else ""
+        )
+        error_cause = str(focus_wrong.get("error_cause") or "unconfirmed")
+        cause_label, task_title, guidance = _ERROR_CAUSE_GUIDANCE.get(
+            error_cause, _ERROR_CAUSE_GUIDANCE["unconfirmed"],
+        )
+        cause_source = str(focus_wrong.get("error_cause_source") or "unconfirmed")
+        cause_origin = "你已确认" if cause_source == "user" else "系统低置信度建议"
+        knowledge_label = str(
+            focus_wrong.get("knowledge_label") or "未标注知识点"
+        )
+        oral_task = _task(
+            "explain-wrong-aloud",
+            task_title,
+            (
+                f"知识点：{knowledge_label}；错因：{cause_label}（{cause_origin}）。{guidance}。"
+                + (f"题目：{stem[:60]}" if stem else "")
+            ),
+            "/interview",
+        )
+        oral_task["focus_wrong_id"] = str(focus_wrong["wrong_id"])
+        oral_task["source_id"] = source_id
+        oral_task["knowledge_key"] = focus_wrong.get("knowledge_key")
+        oral_task["knowledge_label"] = knowledge_label
+        oral_task["error_cause"] = error_cause
+        oral_task["error_cause_label"] = cause_label
+        oral_task["error_cause_source"] = cause_source
+        oral_task["source_evidence"] = focus_wrong.get("source_evidence") or {
+            "status": "unavailable",
+            "method": "local_bm25",
+            "reason": "未找到可靠资料片段。",
+        }
+        oral_task["evidence_ref"] = {
+            "artifact_id": focus_wrong.get("artifact_id"),
+            "question_index": focus_wrong.get("question_index"),
+            "attempt_id": focus_wrong.get("attempt_id"),
+            "attempt_at": focus_wrong.get("attempt_at"),
+            "source_revision": focus_wrong.get("source_revision"),
+            "question_revision": focus_wrong.get("question_revision"),
+            "diagnosis_revision": focus_wrong.get("diagnosis_revision"),
+        }
+        tasks.append(oral_task)
     if not study_days or study_rate < 70:
         tasks.append(_task("build-study-plan", "建立并执行学习计划", "把能力缺口转成每日可完成行动。", "/study-plan"))
     if goal_type in {"competition", "job", "postgraduate"}:
@@ -136,8 +194,8 @@ def build_reverse_goal_plan(
         tasks.append(_task("baseline-interview", f"完成一次{scenario}", "建立表达与证据充分性的可复盘基线。", "/interview"))
     tasks.append(_task("review-evidence", "复核目标证据并重新规划", "完成任务后重新读取数据，确认缺口是否缩小。", "/goals"))
 
-    completed_ids = {
-        str(item.get("task_id"))
+    completed_tasks = {
+        str(item.get("task_id")): item
         for item in (previous_tasks or [])
         if item.get("status") == "completed"
     }
@@ -147,7 +205,13 @@ def build_reverse_goal_plan(
     for index, item in enumerate(tasks):
         offset = min(total_days, max(1, math.ceil((index + 1) * total_days / pending_count)))
         item["due_date"] = (today + timedelta(days=offset)).isoformat()
-        if item["task_id"] in completed_ids and item["task_id"] != "clear-due-wrong":
+        previous = completed_tasks.get(item["task_id"])
+        same_focus = (
+            item["task_id"] != "explain-wrong-aloud"
+            or previous and previous.get("focus_wrong_id") == item.get("focus_wrong_id")
+            and previous.get("evidence_ref") == item.get("evidence_ref")
+        )
+        if previous and same_focus and item["task_id"] != "clear-due-wrong":
             item["status"] = "completed"
 
     return {

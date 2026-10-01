@@ -7,6 +7,13 @@ import re
 from typing import Any
 
 QUESTION_BANK = {
+    "知识讲解": [
+        "请用自己的话解释今天复习的核心概念，并给出一个具体例子。",
+        "这个概念最容易与哪个相近概念混淆？你如何区分？",
+        "如果条件发生变化，你的解释或结论需要怎样调整？",
+        "请说明你此前容易答错的步骤，以及现在如何检查它。",
+        "请用不超过一分钟总结这一知识点，并提出一个仍不确定的问题。",
+    ],
     "求职面试": [
         "请用一分钟做自我介绍，并说明你与目标岗位的匹配点。",
         "请讲一个你解决复杂问题的经历，你具体采取了哪些行动？",
@@ -34,7 +41,7 @@ QUESTION_BANK = {
 def build_questions(scenario: str, target_role: str) -> list[str]:
     """生成一组稳定可演示的问题。"""
     questions = list(QUESTION_BANK.get(scenario, QUESTION_BANK["求职面试"]))
-    if target_role.strip():
+    if target_role.strip() and scenario != "知识讲解":
         questions[0] = f"请用一分钟做自我介绍，并说明你为什么适合{target_role.strip()}。"
     return questions
 
@@ -228,6 +235,10 @@ def build_source_grounded_question(
     safe_name = source_name.strip()[:80] or "所选资料"
     target = target_role.strip() or "目标方向"
     templates = {
+        "知识讲解": (
+            f"请依据《{safe_name}》，用自己的话解释一个关键概念，"
+            "给出例子并说明你如何核对自己的解释。"
+        ),
         "求职面试": (
             f"结合你选择的《{safe_name}》，请说明其中哪项经历或成果最能证明"
             f"你胜任{target}，并给出具体证据。"
@@ -242,6 +253,39 @@ def build_source_grounded_question(
         ),
     }
     return templates.get(scenario, templates["求职面试"])
+
+
+def build_wrong_grounded_question(
+    source_name: str,
+    question: dict[str, Any],
+    *,
+    error_cause: str = "unconfirmed",
+    knowledge_label: str = "",
+) -> str:
+    """用一条真实错题组织不暴露参考答案的口头解释题。"""
+    stem = str(question.get("stem") or question.get("question") or "").strip()[:160]
+    guidance = {
+        "concept_gap": "请先说明定义和适用边界，再给出一个例子。",
+        "memory_gap": "请先回忆三个关键词，再把它们连成完整解释。",
+        "reasoning_break": "请按条件、步骤、结论逐步讲清推理过程。",
+        "expression_gap": "请按结论、依据、例子的顺序重新组织表达。",
+        "option_confusion": "请对比相近选项成立的条件，并说明边界差异。",
+        "careless": "请先复述题目限制条件，再说明检查答案的步骤。",
+        "unconfirmed": "请说明关键概念、推理过程和一个例子。",
+    }.get(error_cause, "请说明关键概念、推理过程和一个例子。")
+    knowledge = (
+        f"围绕知识点“{knowledge_label.strip()[:80]}”的"
+        if knowledge_label.strip() else ""
+    )
+    if not stem:
+        return (
+            f"请从《{source_name.strip()[:80] or '所选资料'}》选一个知识点，"
+            f"用自己的话解释。{guidance}"
+        )
+    return (
+        f"你曾在《{source_name.strip()[:80] or '所选资料'}》的{knowledge}练习中遇到：{stem}。"
+        f"请不看参考答案，用自己的话作答。{guidance}"
+    )
 
 
 class InterviewEvaluator:

@@ -66,7 +66,7 @@
             <label><span>内容 {{ structuredContent ? '（JSON）' : '' }}</span><textarea v-model="draftContent" name="artifact_content" rows="16"></textarea></label>
           </template>
           <pre v-else>{{ formatArtifactContent(selectedArtifact.content) }}</pre>
-          <footer><span>修改会保存到本机知识库</span><div><button type="button" @click="exportArtifact">导出</button><button v-if="!editing" type="button" @click="editing = true">编辑</button><button v-else type="button" @click="cancelEdit">取消</button><button v-if="editing" class="primary" type="button" :disabled="saving" @click="saveArtifact">{{ saving ? '保存中…' : '保存修改' }}</button></div></footer>
+          <footer><span>{{ selectedArtifact.metadata?.read_only_snapshot ? '历史题集只读；原有作答和错题仍可复练' : selectedArtifact.artifact_type === 'questions' ? '修改题目会保留已有作答的只读历史题集' : '修改会保存到本机知识库' }}</span><div><button type="button" @click="exportArtifact">导出</button><button v-if="!editing && !selectedArtifact.metadata?.read_only_snapshot" type="button" @click="editing = true">编辑</button><button v-if="editing" type="button" @click="cancelEdit">取消</button><button v-if="editing" class="primary" type="button" :disabled="saving" @click="saveArtifact">{{ saving ? '保存中…' : '保存修改' }}</button></div></footer>
         </section>
       </div>
     </Teleport>
@@ -97,7 +97,32 @@ const syncDraft=(artifact:KnowledgeArtifact)=>{draftTitle.value=artifact.title;s
 const openArtifact=async(artifactId:string)=>{try{const artifact=await getKnowledgeArtifact(artifactId);selectedArtifact.value=artifact;syncDraft(artifact);editing.value=false}catch(error:any){ElMessage.error(error.message||'产物打开失败')}}
 const closeArtifact=()=>{selectedArtifact.value=null;editing.value=false}
 const cancelEdit=()=>{if(selectedArtifact.value)syncDraft(selectedArtifact.value);editing.value=false}
-const saveArtifact=async()=>{if(!selectedArtifact.value||!draftTitle.value)return;let content:any=draftContent.value;if(structuredContent.value){try{content=JSON.parse(draftContent.value)}catch{ElMessage.error('JSON 格式不正确，请检查逗号和引号');return}}saving.value=true;try{const updated=await updateKnowledgeArtifact(selectedArtifact.value.artifact_id,draftTitle.value,content);selectedArtifact.value=updated;syncDraft(updated);editing.value=false;const index=artifacts.value.findIndex(item=>item.artifact_id===updated.artifact_id);if(index>=0)artifacts.value[index]=updated;ElMessage.success('学习产物已保存')}catch(error:any){ElMessage.error(error.message||'保存失败')}finally{saving.value=false}}
+const saveArtifact = async () => {
+  if (!selectedArtifact.value || !draftTitle.value || saving.value || selectedArtifact.value.metadata?.read_only_snapshot) return
+  const artifactId = selectedArtifact.value.artifact_id
+  let content: any = draftContent.value
+  if (structuredContent.value) {
+    try { content = JSON.parse(draftContent.value) }
+    catch { ElMessage.error('JSON 格式不正确，请检查逗号和引号'); return }
+  }
+  saving.value = true
+  try {
+    const updated = await updateKnowledgeArtifact(artifactId, draftTitle.value, content)
+    if (selectedArtifact.value?.artifact_id === artifactId) {
+      selectedArtifact.value = updated; syncDraft(updated); editing.value = false
+    }
+    const index = artifacts.value.findIndex(item => item.artifact_id === artifactId)
+    if (index >= 0) artifacts.value[index] = updated
+    ElMessage.success('学习产物已保存')
+    if (updated.source_id && expandedSource.value === updated.source_id) {
+      try {
+        const [savedArtifacts, savedLineage] = await Promise.all([getKnowledgeArtifacts(updated.source_id), getKnowledgeLineage(updated.source_id)])
+        if (expandedSource.value === updated.source_id) { artifacts.value = savedArtifacts; lineage.value = savedLineage }
+      } catch { ElMessage.warning('保存已成功，历史列表暂未刷新，请重新打开资料') }
+    }
+  } catch (cause: any) { ElMessage.error(cause.message || '保存失败') }
+  finally { saving.value = false }
+}
 const exportArtifact=()=>{if(!selectedArtifact.value)return;const structured=typeof selectedArtifact.value.content!=='string';const blob=new Blob([formatArtifactContent(selectedArtifact.value.content)],{type:structured?'application/json;charset=utf-8':'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`${selectedArtifact.value.title||'FileMate学习产物'}.${structured?'json':'txt'}`;link.click();URL.revokeObjectURL(url)}
 const confirmDelete=async(source:KnowledgeSource)=>{try{await ElMessageBox.confirm(`删除「${source.original_name}」及其全部学习产物？此操作不可撤销，但不会删除你的外部原文件。`,'删除资料',{confirmButtonText:'删除',cancelButtonText:'取消',type:'warning'})}catch{return}deletingSource.value=source.source_id;try{const result=await deleteKnowledgeSource(source.source_id);sources.value=sources.value.filter(item=>item.source_id!==source.source_id);if(expandedSource.value===source.source_id){expandedSource.value='';artifacts.value=[]}const affected=result.affected;const parts=[`已删除资料及其 ${affected.artifacts} 个产物、${affected.chunks} 个片段、${affected.wrong_questions} 条错题记录`];ElMessage.success(parts.join('；'))}catch(error:any){ElMessage.error(error.message||'删除失败')}finally{deletingSource.value=''}}
 onMounted(load)

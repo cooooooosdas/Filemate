@@ -53,8 +53,31 @@ def _apply_migrations_upto(db_path: Path, upto: int) -> None:
 
 
 class TestMigrationUpgrade:
+    def test_upgrade_v20_preserves_graph_without_inventing_history(self, tmp_path: Path) -> None:
+        """v21 只追加事件表，保留 v20 草稿与来源。"""
+        db = tmp_path / "v20-graph.db"
+        _apply_migrations_upto(db, 20)
+        store = SQLiteStorage(db)
+        source = store.save_source(original_name="历史资料.txt", source_path="notes.txt", raw_text="堆")
+        conn = store._conn()
+        conn.execute(
+            """INSERT INTO knowledge_graph_batches
+               (batch_id,source_id,source_revision,mode,status,payload,created_at,updated_at)
+               VALUES ('legacy',?,?, 'local','draft',?, '2026-09-29','2026-09-29')""",
+            (source, store.get_source_revision(source), '{"nodes":[],"edges":[]}'),
+        )
+        conn.commit()
+        before = store.get_graph_batch("legacy")
+        store.init_schema()
+        store.init_schema()
+        assert store.get_schema_version() == 21
+        assert store.get_graph_batch("legacy") == before
+        assert store.get_source(source)["raw_text"] == "堆"
+        assert store.list_graph_events() == []
+        store.close()
+
     def test_upgrade_from_old_version(self, tmp_path: Path) -> None:
-        """v5 旧库逐级升级到 v15，且现役表和字段确实建立。"""
+        """v5 旧库逐级升级到 v22，且现役表和字段确实建立。"""
         db = tmp_path / "old.db"
         _apply_migrations_upto(db, 5)
         legacy = sqlite3.connect(db)
@@ -70,9 +93,9 @@ class TestMigrationUpgrade:
         s = SQLiteStorage(db)
         s.init_schema()
 
-        assert s.get_schema_version() == 15
+        assert s.get_schema_version() == 21
         assert [m["version"] for m in s.list_migrations()] == [
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
         ]
 
         conn = s._conn()
@@ -83,8 +106,15 @@ class TestMigrationUpgrade:
         assert "study_plans" in tables       # v6
         assert "product_feedback" in tables  # v7
         assert "interview_questions" in tables  # v9
+        assert "knowledge_graph_batches" in tables  # v18
+        assert "knowledge_graph_events" in tables  # v21
+        assert "daily_coach_preferences" in tables  # v19
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(wrong_questions)")}
         assert "next_review_at" in cols       # v8 字段
+        assert {
+            "knowledge_key", "knowledge_label", "error_cause",
+            "error_cause_source", "error_cause_confidence", "error_cause_note",
+        } <= cols
         interview_cols = {
             r["name"] for r in conn.execute("PRAGMA table_info(interview_sessions)")
         }
@@ -128,7 +158,7 @@ class TestMigrationUpgrade:
         storage = SQLiteStorage(db)
         storage.init_schema()
 
-        assert storage.get_schema_version() == 15
+        assert storage.get_schema_version() == 21
         migrations = {item["version"]: item["name"] for item in storage.list_migrations()}
         assert migrations[9] == "ai_learning"
         assert migrations[12] == "interview_question_bank_compatibility"
@@ -272,12 +302,12 @@ class TestSchemaInit:
             assert expected in names
 
     def test_versioned_migrations_applied(self, storage: SQLiteStorage) -> None:
-        assert storage.get_schema_version() == 15
+        assert storage.get_schema_version() == 21
         migrations = storage.list_migrations()
         assert [item["version"] for item in migrations] == [
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
         ]
-        assert migrations[-1]["name"] == "interview_scoring_provenance"
+        assert migrations[-1]["name"] == "knowledge_graph_operation_events"
 
     def test_knowledge_tables_and_local_workspace_exist(
         self,
@@ -1054,6 +1084,92 @@ class TestAnonymousProductFeedback:
         assert summary["positive"] == 2
         assert summary["positive_rate"] == 66.67
         assert summary["by_area"]["retrieval"]["positive_rate"] == 50.0
+
+
+class TestWrongDiagnosis:
+    def test_knowledge_key_groups_same_label_only_within_source(
+        self, storage: SQLiteStorage,
+    ) -> None:
+        source_ids = [
+            storage.save_source(
+                original_name=f"课程{index}.txt", source_path=f"/tmp/课程{index}.txt",
+            )
+            for index in range(2)
+        ]
+        keys: list[str] = []
+        for source_id in source_ids:
+            artifact_id = storage.save_artifact(
+                source_id=source_id,
+                artifact_type="questions",
+                content=[
+                    {
+                        "knowledge_point": "B+ 树范围查询",
+                        "question_type": "choice",
+                        "stem": "问题一",
+                        "answer": "A",
+                    },
+                    {
+                        "knowledge_point": "B+ 树范围查询",
+                        "question_type": "choice",
+                        "stem": "问题二",
+                        "answer": "B",
+                    },
+                ],
+            )
+            for question_index in range(2):
+                storage.record_quiz_attempt(
+                    artifact_id=artifact_id,
+                    question_index=question_index,
+                    user_answer="C",
+                    is_correct=False,
+                    score=0,
+                    feedback="错误",
+                )
+            wrong = storage.list_wrong_questions(source_id=source_id)
+            assert wrong[0]["knowledge_key"] == wrong[1]["knowledge_key"]
+            assert wrong[0]["knowledge_label"] == "B+ 树范围查询"
+            assert wrong[0]["error_cause"] == "option_confusion"
+            assert wrong[0]["error_cause_source"] == "rule"
+            keys.append(wrong[0]["knowledge_key"])
+        assert keys[0] != keys[1]
+
+    def test_user_diagnosis_survives_later_failed_attempt(
+        self, storage: SQLiteStorage,
+    ) -> None:
+        source_id = storage.save_source(
+            original_name="算法.txt", source_path="/tmp/算法.txt",
+        )
+        artifact_id = storage.save_artifact(
+            source_id=source_id,
+            artifact_type="questions",
+            content=[{
+                "knowledge_point": "广度优先搜索",
+                "question_type": "short_answer",
+                "stem": "说明 BFS 的过程",
+                "answer": "使用队列逐层访问",
+            }],
+        )
+        storage.record_quiz_attempt(
+            artifact_id=artifact_id, question_index=0, user_answer="不知道",
+            is_correct=False, score=0, feedback="错误",
+        )
+        wrong = storage.list_wrong_questions(source_id=source_id)[0]
+        updated = storage.update_wrong_diagnosis(
+            wrong["wrong_id"],
+            error_cause="expression_gap",
+            note="知道步骤，但组织不清楚",
+        )
+        assert updated["error_cause_source"] == "user"
+        assert updated["error_cause_confidence"] == 1
+
+        storage.record_quiz_attempt(
+            artifact_id=artifact_id, question_index=0, user_answer="还是没讲清",
+            is_correct=False, score=0, feedback="错误",
+        )
+        restored = storage.get_wrong_question(wrong["wrong_id"])
+        assert restored is not None
+        assert restored["error_cause"] == "expression_gap"
+        assert restored["error_cause_note"] == "知道步骤，但组织不清楚"
 
 
 class TestSpacedRepetition:

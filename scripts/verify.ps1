@@ -1,3 +1,7 @@
+﻿param(
+    [switch]$IsolateFrontend
+)
+
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 
@@ -43,10 +47,32 @@ try {
     if ($realItem.LinkType -eq 'Junction' -and $realItem.Target) {
         $realRoot = [string]$realItem.Target
     }
-    Push-Location (Join-Path $realRoot "filemate/web")
+    $frontendRoot = Join-Path $realRoot "filemate/web"
+    if ($IsolateFrontend) {
+        # Keep npm ci away from native binaries locked by a running Windows Vite process.
+        $frontendCopy = Join-Path $realRoot ("_working/verify-web-" + [guid]::NewGuid().ToString("N"))
+        New-Item -ItemType Directory -Path $frontendCopy | Out-Null
+        foreach ($folder in @("src", "public", "tests")) {
+            $sourceFolder = Join-Path $frontendRoot $folder
+            if (Test-Path -LiteralPath $sourceFolder) {
+                Copy-Item -LiteralPath $sourceFolder -Destination $frontendCopy -Recurse
+            }
+        }
+        foreach ($file in @("package.json", "package-lock.json", "index.html", "vite.config.ts", "tsconfig.json", "tsconfig.app.json", "tsconfig.node.json", "env.d.ts")) {
+            $sourceFile = Join-Path $frontendRoot $file
+            if (Test-Path -LiteralPath $sourceFile) {
+                Copy-Item -LiteralPath $sourceFile -Destination $frontendCopy
+            }
+        }
+        Write-Output "Frontend verification workspace: $frontendCopy"
+        $frontendRoot = $frontendCopy
+    }
+    Push-Location $frontendRoot
     try {
         npm.cmd ci
         Assert-LastExitCode "npm ci"
+        npm.cmd test
+        Assert-LastExitCode "frontend tests"
         npm.cmd run build
         Assert-LastExitCode "frontend build"
     }
