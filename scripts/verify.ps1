@@ -35,6 +35,8 @@ try {
         filemate/study `
         filemate/programming `
         filemate/interview_review `
+        filemate/career `
+        filemate/tests/test_career.py `
         filemate/tests/test_interview_review.py `
         filemate/tests/test_programming.py `
         filemate/understanding/interview.py `

@@ -256,7 +256,7 @@ def test_migration_from_22_is_append_only(tmp_path):
     conn.close()
     store = SQLiteStorage(db)
     store.init_schema()
-    assert store.get_schema_version() == 23 and store.get_interview("old")["questions"] == ["问题"]
+    assert store.get_schema_version() == 24 and store.get_interview("old")["questions"] == ["问题"]
     store.init_schema()
     store.close()
 

@@ -1,4 +1,5 @@
 import axios from 'axios'
+import type { CareerComparison, CareerEvent, CareerPosition, CareerRecord, CareerTraining } from '../types/career'
 import type { ContentAnalysis, InterviewDeletePreview, InterviewReport, InterviewReviewEvent, VisualMetrics } from '../types/interviewReview'
 import type { CodingProblem, CodingSubmission, CodingOverview, ProgrammingStatus } from '../types/programming'
 import type { KnowledgeGraphData, GraphBatch, GraphPlanPreview, GraphPlanResult } from '../types/knowledgeGraph'
@@ -1573,6 +1574,29 @@ export async function getStudyPlans(
   if (response.success && response.data) return response.data
   throw new Error(response.error || '学习计划加载失败')
 }
+
+async function careerRequest<T>(method: 'get' | 'post' | 'patch' | 'delete', path: string, data?: unknown): Promise<T> {
+  const response = await api.request<any, ApiResponse<T>>({ method, url: '/api/career' + path, data, timeout: 20000 })
+  if (response.success && response.data !== undefined && response.data !== null) return response.data
+  throw new Error(response.error || '求职训练操作未完成，请重试')
+}
+export const getCareerStatus = () => careerRequest<{ enabled: boolean; version: string }>('get', '/status')
+export const getCareerCatalog = () => careerRequest<CareerPosition[]>('get', '/catalog')
+export const getCareerPositions = () => careerRequest<CareerRecord[]>('get', '/positions')
+export const getCareerPosition = (id: string) => careerRequest<CareerRecord>('get', `/positions/${encodeURIComponent(id)}`)
+export const extractCareerRequirements = (description: string) => careerRequest<{ requirements: CareerPosition['requirements']; method: string }>('post', '/extract', { description })
+export const saveCareerPosition = (position: CareerPosition, key: string) => careerRequest<CareerRecord>('post', '/positions', { position, request_key: key, confirmed: true })
+export const editCareerPosition = (id: string, position: CareerPosition, revision: number) => careerRequest<CareerRecord>('patch', `/positions/${encodeURIComponent(id)}`, { position, expected_revision: revision, confirmed: true })
+export const changeCareerPosition = (id: string, action: 'undo' | 'restore') => careerRequest<CareerRecord>('post', `/positions/${encodeURIComponent(id)}/state/${action}`, { confirmed: true })
+export const getCareerEvidence = (id: string) => careerRequest<CareerComparison>('get', `/positions/${encodeURIComponent(id)}/evidence`)
+export const getCareerTrainings = (id: string) => careerRequest<CareerTraining[]>('get', `/positions/${encodeURIComponent(id)}/trainings`)
+export const startCareerTraining = (id: string, kind: CareerTraining['kind'], key: string, revision: number) => careerRequest<CareerTraining>('post', `/positions/${encodeURIComponent(id)}/trainings`, { kind, request_key: key, expected_revision: revision, confirmed: true })
+export const getCareerTraining = (id: string) => careerRequest<CareerTraining>('get', `/trainings/${encodeURIComponent(id)}`)
+export const answerCareerWritten = (id: string, answers: Record<string, number>) => careerRequest<CareerTraining>('post', `/trainings/${encodeURIComponent(id)}/answers`, { answers })
+export const getCareerEvents = () => careerRequest<CareerEvent[]>('get', '/events')
+export const previewCareerDelete = (id: string) => careerRequest<{ training_count: number; confirmation_token: string; scope: string }>('get', `/positions/${encodeURIComponent(id)}/delete-preview`)
+export const deleteCareerPosition = (id: string, token: string) => careerRequest<{ deleted: boolean }>('delete', `/positions/${encodeURIComponent(id)}`, { confirmed: true, confirmation_token: token })
+export const exportCareerTraining = (id: string, format: 'json' | 'markdown') => api.get<any, Blob>(`/api/career/trainings/${encodeURIComponent(id)}/export`, { params: { format }, responseType: 'blob', timeout: 20000 })
 
 export async function getStudyPlan(planId: string): Promise<StudyPlanRecord> {
   const response = await api.get<any, ApiResponse<StudyPlanRecord>>(

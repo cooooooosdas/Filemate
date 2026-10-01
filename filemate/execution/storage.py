@@ -530,6 +530,37 @@ CREATE TABLE interview_review_events (
 CREATE INDEX idx_interview_review_events ON interview_review_events(interview_id, event_id DESC);
 """
 
+_CAREER_SCHEMA = """\
+CREATE TABLE career_positions (
+    position_id TEXT PRIMARY KEY,
+    request_key TEXT NOT NULL UNIQUE,
+    payload TEXT NOT NULL,
+    revision INTEGER NOT NULL DEFAULT 1,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE career_trainings (
+    training_id TEXT PRIMARY KEY,
+    position_id TEXT NOT NULL REFERENCES career_positions(position_id) ON DELETE CASCADE,
+    request_key TEXT NOT NULL UNIQUE,
+    kind TEXT NOT NULL,
+    artifact_id TEXT NOT NULL REFERENCES artifacts(artifact_id) ON DELETE CASCADE,
+    interview_id TEXT REFERENCES interview_sessions(interview_id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE career_events (
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    position_id TEXT,
+    training_id TEXT,
+    action TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX idx_career_trainings ON career_trainings(position_id, created_at DESC);
+CREATE INDEX idx_career_events ON career_events(position_id, event_id DESC);
+"""
+
 _MIGRATIONS = (
     (1, "initial_execution_schema", _SCHEMA),
     (2, "knowledge_persistence", _KNOWLEDGE_SCHEMA),
@@ -552,6 +583,7 @@ _MIGRATIONS = (
     (21, "knowledge_graph_operation_events", _GRAPH_EVENTS_SCHEMA),
     (22, "isolated_programming_submissions", _PROGRAMMING_SCHEMA),
     (23, "interview_observation_and_review", _INTERVIEW_REVIEW_SCHEMA),
+    (24, "career_training_center", _CAREER_SCHEMA),
 )
 
 
@@ -2021,6 +2053,7 @@ class SQLiteStorage:
         questions: list[str],
         question_ids: list[str | None] | None = None,
         agent_run_id: str | None = None,
+        commit: bool = True,
     ) -> dict[str, Any]:
         """创建模拟面试。"""
         if question_ids is not None and len(question_ids) != len(questions):
@@ -2046,7 +2079,8 @@ class SQLiteStorage:
                 "INSERT INTO interview_review_events(interview_id,action,created_at) VALUES (?, 'created', ?)",
                 (interview_id, _now_iso()),
             )
-            self._conn().commit()
+            if commit:
+                self._conn().commit()
         return self.get_interview(interview_id)
 
     def get_interview(self, interview_id: str) -> dict[str, Any] | None:
@@ -2646,6 +2680,7 @@ class SQLiteStorage:
         goal: str,
         selected_agents: list[str],
         context_refs: dict[str, Any] | None = None,
+        commit: bool = True,
     ) -> dict[str, Any]:
         """创建一条可审计的 Agent 协作运行记录。"""
         if not task_type.strip() or not goal.strip():
@@ -2665,7 +2700,8 @@ class SQLiteStorage:
                     self._dump_json(context_refs or {}),
                 ),
             )
-            connection.commit()
+            if commit:
+                connection.commit()
         result = self.get_agent_run(run_id)
         if result is None:
             raise RuntimeError("Agent 运行记录创建失败")

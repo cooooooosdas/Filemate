@@ -70,14 +70,14 @@ class TestMigrationUpgrade:
         before = store.get_graph_batch("legacy")
         store.init_schema()
         store.init_schema()
-        assert store.get_schema_version() == 23
+        assert store.get_schema_version() == 24
         assert store.get_graph_batch("legacy") == before
         assert store.get_source(source)["raw_text"] == "堆"
         assert store.list_graph_events() == []
         store.close()
 
     def test_upgrade_from_old_version(self, tmp_path: Path) -> None:
-        """v5 旧库逐级升级到 v23，且现役表和字段确实建立。"""
+        """v5 旧库逐级升级到 v24，且现役表和字段确实建立。"""
         db = tmp_path / "old.db"
         _apply_migrations_upto(db, 5)
         legacy = sqlite3.connect(db)
@@ -93,9 +93,9 @@ class TestMigrationUpgrade:
         s = SQLiteStorage(db)
         s.init_schema()
 
-        assert s.get_schema_version() == 23
+        assert s.get_schema_version() == 24
         assert [m["version"] for m in s.list_migrations()] == [
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24
         ]
 
         conn = s._conn()
@@ -109,6 +109,7 @@ class TestMigrationUpgrade:
         assert "knowledge_graph_batches" in tables  # v18
         assert "knowledge_graph_events" in tables  # v21
         assert "daily_coach_preferences" in tables  # v19
+        assert {"career_positions", "career_trainings", "career_events"} <= tables
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(wrong_questions)")}
         assert "next_review_at" in cols       # v8 字段
         assert {
@@ -158,7 +159,7 @@ class TestMigrationUpgrade:
         storage = SQLiteStorage(db)
         storage.init_schema()
 
-        assert storage.get_schema_version() == 23
+        assert storage.get_schema_version() == 24
         migrations = {item["version"]: item["name"] for item in storage.list_migrations()}
         assert migrations[9] == "ai_learning"
         assert migrations[12] == "interview_question_bank_compatibility"
@@ -302,12 +303,12 @@ class TestSchemaInit:
             assert expected in names
 
     def test_versioned_migrations_applied(self, storage: SQLiteStorage) -> None:
-        assert storage.get_schema_version() == 23
+        assert storage.get_schema_version() == 24
         migrations = storage.list_migrations()
         assert [item["version"] for item in migrations] == [
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24
         ]
-        assert migrations[-1]["name"] == "interview_observation_and_review"
+        assert migrations[-1]["name"] == "career_training_center"
 
     def test_knowledge_tables_and_local_workspace_exist(
         self,

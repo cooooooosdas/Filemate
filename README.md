@@ -42,6 +42,7 @@ FileMate 是一个面向大学生的本地优先 AI 学习工作台。它把散�
 | V2.2 知识图谱与学习画像 | 从资料提取有原文依据的节点与关系，核对确认后展示；真实作答更新画像和薄弱点，可确认生成学习路径，保留撤销与操作记录 | `KnowledgeGraph.vue`、`knowledge_graph.py`、`/api/knowledge-graph` |
 | V2.3 编程练习与评测 | Monaco C++17 编辑器、8 道原创题、Windows 真实隔离编译与逐点判题；错题复盘、笔记、统计和撤销恢复 | `Programming.vue`、`filemate/programming/`、`/api/programming` |
 | V2.4 面试增强 | 本机视觉观察、录像定位时间轴、六项内容复盘与原句证据；持久报告及 PDF/JSON/Markdown 导出、取消分析与确认删除 | `Interview.vue`、`InterviewReviewPanel.vue`、`filemate/interview_review/` |
+| V2.5 求职训练中心 | 核对保存岗位来源与要求，创建原创笔试和岗位面试，引用实际图谱/代码/作答证据；历史对比快照、导出与撤销恢复 | `Career.vue`、`filemate/career/`、`/api/career` |
 | 个人知识库 | 资料源、AI 产物、聊天上下文持久化；跨资料检索与引用；六阶段学习资产链 | `storage.py`、`retrieval.py`、`Knowledge.vue` |
 | 学习闭环 | 练习作答、自动错题本、资料范围内知识点标识、可修正错因、间隔重复和按时间预算调整的今日复习队列 | `/quiz`、`/wrongbook`、`/review/today` |
 | 学习计划 | 根据考试日期生成日计划，持久记录每日完成状态，支持 CSV/ICS 导出 | `StudyPlan.vue` |
@@ -165,7 +166,7 @@ flowchart LR
     A --> E["确认执行器：预览 / 确认 / 回滚 / 撤销"]
     A --> K["学习服务：检索 / 练习 / 错题 / 计划 / 面试"]
     E --> F["本地文件系统 / ICS"]
-    P --> S["SQLite v23"]
+    P --> S["SQLite v24"]
     E --> S
     K --> S
 ```
@@ -216,7 +217,7 @@ Source（原始资料）
 | 本地 API | FastAPI、Uvicorn、Pydantic | 默认监听 `127.0.0.1:8001` |
 | 桌面壳 | Tauri 2、Rust | 工程已建立；安装包仅手动验收 |
 | 核心语言 | Python 3.10+ | 推荐 3.11/3.12；统一 UTF-8 |
-| 数据存储 | SQLite WAL，schema v23 | 本地优先、版本迁移、线程连接管理；生产环境按匿名设备分库 |
+| 数据存储 | SQLite WAL，schema v24 | 本地优先、版本迁移、线程连接管理；生产环境按匿名设备分库 |
 | 文件解析 | PyPDF2、pdfplumber、python-docx、python-pptx | PaddleOCR 为可选依赖 |
 | 检索 | 本地分块 + BM25 风格词法评分 | 支持页码/片段引用；无外部向量库 |
 | LLM | DeepSeek V4 Flash；OpenAI 兼容 HTTP API | 通过 `LLMClient` 和 Provider 适配层接入 |
@@ -275,7 +276,7 @@ FileMate/
 | `server.py` | HTTP 合同、参数校验、服务编排、统一错误 | 重复实现底层领域算法 |
 | `web` | 用户交互、状态反馈、响应式布局、API 调用 | 直接读取 SQLite 或本地任意路径 |
 
-## 7. SQLite v23 数据模型
+## 7. SQLite v24 数据模型
 
 数据库由 `schema_migrations` 管理，`init_schema()` 必须保持幂等。不要直接修改已经发布的迁移；新增字段或表必须增加新版本迁移和升级测试。
 
@@ -302,6 +303,7 @@ FileMate/
 | v21 | `knowledge_graph_events` | 图谱提取、失败、确认、撤销、恢复及学习路径操作元数据；随资料级联删除 |
 | v22 | `coding_submissions`、`coding_events` | 提交索引、幂等键和最小事件；源代码、判题与复盘复用 Artifact |
 | v23 | `interview_review_state` / `interview_review_events`；回答新增观察、内容证据及请求键 | 面试分析取消修订、幂等回答、确认删除；报告复用 `interview_report` Artifact |
+| v24 | `career_positions` / `career_trainings` / `career_events` | 岗位来源与修订、训练快照索引与有限操作日志；训练正文复用 Artifact |
 
 关键关系：
 
@@ -398,6 +400,7 @@ FileMate/
 | `/schedule` | 日程预览 | 查看里程碑和日历内容 |
 | `/history` | 历史记录 | Session、执行状态和撤销 |
 | `/ai-tools` | AI 工具箱 | 摘要、卡片、题目、笔记、问答 |
+| `/career` | 求职训练中心 | 岗位来源核对、原创笔试、算法与面试训练、证据对比 |
 | `/digital-human` | AI 导师讲解 | 朗读已保存的 AI 回答或手动讲解稿；语音控制、字幕、形象切换与播放记录 |
 | `/programming` | 编程练习 | C++17 原创题、真实隔离评测、逐点证据、错题复盘与有效提交统计 |
 | `/study-plan` | AI 学习计划 | 生成、查看和完成每日任务 |
@@ -497,6 +500,8 @@ uv run python main.py --check --db _working/check.db
 | `FILEMATE_INTERVIEW_LOCAL_ONLY` | `1` 时强制本地评分 | 面试隐私/离线模式 |
 | `FILEMATE_ENABLE_INTERVIEW_REVIEW` | `1` | 设为 `0` 时关闭 V2.4 分析、报告、清空/删除和导出接口；原有面试仍可使用 |
 | `VITE_ENABLE_INTERVIEW_REVIEW` | 开启 | 前端构建时设为 `false`，隐藏视觉观察与增强报告，保留原面试页面 |
+| `FILEMATE_ENABLE_CAREER` | `1` | 设为 `0` 关闭 V2.5 求职接口，状态仍可读取；保留原学习、编程与面试 |
+| `VITE_ENABLE_CAREER` | 开启 | 前端构建时设为 `false` 隐藏求职导航，旧 `/career` 链接返回学习工作区 |
 | `FILEMATE_ENABLE_DIGITAL_HUMAN` | `1` | 设为 `0` 时独立关闭数字人日志 API；其他学习接口继续可用 |
 | `VITE_ENABLE_DIGITAL_HUMAN` | 开启 | 前端构建时设为 `false`，关闭数字人页面并隐藏导航与回答讲解入口；旧讲解链接返回学习工作区 |
 | `FILEMATE_ENABLE_KNOWLEDGE_GRAPH` | `1` | 设为 `0` 时关闭 V2.2 图谱接口，不影响其他学习接口 |
@@ -672,6 +677,7 @@ powershell -ExecutionPolicy Bypass -File scripts/verify.ps1
 | [`docs/V2_1_1_DIGITAL_HUMAN_DELIVERY.md`](docs/V2_1_1_DIGITAL_HUMAN_DELIVERY.md) | V2.1.1 数字人加固、真实浏览器验收与全项目门禁限制 | 本轮交付证据 |
 | [`docs/V2_2_KNOWLEDGE_GRAPH_DELIVERY.md`](docs/V2_2_KNOWLEDGE_GRAPH_DELIVERY.md) | V2.2 知识图谱、学习画像、公开教材闭环与回滚方式 | 阶段交付证据 |
 | [`docs/V2_4_INTERVIEW_REVIEW_DELIVERY.md`](docs/V2_4_INTERVIEW_REVIEW_DELIVERY.md) | V2.4 本地观察、内容证据、报告导出、隐私操作与验收边界 | 阶段交付证据 |
+| [`docs/V2_5_CAREER_DELIVERY.md`](docs/V2_5_CAREER_DELIVERY.md) | V2.5 岗位核对、原创训练、真实证据与撤销恢复边界 | 阶段交付证据 |
 | [`design-system/filemate/MASTER.md`](design-system/filemate/MASTER.md) | UI 色彩、布局、组件和禁止项 | 现役 |
 | [`docs/PHASE0_ACCEPTANCE_REPORT.md`](docs/PHASE0_ACCEPTANCE_REPORT.md) | 可信执行与工程门禁证据 | 现役证据 |
 | [`docs/FILEMATE_EVALUATION_BASELINE.md`](docs/FILEMATE_EVALUATION_BASELINE.md) | 离线可复现评测口径 | 现役证据 |

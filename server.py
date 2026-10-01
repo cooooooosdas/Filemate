@@ -31,6 +31,13 @@ from starlette.concurrency import run_in_threadpool
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from filemate import __version__
+from filemate.career.models import (
+    DeleteRequest,
+    PositionEdit,
+    PositionWrite,
+    TrainingStart,
+    WrittenAnswer,
+)
 from filemate.core.categories import CATEGORIES
 from filemate.execution.confirmation_executor import (
     ConfirmationExecutor,
@@ -1587,7 +1594,7 @@ def update_knowledge_artifact(
     if not title:
         raise HTTPException(status_code=422, detail="标题不能为空")
     existing = _storage.get_artifact(artifact_id)
-    if existing and existing["artifact_type"] in {"coding_submission", "interview_report"}:
+    if existing and existing["artifact_type"] in {"coding_submission", "interview_report", "career_training"}:
         raise HTTPException(status_code=409, detail="评测报告不能直接修改，请在对应工作台更新原始记录或复盘笔记")
     try:
         artifact = _storage.update_artifact(
@@ -3524,6 +3531,161 @@ def export_interview_report(interview_id: str, format: Literal["json", "markdown
         })
     except (KeyError, ValueError) as exc:
         raise _interview_review_error(exc) from exc
+
+
+def _career_repository() -> Any:
+    from filemate.career.repository import CareerRepository
+
+    if os.getenv("FILEMATE_ENABLE_CAREER", "1") == "0":
+        raise HTTPException(status_code=503, detail="求职训练中心暂未启用，原学习功能仍可使用")
+    context = _tenant_context.get()
+    storage = (_tenant_storage(context[0]) if context else
+               (_storage.local_storage if isinstance(_storage, _StorageRouter) else _storage))
+    return CareerRepository(storage)
+
+
+def _career_call(method: str, *args: Any) -> ApiResponse:
+    try:
+        return ApiResponse(success=True, data=getattr(_career_repository(), method)(*args))
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=404 if isinstance(exc, KeyError) else 409,
+                            detail="岗位或训练不存在" if isinstance(exc, KeyError) else str(exc)) from exc
+
+
+@app.get("/api/career/status", response_model=ApiResponse)
+def career_status() -> ApiResponse:
+    return ApiResponse(success=True, data={"enabled": os.getenv("FILEMATE_ENABLE_CAREER", "1") != "0",
+                                           "version": "2.5", "live_recruitment": False})
+
+
+@app.get("/api/career/catalog", response_model=ApiResponse)
+def career_catalog() -> ApiResponse:
+    _career_repository()
+    from filemate.career.catalog import CATALOG
+
+    return ApiResponse(success=True, data=CATALOG)
+
+
+class CareerExtractRequest(BaseModel):
+    description: str = Field(min_length=10, max_length=12000)
+
+
+@app.post("/api/career/extract", response_model=ApiResponse)
+def career_extract(request: CareerExtractRequest) -> ApiResponse:
+    _career_repository()
+    from filemate.career.catalog import extract_requirements
+
+    if not request.description.strip():
+        raise HTTPException(status_code=422, detail="请输入岗位描述")
+    return ApiResponse(success=True, data={"requirements": extract_requirements(request.description),
+                                           "method": "本地词表提取，保存前需核对原句和分类"})
+
+
+@app.get("/api/career/positions", response_model=ApiResponse)
+def career_positions() -> ApiResponse:
+    return _career_call("list")
+
+
+@app.post("/api/career/positions", response_model=ApiResponse)
+def create_career_position(request: PositionWrite) -> ApiResponse:
+    _career_repository()
+    if not request.confirmed:
+        raise HTTPException(status_code=422, detail="请核对岗位要求和来源后确认保存")
+    return _career_call("create", request.position.model_dump(mode="json"), request.request_key)
+
+
+@app.get("/api/career/positions/{identifier}", response_model=ApiResponse)
+def get_career_position(identifier: str) -> ApiResponse:
+    return _career_call("get", identifier)
+
+
+@app.patch("/api/career/positions/{identifier}", response_model=ApiResponse)
+def edit_career_position(identifier: str, request: PositionEdit) -> ApiResponse:
+    _career_repository()
+    if not request.confirmed:
+        raise HTTPException(status_code=422, detail="请确认岗位修改，既有训练保留原快照")
+    return _career_call("edit", identifier, request.position.model_dump(mode="json"), request.expected_revision)
+
+
+@app.post("/api/career/positions/{identifier}/state/{action}", response_model=ApiResponse)
+def transition_career_position(identifier: str, action: Literal["undo", "restore"], request: DeleteRequest) -> ApiResponse:
+    _career_repository()
+    if not request.confirmed:
+        raise HTTPException(status_code=422, detail="请确认撤销或恢复此岗位")
+    return _career_call("transition", identifier, action)
+
+
+@app.get("/api/career/positions/{identifier}/evidence", response_model=ApiResponse)
+def career_evidence(identifier: str) -> ApiResponse:
+    return _career_call("comparison", identifier)
+
+
+@app.get("/api/career/positions/{identifier}/trainings", response_model=ApiResponse)
+def career_trainings(identifier: str) -> ApiResponse:
+    return _career_call("trainings", identifier)
+
+
+@app.post("/api/career/positions/{identifier}/trainings", response_model=ApiResponse)
+def create_career_training(identifier: str, request: TrainingStart) -> ApiResponse:
+    _career_repository()
+    if not request.confirmed:
+        raise HTTPException(status_code=422, detail="请确认按当前岗位快照创建训练")
+    return _career_call("start", identifier, request.kind, request.request_key, request.expected_revision)
+
+
+@app.get("/api/career/trainings/{identifier}", response_model=ApiResponse)
+def career_training(identifier: str) -> ApiResponse:
+    return _career_call("training", identifier)
+
+
+@app.post("/api/career/trainings/{identifier}/answers", response_model=ApiResponse)
+def career_written_answers(identifier: str, request: WrittenAnswer) -> ApiResponse:
+    return _career_call("answer_written", identifier, request.answers)
+
+
+@app.get("/api/career/positions/{identifier}/delete-preview", response_model=ApiResponse)
+def career_delete_preview(identifier: str) -> ApiResponse:
+    return _career_call("preview_delete", identifier)
+
+
+@app.delete("/api/career/positions/{identifier}", response_model=ApiResponse)
+def delete_career_position(identifier: str, request: DeleteRequest) -> ApiResponse:
+    _career_repository()
+    if not request.confirmed or len(request.confirmation_token) != 64:
+        raise HTTPException(status_code=422, detail="请预览并确认删除范围")
+    return _career_call("delete", identifier, request.confirmation_token)
+
+
+@app.get("/api/career/events", response_model=ApiResponse)
+def career_events() -> ApiResponse:
+    return _career_call("events")
+
+
+@app.get("/api/career/trainings/{identifier}/export")
+def export_career_training(identifier: str, format: Literal["json", "markdown"] = "json") -> Response:
+    repo = _career_repository()
+    try:
+        row = repo.training(identifier)
+        if row["data_error"]:
+            raise ValueError("训练数据异常，原记录保留，暂不能导出")
+        if format == "json":
+            content, mime, extension = json.dumps(row, ensure_ascii=False, indent=2), "application/json", "json"
+        else:
+            p = row["payload"]["position"]
+            content = (f"# {p['company']} · {p['title']}训练快照\n\n"
+                       f"来源：{p['source']}\n\n采集时间：{p['collected_at']}\n\n"
+                       "平台原创模拟训练，不是企业真题或录用判断。\n\n```json\n"
+                       + json.dumps(row["payload"], ensure_ascii=False, indent=2) + "\n```\n")
+            mime, extension = "text/markdown; charset=utf-8", "md"
+        with repo.storage._write_lock, repo.storage._conn():
+            repo.event(row["position_id"], "exported", identifier, {"format": format})
+        return Response(content=content.encode(), media_type=mime, headers={
+            "Content-Disposition": f'attachment; filename="filemate-career-{identifier}.{extension}"',
+            "Cache-Control": "no-store",
+        })
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=404 if isinstance(exc, KeyError) else 409,
+                            detail="训练不存在" if isinstance(exc, KeyError) else str(exc)) from exc
 
 
 @app.post("/ai/chat", response_model=ApiResponse)

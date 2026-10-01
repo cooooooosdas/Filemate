@@ -263,13 +263,14 @@ const menuGroups = [
     label: '学习与练习',
     items: [
       { path: '/ai-tools', title: '学习工作区', icon: Reading },
-      ...(import.meta.env.VITE_ENABLE_PROGRAMMING === 'false' ? [] : [{ path: '/programming', title: '编程练习', icon: Cpu }]),
       ...(import.meta.env.VITE_ENABLE_DIGITAL_HUMAN === 'false' ? [] : [{ path: '/digital-human', title: 'AI 导师讲解', icon: VideoPlay }]),
+      ...(import.meta.env.VITE_ENABLE_PROGRAMMING === 'false' ? [] : [{ path: '/programming', title: '编程练习', icon: Cpu }]),
       { path: '/study-plan', title: '学习计划', icon: Reading },
       { path: '/goals', title: '目标反推', icon: Aim },
       { path: '/wrongbook', title: '错题复盘', icon: Tickets },
       { path: '/interview', title: '模拟面试', icon: Microphone },
       { path: '/interview-bank', title: '题库管理', icon: Notebook },
+      ...(import.meta.env.VITE_ENABLE_CAREER === 'false' ? [] : [{ path: '/career', title: '求职训练中心', icon: Aim }]),
       { path: '/growth', title: '成长数据', icon: DataAnalysis },
       { path: '/trust', title: '可信与隐私', icon: Lock }
     ]

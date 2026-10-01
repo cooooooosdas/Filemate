@@ -111,3 +111,26 @@ uv run python evaluation/calibrate_interview.py evaluation/datasets/interview_ex
 ```
 
 空模板输出“真实专家校准待评测”。本工具不生成专家分数、不混合合成样本，也不把相关性作为准确率。
+
+## V2.5 求职训练中心
+
+`career_state.mjs` 补充岗位/训练浏览器后退、草稿离开确认，以及岗位证据→原知识点→学习计划保存/撤销/恢复四项回归。它使用明确标注的合成岗位与资料，不调用模型、不推断招聘效果。与主流程共享同样的`FILEMATE_WEB_URL`、`FILEMATE_API_URL`和`FILEMATE_EVIDENCE_DIR`约定；输出目录必须位于当前项目`_working`内。
+
+每次使用全新的 `_working` 测试目录，设置 `FILEMATE_DATA_DIR`、`FILEMATE_DB_PATH`、`FILEMATE_UPLOAD_DIR`、`FILEMATE_ARCHIVE_DIR` 到该目录，`FILEMATE_IDENTITY_MODE=local`、`FILEMATE_INTERVIEW_LOCAL_ONLY=1`。默认开启测试为后端8016、前端5187，CORS只允许 `http://127.0.0.1:5187`；前端设 `VITE_API_URL=http://127.0.0.1:8016`。分别运行：
+
+```powershell
+# 根目录，环境变量在本终端设置完成后
+uv run uvicorn server:app --host 127.0.0.1 --port 8016
+# 另开终端，在 filemate/web 配置 VITE_API_URL 后
+npm.cmd run dev -- --host 127.0.0.1 --port 5187 --strictPort
+# 第三个终端，在根目录
+node scripts/acceptance/career.mjs
+```
+
+默认msedge，沿用根目录验收脚本所需的Playwright运行时。`FILEMATE_WEB_URL`、`FILEMATE_API_URL`、`FILEMATE_EVIDENCE_DIR` 可选择其他**独立且未占用**的端口与 `_working` 输出，不重启用户现有服务。脚本从空库开始，保存核对过的目录快照，使用合成回答/自编参考代码，不导入私人资料或采集音视频，不调用真实外部模型。
+
+13项检查包括：搜索/类别/空态、来源核对与取消、训练快照、完整基础作答与幂等、实际隔离C++ AC及提交深链、V2.4真实本地会话回答与报告、JSON/Markdown实际下载、编辑旧快照与过期修订、撤销恢复、读取故障、TXT导入及已接收请求丢响应的同键重试、响应式和预览确认删除。写入 `results.json`、`summary.json`、下载与截图。移动端截图须等待有限CSS过渡完成，同时断言内容实际边界在视口内；只检查scrollWidth不能发现动画中的遮挡。
+
+C++检查要求V2.3工具链已准备且隔离自检通过；未就绪时应明确报告该项不通过，不能伪造AC。其余流程无模型密钥依赖。网络故障两项为明确注入，真实外部模型失败和匿名隔离由 `test_career.py` 的合成接口回归覆盖，不代表真实供应商质量实验。
+
+关闭检查使用另一个全新目录：后端8017、`FILEMATE_ENABLE_CAREER=0`、CORS允许5188；前端5188设 `VITE_API_URL=http://127.0.0.1:8017`、`VITE_ENABLE_CAREER=false`。运行 `node scripts/acceptance/career_disabled.mjs`，核对状态可读、16种操作503、旧URL回退、原面试作答及4个旧接口，共23项。关闭不会删除记录，数据恢复由专项测试验证。
