@@ -235,7 +235,7 @@ def test_v21_upgrade_does_not_change_existing_artifacts(tmp_path):
     before = store.get_artifact(identifier)
     store.init_schema()
     store.init_schema()
-    assert store.get_schema_version() == 23
+    assert store.get_schema_version() == 24
     assert store.get_artifact(identifier) == before
     assert CodingRepository(store).list() == []
     store.close()

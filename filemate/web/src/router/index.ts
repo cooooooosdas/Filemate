@@ -133,7 +133,10 @@ const routes: RouteRecordRaw[] = [
     name: 'TrustCenter',
     component: () => import('../views/TrustCenter.vue'),
     meta: { title: '可信与隐私' }
-  }
+  },
+  ...(import.meta.env.VITE_ENABLE_CAREER === 'false' ? [{ path: '/career', redirect: '/ai-tools' }] : [{
+    path: '/career', name: 'Career', component: () => import('../views/Career.vue'), meta: { title: '求职训练中心' }
+  }])
 ]
 
 const router = createRouter({

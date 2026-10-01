@@ -313,7 +313,7 @@ storage = SQLiteStorage(db_path="filemate.db")
 storage.init_schema()
 ```
 
-**数据库版本：** `schema_migrations` 记录已应用迁移，当前 schema 为 v23。`init_schema()` 可对旧数据库安全、幂等升级。
+**数据库版本：** `schema_migrations` 记录已应用迁移，当前 schema 为 v24。`init_schema()` 可对旧数据库安全、幂等升级。
 
 **核心表：**
 
@@ -335,6 +335,7 @@ storage.init_schema()
 | `interview_sessions` / `interview_turns` | 模拟面试流程与评分记录 |
 | `interview_questions` | 可维护面试题库、启停状态与场景/难度过滤 |
 | `interview_review_state` / `interview_review_events` | V2.4 面试分析修订、报告引用、有限操作事件 |
+| `career_positions` / `career_trainings` / `career_events` | V2.5 岗位修订、训练 Artifact 索引与有限操作记录 |
 | `study_plans` | 学习计划、每日完成状态和考试目标 |
 | `product_feedback` | 匿名产品反馈哈希与统计上下文 |
 | `agent_runs` / `agent_steps` | 按需选择的 Agent 角色、真实步骤、来源标识与输出摘要 |
@@ -649,6 +650,42 @@ Windows x64适配层要求MSVC/SDK。编译使用无网络能力的AppContainer�
 
 摄像头/录像只保存在当前页 Blob 内存，主动下载由用户决定；音视频不传业务服务。语音识别使用浏览器 API，厂商可能提供在线识别服务，前端明确提示这一独立边界。删除本地录像不会删除已保存回答和观察摘要，清空分析不会删除原回答；整场删除必须先预览确认。
 
+## 4.13 V2.5 求职训练中心
+
+SQLite v24 **追加** `career_positions`、`career_trainings` 和 `career_events`；旧迁移不改写。岗位保存完整来源、采集时间、要求和当前修订号；每次训练为 `career_training` Artifact，冻结当时的岗位快照。接口沿用 `ApiResponse` 与本机/匿名设备分库，导出返回附件字节。
+
+| 方法与路由 | 合同 |
+|---|---|
+| `GET /api/career/status` | `{enabled,version:"2.5",live_recruitment:false}`，关闭时仍可读 |
+| `GET /api/career/catalog` | 三个短篇官方岗位摘要；只读目录，不自动保存或动态抓取 |
+| `POST /api/career/extract` | `{description}`；本地词表返回 `{requirements,method}`，只供核对，未落库 |
+| `GET /api/career/positions` | 最新200个岗位（包含撤销/损坏标记） |
+| `POST /api/career/positions` | `{position,request_key,confirmed:true}`；同键同内容返回原记录 |
+| `GET /api/career/positions/{id}` | 当前岗位、修订号、采集距今天数及异常标记 |
+| `PATCH /api/career/positions/{id}` | `{position,expected_revision,confirmed:true}`；修改当前岗位，不改变旧训练 |
+| `POST /api/career/positions/{id}/state/{undo\|restore}` | `{confirmed:true}`；重复状态变更幂等 |
+| `GET /api/career/positions/{id}/evidence` | 当前图谱、全部有效代码提交、基础作答和关联面试的有限投影 |
+| `GET /api/career/positions/{id}/trainings` | 本岗位最新100份训练；撤销后仍可读取历史 |
+| `POST /api/career/positions/{id}/trainings` | `{kind:"written"\|"interview"\|"review",expected_revision,request_key,confirmed:true}` |
+| `GET /api/career/trainings/{id}` | 历史岗位与训练快照；未提交基础题隐藏本接口的答案/解释 |
+| `POST /api/career/trainings/{id}/answers` | `{answers:{question_id:option_index}}`；全部题目、严格整数、索引范围校验 |
+| `GET /api/career/trainings/{id}/export?format=json\|markdown` | 保存的训练快照附件，`Cache-Control:no-store`；未作答时同样隐藏答案 |
+| `GET /api/career/positions/{id}/delete-preview` | 删除训练数、明确保留范围与64位确认令牌 |
+| `DELETE /api/career/positions/{id}` | `{confirmed:true,confirmation_token}`；预览后岗位/训练变化则409 |
+| `GET /api/career/events` | 最新100条有限事件，不复制描述、代码或原回答 |
+
+`position` 字段：`company/industry/region`（1–80字）、`title`（1–100字）、`employment=校招|实习|社招参考|用户自定义`、`description`（10–12000字）、`requirements`（1–30项）、`source`（1–120字）、`source_url`（可空，最多1000字）、`source_kind=official_snapshot|user_import`、带时区且不在未来的 `collected_at` 和可选 `published_at`（最多40字）。要求为 `{label,category,evidence}`，标签1–60字且不重复，`category=programming|knowledge|project|communication`；`evidence` 为1–400字的描述原句。来源链接只允许无凭据的HTTPS，服务端不请求该URL。
+
+仅与目录完全一致的摘要可标记 `official_snapshot`。自行导入及修改为 `user_import`，原链接保留供用户核对，不赋予平台已验证或企业授权标签。目录采集于2026-10-01，仅两家企业、三个训练参考岗位，社招参考不冒充校招机会；来源说明见 [career/README](../career/README.md)。
+
+`request_key` 为16–80位字母、数字、下划线或连字符；岗位保存绑定内容，训练绑定岗位ID/修订/类别。已接受训练即使后来岗位修改或撤销，同键重试仍返回原快照；新训练必须使用当前修订且岗位有效。确认缺失/字段异常422，不存在404，过期修订/键冲突/重复不同作答409。相同基础作答重试返回原结果，不重复计数；改变答案需新建一轮。无关联原创题则409，面试和对比仍可创建。岗位面试一次原子创建真实Agent步骤、五道原创口头问题、原面试会话和训练Artifact；失败整体回滚。默认 `allow_external_analysis=false`，回答/报告/逐题外发仍遵循4.12。
+
+对比不计算适配率、录用概率或能力总分。图谱只使用已确认且未过期的节点和其真实最近窗口；各节点样本之和允许重复关联，不当作独立样本数。编程取有效、未撤销的完成记录，排除SYS及取消等状态；每技能提供全部有效提交数量、AC数量和最新20条引用。基础题取本岗位最近100份训练中的已完成记录，同题跨轮可重复。面试只统计岗位关联会话的实际已答/已评估数。公开标签词表只确定训练关联，需人工核对；未录入/未作答显示待评测，不代表能力不足。Python/Java的代码执行尚未支持，复用C++17平台的边界不变。
+
+保存对比为当时的持久快照；后续作答不改写旧对比。岗位或训练载荷损坏标记 `data_error=true`，保留原字节，禁用训练/导出；可预览删除或重新导入。求职训练Artifact禁止通用PATCH覆盖。删除岗位仅清除其求职训练、岗位与私有求职事件，保留原Source、图谱、编程提交、面试及Agent；整场面试可按4.12单独删除。重复确认已删除岗位返回 `{deleted:true}`，只保留无岗位/训练ID的删除计数。
+
+`FILEMATE_ENABLE_CAREER=0` 使状态外的16种路由操作返回503，数据保留。前端构建 `VITE_ENABLE_CAREER=false` 隐藏入口，旧 `/career` 跳转 `/ai-tools`。恢复开关后原记录可读；不要降级/改写旧迁移。
+
 ## 变更记录
 
 | 日期 | 版本 | 内容 | 作者 |
@@ -677,3 +714,4 @@ Windows x64适配层要求MSVC/SDK。编译使用无网络能力的AppContainer�
 | 2026-09-29 | v2.2 | 增加错题口头复练的资料片段定位、Agent 引用传递、无匹配回退与片段变更失效合同 | Codex |
 | 2026-09-29 | v2.3 | 增加 SQLite v19 今日学习时间预算、用户任务排序与可解释错因建议合同 | Codex |
 | 2026-10-01 | V2.4 面试增强 | 增加 SQLite v23 本地视觉摘要、原句内容证据、幂等回答、修订取消、报告导出与确认删除合同 | Codex |
+| 2026-10-01 | v2.5 | 增加求职岗位来源核对、原创训练、真实证据对比、快照导出及独立关闭合同，SQLite v24 | Codex |

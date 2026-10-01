@@ -63,11 +63,13 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
+import { useRoute } from 'vue-router'
 import CodeEditor from '../components/CodeEditor.vue'
 import { getProgrammingProblems, getProgrammingStatus, setupProgramming, getCodingOverview, getCodingSubmission, createCodingSubmission, runCodingSubmission, changeCodingSubmission, reviewCodingSubmission, saveCodingNotes } from '../services/api'
 import type { CodingOverview, CodingProblem, CodingSubmission, ProgrammingStatus } from '../types/programming'
 import { codingStateText as stateText, submissionVerdictText as verdictText, submissionEvidenceText } from '../programming/submissionState'
 const problems = shallowRef<CodingProblem[]>([])
+const route = useRoute()
 const overview = shallowRef<CodingOverview | null>(null)
 const environment = shallowRef<ProgrammingStatus | null>(null)
 const current = shallowRef<CodingSubmission | null>(null)
@@ -94,7 +96,8 @@ async function load() {
   if (values[1].status === 'fulfilled') overview.value = values[1].value
   if (values[2].status === 'fulfilled') environment.value = values[2].value
   error.value = values.filter(v => v.status === 'rejected').map(v => message((v as PromiseRejectedResult).reason)).join('；')
-  if (!problemId.value && problems.value.length) chooseProblem(problems.value[0]!.id)
+  if (!problemId.value && problems.value.length) chooseProblem(problems.value.find(p => p.id === route.query.problem)?.id || problems.value[0]!.id)
+  if (typeof route.query.submission === 'string' && !current.value) await openSubmission(route.query.submission)
   loading.value = false
 }
 async function refreshOverview() { const value = await getCodingOverview(); if (!disposed) overview.value = value }

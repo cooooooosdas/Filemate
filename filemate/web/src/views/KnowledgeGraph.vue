@@ -110,6 +110,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { Aim, ArrowRight, Minus, Plus, Refresh, Search, Share } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
+import { useRoute } from 'vue-router'
 import { init, use, type EChartsType } from 'echarts/core'
 import { GraphChart } from 'echarts/charts'
 import { TooltipComponent } from 'echarts/components'
@@ -118,6 +119,7 @@ import { changeGraphBatch, changeGraphPlan, confirmGraphPlan, createGraphDraft, 
 import type { GraphBatch, GraphNode, GraphPlanPreview, GraphPlanResult, KnowledgeGraphData } from '../types/knowledgeGraph'
 
 use([GraphChart, TooltipComponent, CanvasRenderer])
+const route = useRoute()
 const data = shallowRef<KnowledgeGraphData>({ nodes: [], edges: [], batches: [], plans: [], relations: {}, updated_at: '', events: [], profile: { node_count: 0, observed_node_count: 0, unassessed_node_count: 0, attempt_count: 0, pending_wrong_count: 0, excluded_sample_count: 0, study_time: null, status_counts: {}, weaknesses: [] } })
 const sources = shallowRef<KnowledgeSource[]>([])
 const sourceId = ref(''), mode = ref<'local' | 'llm'>('local'), externalConsent = ref(false)
@@ -163,6 +165,7 @@ async function load(): Promise<void> {
     const [graph, sourceList] = results
     if (graph.status === 'fulfilled') {
       data.value = graph.value
+      if (!selectedId.value && typeof route.query.node === 'string' && data.value.nodes.some(node => node.id === route.query.node)) selectedId.value = route.query.node
       if (!data.value.nodes.some(node => node.id === selectedId.value)) selectedId.value = ''
     }
     if (sourceList.status === 'fulfilled') sources.value = sourceList.value
