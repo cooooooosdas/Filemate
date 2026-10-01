@@ -88,8 +88,8 @@ jobs:
           cache-dependency-path: filemate/web/package-lock.json
       - name: Install dependencies
         run: npm ci
-      - name: Type-check and build
-        run: npm run build
+      - name: Test, type-check and build
+        run: npm test && npm run build
 
   desktop:
     name: Desktop · Windows installer

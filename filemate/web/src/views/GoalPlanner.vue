@@ -15,7 +15,7 @@
       <div class="goal-form">
         <label class="title-field">
           <span>目标名称</span>
-          <input v-model.trim="form.title" name="goal_title" maxlength="160" placeholder="例如：准备好下周的竞赛答辩" />
+          <input v-model.trim="form.title" name="goal_title" maxlength="160" placeholder="例如：掌握数据库索引，准备下周课程考试" />
         </label>
         <label>
           <span>目标类型</span>
@@ -116,14 +116,15 @@
         </div>
         <div class="task-list">
           <article v-for="(task, index) in activeGoal.tasks" :key="task.task_id" :class="{ completed: task.status === 'completed' }">
-            <button type="button" class="task-check" :aria-label="task.status === 'completed' ? '标记为未完成' : '标记为已完成'" :disabled="updatingTask === task.task_id" @click="toggleTask(task)">
+            <button type="button" class="task-check" :aria-label="task.status === 'completed' ? '标记为未完成' : '标记为已完成'" :disabled="updatingTask === task.task_id || task.status === 'invalidated'" @click="toggleTask(task)">
               {{ task.status === 'completed' ? '✓' : String(index + 1).padStart(2, '0') }}
             </button>
-            <div class="task-copy"><strong>{{ task.title }}</strong><p>{{ task.reason }}</p></div>
+            <div class="task-copy"><strong>{{ task.title }}</strong><p>{{ task.reason }}</p><p v-if="task.status === 'invalidated'" role="status">证据已失效：{{ task.invalidated_reason }}</p></div>
             <time :datetime="task.due_date">{{ formatDate(task.due_date) }} 前</time>
-            <button type="button" class="task-link" @click="router.push(task.route === '/ai-tools' && activeGoal.source_id ? { path: task.route, query: { source: activeGoal.source_id } } : task.route)">去完成</button>
+            <button type="button" class="task-link" :disabled="task.status === 'invalidated'" @click="openTask(task)">去完成</button>
           </article>
         </div>
+        <p v-if="activeGoal.invalidated_tasks?.length" class="evidence-note">{{ activeGoal.invalidated_tasks.length }} 条旧训练建议因证据变化已归档；最后一条：{{ activeGoal.invalidated_tasks[activeGoal.invalidated_tasks.length - 1].reason }}</p>
       </section>
     </template>
 
@@ -138,7 +139,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import DataState from '../components/DataState.vue'
 import LearningPath from '../components/LearningPath.vue'
 import {
@@ -161,6 +162,7 @@ const isoDate = (value: Date) => {
 }
 
 const router = useRouter()
+const route = useRoute()
 const today = isoDate(new Date())
 const defaultDeadline = new Date()
 defaultDeadline.setDate(defaultDeadline.getDate() + 30)
@@ -174,7 +176,7 @@ const goals = ref<ReverseGoalPlan[]>([])
 const activeGoalId = ref('')
 const form = ref<{ title: string; goal_type: ReverseGoalType; deadline: string; target_score: number | null; source_id: string }>({
   title: '',
-  goal_type: 'competition',
+  goal_type: 'exam',
   deadline: isoDate(defaultDeadline),
   target_score: null,
   source_id: ''
@@ -196,7 +198,9 @@ async function load(): Promise<void> {
     const [sourceList, goalList] = await Promise.all([getKnowledgeSources(), getReverseGoals()])
     sources.value = sourceList
     goals.value = goalList
-    if (!activeGoalId.value || !goalList.some(goal => goal.goal_id === activeGoalId.value)) activeGoalId.value = goalList[0]?.goal_id || ''
+    const requestedGoal = typeof route.query.goal === 'string' ? route.query.goal : ''
+    if (requestedGoal && goalList.some(goal => goal.goal_id === requestedGoal)) activeGoalId.value = requestedGoal
+    else if (!activeGoalId.value || !goalList.some(goal => goal.goal_id === activeGoalId.value)) activeGoalId.value = goalList[0]?.goal_id || ''
   } catch (cause: any) {
     error.value = cause?.message || '目标与证据加载失败'
   } finally {
@@ -224,7 +228,7 @@ async function createGoal(): Promise<void> {
 }
 
 async function toggleTask(task: ReverseGoalTask): Promise<void> {
-  if (!activeGoal.value) return
+  if (!activeGoal.value || task.status === 'invalidated') return
   updatingTask.value = task.task_id
   try {
     const goal = await updateReverseGoalTask(activeGoal.value.goal_id, task.task_id, task.status !== 'completed')
@@ -254,6 +258,28 @@ function replaceGoal(goal: ReverseGoalPlan): void {
   const index = goals.value.findIndex(item => item.goal_id === goal.goal_id)
   if (index >= 0) goals.value.splice(index, 1, goal)
   else goals.value.unshift(goal)
+}
+
+function openTask(task: ReverseGoalTask): void {
+  if (!activeGoal.value || task.status === 'invalidated') return
+  if (task.route === '/interview' && task.focus_wrong_id && task.source_id) {
+    const scenario = activeGoal.value.goal_type === 'competition' ? '竞赛答辩'
+      : activeGoal.value.goal_type === 'postgraduate' ? '保研复试'
+      : activeGoal.value.goal_type === 'job' ? '求职面试' : '知识讲解'
+    void router.push({ path: '/interview', query: {
+      source: task.source_id,
+      focus: task.focus_wrong_id,
+      goal: activeGoal.value.goal_id,
+      scenario,
+      target: activeGoal.value.title
+    } })
+    return
+  }
+  if (task.route === '/ai-tools' && activeGoal.value.source_id) {
+    void router.push({ path: task.route, query: { source: activeGoal.value.source_id } })
+    return
+  }
+  void router.push(task.route)
 }
 
 onMounted(load)

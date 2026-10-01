@@ -194,6 +194,7 @@ import {
   Clock,
   Collection,
   Connection,
+  Share,
   DataLine,
   DocumentAdd,
   Edit,
@@ -210,6 +211,7 @@ import {
   Setting,
   Tickets,
   Microphone,
+  VideoPlay,
   DataAnalysis,
   FolderOpened,
   Aim,
@@ -250,6 +252,7 @@ const menuGroups = [
     items: [
       { path: '/import', title: '导入资料', icon: DocumentAdd },
       { path: '/knowledge', title: '个人知识库', icon: FolderOpened },
+      ...(import.meta.env.VITE_ENABLE_KNOWLEDGE_GRAPH === 'false' ? [] : [{ path: '/knowledge-graph', title: '我的知识图谱', icon: Share }]),
       { path: '/classification', title: '分类确认', icon: Collection },
       { path: '/naming', title: '命名确认', icon: Edit },
       { path: '/history', title: '处理记录', icon: Clock }
@@ -259,6 +262,7 @@ const menuGroups = [
     label: '学习与练习',
     items: [
       { path: '/ai-tools', title: '学习工作区', icon: Reading },
+      ...(import.meta.env.VITE_ENABLE_DIGITAL_HUMAN === 'false' ? [] : [{ path: '/digital-human', title: 'AI 导师讲解', icon: VideoPlay }]),
       { path: '/study-plan', title: '学习计划', icon: Reading },
       { path: '/goals', title: '目标反推', icon: Aim },
       { path: '/wrongbook', title: '错题复盘', icon: Tickets },

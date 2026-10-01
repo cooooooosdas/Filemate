@@ -120,7 +120,9 @@ class TestFileParserContract:
         assert meta["suffix"] == "docx"
         assert meta["size_bytes"] == 4
 
-    def test_truncation(self, parser: FileParser, tmp_path: Path) -> None:
+    def test_truncation(
+        self, parser: FileParser, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         """超过 _MAX_CHARS 的文本应被截断。"""
 
         class _FakeParser:
@@ -129,17 +131,14 @@ class TestFileParserContract:
             def parse(self, path):
                 return {"raw_text": "字" * 600_000, "metadata": {"suffix": "txt"}}
 
-        # 临时注册假解析器
         from filemate.perception import parsers as parsers_mod
 
-        parsers_mod._REGISTRY["txt"] = _FakeParser
-        try:
-            p = tmp_path / "huge.txt"
-            p.write_text("ignored")  # 假文件
-            result = parser.parse(p)
-            assert len(result["raw_text"]) <= 500_000
-        finally:
-            del parsers_mod._REGISTRY["txt"]
+        # 恢复原解析器，避免本测试让后续资料导入失去 TXT 支持。
+        monkeypatch.setitem(parsers_mod._REGISTRY, "txt", _FakeParser)
+        p = tmp_path / "huge.txt"
+        p.write_text("ignored", encoding="utf-8")
+        result = parser.parse(p)
+        assert len(result["raw_text"]) <= 500_000
 
 
 # ──────────────────────────────────────────────

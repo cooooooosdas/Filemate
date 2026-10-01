@@ -313,7 +313,7 @@ storage = SQLiteStorage(db_path="filemate.db")
 storage.init_schema()
 ```
 
-**数据库版本：** `schema_migrations` 记录已应用迁移，当前 schema 为 v15。`init_schema()` 可对旧数据库安全、幂等升级。
+**数据库版本：** `schema_migrations` 记录已应用迁移，当前 schema 为 v21。`init_schema()` 可对旧数据库安全、幂等升级。
 
 **核心表：**
 
@@ -457,20 +457,22 @@ AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。�
 | `GET` | `/sessions/{session_id}` | 获取 Session 详情 | 无 |
 | `GET` | `/sessions/{session_id}/ics` | 获取确认后的 `.ics` 内容 | 无 |
 | `GET` | `/knowledge/artifacts/{artifact_id}` | 获取单个 AI 产物 | 无 |
-| `PATCH` | `/knowledge/artifacts/{artifact_id}` | 更新产物标题与内容 | 写入 `artifacts` |
+| `PATCH` | `/knowledge/artifacts/{artifact_id}` | 更新产物标题与内容；历史题集只读 | 写入 `artifacts`；修订有学习历史的题集时原子保存旧版快照 |
 | `DELETE` | `/knowledge/sources/{source_id}` | 预览并删除资料及其派生产物 | 级联删除；仅清理 `FILEMATE_UPLOAD_DIR` 内托管副本 |
 | `GET` | `/knowledge/search` | 跨资料检索 | 无 |
-| `POST` | `/quiz/attempts` | 提交作答并判题 | 写入 `quiz_attempts`，更新错题 |
-| `GET` | `/wrongbook` | 查询错题列表 | 无 |
-| `GET` | `/review/today` | 今日复习队列 | 无 |
+| `POST` | `/quiz/attempts` | 提交作答并判题；核对题目快照 | 写入 `quiz_attempts`，更新错题；修订冲突409不写入 |
+| `GET` | `/wrongbook` | 查询错题列表，包含知识点标识、错因、来源与置信度 | 无 |
+| `PATCH` | `/wrongbook/{wrong_id}/diagnosis` | 用户确认或修正错因，可附最多 300 字备注 | 更新错题诊断；依赖旧诊断的目标任务会失效 |
+| `GET` | `/review/today` | 根据计划、到期错题、用户时间预算与顺序返回今日队列 | 无 |
+| `PUT` | `/review/today/preferences` | 保存今日可用时长（10–240 分钟）和手动任务顺序 | 写入 `daily_coach_preferences`，返回重算后的队列 |
 | `GET` | `/study-plans` | 查询学习计划列表 | 无 |
 | `GET` | `/study-plans/{plan_id}` | 查询单个学习计划 | 无 |
 | `PATCH` | `/study-plans/{plan_id}/days/{day_index}` | 更新每日完成状态 | 写入 `study_plans.completed_days` |
-| `POST` | `/goals/reverse-plan` | 从目标和当前学习证据反推缺口与任务 | 写入 `reverse_goal_plan` Artifact、Agent 轨迹和摘要记忆 |
-| `GET` | `/goals` | 列出已保存的目标反推计划 | 无 |
-| `PATCH` | `/goals/{goal_id}/tasks/{task_id}` | 更新目标任务完成状态 | 更新目标 Artifact |
-| `POST` | `/goals/{goal_id}/replan` | 读取最新证据重新规划并保留已完成任务 | 更新目标 Artifact 和 Agent 轨迹 |
-| `POST` | `/interviews` | 创建模拟面试 | 写入 `interview_sessions` |
+| `POST` | `/goals/reverse-plan` | 从目标和当前学习证据反推缺口与任务；选定资料有未掌握错题时附加口头解释任务及证据引用 | 写入 `reverse_goal_plan` Artifact、Agent 轨迹和摘要记忆 |
+| `GET` | `/goals` | 列出已保存的目标反推计划，并实时标记证据已失效的口头训练任务 | 无 |
+| `PATCH` | `/goals/{goal_id}/tasks/{task_id}` | 更新目标任务完成状态；证据失效时返回 409 | 更新目标 Artifact |
+| `POST` | `/goals/{goal_id}/replan` | 读取最新证据重新规划、保留仍有效的已完成任务，并归档旧建议失效原因 | 更新目标 Artifact 和 Agent 轨迹 |
+| `POST` | `/interviews` | 创建模拟面试或知识讲解训练；可选 `focus_wrong_id` 将同一资料的未掌握错题作为首题 | 写入 `interview_sessions` 与 Agent 来源引用 |
 | `GET` | `/interviews/{interview_id}` | 获取面试进度 | 无 |
 | `POST` | `/interviews/{interview_id}/answers` | 提交面试回答并评分；语音回答可附流畅度指标 | 写入 `interview_turns` 与 `fluency_metrics` |
 | `GET` | `/interview/questions` | 列出面试题库题目 | 支持 `scenario` / `difficulty` / `enabled` 过滤，`limit` 上限 500 |
@@ -491,6 +493,14 @@ AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。�
 
 说明：`POST /interviews` 创建面试时按场景和难度选择最近维护的启用题目，响应和持久化记录均包含与 `questions` 等长的 `question_ids`；静态回退题及 v8 旧会话对应 `null`。评分响应包含 `scoring_mode`，取值为 `llm` 或 `local_fallback`。
 
+`POST /interviews` 的 `scenario` 还支持 `知识讲解`。可选 `focus_wrong_id` 必须与 `source_id` 同时提供，且错题属于该资料并尚未掌握；否则返回 422。可选 `goal_id` 必须指向同一资料、同一错题且证据仍有效的现有目标任务。目标口头任务在 `evidence_ref` 保存 `artifact_id`、题号、`attempt_id`、作答时间、题目指纹、资料内容指纹和错因诊断指纹，不保存用户答案或参考答案；出现更新的失败作答、资料或题目变化、错因修正、错题掌握时，任务以 `invalidated` 返回并要求重排。首题只使用题干，不包含参考答案。知识讲解暂不产生未经校准的内容分数，回答仅在本地记录并返回 `local_fallback`；该资料授权未确认时，其他场景的聚焦错题回答也不向外部模型发送。来自目标的训练完成整场后只将“口头解释”任务标为已完成，不自动将错题标为掌握。
+
+口头任务的 `source_evidence` 使用本地 BM25 风格词法排序，从同一 `source_id` 的 `document_chunks` 中选择一个可核对片段，返回 `status`、`method`、`chunk_id`、从零开始的 `chunk_index`、可选 `page_number`、分数和片段指纹，但不复制片段正文。目标 Agent 与面试 Agent 只消费引用 ID；前端将序号转换为从一开始的“片段 N”。没有词法重叠时返回 `status=unavailable` 和人工核对提示，不生成虚假页码或片段。已引用片段被替换、删除或转移到其他资料时，旧任务失效并要求重新规划。
+
+错题在 v16 保存 `knowledge_key`、`knowledge_label`、`error_cause`、`error_cause_source`、`error_cause_confidence`、`error_cause_note` 和 `diagnosed_at`。`knowledge_key` 由资料 ID 和持久化题目的知识点标签确定，只保证同一资料范围内稳定；不同课程不会因标签相同而合并。系统仅使用本地规则生成低置信度初始建议，用户通过诊断接口保存的选择优先，后续错误作答不会覆盖用户确认。
+
+`GET /review/today` 默认按 60 分钟预算返回最多 8 项，响应包括 `available_minutes`、`recommended_minutes`、`deferred_count`、`item_order`。优先级从计划日期、错题到期时间、错误次数及用户已确认的错因推导；规则建议的错因明确标记“待核对”。超过预算的任务暂不排入当日队列，不修改原计划或错题记录。`PUT /review/today/preferences` 仅保存当前日期的预算和顺序；更改后立即重算，次日恢复默认预算。用户顺序优先于系统排序，任务消失或完成时自动从当日候选队列过滤。
+
 语音回答可以在请求中附带可选字段：
 
 ```json
@@ -505,9 +515,60 @@ AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。�
 }
 ```
 
-服务端根据回答字数和时长重新计算字速，并把流畅度作为 15% 的低权重参考分写入 `dimensions.流畅性`；文字回答或不足 2 秒的语音不会生成流畅度结论。摄像头与麦克风录像只保存在当前浏览器页的 Blob URL 中，不上传、不写入 v15 数据库，刷新即清除；时间轴只持久化口头语/长停顿的类型与时间点。面试创建和逐题评价同时写入真实 Agent 轨迹；轨迹只保存题号、会话 ID 和评分摘要，不复制回答原文。资料驱动面试仅在资料权利确认为本人、授权或公开时向模型发送最多 2000 字符摘录，否则只使用本地文件名。
+服务端根据回答字数和时长重新计算字速，并把流畅度作为 15% 的低权重参考分写入 `dimensions.流畅性`；文字回答或不足 2 秒的语音不会生成流畅度结论。摄像头与麦克风录像只保存在当前浏览器页的 Blob URL 中，不上传、不写入业务数据库，刷新即清除；时间轴只持久化口头语/长停顿的类型与时间点。面试创建和逐题评价同时写入真实 Agent 轨迹；轨迹只保存题号、会话 ID 和评分摘要，不复制回答原文。资料驱动面试仅在资料权利确认为本人、授权或公开时向模型发送最多 2000 字符摘录，否则只使用本地文件名。
 
 ---
+
+## 4.9 V2.1 数字人讲解 API
+
+页面 `/digital-human` 使用浏览器 `Web Speech` 合成语音，不调用服务端 TTS；播放日志仅保存最小元数据。前端 `digital-human/provider.ts` 定义 Provider 接口，当前实现为 `web_speech`，可在不改动学习业务的前提下替换后续供应商。语音事件只驱动近似口型动画，并非音素级同步。浏览器或系统声线可能联网，不能保证 TTS 完全离线。
+
+V2.1.1 不增加 HTTP 接口或数据库迁移。数字人日志客户端请求限制为 15 秒；语音分段等待启动最多 15 秒，已开始分段的超时为 `max(30000, UTF-16长度 × 600 / 语速 + 15000)` 毫秒。暂停期间不计时，继续后恢复剩余预算。停止、替换讲解及终态会释放计时器并忽略旧事件；失败可重试。页面在 `ctx`/`message` 变化时重新加载答案，加载失败的重试重新请求原答案。终态日志同步失败时保留当前页面的重试队列，不重新播放或重复创建记录；离开或刷新页面后队列不保留，未同步记录仍按“播放中或未正常结束”展示。
+
+| 方法 | 路径 | 作用 | 边界 |
+|---|---|---|---|
+| `GET` | `/api/digital-human/playbacks?limit=30` | 读取当前身份的播报元数据 | `limit` 1–100；不返回正文或音频 |
+| `POST` | `/api/digital-human/playbacks` | 记录开始播报 | `text_length` 1–5000，`avatar_id` 为已发布形象，`provider=web_speech`；可选 `context_id` 与 `message_index` 必须成对出现且指向当前身份已保存的 assistant 消息 |
+| `PATCH` | `/api/digital-human/playbacks/{playback_id}` | 记录 `completed` / `stopped` / `failed` | 只有 `started` 可转终态；重复及晚到请求不覆盖既有终态 |
+| `DELETE` | `/api/digital-human/playbacks/{playback_id}` | 软删除单条记录 | 重复删除返回 `deleted=false`；不影响其他学习数据 |
+| `POST` | `/api/digital-human/playbacks/{playback_id}/restore` | 撤销记录删除 | 重复恢复返回 `restored=false`；不重新播放语音 |
+
+`POST` 请求只提交字数、形象、声线、Provider 以及可选的会话引用，不提交手动输入的正文。若绑定会话，服务端验证消息角色和最新正文长度；长度变化时返回 409，前端提示重新打开。记录含 `created_at`、`updated_at` 和 `module_version=2.1`；身份由所在本地/匿名租户数据库隐式确定，不复制用户标识到表内。`FILEMATE_ENABLE_DIGITAL_HUMAN=0` 时仅这些接口返回 503；前端构建变量 `VITE_ENABLE_DIGITAL_HUMAN=false` 可关闭页面和入口，旧讲解链接返回学习工作区。SQLite v17 独立新增 `digital_human_playbacks` 表，停用模块不影响 v1–v16 的数据与路由。
+
+---
+
+## 4.10 V2.2 个人知识图谱 API
+
+页面 `/knowledge-graph` 从当前身份的 Source 正文提取知识点和关系。`mode=local` 只处理本地明确写出的标题、定义与关系句；`mode=llm` 必须提交 `allow_external_model=true`，最多发送正文前 20,000 字符给当前配置的模型。两种方式均要求每个节点与关系带连续逐字原文；服务端拒绝无出处、悬空关系、不同术语 ID 冲突、超限和空结果。模型结果仅存为待确认草稿。
+
+| 方法 | 路径 | 作用 |
+|---|---|---|
+| `GET` | `/api/knowledge-graph` | 当前身份已确认、未失效的节点与关系、批次历史、实时练习证据、`profile` 画像和最近100条 `events`；无作答显示待评测 |
+| `POST` | `/api/knowledge-graph/drafts` | 请求 `{source_id,mode,allow_external_model}`；提取并持久化待确认批次；失败只记录错误类型，返回 422/502 |
+| `POST` | `/api/knowledge-graph/batches/{id}/confirm` | 确认草稿；资料变更、状态冲突或节点 ID 冲突返回 409 |
+| `POST` | `/api/knowledge-graph/batches/{id}/undo` | 撤销草稿或已确认批次；不删除原资料、题目或作答；重复操作幂等 |
+| `POST` | `/api/knowledge-graph/batches/{id}/restore` | 恢复已撤销批次，重新检查资料版本与 ID 冲突 |
+| `GET` | `/api/knowledge-graph/nodes/{id}/plan` | 沿已确认前置/依赖关系预览路径，返回作答证据指纹 `evidence_revision` |
+| `POST` | `/api/knowledge-graph/nodes/{id}/plan` | 请求 `{evidence_revision}`；证据未变化时原子新增现役 StudyPlan 与 Artifact，相同请求幂等且不覆盖已有计划 |
+| `POST` | `/api/knowledge-graph/plans/{id}/undo`、`/restore` | 仅归档/恢复本模块生成的计划，保留每日完成进度 |
+
+SQLite v18 新增 `knowledge_graph_batches`，绑定 Source 并随资料删除级联清理。节点、关系、引用原文、来源版本与提取状态保存在批次 `payload`；资料正文或分块变化后旧批次标记 `stale`，不进入当前图谱。掌握状态为现役 QuizAttempt/WrongQuestion 的只读汇总：最近 10 次正确率、样本量、最近练习时间与错题数；无样本不构造百分比，学习时长未采集显示“待评测”。图谱建议须由用户确认才写入 StudyPlan。`FILEMATE_ENABLE_KNOWLEDGE_GRAPH=0` 返回 503；`VITE_ENABLE_KNOWLEDGE_GRAPH=false` 隐藏前端入口。当前实现是 SQLite 本地图谱，并未接入 Neo4j 或 GraphRAG。
+
+V2.2 本次加固新增 SQLite v21 `knowledge_graph_events`，与业务变更在同一事务中提交。只保存 Source、目标 ID、操作、状态、证据指纹、错误类型及时间，不复制正文或供应商异常详情；幂等重试不重复记录，删除资料时级联清理，删除预览计数包含该表。旧批次不补造历史。关闭前端模块后，旧地址 `/knowledge-graph` 重定向学习工作区。
+
+`profile` 是当前已确认图谱的只读投影，返回 `node_count`、`observed_node_count`、`unassessed_node_count`、`attempt_count`、`pending_wrong_count`、`excluded_sample_count`、`status_counts`、`weaknesses` 和 `study_time=null`。没有匹配本图谱知识点的作答不进入统计。`weaknesses` 返回知识点/资料 ID、规则依据 `reasons` 及需核对的前置知识和关系原文，不推断学科整体能力。提醒由未掌握错题、至少3次且最近10次正确率低于50%、30天无作答触发；先判断30天风险，再判断高频错误、10次且正确率≥90%的熟练、至少5次且正确率≥80%的基本掌握。样本不足5次显示“样本较少”。状态规则是学习提醒，不是能力测量。
+
+节点 `metrics` 补充 `recent_sample_count`、`days_since_review`、`pending_wrong_count`、`excluded_sample_count`。异常时间、未来时间或非法判题字段不进入有效样本；完整历史错误次数与当前待复习错题分别计数。JSON/字段结构损坏的批次保留原库内容，以 `data_error=true`、空展示 payload 和错误类型返回，暂停确认/恢复并允许撤销；不会阻断健康批次与来源资料。计划证据指纹只依赖推荐路径涉及的节点和关系，相关证据改变返回409，无关关系变化不使其失效。
+
+本地规则还可识别“X作为Y的一个特例”和“X通常用于实现Y”等限定句式，保留完整原句作为依据；否定或不确定词不会当作术语后缀生成肯定关系。关系复杂、资料没有显式结构时应由用户核对后选择模型提取。现役文件解析仍复用 PDF、DOCX、PPTX、TXT 链路；图片/OCR、旧版 Office 文件和更多代码/Markdown扩展名未在本阶段新增支持。
+
+### 题目修订与学习证据
+
+修改 `questions` Artifact 正文时，若已有作答或错题，在同一 SQLite 写事务中新增旧正文的 questions Artifact，并将旧作答与错题关联到该快照；原记录 ID、答案、诊断和复习进度不删除。快照 metadata 包含 `read_only_snapshot=true`、`question_revision_parent` 和保存时间，标题带“历史题集”。`PATCH` 不能修改快照，但仍可导出和复练；新作答继续关联旧题。新正文保留原 Artifact ID，首次答错形成新错题记录，不继承旧知识点的错误次数或诊断。操作失败整体回滚，标题修改不产生快照。无新增数据库 migration。
+
+`POST /quiz/attempts` 接受 `{artifact_id,question_index,user_answer,expected_question?}`，`expected_question` 是页面加载时的原始题目 JSON（不是前端格式化后的题目）。当前所有答题入口均发送该快照。正文已修订的活动题集必须提供快照；其他未修订题集保留旧客户端兼容。服务端在判题前和写事务内分别核对，内容变化返回409且不保存成绩/错题；题集删除返回404。单纯标题变化不阻止提交。今日队列的错题项增加 `question_snapshot`，供调用方核对。
+
+新版本快照使旧成绩仍归到原知识点，不移算到新题。图谱关联练习增加 `read_only_snapshot` 标识，界面明确标注历史。历史库从未记录正文修订时，无法恢复已被覆盖的旧题：使用 `question_evidence_since` 冻结原更新时间边界，保守排除不确定旧作答；未修订题集使用 `graph_attempt_cutoff=0`，仅改标题不损失有效证据。历史错题与题目正文不一致时不挂到新知识点。`excluded_sample_count` 包含上述不确定记录与时间/判题字段异常，不补造历史证据。
 
 ## 变更记录
 
@@ -529,3 +590,10 @@ AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。�
 | 2026-09-12 | v1.12 | 增加生产匿名设备身份、独立数据目录、跨用户越权回归、可信 Origin 校验和内部路径过滤 | Codex |
 | 2026-09-05 | v1.12 | 增加目标反推、资料学习资产链、本地录像时间轴和资料驱动面试合同 | Codex |
 | 2026-09-07 | v1.13 | 增加本机 DeepSeek 密钥安全配置接口，桌面端用户可自带密钥且不写入业务数据库 | Codex |
+| 2026-09-29 | v2.1 | 增加数字人播报最小日志、身份隔离、幂等终态与可删除记录合同 | Codex |
+| 2026-10-01 | v2.1.1 | 数字人播放超时、取消与暂停恢复、答案路由切换、日志同步重试；无新增 schema/API | Codex |
+| 2026-09-29 | v2.2 | 增加知识图谱草稿确认、原文溯源、学习证据投影与计划确认撤销合同 | Codex |
+| 2026-10-01 | v2.2 | 补充学习画像、可追溯薄弱点、SQLite v21 操作事件、损坏批次隔离及真实教材验收 | Codex |
+| 2026-10-01 | v2.2 | 题集修订只读快照、历史错题独立复练、标题证据保留及过期/并发判题409保护；无新增迁移 | Codex |
+| 2026-09-29 | v2.2 | 增加错题口头复练的资料片段定位、Agent 引用传递、无匹配回退与片段变更失效合同 | Codex |
+| 2026-09-29 | v2.3 | 增加 SQLite v19 今日学习时间预算、用户任务排序与可解释错因建议合同 | Codex |
