@@ -11,3 +11,4 @@ uvicorn[standard]>=0.30
 python-multipart>=0.0.9
 icalendar>=6.0
 keyring>=25.0
+reportlab>=4.4,<5

@@ -81,3 +81,33 @@ node scripts/acceptance/programming.mjs
 关闭模块验收使用另一个新库：后端8003设 `FILEMATE_ENABLE_PROGRAMMING=0`，CORS允许5175；前端5175设 `VITE_API_URL=http://127.0.0.1:8003`、`VITE_ENABLE_PROGRAMMING=false`，运行 `node scripts/acceptance/programming_disabled.mjs`，验证12个关闭接口、旧URL回退和3个原有接口。
 
 本机已有Vite运行时，全量校验可执行 `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend`。后端照常检查，前端复制到新建的 `_working/verify-web-*` 后执行npm ci/test/build，避免Windows原生依赖文件锁影响现有服务；无此参数时命令行为保持原样。副本是临时验证证据，不提交。
+
+## V2.4 面试增强
+
+使用两个全新 `_working` 数据库，避免私人记录参与测试。开启增强的后端默认8014，设 `FILEMATE_INTERVIEW_LOCAL_ONLY=1`、`FILEMATE_ENABLE_INTERVIEW_REVIEW=1`、`FILEMATE_IDENTITY_MODE=local`，CORS允许 `http://127.0.0.1:5184`；前端5184设 `VITE_API_URL=http://127.0.0.1:8014`，增强开关默认开启。两端分别运行 `uv run uvicorn server:app --host 127.0.0.1 --port 8014` 和 `npm.cmd run dev -- --host 127.0.0.1 --port 5184 --strictPort`，前端命令在 `filemate/web` 执行。
+
+合成人脸视频使用 [scikit-image 的 NASA 宇航员公共领域图片](https://scikit-image.org/docs/stable/api/skimage.data.html#skimage.data.astronaut)，不是本机用户摄像头或真实试用记录。取得固定版本输入并运行：
+
+```powershell
+New-Item -ItemType Directory -Force _working/v2-4-20261001 | Out-Null
+Invoke-WebRequest 'https://raw.githubusercontent.com/scikit-image/scikit-image/v0.25.2/skimage/data/astronaut.png' -OutFile _working/v2-4-20261001/astronaut.png
+$env:FILEMATE_FACE_FIXTURE=Join-Path (Get-Location) '_working/v2-4-20261001/astronaut.png'
+$env:FILEMATE_EVIDENCE_DIR=Join-Path (Get-Location) '_working/v2-4-20261001/ui'
+node scripts/acceptance/interview_review.mjs
+```
+
+夹具 SHA256：`88431cd9653ccd539741b555fb0a46b61558b301d4110412b5bc28b5e3ea6cb5`。后端数据目录另设 `FILEMATE_DATA_DIR`、`FILEMATE_DB_PATH`、`FILEMATE_UPLOAD_DIR`、`FILEMATE_ARCHIVE_DIR` 到 `_working` 中，每次验收使用新库。可用 `FILEMATE_WEB_URL`、`FILEMATE_API_URL`、`FILEMATE_BROWSER_CHANNEL` 调整地址和浏览器（默认msedge）。
+
+脚本真实运行 MediaPipe Worker 与 MediaRecorder，但设备输入来自 canvas 合成流，语音识别回调为注入。14项包含模型资源本机加载、人脸/暗光/无人脸、语音口头语/停顿、录像定位、五轮保存、已接收请求丢响应后的幂等重试、PDF/JSON/Markdown/录像实际下载、读取与模型故障、375/768/1024/1440截图、刷新恢复、取消确认和整场删除。网络记录核对无音视频/帧外发；不会调用真实外部模型。输出 `summary.json`、`results.json`、截图和下载文件。
+
+关闭验收另起8015后端，`FILEMATE_ENABLE_INTERVIEW_REVIEW=0`、CORS允许5185；前端5185设 `VITE_API_URL=http://127.0.0.1:8015`、`VITE_ENABLE_INTERVIEW_REVIEW=false`。在新库运行 `node scripts/acceptance/interview_review_disabled.mjs`，核对八个增强路由503、原文字练习正常、增强控件隐藏及健康/资料/题库可用，共14项。
+
+生产包视觉验收在已构建前端目录运行 `npm.cmd run preview -- --host 127.0.0.1 --port 5186 --strictPort`。运行 `node scripts/acceptance/interview_vision_production.mjs`，默认将同源API请求转到独立8014测试后端，模型/WASM资源直接访问生产包；合成摄像头和拒绝麦克风情况下，核对预览播放、实际采样保存与同源生产Worker。设置 `FILEMATE_INJECT_BITMAP_FAILURE=1` 另测一次图像分配失败后的canvas本地转换回退；此项为明确故障注入。通过 `FILEMATE_EVIDENCE_DIR` 选择不同 `_working` 输出，避免覆盖常规与故障证据。
+
+PDF导出嵌入项目中文字体；人工渲染核对分页和长回答换行。真实导师校准需另提供匿名配对数据：
+
+```powershell
+uv run python evaluation/calibrate_interview.py evaluation/datasets/interview_expert_scores.template.csv --output _working/v2-4-20261001/expert-calibration.json
+```
+
+空模板输出“真实专家校准待评测”。本工具不生成专家分数、不混合合成样本，也不把相关性作为准确率。

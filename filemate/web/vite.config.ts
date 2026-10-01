@@ -1,9 +1,28 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { createReadStream, readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
+
+const visionRoot = dirname(createRequire(import.meta.url).resolve('@mediapipe/tasks-vision'))
+const visionFiles = ['vision_wasm_internal.js', 'vision_wasm_internal.wasm', 'vision_wasm_nosimd_internal.js', 'vision_wasm_nosimd_internal.wasm', 'vision_wasm_module_internal.js', 'vision_wasm_module_internal.wasm']
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), {
+    name: 'local-interview-vision-assets',
+    configureServer(server) {
+      server.middlewares.use('/interview-vision/wasm', (request, response, next) => {
+        const filename = request.url?.split('?')[0]?.replace(/^\//, '') || ''
+        if (!visionFiles.includes(filename)) return next()
+        response.setHeader('Content-Type', filename.endsWith('.wasm') ? 'application/wasm' : 'text/javascript')
+        createReadStream(join(visionRoot, 'wasm', filename)).pipe(response)
+      })
+    },
+    generateBundle() {
+      for (const filename of visionFiles) this.emitFile({ type: 'asset', fileName: 'interview-vision/wasm/' + filename, source: readFileSync(join(visionRoot, 'wasm', filename)) })
+    }
+  }],
   server: {
     port: 5173,
     strictPort: true,

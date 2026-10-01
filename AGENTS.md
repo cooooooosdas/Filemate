@@ -2,7 +2,7 @@
 
 ## 项目定位
 
-FileMate 是面向大学生的本地优先 AI 学习工作台，现役主链为 Vue 3 + FastAPI + SQLite v8 + Python，Tauri 2 作为桌面壳。
+FileMate 是面向大学生的本地优先 AI 学习工作台，现役主链为 Vue 3 + FastAPI + SQLite + Python，Tauri 2 作为桌面壳；schema 版本以 `storage.py` 的迁移和当前数据库为准。
 
 ## 开始前
 

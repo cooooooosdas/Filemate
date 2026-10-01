@@ -37,6 +37,7 @@ from filemate.execution.confirmation_executor import (
     ExecutionError,
 )
 from filemate.execution.storage import QuestionRevisionConflict, SQLiteStorage
+from filemate.interview_review.models import VisualMetrics
 from filemate.llm_client.credential_store import (
     CredentialStoreError,
     delete_stored_api_key,
@@ -1586,8 +1587,8 @@ def update_knowledge_artifact(
     if not title:
         raise HTTPException(status_code=422, detail="标题不能为空")
     existing = _storage.get_artifact(artifact_id)
-    if existing and existing["artifact_type"] == "coding_submission":
-        raise HTTPException(status_code=409, detail="评测证据不能修改，请在编程工作台新建提交或保存复盘笔记")
+    if existing and existing["artifact_type"] in {"coding_submission", "interview_report"}:
+        raise HTTPException(status_code=409, detail="评测报告不能直接修改，请在对应工作台更新原始记录或复盘笔记")
     try:
         artifact = _storage.update_artifact(
             artifact_id,
@@ -2089,6 +2090,7 @@ class InterviewStartRequest(BaseModel):
     source_id: str | None = Field(default=None, max_length=64)
     focus_wrong_id: str | None = Field(default=None, max_length=64)
     goal_id: str | None = Field(default=None, max_length=64)
+    allow_external_analysis: bool | None = None
 
 
 class InterviewFluencyMarker(BaseModel):
@@ -2103,11 +2105,24 @@ class InterviewFluencyMetrics(BaseModel):
     long_pause_count: int = Field(default=0, ge=0, le=100)
     source: Literal["speech_recognition"] = "speech_recognition"
     markers: list[InterviewFluencyMarker] = Field(default_factory=list, max_length=100)
+    recording_offset_seconds: float | None = Field(default=None, ge=0, le=1800, allow_inf_nan=False)
 
 
 class InterviewAnswerRequest(BaseModel):
     answer: str = Field(min_length=1, max_length=12000)
     fluency_metrics: InterviewFluencyMetrics | None = None
+    question_index: int | None = Field(default=None, ge=0, le=100)
+    request_key: str | None = Field(default=None, min_length=16, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
+    visual_metrics: VisualMetrics | None = None
+
+
+class InterviewAnalysisRequest(BaseModel):
+    external_consent: bool = False
+
+
+class InterviewPrivacyRequest(BaseModel):
+    confirmed: bool = False
+    confirmation_token: str = Field(default="", max_length=64)
 
 
 class InterviewQuestionCreate(BaseModel):
@@ -3076,6 +3091,8 @@ def start_interview(request: InterviewStartRequest):
         )
 
     try:
+        if os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") == "1" or request.allow_external_analysis is False:
+            raise RuntimeError("本地选题模式")
         llm = LLMClient(LLMConfig.from_env())
     except Exception:  # noqa: BLE001 - 未配置 LLM 时使用确定性选题
         llm = None
@@ -3117,6 +3134,7 @@ def start_interview(request: InterviewStartRequest):
         selected_agents=select_agents("interview_session"),
         context_refs={
             "scenario": request.scenario,
+            "allow_external_analysis": request.allow_external_analysis,
             "difficulty": request.difficulty,
             "question_ids": question_ids,
             "source_id": request.source_id,
@@ -3229,10 +3247,24 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
     interview = _storage.get_interview(interview_id)
     if interview is None:
         raise HTTPException(status_code=404, detail="模拟面试不存在")
+    digest = hashlib.sha256(json.dumps(
+        request.model_dump(exclude={"request_key"}), ensure_ascii=False, sort_keys=True,
+    ).encode()).hexdigest()
+    if request.request_key:
+        previous = next((turn for turn in interview["turns"]
+                         if turn.get("answer_key") == request.request_key), None)
+        if previous:
+            if previous.get("answer_digest") != digest:
+                raise HTTPException(status_code=409, detail="重复请求键的回答内容不同")
+            return get_interview(interview_id)
     if interview["status"] == "completed":
         raise HTTPException(status_code=409, detail="模拟面试已完成")
     if not request.answer.strip():
         raise HTTPException(status_code=422, detail="回答不能为空")
+    if request.question_index is not None and request.question_index != interview["current_index"]:
+        raise HTTPException(status_code=409, detail="面试进度已更新，请刷新后继续")
+    if request.visual_metrics:
+        _require_interview_review_enabled()
 
     from filemate.llm_client import LLMClient, LLMConfig
     from filemate.understanding import InterviewEvaluator
@@ -3250,6 +3282,7 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
             os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") == "1"
             or interview["scenario"] == "知识讲解"
             or private_wrong_question
+            or context_refs.get("allow_external_analysis") is False
         ):
             raise RuntimeError("本地评分模式")
         evaluator = InterviewEvaluator(LLMClient(LLMConfig.from_env()))
@@ -3272,6 +3305,10 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
             feedback=evaluation["feedback"],
             fluency_metrics=evaluation.get("fluency"),
             scoring_mode=evaluation["scoring_mode"],
+            scoring_version="v2.4",
+            visual_metrics=request.visual_metrics.model_dump() if request.visual_metrics else None,
+            content_analysis=evaluation.get("content_analysis"),
+            answer_key=request.request_key, answer_digest=digest,
         )
     except ValueError as exc:
         detail = str(exc)
@@ -3332,6 +3369,161 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
     updated["latest_evaluation"] = evaluation
     _attach_interview_source_context(updated)
     return ApiResponse(success=True, data=updated)
+
+
+def _require_interview_review_enabled():
+    if os.getenv("FILEMATE_ENABLE_INTERVIEW_REVIEW", "1") == "0":
+        raise HTTPException(status_code=503, detail="面试增强暂未启用，原有文字和语音练习仍可使用")
+
+
+def _interview_review_repository():
+    from filemate.interview_review.repository import ReviewRepository
+
+    context = _tenant_context.get()
+    storage = (_tenant_storage(context[0]) if context else
+               (_storage.local_storage if isinstance(_storage, _StorageRouter) else _storage))
+    return ReviewRepository(storage)
+
+
+def _interview_review_error(exc: Exception):
+    return HTTPException(status_code=404 if isinstance(exc, KeyError) else 409,
+                         detail="面试或回答不存在" if isinstance(exc, KeyError) else str(exc))
+
+
+@app.get("/interview/review/status", response_model=ApiResponse)
+def interview_review_status():
+    return ApiResponse(success=True, data={
+        "enabled": os.getenv("FILEMATE_ENABLE_INTERVIEW_REVIEW", "1") != "0",
+        "version": "2.4", "video_uploaded": False, "calibration": "待校准",
+    })
+
+
+@app.get("/interviews/{interview_id}/review", response_model=ApiResponse)
+def get_interview_report(interview_id: str):
+    _require_interview_review_enabled()
+    try:
+        repo = _interview_review_repository()
+        return ApiResponse(success=True, data={"report": repo.report(interview_id),
+                                               "events": repo.events(interview_id)})
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
+
+
+@app.post("/interviews/{interview_id}/review", response_model=ApiResponse)
+def generate_interview_report(interview_id: str):
+    _require_interview_review_enabled()
+    try:
+        return ApiResponse(success=True, data=_interview_review_repository().generate(interview_id))
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
+
+
+@app.post("/interviews/{interview_id}/turns/{turn_id}/analyze", response_model=ApiResponse)
+def analyze_interview_turn(interview_id: str, turn_id: str, request: InterviewAnalysisRequest):
+    _require_interview_review_enabled()
+    if not request.external_consent:
+        raise HTTPException(status_code=422, detail="请先确认向已配置模型发送问题与回答；音视频不会外发")
+    if os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") == "1":
+        raise HTTPException(status_code=503, detail="当前面试处于本地模式，未向外部模型发送数据")
+    repo = _interview_review_repository()
+    try:
+        interview, revision = repo.snapshot(interview_id)
+        turn = next((item for item in interview["turns"] if item["turn_id"] == turn_id), None)
+        if not turn:
+            raise KeyError(turn_id)
+        if turn.get("analysis_data_error"):
+            raise ValueError("分析数据异常，请先清空分析；原回答保留")
+        if turn.get("content_analysis", {}).get("source") == "llm_reference":
+            return get_interview(interview_id)
+        _attach_interview_source_context(interview)
+        refs = interview.get("source_context") or {}
+        if refs.get("focus_wrong_id") and refs.get("mode") == "local_metadata_only":
+            raise HTTPException(status_code=403, detail="所选私有错题尚未授权外发，内容分析仅可本地复盘")
+        from filemate.llm_client import LLMClient, LLMConfig
+        from filemate.understanding import InterviewEvaluator
+
+        try:
+            evaluation = InterviewEvaluator(LLMClient(LLMConfig.from_env())).evaluate(
+                turn["question"], turn["answer"], interview["target_role"], turn.get("fluency_metrics"),
+            )
+        except Exception:  # noqa: BLE001 - 模型不可用时保留原始面试证据
+            evaluation = {"scoring_mode": "local_fallback"}
+        if evaluation["scoring_mode"] != "llm":
+            raise HTTPException(status_code=502, detail="模型分析暂不可用或缺少有效证据；原回答、节奏与报告保留")
+        updated = repo.apply_analysis(interview_id, turn_id, revision, evaluation)
+        _attach_interview_source_context(updated)
+        return ApiResponse(success=True, data=updated)
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
+
+
+@app.post("/interviews/{interview_id}/analysis/cancel", response_model=ApiResponse)
+def cancel_interview_analysis(interview_id: str):
+    _require_interview_review_enabled()
+    try:
+        return ApiResponse(success=True, data=_interview_review_repository().cancel(interview_id))
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
+
+
+@app.post("/interviews/{interview_id}/analysis/clear", response_model=ApiResponse)
+def clear_interview_analysis(interview_id: str, request: InterviewPrivacyRequest):
+    _require_interview_review_enabled()
+    if not request.confirmed:
+        raise HTTPException(status_code=422, detail="请确认清空内容评分、视觉观察和报告；原回答与节奏保留")
+    try:
+        data = _interview_review_repository().clear(interview_id)
+        _attach_interview_source_context(data)
+        return ApiResponse(success=True, data=data)
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
+
+
+@app.get("/interviews/{interview_id}/delete-preview", response_model=ApiResponse)
+def preview_interview_delete(interview_id: str):
+    _require_interview_review_enabled()
+    try:
+        return ApiResponse(success=True, data=_interview_review_repository().delete_preview(interview_id))
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
+
+
+@app.delete("/interviews/{interview_id}", response_model=ApiResponse)
+def delete_interview(interview_id: str, request: InterviewPrivacyRequest):
+    _require_interview_review_enabled()
+    if not request.confirmed or len(request.confirmation_token) != 64:
+        raise HTTPException(status_code=422, detail="请先预览并确认本场练习的删除影响")
+    try:
+        return ApiResponse(success=True, data=_interview_review_repository().delete(
+            interview_id, request.confirmation_token,
+        ))
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
+
+
+@app.get("/interviews/{interview_id}/review/export")
+def export_interview_report(interview_id: str, format: Literal["json", "markdown", "pdf"] = "json"):
+    _require_interview_review_enabled()
+    from filemate.interview_review.reports import report_markdown, report_pdf
+
+    repo = _interview_review_repository()
+    try:
+        report = repo.report(interview_id)
+        if report is None:
+            raise ValueError("请先生成当前记录的复盘报告")
+        if format == "pdf":
+            content, mime, extension = report_pdf(report), "application/pdf", "pdf"
+        elif format == "markdown":
+            content, mime, extension = report_markdown(report).encode(), "text/markdown; charset=utf-8", "md"
+        else:
+            content, mime, extension = json.dumps(report, ensure_ascii=False, indent=2).encode(), "application/json", "json"
+        repo.log_export(interview_id, format)
+        return Response(content=content, media_type=mime, headers={
+            "Content-Disposition": f'attachment; filename="filemate-interview-{interview_id}.{extension}"',
+            "Cache-Control": "no-store",
+        })
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
 
 
 @app.post("/ai/chat", response_model=ApiResponse)

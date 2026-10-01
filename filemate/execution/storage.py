@@ -507,6 +507,29 @@ CREATE TABLE IF NOT EXISTS coding_events (
 """
 
 
+_INTERVIEW_REVIEW_SCHEMA = """\
+ALTER TABLE interview_turns ADD COLUMN visual_metrics TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE interview_turns ADD COLUMN content_analysis TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE interview_turns ADD COLUMN answer_key TEXT;
+ALTER TABLE interview_turns ADD COLUMN answer_digest TEXT;
+CREATE UNIQUE INDEX idx_interview_answer_key
+    ON interview_turns(interview_id, answer_key) WHERE answer_key IS NOT NULL;
+CREATE TABLE interview_review_state (
+    interview_id TEXT PRIMARY KEY REFERENCES interview_sessions(interview_id) ON DELETE CASCADE,
+    revision INTEGER NOT NULL DEFAULT 0,
+    artifact_id TEXT REFERENCES artifacts(artifact_id) ON DELETE SET NULL,
+    input_digest TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE interview_review_events (
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    interview_id TEXT,
+    action TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX idx_interview_review_events ON interview_review_events(interview_id, event_id DESC);
+"""
+
 _MIGRATIONS = (
     (1, "initial_execution_schema", _SCHEMA),
     (2, "knowledge_persistence", _KNOWLEDGE_SCHEMA),
@@ -528,6 +551,7 @@ _MIGRATIONS = (
     (20, "interview_expression_review", _EXPRESSION_CYCLE_SCHEMA),
     (21, "knowledge_graph_operation_events", _GRAPH_EVENTS_SCHEMA),
     (22, "isolated_programming_submissions", _PROGRAMMING_SCHEMA),
+    (23, "interview_observation_and_review", _INTERVIEW_REVIEW_SCHEMA),
 )
 
 
@@ -2018,6 +2042,10 @@ class SQLiteStorage:
                     agent_run_id,
                 ),
             )
+            self._conn().execute(
+                "INSERT INTO interview_review_events(interview_id,action,created_at) VALUES (?, 'created', ?)",
+                (interview_id, _now_iso()),
+            )
             self._conn().commit()
         return self.get_interview(interview_id)
 
@@ -2046,11 +2074,34 @@ class SQLiteStorage:
             for turn in turns
         ]
         for turn in interview["turns"]:
-            if turn["scoring_mode"] != "llm":
+            content_invalid = False
+            for key in ("visual_metrics", "content_analysis"):
+                try:
+                    decoded = json.loads(turn[key])
+                    if not isinstance(decoded, dict):
+                        raise TypeError("invalid analysis")
+                    if decoded:
+                        from filemate.interview_review.models import (
+                            VisualMetrics,
+                            validate_saved_analysis,
+                        )
+
+                        if key == "visual_metrics":
+                            decoded = VisualMetrics.model_validate(decoded).model_dump()
+                        else:
+                            decoded = validate_saved_analysis(decoded, turn["answer"])
+                    turn[key] = decoded
+                except (ValueError, TypeError):
+                    turn[key] = {}
+                    turn["analysis_data_error"] = True
+                    content_invalid = content_invalid or key == "content_analysis"
+            if content_invalid:
+                turn["feedback"] = "部分内容分析数据异常，内容质量待评估；原回答与有效采集证据保留。"
+            if turn["scoring_mode"] != "llm" or content_invalid:
                 turn["score"] = None
                 turn["dimensions"] = {
                     key: value for key, value in turn["dimensions"].items()
-                    if key == "流畅性" and turn["scoring_mode"] == "local_fallback"
+                    if key == "流畅性" and turn["scoring_mode"] == "local_fallback" and not content_invalid
                 }
         assessed = [t["score"] for t in interview["turns"] if t["score"] is not None]
         interview["assessed_turn_count"] = len(assessed)
@@ -2072,6 +2123,10 @@ class SQLiteStorage:
         scoring_version: str = "v2",
         next_question: str | None = None,
         expression_review: dict[str, Any] | None = None,
+        visual_metrics: dict[str, Any] | None = None,
+        content_analysis: dict[str, Any] | None = None,
+        answer_key: str | None = None,
+        answer_digest: str | None = None,
     ) -> dict[str, Any]:
         """保存单轮面试评分并推进进度。"""
         if scoring_mode not in {"llm", "local_fallback", "unknown"}:
@@ -2080,6 +2135,15 @@ class SQLiteStorage:
             raise ValueError("模型评分不能为空")
         with self._write_lock:
             connection = self._conn()
+            if answer_key:
+                previous = connection.execute(
+                    "SELECT answer_digest FROM interview_turns WHERE interview_id=? AND answer_key=?",
+                    (interview_id, answer_key),
+                ).fetchone()
+                if previous:
+                    if previous["answer_digest"] != answer_digest:
+                        raise ValueError("重复请求键的回答内容不同")
+                    return self.get_interview(interview_id)
             interview = self.get_interview(interview_id)
             if interview is None:
                 raise ValueError("模拟面试不存在")
@@ -2107,13 +2171,16 @@ class SQLiteStorage:
             connection.execute(
                 """INSERT INTO interview_turns
                    (turn_id, interview_id, question_index, question, answer,
-                    score, dimensions, feedback, fluency_metrics, scoring_mode, scoring_version)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    score, dimensions, feedback, fluency_metrics, scoring_mode, scoring_version,
+                    visual_metrics, content_analysis, answer_key, answer_digest)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     turn_id, interview_id, question_index, question, answer,
                     score if scoring_mode == "llm" else 0, self._dump_json(dimensions), feedback,
                     self._dump_json(fluency_metrics or {}),
                     scoring_mode, scoring_version,
+                    self._dump_json(visual_metrics or {}),
+                    self._dump_json(content_analysis or {}), answer_key, answer_digest,
                 ),
             )
             connection.execute(
@@ -2129,6 +2196,16 @@ class SQLiteStorage:
                     _now_iso(),
                     interview_id,
                 ),
+            )
+            connection.execute(
+                "INSERT INTO interview_review_state (interview_id, revision) VALUES (?, 1) "
+                "ON CONFLICT(interview_id) DO UPDATE SET revision=revision+1, input_digest=''",
+                (interview_id,),
+            )
+            connection.execute(
+                "INSERT INTO interview_review_events (interview_id,action,detail,created_at) "
+                "VALUES (?, 'answer', ?, ?)",
+                (interview_id, self._dump_json({"question_index": question_index}), _now_iso()),
             )
             connection.commit()
         return self.get_interview(interview_id)
@@ -2891,13 +2968,17 @@ class SQLiteStorage:
                 scoped(query, interview=key == "interview_count"), params
             ).fetchone()[0]) for key, query in scalar_queries.items()
         }
-        assessed_query = (
-            "SELECT AVG(t.score) AS score FROM interview_turns t "
-            "WHERE t.scoring_mode='llm' AND t.interview_id IN ("
-            + scoped("SELECT interview_id FROM interview_sessions", interview=True)
-            + ") GROUP BY t.interview_id"
-        )
-        assessed_scores = [float(row["score"]) for row in connection.execute(assessed_query, params)]
+        checked_interviews = [
+            interview
+            for row in connection.execute(
+                scoped("SELECT interview_id FROM interview_sessions", interview=True), params
+            )
+            if (interview := self.get_interview(row["interview_id"]))
+        ]
+        assessed_scores = [
+            interview["overall_score"] for interview in checked_interviews
+            if interview["overall_score"] is not None
+        ]
         result["assessed_interview_count"] = len(assessed_scores)
         result["average_interview_score"] = (
             round(sum(assessed_scores) / len(assessed_scores), 2) if assessed_scores else None
@@ -2926,20 +3007,13 @@ class SQLiteStorage:
 
         dimension_totals: dict[str, float] = {}
         dimension_counts: dict[str, int] = {}
-        rows = connection.execute(
-            "SELECT dimensions FROM interview_turns WHERE scoring_mode='llm' "
-            "AND interview_id IN ("
-            + scoped("SELECT interview_id FROM interview_sessions", interview=True) + ")",
-            params,
-        ).fetchall()
-        for row in rows:
-            try:
-                dimensions = json.loads(row["dimensions"])
-            except (TypeError, json.JSONDecodeError):
-                continue
-            for name, score in dimensions.items():
-                dimension_totals[name] = dimension_totals.get(name, 0.0) + float(score)
-                dimension_counts[name] = dimension_counts.get(name, 0) + 1
+        for interview in checked_interviews:
+            for turn in interview["turns"]:
+                if turn["score"] is None:
+                    continue
+                for name, score in turn["dimensions"].items():
+                    dimension_totals[name] = dimension_totals.get(name, 0.0) + float(score)
+                    dimension_counts[name] = dimension_counts.get(name, 0) + 1
         result["interview_dimensions"] = {
             name: round(total / dimension_counts[name], 2)
             for name, total in dimension_totals.items()

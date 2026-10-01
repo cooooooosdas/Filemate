@@ -37,6 +37,8 @@
       </div>
       <p v-if="focusWrongId && form.sourceId" class="focus-note">本轮首题会依据该资料中的一条待纠错练习组织；参考答案不会放进题目。</p>
       <p v-if="form.scenario === '知识讲解'" class="focus-note">讲解会保存为练习记录；当前内容准确性待评估，语音节奏仅作参考。</p>
+      <p v-if="reviewEnabled" class="focus-note">本轮先在本地选题与记录回答。提交后可在复盘区主动授权内容分析；录像和视觉观察不会发给模型。</p>
+      <label v-else class="legacy-consent"><input v-model="legacyExternalConsent" type="checkbox" />授权已配置模型对问题和回答提供四维参考评分；不发送本地录像。</label>
       <button class="primary" :disabled="loading || !form.targetRole.trim()" @click="begin">{{ loading ? '正在创建…' : '开始模拟面试' }}</button>
       <DataState v-if="error" :error="error" @retry="begin" />
     </section>
@@ -66,14 +68,19 @@
               type="button"
               class="record-toggle"
               :class="{ recording: videoRecording }"
-              :disabled="!cameraActive || !recordingSupported"
+              :disabled="!cameraActive || !recordingSupported || videoStopping || videoStarting || loading || vision.state.value === 'loading'"
               @click="toggleVideoRecording"
             >
-              {{ videoRecording ? `停止本地录像 · ${videoRecordingDuration}s` : '开始本地录像（含声音）' }}
+              {{ videoRecording ? `停止本地录像 · ${videoRecordingDuration}s` : videoStopping ? '正在保存本地录像…' : '开始本地录像（含声音）' }}
             </button>
             <small v-if="cameraError" class="camera-error">{{ cameraError }}</small>
             <small v-else-if="videoRecording">正在浏览器内存录制{{ recordingHasAudio ? '画面与声音' : '静音画面' }}，不会上传</small>
             <small v-else>预览默认不录像；本地录像需单独授权麦克风，刷新后清除</small>
+            <div v-if="reviewEnabled" class="vision-controls">
+              <button :disabled="!cameraActive || videoRecording || vision.state.value === 'loading'" @click="toggleVision">{{ vision.state.value === 'loading' ? '加载视觉模型…' : ['ready', 'observing'].includes(vision.state.value) ? '关闭本地视觉观察' : '开启本地视觉观察' }}</button>
+              <small role="status">{{ vision.hint.value }}</small>
+              <small>每秒约2次采样；观察头部、眼部与嘴角动作，不判断情绪或注意力。</small>
+            </div>
           </div>
         </div>
 
@@ -86,12 +93,13 @@
             <span v-if="session.source_context?.source_name" class="source-evidence">依据：{{ session.source_context.source_name }} · {{ session.source_context.focus_wrong_id ? '待纠错练习首题' : session.source_context.mode === 'authorized_excerpt' ? '已授权片段' : '仅本地资料名' }}</span>
             <span v-if="sourceEvidenceLabel" class="source-evidence source-location-evidence" :class="{ unavailable: session.source_context?.source_evidence?.status === 'unavailable' }">{{ sourceEvidenceLabel }}</span>
             <h2>{{ session.current_question }}</h2>
-            <textarea v-model="answer" name="interview_answer" autocomplete="off" aria-label="当前训练回答" rows="7" :placeholder="session.scenario === '知识讲解' ? '先解释概念，再说明推理过程和一个例子…' : '建议用“情境—任务—行动—结果”结构回答…'"></textarea>
+            <textarea v-model="answer" name="interview_answer" autocomplete="off" aria-label="当前训练回答" rows="7" maxlength="12000" :disabled="loading" :placeholder="session.scenario === '知识讲解' ? '先解释概念，再说明推理过程和一个例子…' : '建议用“情境—任务—行动—结果”结构回答…'"></textarea>
             <div class="answer-actions">
-              <button class="voice" :class="{ recording }" @click="toggleRecording">{{ recording ? '停止录音' : '语音回答' }}</button>
+              <button class="voice" :class="{ recording }" :disabled="loading" @click="toggleRecording">{{ recording ? '停止录音' : '语音回答' }}</button>
               <span>{{ answer.length }} 字</span>
-              <button class="primary" :disabled="loading || videoRecording || answer.trim().length < 4" @click="submit">{{ loading ? '评分中…' : videoRecording ? '先停止本地录像' : '提交并进入下一题' }}</button>
+              <button class="primary" :disabled="loading || videoRecording || videoStopping || recording || answer.trim().length < 4" @click="submit">{{ loading ? '保存中…' : videoRecording || videoStopping ? '先停止本地录像' : recording ? '先停止语音回答' : '提交并进入下一题' }}</button>
             </div>
+            <small class="speech-privacy">语音识别由浏览器提供，可能使用浏览器厂商的在线服务；也可直接输入文字。</small>
             <div v-if="recording || fluencyMetrics" class="fluency-strip" aria-live="polite">
               <span><b>{{ recordingDuration }}</b> 秒回答时长</span>
               <span><b>{{ liveCharsPerMinute }}</b> 字/分钟</span>
@@ -137,11 +145,13 @@
           <div v-if="localRecordings[index]" class="local-replay">
             <div class="replay-head"><strong>本地录像回放</strong><span>仅保留在当前页面，未上传</span></div>
             <video :id="`interview-replay-${index}`" :src="localRecordings[index].url" controls playsinline />
-            <div v-if="turn.fluency_metrics?.markers?.length" class="replay-timeline">
+            <div class="recording-actions"><button class="ghost" @click="downloadRecording(index)">下载本地录像</button><button class="ghost" @click="removeRecording(index)">删除这段本地录像</button></div>
+            <div v-if="turn.visual_metrics?.events?.length" class="marker-list"><button v-for="(event, eventIndex) in turn.visual_metrics.events" :key="eventIndex" :disabled="turn.visual_metrics.timeline_origin !== 'recording'" @click="seekRecording(index, event.start)">{{ event.start.toFixed(1) }}s · {{ visualLabels[event.kind] }}</button></div>
+            <div v-if="turn.fluency_metrics?.markers?.length && turn.fluency_metrics.recording_offset_seconds != null && turn.visual_metrics?.timeline_origin === 'recording'" class="replay-timeline">
               <div class="timeline-track">
-                <button v-for="marker in turn.fluency_metrics.markers" :key="`${marker.kind}-${marker.second}`" type="button" :class="marker.kind" :style="{ left: markerPosition(marker.second, localRecordings[index].duration) }" :aria-label="`${marker.label}，${marker.second.toFixed(1)} 秒`" @click="seekRecording(index, marker.second)" />
+                <button v-for="marker in turn.fluency_metrics.markers" :key="`${marker.kind}-${marker.second}`" type="button" :class="marker.kind" :style="{ left: markerPosition(marker.second + turn.fluency_metrics.recording_offset_seconds, localRecordings[index].duration) }" :aria-label="`${marker.label}，${marker.second.toFixed(1)} 秒`" @click="seekRecording(index, marker.second + turn.fluency_metrics.recording_offset_seconds)" />
               </div>
-              <div class="marker-list"><button v-for="marker in turn.fluency_metrics.markers" :key="`label-${marker.kind}-${marker.second}`" type="button" @click="seekRecording(index, marker.second)"><i :class="marker.kind" />{{ marker.second.toFixed(1) }}s · {{ marker.label }}</button></div>
+              <div class="marker-list"><button v-for="marker in turn.fluency_metrics.markers" :key="`label-${marker.kind}-${marker.second}`" type="button" @click="seekRecording(index, marker.second + turn.fluency_metrics.recording_offset_seconds)"><i :class="marker.kind" />{{ marker.second.toFixed(1) }}s · {{ marker.label }}</button></div>
             </div>
           </div>
           <div v-else-if="turn.fluency_metrics?.markers?.length" class="evidence-only-timeline">
@@ -150,6 +160,7 @@
           </div>
         </details>
       </section>
+      <InterviewReviewPanel v-if="reviewEnabled" :session="session" :recording-indexes="Object.keys(localRecordings).map(Number)" :media-busy="videoRecording || videoStopping || recording || loading" @updated="session = $event" @deleted="reset" @cleared="vision.reset()" @seek="seekRecording" />
     </template>
   </div>
 </template>
@@ -157,12 +168,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   answerInterview,
   getKnowledgeSources,
   getInterview,
   getLearningAnalytics,
+  getInterviewReviewStatus,
   startInterview,
   type InterviewFluencyMarker,
   type InterviewFluencyMetrics,
@@ -172,6 +184,9 @@ import {
 } from '../services/api'
 import CompanionCard from '../components/CompanionCard.vue'
 import DataState from '../components/DataState.vue'
+import InterviewReviewPanel from '../components/InterviewReviewPanel.vue'
+import { useInterviewVision } from '../interview/useInterviewVision'
+import { visualLabels } from '../interview/observations'
 import { publishCompanionEvent, type CompanionMood } from '../composables/useCompanion'
 import mascotUrl from '../assets/filemate-mascot.png'
 
@@ -210,7 +225,17 @@ const fluencyMetrics = ref<InterviewFluencyMetrics | undefined>()
 const cameraVideo = ref<HTMLVideoElement | null>(null)
 const cameraActive = ref(false)
 const cameraError = ref('')
+const reviewEnabled = ref(import.meta.env.VITE_ENABLE_INTERVIEW_REVIEW !== 'false')
+const legacyExternalConsent = ref(false)
+const vision = useInterviewVision()
+let submitKey = ''
+let submitFingerprint = ''
+let cameraRequestEpoch = 0
+let speechOffset: number | undefined
+let videoPerformanceStart = 0
+let recordingByteCount = 0
 let recognition: any = null
+let recognitionGeneration = 0
 let recordingStartedAt = 0
 let lastSpeechAt = 0
 let recordingTimer: number | undefined
@@ -232,6 +257,8 @@ interface LocalRecording {
 
 const recordingSupported = typeof MediaRecorder !== 'undefined'
 const videoRecording = ref(false)
+const videoStopping = ref(false)
+const videoStarting = ref(false)
 const videoRecordingDuration = ref(0)
 const recordingHasAudio = ref(false)
 const fluencyMarkers = ref<InterviewFluencyMarker[]>([])
@@ -303,7 +330,7 @@ const begin = async () => {
   loading.value = true
   error.value = ''
   try {
-    const created = await startInterview(form.value.targetRole, form.value.scenario, form.value.difficulty, form.value.sourceId || undefined, focusWrongId.value || undefined, originGoalId.value || undefined)
+    const created = await startInterview(form.value.targetRole, form.value.scenario, form.value.difficulty, form.value.sourceId || undefined, focusWrongId.value || undefined, originGoalId.value || undefined, reviewEnabled.value ? false : legacyExternalConsent.value)
     if (disposed) return
     session.value = created
     resumeError.value = ''
@@ -316,13 +343,22 @@ const begin = async () => {
 
 const submit = async () => {
   if (!session.value) return
+  const captured = session.value
+  const visual = reviewEnabled.value ? vision.finish() : undefined
+  const fingerprint = JSON.stringify([captured.interview_id, captured.current_index, answer.value, fluencyMetrics.value, visual])
+  if (fingerprint !== submitFingerprint) { submitFingerprint = fingerprint; submitKey = crypto.randomUUID() }
   loading.value = true
   try {
-    session.value = await answerInterview(
-      session.value.interview_id,
+    const updated = await answerInterview(
+      captured.interview_id,
       answer.value,
-      fluencyMetrics.value
+      fluencyMetrics.value,
+      { questionIndex: captured.current_index, requestKey: submitKey, visualMetrics: visual }
     )
+    if (disposed || session.value?.interview_id !== captured.interview_id) return
+    session.value = updated
+    submitKey = ''; submitFingerprint = ''
+    vision.reset()
     const latestScore = session.value.latest_evaluation?.score
     publishCompanionEvent({
       mood: latestScore == null ? 'happy' : latestScore >= 85 ? 'wink' : latestScore >= 60 ? 'focused' : 'encouraging',
@@ -340,7 +376,7 @@ const submit = async () => {
     longPauseCount.value = 0
     if (session.value.status === 'active') setTimeout(speakQuestion, 180)
   }
-  catch (error: any) { ElMessage.error(error.message || '评分失败') }
+  catch (error: any) { ElMessage.error(error.message || '回答保存失败，文字与本地录像仍保留') }
   finally { loading.value = false }
 }
 
@@ -379,7 +415,8 @@ const finalizeFluency = () => {
     filler_count: fillerCount.value,
     long_pause_count: longPauseCount.value,
     source: 'speech_recognition',
-    markers: fluencyMarkers.value
+    markers: fluencyMarkers.value,
+    ...(speechOffset !== undefined ? { recording_offset_seconds: speechOffset } : {})
   }
   recordingStartedAt = 0
   if (recordingTimer !== undefined) window.clearInterval(recordingTimer)
@@ -388,12 +425,17 @@ const finalizeFluency = () => {
 
 const toggleRecording = () => {
   if (recording.value) { recognition?.stop(); return }
+  if (recognition) return
   const Recognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
   if (!Recognition) { ElMessage.info('当前浏览器不支持语音识别，请使用文字回答'); return }
   recognition = new Recognition(); recognition.lang = 'zh-CN'; recognition.continuous = true; recognition.interimResults = true
+  const generation = ++recognitionGeneration
+  const isCurrent = () => !disposed && generation === recognitionGeneration
   recognition.onstart = () => {
+    if (!isCurrent()) return
     recording.value = true
     recordingStartedAt = Date.now()
+    speechOffset = videoRecording.value ? Math.max(0, (performance.now() - videoPerformanceStart) / 1000) : undefined
     lastSpeechAt = 0
     recordingDuration.value = 0
     fillerCount.value = 0
@@ -404,26 +446,37 @@ const toggleRecording = () => {
       recordingDuration.value = Math.max(1, Math.round((Date.now() - recordingStartedAt) / 1000))
     }, 500)
   }
-  recognition.onend = () => { recording.value = false; finalizeFluency() }
-  recognition.onerror = () => { recording.value = false; finalizeFluency(); ElMessage.warning('语音识别中断，请重试') }
+  recognition.onend = () => { if (!isCurrent()) return; recording.value = false; recognition = null; finalizeFluency() }
+  recognition.onerror = () => { if (!isCurrent()) return; recording.value = false; recognition = null; finalizeFluency(); ElMessage.warning('语音识别中断，请重试') }
   recognition.onresult = (event: any) => {
+    if (!isCurrent() || !recordingStartedAt) return
     const now = Date.now()
     const elapsed = Math.max(0, (now - recordingStartedAt) / 1000)
     if (lastSpeechAt && now - lastSpeechAt > 2500) {
       longPauseCount.value += 1
-      fluencyMarkers.value.push({ second: elapsed, kind: 'long_pause', label: '较长停顿' })
+      if (fluencyMarkers.value.length < 100) fluencyMarkers.value.push({ second: elapsed, kind: 'long_pause', label: '较长停顿' })
     }
     lastSpeechAt = now
     answer.value = Array.from(event.results).map((result: any) => result[0].transcript).join('')
     const detectedFillers = answer.value.match(/嗯|呃|那个|就是说|然后呢|就是/g)?.length || 0
     if (detectedFillers > fillerCount.value) {
       for (let index = fillerCount.value; index < detectedFillers; index += 1) {
-        fluencyMarkers.value.push({ second: elapsed, kind: 'filler', label: '出现口头语' })
+        if (fluencyMarkers.value.length < 100) fluencyMarkers.value.push({ second: elapsed, kind: 'filler', label: '出现口头语' })
       }
     }
-    fillerCount.value = detectedFillers
+    fillerCount.value = Math.min(100, detectedFillers)
   }
-  recognition.start()
+  try { recognition.start() }
+  catch { recognitionGeneration++; recognition = null; ElMessage.warning('语音识别未能启动，请重试或使用文字回答') }
+}
+
+const stopSpeechRecording = () => {
+  recognitionGeneration++
+  const previous = recognition
+  recognition = null
+  previous?.stop()
+  recording.value = false
+  finalizeFluency()
 }
 
 const startCamera = async () => {
@@ -432,22 +485,34 @@ const startCamera = async () => {
     cameraError.value = '当前环境不支持摄像头预览'
     return
   }
+  const current = ++cameraRequestEpoch
   try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({
+    const acquired = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
       audio: false
     })
+    if (disposed || current !== cameraRequestEpoch || !session.value) { acquired.getTracks().forEach(track => track.stop()); return }
+    cameraStream = acquired
     cameraActive.value = true
     await nextTick()
-    if (cameraVideo.value) cameraVideo.value.srcObject = cameraStream
+    if (cameraVideo.value) {
+      cameraVideo.value.srcObject = cameraStream
+      cameraVideo.value.muted = true
+      try { await cameraVideo.value.play() }
+      catch { if (!disposed && current === cameraRequestEpoch) cameraError.value = '浏览器未能播放摄像头预览，请关闭后重新开启；文字训练仍可使用。' }
+    }
   } catch {
-    cameraError.value = '未获得摄像头权限，可继续使用文字或语音回答'
+    if (disposed || current !== cameraRequestEpoch) return
+    cameraError.value = '当前无法访问摄像头，将跳过视频分析；可继续文字或语音回答。'
     cameraActive.value = false
   }
 }
 
 const stopCamera = () => {
-  if (videoRecording.value) stopVideoRecording()
+  cameraRequestEpoch++
+  vision.finish()
+  vision.stop()
+  if (videoRecording.value && !videoStopping.value) stopVideoRecording()
   cameraStream?.getTracks().forEach(track => track.stop())
   cameraStream = null
   cameraActive.value = false
@@ -455,6 +520,10 @@ const stopCamera = () => {
 }
 
 const toggleCamera = () => { cameraActive.value ? stopCamera() : startCamera() }
+const toggleVision = async () => {
+  if (['ready', 'observing'].includes(vision.state.value)) { vision.finish(); vision.stop(); return }
+  await vision.enable()
+}
 
 const stopLocalRecordingTracks = () => {
   localRecordingStream?.getTracks().forEach(track => track.stop())
@@ -464,37 +533,57 @@ const stopLocalRecordingTracks = () => {
 }
 
 const startVideoRecording = async () => {
-  if (!cameraStream || !session.value || !recordingSupported) return
+  if (!cameraStream || !session.value || !recordingSupported || videoStarting.value || videoStopping.value) return
+  videoStarting.value = true
+  const capturedId = session.value.interview_id
+  const capturedIndex = session.value.current_index
+  const capturedCamera = cameraStream
   cameraError.value = ''
+  if (localRecordings.value[capturedIndex]) {
+    try {
+      await ElMessageBox.confirm('本题已有一段当前页面录像。新录像完成后将替换它；可先下载保留原录像。确认重新录制？', '替换本题本地录像', { confirmButtonText: '确认重新录制', cancelButtonText: '保留原录像' })
+    } catch { videoStarting.value = false; return }
+    if (disposed || capturedCamera !== cameraStream || session.value?.interview_id !== capturedId || session.value.current_index !== capturedIndex) { videoStarting.value = false; return }
+  }
   let microphoneStream: MediaStream | null = null
   try {
     microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
   } catch {
     ElMessage.warning('未获得麦克风权限，将只录制本地画面')
   }
+  if (disposed || !cameraActive.value || capturedCamera !== cameraStream || session.value?.interview_id !== capturedId || session.value.current_index !== capturedIndex) {
+    microphoneStream?.getTracks().forEach(track => track.stop()); videoStarting.value = false; return
+  }
   const videoTracks = cameraStream.getVideoTracks().map(track => track.clone())
   const audioTracks = microphoneStream?.getAudioTracks() || []
   localRecordingStream = new MediaStream([...videoTracks, ...audioTracks])
   recordingHasAudio.value = audioTracks.length > 0
   localVideoChunks = []
+  recordingByteCount = 0
   recordingQuestionIndex = session.value.current_index
   discardPendingRecording = false
   const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
     .find(type => MediaRecorder.isTypeSupported(type))
-  mediaRecorder = mimeType
-    ? new MediaRecorder(localRecordingStream, { mimeType })
-    : new MediaRecorder(localRecordingStream)
+  try {
+    mediaRecorder = mimeType
+      ? new MediaRecorder(localRecordingStream, { mimeType })
+      : new MediaRecorder(localRecordingStream)
+  } catch { stopLocalRecordingTracks(); videoStarting.value = false; cameraError.value = '当前浏览器无法创建本地录像，可继续文字或语音回答。'; return }
   mediaRecorder.ondataavailable = event => {
-    if (event.data.size > 0) localVideoChunks.push(event.data)
+    if (event.data.size > 0) { localVideoChunks.push(event.data); recordingByteCount += event.data.size }
+    if (recordingByteCount > 100 * 1024 * 1024 && mediaRecorder?.state === 'recording') { stopVideoRecording(); ElMessage.info('本段录像达到100MB上限，已自动停止。') }
   }
   mediaRecorder.onerror = () => {
     videoRecording.value = false
+    videoStopping.value = false
+    videoStarting.value = false
+    vision.finish()
     stopLocalRecordingTracks()
     ElMessage.error('本地录像中断，请重新开启')
   }
   mediaRecorder.onstop = () => {
     const duration = Math.max(1, Math.round((Date.now() - videoRecordingStartedAt) / 1000))
-    if (!discardPendingRecording && localVideoChunks.length && recordingQuestionIndex >= 0) {
+    if (!disposed && !discardPendingRecording && session.value?.interview_id === capturedId && localVideoChunks.length && recordingQuestionIndex >= 0) {
       const previous = localRecordings.value[recordingQuestionIndex]
       if (previous) URL.revokeObjectURL(previous.url)
       const blob = new Blob(localVideoChunks, { type: mediaRecorder?.mimeType || 'video/webm' })
@@ -510,22 +599,31 @@ const startVideoRecording = async () => {
       ElMessage.success('本轮录像已保存在当前页面，可在回答记录中回放')
     }
     videoRecording.value = false
+    videoStopping.value = false
+    videoStarting.value = false
     stopLocalRecordingTracks()
     mediaRecorder = null
     localVideoChunks = []
   }
   videoRecordingStartedAt = Date.now()
+  videoPerformanceStart = performance.now()
+  if (recording.value) speechOffset = undefined
   videoRecordingDuration.value = 0
   videoRecording.value = true
-  mediaRecorder.start(500)
+  try { mediaRecorder.start(500) }
+  catch { stopLocalRecordingTracks(); videoRecording.value = false; videoStarting.value = false; cameraError.value = '本地录像未能启动，可重试。'; return }
+  videoStarting.value = false
+  if (reviewEnabled.value && cameraVideo.value) vision.observe(cameraVideo.value, videoPerformanceStart)
   videoRecordingTimer = window.setInterval(() => {
     videoRecordingDuration.value = Math.max(1, Math.round((Date.now() - videoRecordingStartedAt) / 1000))
+    if (videoRecordingDuration.value >= 1800) { stopVideoRecording(); ElMessage.info('本段录像达到30分钟上限，已自动停止。') }
   }, 500)
 }
 
 const stopVideoRecording = (discard = false) => {
+  vision.finish()
   discardPendingRecording = discard
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop()
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') { videoStopping.value = true; mediaRecorder.stop() }
   else {
     videoRecording.value = false
     stopLocalRecordingTracks()
@@ -540,8 +638,21 @@ const toggleVideoRecording = () => {
 const seekRecording = (index: number, second: number) => {
   const video = document.getElementById(`interview-replay-${index}`) as HTMLVideoElement | null
   if (!video) return
-  video.currentTime = second
-  void video.play()
+  video.currentTime = Math.max(0, Math.min(second, Number.isFinite(video.duration) ? video.duration : second))
+  void video.play().catch(() => { ElMessage.info('请点击录像播放按钮回看。') })
+}
+
+const downloadRecording = (index: number) => {
+  const item = localRecordings.value[index]
+  if (!item) return
+  const link = document.createElement('a'); link.href = item.url; link.download = `filemate-interview-${session.value?.interview_id}-q${index + 1}.webm`; link.click()
+}
+const removeRecording = async (index: number) => {
+  try { await ElMessageBox.confirm('删除这段当前页面的本地录像，保留回答和已提交观察摘要。确认继续？', '删除本地录像', { confirmButtonText: '确认删除录像', cancelButtonText: '保留录像' }) }
+  catch { return }
+  const item = localRecordings.value[index]
+  if (item) URL.revokeObjectURL(item.url)
+  const remaining = { ...localRecordings.value }; delete remaining[index]; localRecordings.value = remaining
 }
 
 const clearLocalRecordings = () => {
@@ -551,14 +662,20 @@ const clearLocalRecordings = () => {
 
 const reset = () => {
   window.speechSynthesis?.cancel()
-  recognition?.stop()
+  stopSpeechRecording()
   stopVideoRecording(true)
   stopCamera()
+  vision.reset()
   clearLocalRecordings()
   session.value = null
   focusWrongId.value = ''
   originGoalId.value = ''
   answer.value = ''
+  fluencyMetrics.value = undefined
+  recordingDuration.value = 0
+  fillerCount.value = 0
+  longPauseCount.value = 0
+  speechOffset = undefined
   fluencyMarkers.value = []
   resumeError.value = ''
   void router.replace({ query: {} })
@@ -566,7 +683,7 @@ const reset = () => {
 }
 onBeforeUnmount(() => {
   disposed = true
-  recognition?.stop()
+  stopSpeechRecording()
   stopVideoRecording(true)
   stopCamera()
   clearLocalRecordings()
@@ -574,6 +691,7 @@ onBeforeUnmount(() => {
   window.speechSynthesis?.cancel()
 })
 onMounted(async () => {
+  if (reviewEnabled.value) { try { reviewEnabled.value = (await getInterviewReviewStatus()).enabled } catch { reviewEnabled.value = false } }
   void loadRecent()
   if (typeof route.query.interview === 'string') void restoreInterview(route.query.interview)
   try { knowledgeSources.value = await getKnowledgeSources(100) }
@@ -592,6 +710,10 @@ onMounted(async () => {
 
 <style scoped>
 .interview-page{max-width:1180px;margin:0 auto;padding:28px;color:var(--text-primary)}.page-head{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:26px}.eyebrow{margin:0;color:var(--accent);font-size:11px;font-weight:800;letter-spacing:.15em}.page-head h1{font-size:32px;margin:0 0 7px}.page-head p{margin:0;color:var(--text-secondary)}.status-pill{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--accent-border);border-radius:999px;color:var(--accent);background:var(--accent-soft)}.status-pill i,.online i{width:7px;height:7px;border-radius:50%;background:#36a269}.setup-card,.studio,.evaluation,.review-list{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:18px}.setup-card{padding:30px}.setup-copy span{color:var(--accent);font-size:12px;font-weight:700}.setup-copy h2{font-size:24px;margin:8px 0}.setup-copy p{color:var(--text-secondary)}.form-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin:26px 0}.form-grid label{font-size:13px;color:var(--text-secondary)}input,select,textarea{box-sizing:border-box;width:100%;margin-top:7px;padding:12px;border:1px solid var(--border-default);border-radius:10px;background:var(--bg-elevated);color:var(--text-primary);font:inherit}textarea{resize:vertical;line-height:1.7}.primary,.ghost,.voice{border:0;border-radius:10px;padding:11px 17px;cursor:pointer}.primary{background:var(--accent);color:white;font-weight:700}.primary:disabled{opacity:.45}.studio{display:grid;grid-template-columns:310px 1fr;overflow:hidden}.interviewer-panel{padding:30px;background:var(--sidebar-bg);text-align:center;border-right:1px solid var(--border-subtle)}.avatar-stage{position:relative;width:180px;height:180px;margin:12px auto 24px;display:grid;place-items:center}.avatar-face{position:relative;z-index:2;width:124px;height:124px;display:grid;place-items:center;overflow:hidden;border:4px solid rgba(255,255,255,.9);border-radius:50%;background:linear-gradient(145deg,var(--brand-blue-soft),#e7f6ee);box-shadow:0 16px 35px rgba(37,99,235,.18)}.avatar-face img{width:100%;height:100%;object-fit:cover;object-position:50% 22%;transform:scale(1.08)}.pulse{position:absolute;border:1px solid var(--brand-blue-border);border-radius:50%}.pulse-one{inset:12px}.pulse-two{inset:0}.speaking .pulse{animation:pulse 1.3s infinite}.voice-bars{position:absolute;bottom:1px;display:flex;gap:3px}.voice-bars i{width:3px;height:8px;background:var(--accent);border-radius:3px}.speaking .voice-bars i{animation:bars .7s infinite alternate}.voice-bars i:nth-child(2n){animation-delay:.2s}.role{font-weight:700}.online{font-size:12px;color:var(--text-secondary)}.online i{display:inline-block;margin-right:5px}.ghost{margin-top:18px;border:1px solid var(--accent-border);background:transparent;color:var(--accent)}.conversation-panel{padding:30px}.progress-row{display:flex;justify-content:space-between;color:var(--text-secondary);font-size:13px}.progress{height:5px;background:var(--bg-elevated);border-radius:5px;margin:10px 0 28px}.progress i{display:block;height:100%;background:var(--accent);border-radius:5px}.question-block>p{font-size:12px;color:var(--accent)}.question-block h2{font-size:22px;line-height:1.5}.answer-actions{display:flex;gap:12px;align-items:center;margin-top:12px}.answer-actions span{color:var(--text-muted);font-size:12px;margin-right:auto}.voice{border:1px solid var(--accent-border);color:var(--accent);background:var(--accent-soft)}.voice.recording{background:#fff0ec;color:#b44b34}.evaluation,.review-list{margin-top:18px;padding:24px}.evaluation-head{display:flex;justify-content:space-between;gap:20px}.evaluation-head h2{font-size:17px}.evaluation-head>strong{font-size:42px;color:var(--accent)}.dimension-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.dimension-grid>div{display:grid;grid-template-columns:1fr auto;gap:8px}.dimension-grid i{grid-column:1/-1;height:5px;background:var(--bg-elevated);border-radius:5px}.dimension-grid em{display:block;height:100%;background:var(--accent);border-radius:5px}.review-list h2{font-size:18px}.review-list details{border-top:1px solid var(--border-subtle);padding:14px 0}.review-list summary{display:flex;justify-content:space-between;gap:18px;cursor:pointer}.review-list p,.review-list small{color:var(--text-secondary);line-height:1.7}.completion{display:flex;align-items:center;justify-content:center;gap:24px;padding:60px 20px}.score-ring{width:110px;height:110px;display:grid;place-items:center;border:8px solid var(--accent-soft);outline:2px solid var(--accent);border-radius:50%;font-size:34px;font-weight:800;color:var(--accent)}@keyframes pulse{50%{transform:scale(1.05);opacity:.45}}@keyframes bars{to{height:25px}}@media(max-width:800px){.studio{grid-template-columns:1fr}.interviewer-panel{border-right:0;border-bottom:1px solid var(--border-subtle)}.form-grid,.dimension-grid{grid-template-columns:1fr 1fr}.page-head{align-items:start;flex-direction:column}}@media(max-width:520px){.form-grid,.dimension-grid{grid-template-columns:1fr}.interview-page{padding:16px}.conversation-panel{padding:20px}.answer-actions{flex-wrap:wrap}.answer-actions .primary{width:100%}}
+</style>
+
+<style scoped>
+.vision-controls{display:grid;gap:8px;margin-top:12px;padding:12px;background:var(--accent-soft);border-radius:10px;text-align:left}.vision-controls button{padding:10px;border:1px solid var(--accent-border);border-radius:8px;background:white;color:var(--accent);cursor:pointer}.vision-controls button:disabled{opacity:.5}.vision-controls small{font-size:11px;line-height:1.6;color:var(--text-secondary)}.speech-privacy{display:block;margin-top:10px;line-height:1.6;color:var(--text-muted);font-size:11px}.recording-actions{display:flex;flex-wrap:wrap;gap:8px}.recording-actions .ghost{margin-top:10px}.review-list p{white-space:pre-wrap;overflow-wrap:anywhere}
 </style>
 
 <style scoped>
