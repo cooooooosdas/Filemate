@@ -313,7 +313,7 @@ storage = SQLiteStorage(db_path="filemate.db")
 storage.init_schema()
 ```
 
-**数据库版本：** `schema_migrations` 记录已应用迁移，当前 schema 为 v21。`init_schema()` 可对旧数据库安全、幂等升级。
+**数据库版本：** `schema_migrations` 记录已应用迁移，当前 schema 为 v22。`init_schema()` 可对旧数据库安全、幂等升级。
 
 **核心表：**
 
@@ -326,6 +326,7 @@ storage.init_schema()
 | `workspaces` | 用户学习工作区，默认包含 `local` |
 | `sources` | 统一资料源、解析正文、媒体类型与元数据 |
 | `artifacts` | 摘要、知识卡、题目、笔记、学习计划等 AI 产物 |
+| `coding_submissions` / `coding_events` | 编程提交索引、状态、幂等键与最小操作日志；提交内容复用 `coding_submission` 类型 Artifact |
 | `document_contexts` | 持久化文档上下文、聊天历史与可选过期时间 |
 | `execution_records` | 最终确认、失败、撤销、快照和幂等状态 |
 | `document_chunks` | 带页码和顺序的可引用资料分块 |
@@ -569,6 +570,37 @@ V2.2 本次加固新增 SQLite v21 `knowledge_graph_events`，与业务变更在
 `POST /quiz/attempts` 接受 `{artifact_id,question_index,user_answer,expected_question?}`，`expected_question` 是页面加载时的原始题目 JSON（不是前端格式化后的题目）。当前所有答题入口均发送该快照。正文已修订的活动题集必须提供快照；其他未修订题集保留旧客户端兼容。服务端在判题前和写事务内分别核对，内容变化返回409且不保存成绩/错题；题集删除返回404。单纯标题变化不阻止提交。今日队列的错题项增加 `question_snapshot`，供调用方核对。
 
 新版本快照使旧成绩仍归到原知识点，不移算到新题。图谱关联练习增加 `read_only_snapshot` 标识，界面明确标注历史。历史库从未记录正文修订时，无法恢复已被覆盖的旧题：使用 `question_evidence_since` 冻结原更新时间边界，保守排除不确定旧作答；未修订题集使用 `graph_attempt_cutoff=0`，仅改标题不损失有效证据。历史错题与题目正文不一致时不挂到新知识点。`excluded_sample_count` 包含上述不确定记录与时间/判题字段异常，不补造历史证据。
+
+## 4.11 V2.3 C++ 编程练习与隔离评测
+
+所有接口使用 `ApiResponse` 信封，并按现役本机/匿名设备身份选择数据库。`FILEMATE_ENABLE_PROGRAMMING=0` 关闭全部编程接口（503）；前端构建 `VITE_ENABLE_PROGRAMMING=false` 隐藏入口并将旧 `/programming` 链接转到学习工作区。
+
+| 方法 | 路径 | 合同 |
+|---|---|---|
+| GET | `/api/programming/status` | `ready`、`installed`、`provider`、支持语言和网络隔离服务状态；真实编译/身份探针通过才为ready，自检缓存10分钟，网络服务每次核对 |
+| POST | `/api/programming/setup` | 复制本机已安装MSVC/SDK到专用目录并强制自检；不安装系统组件，失败503 |
+| GET | `/api/programming/problems` | 8道原创题的版本、题面、示例、分类、提示和资源限制；当前仅 `cpp17` |
+| GET | `/api/programming/overview` | 最近100条完整提交/操作日志及全部有效完成记录的 `profile`，`evidence_scope=all_active_completed_submissions` |
+| POST | `/api/programming/submissions` | `{problem_id,code,request_key,language:'cpp17'}`；非空代码至多100000 UTF-8字节；请求键16–80个ASCII字母/数字/下划线/短横线；相同键和代码幂等，不同内容409 |
+| GET | `/api/programming/submissions/{id}` | 原代码、Artifact ID、状态、逐点结果、本地提示、复盘和笔记；跨身份或缺失记录404 |
+| POST | `/api/programming/submissions/{id}/run` | 原子认领queued记录并真实编译运行；并行上限2，容量不足409且保持queued；重复认领不重复执行 |
+| POST | `/api/programming/submissions/{id}/cancel` | queued/running→cancelled并终止对应Job；取消不可被迟到结果覆盖，重复操作幂等 |
+| POST | `/api/programming/submissions/{id}/undo`、`/restore` | 仅改变已结束提交的统计资格，原始记录保留；运行中409，重复操作幂等 |
+| POST | `/api/programming/submissions/{id}/review` | `{mode:'local'|'llm',allow_external_model:false}`；需有效completed记录；未确认外发422；模型异常502且保留旧复盘；已有相同复盘方式幂等返回 |
+| POST | `/api/programming/submissions/{id}/notes` | `{notes}`最多8000字符，结束后的有效记录可保存；不修改代码/判题 |
+
+SQLite v22只追加两个表，旧迁移不变。提交复用现役Artifact，保存代码、语言、哈希、判题、本地提示、复盘与笔记，可不绑定Source。日志只保存提交ID、操作、环境自检结果和时间，不包含代码、凭据或供应商异常详情。通用Artifact编辑拒绝修改评测证据（409）；代码修改须新建提交。损坏JSON、题目缺失或固定版本不可用的记录以 `data_error=true` 返回，阻止执行/改写/恢复，不进入profile，仍可取消和撤销，原库字节保留；不会用新版题目重判旧提交。服务中断后overview将本进程未持有的running记录标为failed；损坏记录只更新索引状态与中断事件，正常记录保留代码供新提交重试。一条损坏的孤立记录不会阻断其他历史；状态与事件必须原子提交，失败回滚且重复读取不重复记事件。
+
+`result` 包含 `verdict`、`passed`、`total`、`score`、`compile_log`、`compile_ms`、`provider`、`tests`。CE无运行测试点；编译后逐点返回编号/名称、AC/WA/TLE/RE、输入预览与SHA-256、期望/实际输出、stderr、耗时、Job峰值内存、退出码及限制触发原因。输入预览最多4096字符，实际输出上限64KB字节。允许行末空白与末尾空行，不忽略中间空格、前导空格或大小写。分数严格为通过点数/总点数×100，总判定取首个失败测试点，全部通过为AC。CANCELLED与基础设施SYSTEM_ERROR不作为学习正确率样本。
+
+Windows x64适配层要求MSVC/SDK。编译使用无网络能力的AppContainer，运行使用LPAC；恢复挂起进程前建立Job限制。编译30秒/768MB/8进程，运行每点1秒/256MB/1进程，CPU与墙钟均受限。只继承stdin/stdout/stderr三个句柄及必要标准路径变量。工具链副本只读，每点独立目录/身份，不修改宿主安装目录权限。BFE/MpsSvc未运行或隔离属性失败则禁止执行，不退回普通宿主进程。I/O写入观察阈值16MB，每20ms核对并终止洪泛，可能在观察间隔内超出，不是磁盘硬配额。支持标准C++17头文件；GCC扩展头、Linux/macOS及Docker适配未交付。
+
+编译诊断优先 UTF-8，无法解码时仅受信任编译器输出回退 Windows 系统代码页，避免中文 MSVC 日志乱码；存储及 API 统一 UTF-8。学生程序输出不启用该回退，仍按 UTF-8 读取，非法字节使用替代字符。
+
+`profile` 统计全部有效完成提交，分类通过率=AC提交数/有效提交数，趋势仅列最近30次。本周按服务器本地周一零点划分，平均次数=全部有效提交/已练习题数。最低通过率分类至少需3次提交，仅是练习线索。编程错题由提交投影生成，保留失败提交ID、错误/提交次数、最近复盘时间，同题连续两次AC标记已复习。取消、失败与撤销排除；无样本通过率为null，不构造能力百分制或用户研究结论。
+
+模型不能写入分数。反馈行号须在代码范围内；归因须完整覆盖真实失败点且不能指向通过点。复杂度是静态参考意见。外发编译日志最多6000字符、每点输入/输出2048字符、stderr1024字符，并标注片段截断；代码完整外发最多100KB。异常或格式不合格502，旧记录保留。
+
 
 ## 变更记录
 

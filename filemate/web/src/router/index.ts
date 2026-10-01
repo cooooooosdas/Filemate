@@ -121,6 +121,13 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/Knowledge.vue'),
     meta: { title: '个人知识库' }
   },
+  ...(import.meta.env.VITE_ENABLE_PROGRAMMING === 'false' ? [{
+    path: '/programming', redirect: '/ai-tools',
+  }] : [{
+    path: '/programming', name: 'Programming',
+    component: () => import('../views/Programming.vue'),
+    meta: { title: '编程练习' },
+  }]),
   {
     path: '/trust',
     name: 'TrustCenter',

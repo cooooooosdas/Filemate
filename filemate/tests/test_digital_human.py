@@ -83,7 +83,7 @@ def test_playback_lifecycle_and_minimal_storage(
         assert len(client.get("/api/digital-human/playbacks").json()["data"]) == 2
     reopened = SQLiteStorage(storage.db_path)
     reopened.init_schema()
-    assert reopened.get_schema_version() == 21
+    assert reopened.get_schema_version() == 22
     assert len(reopened.list_digital_human_playbacks()) == 2
     assert "digital_human_playbacks" in {
         row["name"] for row in reopened._conn().execute(

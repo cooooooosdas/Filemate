@@ -1,6 +1,6 @@
 # V2.2 个人知识图谱与学习画像交付报告
 
-日期：2026-10-01。范围：V2.2 知识图谱与学习证据加固。验收分支 `codex/v2-2-knowledge-graph` 基于 `origin/main` 的 `a523b36`，在独立 worktree `_working/release-v22` 验证；本报告只证明该快照，不把原工作区已有 V2.3/V2.4 草稿当作本阶段已完成能力。已提交 [PR #45](https://github.com/cooooooosdas/Filemate/pull/45)，尚未合并；生产网站与安装包未升级。最新远端检查以该PR的Checks为准。
+日期：2026-10-01。范围：V2.2 知识图谱与学习证据加固。验收分支 `codex/v2-2-knowledge-graph` 基于 `origin/main` 的 `a523b36`，在独立 worktree `_working/release-v22` 验证；本报告只证明该快照，不把原工作区已有 V2.3/V2.4 草稿当作本阶段已完成能力。已提交 [PR #45](https://github.com/cooooooosdas/Filemate/pull/45)，已于2026-10-01合并到main（9d6d4cb）；生产网站与安装包未升级。最新远端检查以该PR的Checks为准。
 
 ## 用户可以做什么
 

@@ -205,6 +205,7 @@ import {
   Lock,
   Menu,
   Monitor,
+  Cpu,
   Notebook,
   Reading,
   Refresh,
@@ -262,6 +263,7 @@ const menuGroups = [
     label: '学习与练习',
     items: [
       { path: '/ai-tools', title: '学习工作区', icon: Reading },
+      ...(import.meta.env.VITE_ENABLE_PROGRAMMING === 'false' ? [] : [{ path: '/programming', title: '编程练习', icon: Cpu }]),
       ...(import.meta.env.VITE_ENABLE_DIGITAL_HUMAN === 'false' ? [] : [{ path: '/digital-human', title: 'AI 导师讲解', icon: VideoPlay }]),
       { path: '/study-plan', title: '学习计划', icon: Reading },
       { path: '/goals', title: '目标反推', icon: Aim },

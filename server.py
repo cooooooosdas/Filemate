@@ -1013,6 +1013,196 @@ def list_knowledge_sources(limit: int = Query(50, ge=1, le=200)):
 
 
 
+class CodingSubmissionRequest(BaseModel):
+    problem_id: str = Field(min_length=1, max_length=80)
+    code: str = Field(min_length=1, max_length=100000)
+    request_key: str = Field(pattern=r"^[a-zA-Z0-9_-]{16,80}$")
+    language: Literal["cpp17"] = "cpp17"
+
+
+class CodingReviewRequest(BaseModel):
+    mode: Literal["local", "llm"] = "local"
+    allow_external_model: bool = False
+
+
+class CodingNotesRequest(BaseModel):
+    notes: str = Field(max_length=8000)
+
+
+def _require_programming_enabled() -> None:
+    if os.getenv("FILEMATE_ENABLE_PROGRAMMING", "1") == "0":
+        raise HTTPException(status_code=503, detail="编程评测暂未启用，原有学习功能仍可使用")
+
+
+def _coding_repository():
+    from filemate.programming.repository import CodingRepository
+
+    context = _tenant_context.get()
+    return CodingRepository(_tenant_storage(context[0]) if context else
+                            (_storage.local_storage if isinstance(_storage, _StorageRouter) else _storage))
+
+
+def _coding_error(exc: Exception) -> HTTPException:
+    return HTTPException(status_code=404 if isinstance(exc, KeyError) else 409,
+                         detail="提交或题目不存在" if isinstance(exc, KeyError) else str(exc))
+
+
+@app.get("/api/programming/status", response_model=ApiResponse)
+def programming_status():
+    from filemate.programming.service import status
+
+    _require_programming_enabled()
+    return ApiResponse(success=True, data=status())
+
+
+@app.post("/api/programming/setup", response_model=ApiResponse)
+def programming_setup():
+    from filemate.programming.service import status
+    from filemate.programming.toolchain import prepare_toolchain
+    from filemate.programming.windows_sandbox import SandboxUnavailable
+
+    _require_programming_enabled()
+    try:
+        prepare_toolchain()
+        result = status(force=True)
+    except (SandboxUnavailable, OSError) as exc:
+        logger.warning("编程环境准备失败 (%s)", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="无法准备隔离环境，请检查 MSVC/SDK 与目录权限后重试") from exc
+    repository = _coding_repository()
+    with repository.storage._write_lock:
+        repository._event(None, "environment_checked", {"ready": result["ready"]})
+        repository.storage._conn().commit()
+    return ApiResponse(success=True, data=result)
+
+
+@app.get("/api/programming/problems", response_model=ApiResponse)
+def programming_problems():
+    from filemate.programming.problems import PROBLEMS, public_problem
+
+    _require_programming_enabled()
+    return ApiResponse(success=True, data=[public_problem(problem) for problem in PROBLEMS])
+
+
+@app.get("/api/programming/overview", response_model=ApiResponse)
+def programming_overview():
+    from filemate.programming.feedback import evidence_profile
+    from filemate.programming.service import recover
+
+    _require_programming_enabled()
+    repository = _coding_repository()
+    recover(repository)
+    submissions = repository.list(100)
+    return ApiResponse(success=True, data={"submissions": submissions[:100],
+                                          "profile": evidence_profile(repository.evidence()),
+                                          "evidence_scope": "all_active_completed_submissions",
+                                          "events": repository.events()})
+
+
+@app.post("/api/programming/submissions", response_model=ApiResponse)
+def create_coding_submission(request: CodingSubmissionRequest):
+    from filemate.programming.problems import get_problem
+
+    _require_programming_enabled()
+    if not request.code.strip():
+        raise HTTPException(status_code=422, detail="请输入 C++ 代码")
+    if len(request.code.encode("utf-8")) > 100000:
+        raise HTTPException(status_code=422, detail="源代码不能超过 100 KB")
+    try:
+        result = _coding_repository().create(get_problem(request.problem_id), request.code, request.request_key)
+    except (KeyError, ValueError) as exc:
+        raise _coding_error(exc) from exc
+    return ApiResponse(success=True, data=result)
+
+
+@app.get("/api/programming/submissions/{submission_id}", response_model=ApiResponse)
+def get_coding_submission(submission_id: str):
+    _require_programming_enabled()
+    try:
+        return ApiResponse(success=True, data=_coding_repository().get(submission_id))
+    except KeyError as exc:
+        raise _coding_error(exc) from exc
+
+
+@app.post("/api/programming/submissions/{submission_id}/run", response_model=ApiResponse)
+def run_coding_submission(submission_id: str):
+    from filemate.programming.service import execute
+    from filemate.programming.windows_sandbox import SandboxUnavailable
+
+    _require_programming_enabled()
+    try:
+        result = execute(_coding_repository(), submission_id)
+    except (KeyError, ValueError) as exc:
+        raise _coding_error(exc) from exc
+    except SandboxUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return ApiResponse(success=True, data=result)
+
+
+@app.post("/api/programming/submissions/{submission_id}/review", response_model=ApiResponse)
+def review_coding_submission(submission_id: str, request: CodingReviewRequest):
+    from filemate.execution.storage import _now_iso
+    from filemate.programming.feedback import local_feedback, model_feedback
+
+    _require_programming_enabled()
+    repository = _coding_repository()
+    try:
+        submission = repository.get(submission_id)
+    except KeyError as exc:
+        raise _coding_error(exc) from exc
+    if submission["status"] != "completed" or not submission["active"] or submission["data_error"]:
+        raise HTTPException(status_code=409, detail="请先完成有效评测，再生成代码复盘")
+    if request.mode == "llm" and not request.allow_external_model:
+        raise HTTPException(status_code=422, detail="请确认允许将题面、代码和测试结果发送给已配置的模型")
+    provider = "external_model" if request.mode == "llm" else "local_rules"
+    if isinstance(submission.get("review"), dict) and submission["review"].get("provider") == provider:
+        return ApiResponse(success=True, data=submission)
+    try:
+        if request.mode == "llm":
+            from filemate.llm_client import LLMClient
+
+            review = model_feedback(LLMClient(), submission)
+        else:
+            review = local_feedback(submission)
+    except Exception as exc:
+        logger.warning("代码模型复盘失败 (%s)", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="模型复盘失败，判题与已有复盘均已保留，可稍后重试") from exc
+    review["created_at"] = _now_iso()
+    with repository.storage._write_lock:
+        latest = repository.get(submission_id)
+        if not latest["active"] or latest["data_error"]:
+            raise HTTPException(status_code=409, detail="提交状态已变化，请刷新记录")
+        result = repository.update(submission_id, payload={"review": review}, event="review_saved")
+    return ApiResponse(success=True, data=result)
+
+
+@app.post("/api/programming/submissions/{submission_id}/notes", response_model=ApiResponse)
+def save_coding_notes(submission_id: str, request: CodingNotesRequest):
+    _require_programming_enabled()
+    repository = _coding_repository()
+    try:
+        with repository.storage._write_lock:
+            row = repository.get(submission_id)
+            if row["status"] in {"queued", "running"} or not row["active"]:
+                raise ValueError("请在评测结束后保存有效提交的笔记")
+            result = repository.update(submission_id, payload={"notes": request.notes}, event="notes_saved")
+    except (KeyError, ValueError) as exc:
+        raise _coding_error(exc) from exc
+    return ApiResponse(success=True, data=result)
+
+
+@app.post("/api/programming/submissions/{submission_id}/{action}", response_model=ApiResponse)
+def transition_coding_submission(submission_id: str, action: Literal["cancel", "undo", "restore"]):
+    from filemate.programming.service import cancel
+
+    _require_programming_enabled()
+    repository = _coding_repository()
+    try:
+        result = cancel(repository, submission_id) if action == "cancel" else repository.transition(submission_id, action)
+    except (KeyError, ValueError) as exc:
+        raise _coding_error(exc) from exc
+    return ApiResponse(success=True, data=result)
+
+
 class GraphDraftRequest(BaseModel):
     source_id: str = Field(min_length=1, max_length=128)
     mode: Literal["local", "llm"] = "local"

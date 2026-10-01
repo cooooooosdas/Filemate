@@ -1,4 +1,5 @@
 import axios from 'axios'
+import type { CodingProblem, CodingSubmission, CodingOverview, ProgrammingStatus } from '../types/programming'
 import type { KnowledgeGraphData, GraphBatch, GraphPlanPreview, GraphPlanResult } from '../types/knowledgeGraph'
 import type {
   ProcessingSession,
@@ -53,6 +54,40 @@ const api = axios.create({
     'Content-Type': 'application/json'
   }
 })
+
+
+export async function getProgrammingProblems(): Promise<CodingProblem[]> {
+  return (await api.get<any, ApiResponse<CodingProblem[]>>('/api/programming/problems', { timeout: 15000 })).data!
+}
+export async function getProgrammingStatus(): Promise<ProgrammingStatus> {
+  return (await api.get<any, ApiResponse<ProgrammingStatus>>('/api/programming/status', { timeout: 15000 })).data!
+}
+export async function setupProgramming(): Promise<ProgrammingStatus> {
+  return (await api.post<any, ApiResponse<ProgrammingStatus>>('/api/programming/setup', {}, { timeout: 120000 })).data!
+}
+export async function getCodingOverview(): Promise<CodingOverview> {
+  return (await api.get<any, ApiResponse<CodingOverview>>('/api/programming/overview', { timeout: 15000 })).data!
+}
+export async function getCodingSubmission(id: string): Promise<CodingSubmission> {
+  return (await api.get<any, ApiResponse<CodingSubmission>>(`/api/programming/submissions/${id}`, { timeout: 15000 })).data!
+}
+export async function createCodingSubmission(problemId: string, code: string, requestKey: string): Promise<CodingSubmission> {
+  return (await api.post<any, ApiResponse<CodingSubmission>>('/api/programming/submissions',
+    { problem_id: problemId, code, request_key: requestKey, language: 'cpp17' }, { timeout: 15000 })).data!
+}
+export async function runCodingSubmission(id: string): Promise<CodingSubmission> {
+  return (await api.post<any, ApiResponse<CodingSubmission>>(`/api/programming/submissions/${id}/run`, {}, { timeout: 120000 })).data!
+}
+export async function changeCodingSubmission(id: string, action: 'cancel' | 'undo' | 'restore'): Promise<CodingSubmission> {
+  return (await api.post<any, ApiResponse<CodingSubmission>>(`/api/programming/submissions/${id}/${action}`, {}, { timeout: 15000 })).data!
+}
+export async function reviewCodingSubmission(id: string, mode: 'local' | 'llm', consent: boolean): Promise<CodingSubmission> {
+  return (await api.post<any, ApiResponse<CodingSubmission>>(`/api/programming/submissions/${id}/review`,
+    { mode, allow_external_model: consent }, { timeout: 65000 })).data!
+}
+export async function saveCodingNotes(id: string, notes: string): Promise<CodingSubmission> {
+  return (await api.post<any, ApiResponse<CodingSubmission>>(`/api/programming/submissions/${id}/notes`, { notes }, { timeout: 15000 })).data!
+}
 
 
 export async function checkHealth(): Promise<boolean> {
