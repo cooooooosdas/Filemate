@@ -484,6 +484,29 @@ CREATE INDEX IF NOT EXISTS idx_graph_events_source
 
 
 
+_PROGRAMMING_SCHEMA = """\
+CREATE TABLE IF NOT EXISTS coding_submissions (
+    submission_id TEXT PRIMARY KEY,
+    request_key TEXT NOT NULL UNIQUE,
+    problem_id TEXT NOT NULL,
+    problem_version INTEGER NOT NULL,
+    artifact_id TEXT NOT NULL UNIQUE REFERENCES artifacts(artifact_id) ON DELETE CASCADE,
+    status TEXT NOT NULL CHECK(status IN ('queued','running','completed','cancelled','failed')),
+    active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_coding_problem ON coding_submissions(problem_id, created_at);
+CREATE TABLE IF NOT EXISTS coding_events (
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    submission_id TEXT REFERENCES coding_submissions(submission_id) ON DELETE CASCADE,
+    action TEXT NOT NULL,
+    details TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+"""
+
+
 _MIGRATIONS = (
     (1, "initial_execution_schema", _SCHEMA),
     (2, "knowledge_persistence", _KNOWLEDGE_SCHEMA),
@@ -504,6 +527,7 @@ _MIGRATIONS = (
     (19, "daily_coach_preferences", _DAILY_COACH_SCHEMA),
     (20, "interview_expression_review", _EXPRESSION_CYCLE_SCHEMA),
     (21, "knowledge_graph_operation_events", _GRAPH_EVENTS_SCHEMA),
+    (22, "isolated_programming_submissions", _PROGRAMMING_SCHEMA),
 )
 
 

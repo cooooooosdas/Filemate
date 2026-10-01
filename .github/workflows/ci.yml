@@ -40,6 +40,8 @@ jobs:
           filemate/tests/test_retrieval.py
           filemate/tests/test_study.py
           filemate/study
+          filemate/programming
+          filemate/tests/test_programming.py
           filemate/understanding/interview.py
           filemate/understanding/retrieval.py
           evaluation/run_evaluation.py

@@ -40,6 +40,7 @@ FileMate 是一个面向大学生的本地优先 AI 学习工作台。它把散�
 | 学习工作区 | 资料/对话/产物同屏；本地导入一次，复用资料生成摘要、笔记、翻面卡片、逐题练习；会话深链恢复 | `workspace.py`、`LearningWorkspace.vue` |
 | V2.1 AI 导师讲解 | 从已保存的 AI 回答进入数字人页面，或手动输入文本；浏览器 TTS、分段播报、播放控制、口型动画与可删除的最小日志；V2.1.1 增加超时恢复、取消保护、同页回答切换与记录同步重试 | `DigitalHuman.vue`、`digital-human/`、`/api/digital-human/playbacks` |
 | V2.2 知识图谱与学习画像 | 从资料提取有原文依据的节点与关系，核对确认后展示；真实作答更新画像和薄弱点，可确认生成学习路径，保留撤销与操作记录 | `KnowledgeGraph.vue`、`knowledge_graph.py`、`/api/knowledge-graph` |
+| V2.3 编程练习与评测 | Monaco C++17 编辑器、8 道原创题、Windows 真实隔离编译与逐点判题；错题复盘、笔记、统计和撤销恢复 | `Programming.vue`、`filemate/programming/`、`/api/programming` |
 | 个人知识库 | 资料源、AI 产物、聊天上下文持久化；跨资料检索与引用；六阶段学习资产链 | `storage.py`、`retrieval.py`、`Knowledge.vue` |
 | 学习闭环 | 练习作答、自动错题本、资料范围内知识点标识、可修正错因、间隔重复和按时间预算调整的今日复习队列 | `/quiz`、`/wrongbook`、`/review/today` |
 | 学习计划 | 根据考试日期生成日计划，持久记录每日完成状态，支持 CSV/ICS 导出 | `StudyPlan.vue` |
@@ -53,6 +54,8 @@ FileMate 是一个面向大学生的本地优先 AI 学习工作台。它把散�
 | 多端工程 | Vue Web、FastAPI Sidecar、Tauri 2 桌面工程、CLI | `filemate/web/`、`server.py`、`main.py` |
 
 ### 2.2 已有基础，但仍需完善
+
+编程执行目前仅支持 Windows x64 + MSVC/Windows SDK，编译使用 AppContainer，运行使用 LPAC；缺少依赖或隔离自检失败时禁止执行，不回退宿主进程。支持标准 C++17 头文件，不支持 GCC 专用 `bits/stdc++.h`。损坏或题目版本不可用的记录保留原产物但排除统计；只有有效完成的 AC/WA/TLE/RE/CE 提交计入练习统计。工程验收、独立开关和发布边界见 [V2.3 交付报告](docs/V2_3_PROGRAMMING_DELIVERY.md)，源码合并不等于网站或 EXE 已升级。
 
 题集正文修订会为已有作答/错题保留只读历史题集，旧题仍可复练，成绩不会转移到新知识点；过期页面或判题期间的题目变更返回409并要求刷新。机制与旧库不确定证据边界见 [API 规范](filemate/docs/API_SPEC.md#题目修订与学习证据)。本轮结果是本地工程验收，不代表生产网站或 EXE 安装包已经升级；发布状态见 [V2.2 报告](docs/V2_2_KNOWLEDGE_GRAPH_DELIVERY.md)。
 
@@ -161,7 +164,7 @@ flowchart LR
     A --> E["确认执行器：预览 / 确认 / 回滚 / 撤销"]
     A --> K["学习服务：检索 / 练习 / 错题 / 计划 / 面试"]
     E --> F["本地文件系统 / ICS"]
-    P --> S["SQLite v21"]
+    P --> S["SQLite v22"]
     E --> S
     K --> S
 ```
@@ -212,7 +215,7 @@ Source（原始资料）
 | 本地 API | FastAPI、Uvicorn、Pydantic | 默认监听 `127.0.0.1:8001` |
 | 桌面壳 | Tauri 2、Rust | 工程已建立；安装包仅手动验收 |
 | 核心语言 | Python 3.10+ | 推荐 3.11/3.12；统一 UTF-8 |
-| 数据存储 | SQLite WAL，schema v21 | 本地优先、版本迁移、线程连接管理；生产环境按匿名设备分库 |
+| 数据存储 | SQLite WAL，schema v22 | 本地优先、版本迁移、线程连接管理；生产环境按匿名设备分库 |
 | 文件解析 | PyPDF2、pdfplumber、python-docx、python-pptx | PaddleOCR 为可选依赖 |
 | 检索 | 本地分块 + BM25 风格词法评分 | 支持页码/片段引用；无外部向量库 |
 | LLM | DeepSeek V4 Flash；OpenAI 兼容 HTTP API | 通过 `LLMClient` 和 Provider 适配层接入 |
@@ -271,7 +274,7 @@ FileMate/
 | `server.py` | HTTP 合同、参数校验、服务编排、统一错误 | 重复实现底层领域算法 |
 | `web` | 用户交互、状态反馈、响应式布局、API 调用 | 直接读取 SQLite 或本地任意路径 |
 
-## 7. SQLite v21 数据模型
+## 7. SQLite v22 数据模型
 
 数据库由 `schema_migrations` 管理，`init_schema()` 必须保持幂等。不要直接修改已经发布的迁移；新增字段或表必须增加新版本迁移和升级测试。
 
@@ -296,6 +299,7 @@ FileMate/
 | v19 | `daily_coach_preferences` | 按日期保存今日可用时长和用户调整的任务顺序 |
 | v20 | `interview_sessions.expression_review` | 错题表达复练的结构化记录 |
 | v21 | `knowledge_graph_events` | 图谱提取、失败、确认、撤销、恢复及学习路径操作元数据；随资料级联删除 |
+| v22 | `coding_submissions`、`coding_events` | 提交索引、幂等键和最小事件；源代码、判题与复盘复用 Artifact |
 
 关键关系：
 
@@ -393,6 +397,7 @@ FileMate/
 | `/history` | 历史记录 | Session、执行状态和撤销 |
 | `/ai-tools` | AI 工具箱 | 摘要、卡片、题目、笔记、问答 |
 | `/digital-human` | AI 导师讲解 | 朗读已保存的 AI 回答或手动讲解稿；语音控制、字幕、形象切换与播放记录 |
+| `/programming` | 编程练习 | C++17 原创题、真实隔离评测、逐点证据、错题复盘与有效提交统计 |
 | `/study-plan` | AI 学习计划 | 生成、查看和完成每日任务 |
 | `/goals` | 目标反推 | 目标、证据、能力缺口、行动任务与动态重排 |
 | `/wrongbook` | 错题复盘 | 错题、掌握状态和复习安排 |
