@@ -1,6 +1,6 @@
 # V2.2 个人知识图谱与学习画像交付报告
 
-日期：2026-10-01。范围：V2.2 知识图谱与学习证据加固。验收分支 `codex/v2-2-knowledge-graph` 基于 `origin/main` 的 `a523b36`，在独立 worktree `_working/release-v22` 验证；本报告只证明该快照，不把原工作区已有 V2.3/V2.4 草稿当作本阶段已完成能力。当前为本地验证，生产与安装包未升级。
+日期：2026-10-01。范围：V2.2 知识图谱与学习证据加固。验收分支 `codex/v2-2-knowledge-graph` 基于 `origin/main` 的 `a523b36`，在独立 worktree `_working/release-v22` 验证；本报告只证明该快照，不把原工作区已有 V2.3/V2.4 草稿当作本阶段已完成能力。已提交 [PR #45](https://github.com/cooooooosdas/Filemate/pull/45)，尚未合并；生产网站与安装包未升级。最新远端检查以该PR的Checks为准。
 
 ## 用户可以做什么
 
@@ -83,10 +83,13 @@
 | 模块关闭边界 | 16/16 passed：4页面、9图谱接口503、3原接口200 |
 | 375 / 768 / 1024 / 1440响应式 | 无水平溢出，图谱/画像/证据截图已核对 |
 | 浏览器运行异常 | 0 |
+| 原工作区同步后完整门禁 | 567 passed / 18 skipped / 5 deselected；12项前端测试、Ruff、Vue类型检查及构建通过；包含后续草稿，不代表后续模块已独立验收 |
 | 新增Python及测试/辅助脚本Ruff | 通过 |
 | 全项目 `scripts/verify.ps1 -IsolateFrontend` | 两轮退出码0；最后一轮：Ruff、520 passed / 18 skipped / 5 deselected、npm ci、9项前端测试、Vue类型检查和生产构建通过 |
 
 完整门禁通过。前端隔离复制避免 npm ci 删除正在运行的 Vite 原生库；数字人回归版本断言同步为v21。18项跳过来自可选OCR、缺失DOCX/PDF/PPT测试样例及Windows符号链接权限，不计为通过。构建保留既有公共包大于500kB提示，不影响退出码。三处独立实验发现的题目修订缺陷均加入真实存储/HTTP回归：改知识点后新错题漏挂、首次只改标题丢失证据、读旧题→编辑→提交旧判题成绩。
+
+首轮GitHub Linux CI暴露了图谱模型合同测试依赖本机密钥的问题：仅替换模型响应，构造客户端仍触发真实凭据校验。测试fixture现独立提供配置/Provider替身，并断言不得调用外部模型；正式模型客户端与密钥校验未放宽。本地该API专项8项通过，远端复核由PR Checks记录。
 
 单元/集成回归中的课程片段与模型失败响应属于合成测试；网络中断由Playwright显式故障注入，结果标为 `MOCK_network_fault_real_api`。教材、解析、知识提取、数据库、题目判题、作答、错题、画像和学习计划使用真实实现。
 
@@ -96,6 +99,7 @@
 - `_working/acceptance/final/graph-profile-*.png`、`graph-*.png`、`graph-evidence.png`：画像、图谱与出处。
 - `_working/acceptance/disabled-current/results.json`：16项模块关闭检查。
 - `_working/acceptance/verify-final.log`：最后一轮完整工程门禁（`verify-current.log` 为前一轮，也通过）。
+- 原工作区的 `_working/verify-synced-20261001.log`：同步后完整工程门禁，路径相对于 `D:/FileMate-Project`，不属于独立快照的520项结果。
 - `_working/acceptance/question-history.png` 与 `.playwright-cli` 快照：真实页面仅改标题后堆的3次作答不变；改为“优先队列”后堆仍3次、新点0次；历史题集自动出现在列表，只显示导出而无编辑按钮。
 - `_working/graph_revision_independent_validation.py` 及其合成 SQLite：保留初始缺陷复现，不作为修复后通过证据。
 - 以上路径均相对于独立验收 worktree；首轮CORS失败与后续run2现场原样保留，不删除复核证据。

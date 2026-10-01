@@ -7,6 +7,7 @@ import sys
 from collections.abc import Iterator
 from pathlib import Path
 from types import ModuleType
+from unittest.mock import Mock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,6 +17,12 @@ from fastapi.testclient import TestClient
 def graph_server(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> Iterator[ModuleType]:
+    from filemate.llm_client import LLMClient, LLMConfig
+
+    provider = Mock()
+    provider.chat.side_effect = AssertionError("图谱合同测试不得访问外部模型")
+    monkeypatch.setattr(LLMConfig, "from_env", classmethod(lambda cls: cls()))
+    monkeypatch.setattr(LLMClient, "_build", staticmethod(lambda config: provider))
     monkeypatch.setenv("FILEMATE_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setenv("FILEMATE_DB_PATH", str(tmp_path / "filemate.db"))
     monkeypatch.setenv("FILEMATE_IDENTITY_MODE", "anonymous")
@@ -23,6 +30,7 @@ def graph_server(
     sys.modules.pop("server", None)
     module = importlib.import_module("server")
     yield module
+    provider.chat.assert_not_called()
     module._close_tenant_storages()
     module._local_storage.close()
     sys.modules.pop("server", None)
