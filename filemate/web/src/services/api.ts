@@ -1,4 +1,5 @@
 import axios from 'axios'
+import type { ContentAnalysis, InterviewDeletePreview, InterviewReport, InterviewReviewEvent, VisualMetrics } from '../types/interviewReview'
 import type { CodingProblem, CodingSubmission, CodingOverview, ProgrammingStatus } from '../types/programming'
 import type { KnowledgeGraphData, GraphBatch, GraphPlanPreview, GraphPlanResult } from '../types/knowledgeGraph'
 import type {
@@ -780,6 +781,9 @@ export interface InterviewTurn {
   dimensions: Record<string, number>
   feedback: string
   fluency_metrics?: InterviewFluencyMetrics
+  visual_metrics?: VisualMetrics
+  content_analysis?: ContentAnalysis
+  analysis_data_error?: boolean
 }
 
 export type LLMKeySource = 'secure_store' | 'environment' | 'none'
@@ -821,6 +825,7 @@ export interface InterviewFluencyMetrics {
   reference_score?: number
   source: 'speech_recognition'
   markers?: InterviewFluencyMarker[]
+  recording_offset_seconds?: number
 }
 
 export interface InterviewFluencyMarker {
@@ -871,7 +876,8 @@ export async function startInterview(
   difficulty: string,
   sourceId?: string,
   focusWrongId?: string,
-  goalId?: string
+  goalId?: string,
+  allowExternalAnalysis?: boolean
 ): Promise<InterviewSession> {
   const response = await api.post<any, ApiResponse<InterviewSession>>('/interviews', {
     target_role: targetRole,
@@ -879,7 +885,8 @@ export async function startInterview(
     difficulty,
     source_id: sourceId || null,
     focus_wrong_id: focusWrongId || null,
-    goal_id: goalId || null
+    goal_id: goalId || null,
+    allow_external_analysis: allowExternalAnalysis
   })
   if (response.success && response.data) return response.data
   throw new Error(response.error || '创建模拟面试失败')
@@ -894,14 +901,41 @@ export async function getInterview(interviewId: string): Promise<InterviewSessio
 export async function answerInterview(
   interviewId: string,
   answer: string,
-  fluencyMetrics?: InterviewFluencyMetrics
+  fluencyMetrics?: InterviewFluencyMetrics,
+  options?: { questionIndex: number; requestKey: string; visualMetrics?: VisualMetrics }
 ): Promise<InterviewSession> {
   const response = await api.post<any, ApiResponse<InterviewSession>>(
     `/interviews/${interviewId}/answers`,
-    { answer, fluency_metrics: fluencyMetrics }
+    { answer, fluency_metrics: fluencyMetrics, question_index: options?.questionIndex, request_key: options?.requestKey, visual_metrics: options?.visualMetrics }
   )
   if (response.success && response.data) return response.data
   throw new Error(response.error || '面试回答评分失败')
+}
+
+export async function getInterviewReviewStatus(): Promise<{ enabled: boolean; calibration: string }> {
+  return (await api.get<any, ApiResponse<{ enabled: boolean; calibration: string }>>('/interview/review/status', { timeout: 10000 })).data!
+}
+export async function getInterviewReview(id: string): Promise<{ report: InterviewReport | null; events: InterviewReviewEvent[] }> {
+  return (await api.get<any, ApiResponse<{ report: InterviewReport | null; events: InterviewReviewEvent[] }>>(`/interviews/${id}/review`, { timeout: 15000 })).data!
+}
+export async function generateInterviewReview(id: string): Promise<InterviewReport> {
+  return (await api.post<any, ApiResponse<InterviewReport>>(`/interviews/${id}/review`, {}, { timeout: 20000 })).data!
+}
+export async function analyzeInterviewTurn(id: string, turnId: string): Promise<InterviewSession> {
+  return (await api.post<any, ApiResponse<InterviewSession>>(`/interviews/${id}/turns/${turnId}/analyze`, { external_consent: true }, { timeout: 65000 })).data!
+}
+export async function cancelInterviewAnalysis(id: string): Promise<void> { await api.post(`/interviews/${id}/analysis/cancel`, {}, { timeout: 10000 }) }
+export async function clearInterviewAnalysis(id: string): Promise<InterviewSession> {
+  return (await api.post<any, ApiResponse<InterviewSession>>(`/interviews/${id}/analysis/clear`, { confirmed: true }, { timeout: 15000 })).data!
+}
+export async function previewInterviewDelete(id: string): Promise<InterviewDeletePreview> {
+  return (await api.get<any, ApiResponse<InterviewDeletePreview>>(`/interviews/${id}/delete-preview`, { timeout: 15000 })).data!
+}
+export async function deleteInterviewSession(id: string, token: string): Promise<void> {
+  await api.delete(`/interviews/${id}`, { data: { confirmed: true, confirmation_token: token }, timeout: 15000 })
+}
+export async function exportInterviewReview(id: string, format: 'json' | 'markdown' | 'pdf'): Promise<Blob> {
+  return await api.get(`/interviews/${id}/review/export`, { params: { format }, responseType: 'blob', timeout: 20000 }) as unknown as Blob
 }
 
 export interface InterviewQuestion {

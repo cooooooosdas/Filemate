@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
+    "@mediapipe/tasks-vision": "1.0.1",
     "@vueuse/core": "^14.4.0",
     "axios": "^1.18.1",
     "echarts": "^6.1.0",

@@ -34,10 +34,13 @@ try {
         filemate/tests/test_study.py `
         filemate/study `
         filemate/programming `
+        filemate/interview_review `
+        filemate/tests/test_interview_review.py `
         filemate/tests/test_programming.py `
         filemate/understanding/interview.py `
         filemate/understanding/retrieval.py `
         evaluation/run_evaluation.py `
+        evaluation/calibrate_interview.py `
         evaluation/analyze_study.py `
         evaluation/analyze_feedback.py
     Assert-LastExitCode "Ruff"

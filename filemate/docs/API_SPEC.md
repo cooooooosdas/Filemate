@@ -313,7 +313,7 @@ storage = SQLiteStorage(db_path="filemate.db")
 storage.init_schema()
 ```
 
-**数据库版本：** `schema_migrations` 记录已应用迁移，当前 schema 为 v22。`init_schema()` 可对旧数据库安全、幂等升级。
+**数据库版本：** `schema_migrations` 记录已应用迁移，当前 schema 为 v23。`init_schema()` 可对旧数据库安全、幂等升级。
 
 **核心表：**
 
@@ -334,6 +334,7 @@ storage.init_schema()
 | `wrong_questions` | 错题、掌握状态和间隔重复参数 |
 | `interview_sessions` / `interview_turns` | 模拟面试流程与评分记录 |
 | `interview_questions` | 可维护面试题库、启停状态与场景/难度过滤 |
+| `interview_review_state` / `interview_review_events` | V2.4 面试分析修订、报告引用、有限操作事件 |
 | `study_plans` | 学习计划、每日完成状态和考试目标 |
 | `product_feedback` | 匿名产品反馈哈希与统计上下文 |
 | `agent_runs` / `agent_steps` | 按需选择的 Agent 角色、真实步骤、来源标识与输出摘要 |
@@ -602,6 +603,52 @@ Windows x64适配层要求MSVC/SDK。编译使用无网络能力的AppContainer�
 模型不能写入分数。反馈行号须在代码范围内；归因须完整覆盖真实失败点且不能指向通过点。复杂度是静态参考意见。外发编译日志最多6000字符、每点输入/输出2048字符、stderr1024字符，并标注片段截断；代码完整外发最多100KB。异常或格式不合格502，旧记录保留。
 
 
+## 4.12 V2.4 面试观察、内容证据与复盘报告
+
+沿用 `/interviews` 原流程及现役本机/匿名设备分库。SQLite v23 仅追加迁移：回答新增 `visual_metrics`、`content_analysis`、`answer_key`、`answer_digest`；新增 `interview_review_state`、`interview_review_events`。报告复用 Artifact，类型为 `interview_report`，通用 Artifact 编辑返回 409，不能改写面试证据。
+
+`POST /interviews` 增加可选 `allow_external_analysis: boolean | null`，保存到 Agent 上下文引用。`false` 禁止该场出题及提交回答时自动外发；新前端默认 `false`，用户后续逐题确认分析。旧客户端不传/null 保持已有流程；`FILEMATE_INTERVIEW_LOCAL_ONLY=1` 优先强制本地。原知识讲解和未授权私有错题规则保留。
+
+`POST /interviews/{id}/answers` 增加可选 `question_index`（0–100）、`request_key`（16–80 位字母/数字/下划线/短横线）与 `visual_metrics`。同场同键且正文、题号和指标一致，重复提交返回现有记录；同键不同请求或过期题号返回 409，不推进第二题。旧客户端可省略这些字段。空回答仍为 422。
+
+视觉摘要合同如下，额外字段、非有限数、计数不一致或超出时段的事件返回 422：
+
+```json
+{
+  "source": "mediapipe_local_v1", "timeline_origin": "recording",
+  "duration_seconds": 10, "sample_count": 20, "face_samples": 12,
+  "low_light_samples": 4, "dropped_samples": 0,
+  "events": [{"kind": "no_face", "start": 4, "end": 7}],
+  "events_truncated": false
+}
+```
+
+示例为合成合同数据。采样最多约 2Hz、30 分钟、3604 次，事件最多 200 条。`kind` 只允许 `no_face`、`low_light`、`head_turn`、`head_pose_change`、`smile_change`、`look_direction_change`；不接受音视频、帧、人脸坐标、情绪或人格字段。比例来自样本数，不是识别准确率。模型和 WASM 随前端同源分发，在 Worker 本机推理。
+
+| 方法 | 路径 | 合同与副作用 |
+|---|---|---|
+| GET | `/interview/review/status` | 返回 `enabled`、`version=2.4`、`video_uploaded=false`、`calibration=待校准`；关闭模块仍为 200 |
+| GET | `/interviews/{id}/review` | `{report, events}`；未生成或记录变化后 `report=null`；损坏报告 409，原回答保留 |
+| POST | `/interviews/{id}/review` | 本地生成报告，无回答 409；同输入复用同一 Artifact；新回答或分析更新后需重新生成 |
+| POST | `/interviews/{id}/turns/{turn_id}/analyze` | 请求 `{external_consent:true}`；只发送问题、回答、训练方向，无音视频；返回更新后的面试 |
+| POST | `/interviews/{id}/analysis/cancel` | 使迟到分析失效；保留旧结果，返回 `{cancelled:true}` |
+| POST | `/interviews/{id}/analysis/clear` | 请求 `{confirmed:true}`；清空模型评分、内容/视觉分析、报告和表达复盘，保留原回答及语音节奏 |
+| GET | `/interviews/{id}/delete-preview` | 返回本场回答/报告数、`scope`、64 位 `confirmation_token` |
+| DELETE | `/interviews/{id}` | 请求 `{confirmed:true,confirmation_token:"..."}`；删除本场记录及关联私有 Agent 记录；不删除原资料和其他练习 |
+| GET | `/interviews/{id}/review/export?format=json\|markdown\|pdf` | 要求当前报告已生成，否则 409；返回实际下载文件，不使用 ApiResponse 信封 |
+
+除状态接口外，`FILEMATE_ENABLE_INTERVIEW_REVIEW=0` 关闭以上八个增强路由（503），并拒绝回答请求中的视觉摘要；原有创建、获取、文字/语音回答及题库接口继续可用。前端 `VITE_ENABLE_INTERVIEW_REVIEW=false` 隐藏增强报告与视觉操作。关闭不删除数据；恢复后重新可读。不存在的会话/回答 404；确认缺失 422；删除预览后记录变化 409，重复确认已删除会话仍返回 `{deleted:true}`。
+
+模型内容分析含 `source=llm_reference`、`areas`、`dimension_evidence`、`keywords`。六项 `areas` 为 `completeness`、`logic`、`technical_coverage`、`technical_expression`、`relevance`、`star`，各项含 `status=covered|partial|missing|not_applicable`、`evidence`、`suggestion`。肯定/部分覆盖必须提供原回答子串；四维引用必须齐全且为原句，关键词最多 20 个、每个最多 40 字并来自回答。读取持久化数据时重新验证，损坏记录返回 `analysis_data_error=true`，仅跳过损坏的分析而保留其他有效采集证据及原库字节；内容引用无效时评分和总分计数均排除该题，显示待评估。模型分数为有限 0–100 参考值，`scoring_mode=llm`、`scoring_version=v2.4`；缺字段、编造引用或网络失败返回 502，不替换旧报告。未确认外发 422、本地模式 503、私有错题未授权 403。已有效分析的同一回答复用已有结果，不重复调用模型；重新分析须先清空。
+
+取消、清空、删除和新回答均推进修订号，迟到模型不能写入，返回 409。取消只阻止结果落库，已经发送的远端请求可能仍被供应商处理。事件仅保存操作、题目/回答引用或计数，不复制回答原文；删除后仅保留无会话标识的删除计数事件。
+
+报告含逐题原回答、评分来源和原句、关键词、六项内容建议、本地结构线索、实际节奏/视觉统计及 `timeline`。时间轴每项含 `question_index`、`start/end`、`kind/label`、`timebase=recording|speech|visual`。语音指标可选 `recording_offset_seconds`；只有实际录像开始后启动语音识别时才由前端提供，用于对齐录像。没有共同起点则保留独立时间基准，不假装能定位录像。页面刷新后只恢复摘要，不恢复内存录像；有本题录像和录像时间基准时才允许点击回放。
+
+导出使用 `Content-Disposition: attachment` 和 `Cache-Control: no-store`。PDF 通过 ReportLab 嵌入随项目提供的 Noto Sans SC 字体（SIL OFL），无需阅读器系统中文字库。无内容评分时 `overall_score=null`，无语音/视觉样本的比例和字速为 `null`。报告持续标记“待校准”，不构造情绪、人格、录用结论或专家准确率。匿名专家 CSV 与 Spearman 工具位于 `evaluation/`，真实专家和合成配对分开统计。
+
+摄像头/录像只保存在当前页 Blob 内存，主动下载由用户决定；音视频不传业务服务。语音识别使用浏览器 API，厂商可能提供在线识别服务，前端明确提示这一独立边界。删除本地录像不会删除已保存回答和观察摘要，清空分析不会删除原回答；整场删除必须先预览确认。
+
 ## 变更记录
 
 | 日期 | 版本 | 内容 | 作者 |
@@ -629,3 +676,4 @@ Windows x64适配层要求MSVC/SDK。编译使用无网络能力的AppContainer�
 | 2026-10-01 | v2.2 | 题集修订只读快照、历史错题独立复练、标题证据保留及过期/并发判题409保护；无新增迁移 | Codex |
 | 2026-09-29 | v2.2 | 增加错题口头复练的资料片段定位、Agent 引用传递、无匹配回退与片段变更失效合同 | Codex |
 | 2026-09-29 | v2.3 | 增加 SQLite v19 今日学习时间预算、用户任务排序与可解释错因建议合同 | Codex |
+| 2026-10-01 | V2.4 面试增强 | 增加 SQLite v23 本地视觉摘要、原句内容证据、幂等回答、修订取消、报告导出与确认删除合同 | Codex |
