@@ -486,6 +486,8 @@ uv run python main.py --check --db _working/check.db
 
 不要提交真实 `.env`、API Key、个人资料、数据库或用户导出文件。
 
+Tauri 桌面宿主固定 Sidecar 的 `FILEMATE_HOST=127.0.0.1`、`FILEMATE_PORT=8001`、`FILEMATE_ENV=development` 和 `FILEMATE_IDENTITY_MODE=local`，不会继承网站运维终端的对应配置。Host 白名单固定为 `localhost,127.0.0.1,tauri.localhost`；发布构建仅允许三个 Tauri Origin，debug 构建额外允许 `http://localhost:5173` 和 `http://127.0.0.1:5173`。直接启动 Python API 的环境变量配置仍按下表生效；LLM 密钥、功能开关及评分隐私设置不被桌面壳重写。
+
 | 变量 | 默认值/要求 | 用途 |
 |---|---|---|
 | `LLM_PROVIDER` | `auto` | 根据 Base URL 选择 Provider |

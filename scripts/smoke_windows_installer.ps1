@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory = $true)]
     [string]$BundleRoot,
     [string]$EvidencePath = "",
@@ -149,7 +149,7 @@ try {
         }
         $localResponse = Invoke-WebRequest -Uri "http://127.0.0.1:8001/" `
             -Method Get -TimeoutSec 5 -UseBasicParsing
-        if ($localResponse.Headers.ContainsKey("Set-Cookie")) {
+        if ($localResponse.Headers["Set-Cookie"]) {
             throw "Desktop backend inherited website anonymous identity mode."
         }
         foreach ($origin in @("tauri://localhost", "http://tauri.localhost", "https://tauri.localhost")) {

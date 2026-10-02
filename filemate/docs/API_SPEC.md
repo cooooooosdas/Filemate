@@ -389,6 +389,8 @@ HTTP 错误同样保持该结构：参数错误使用 `400/422`，资源不存�
 
 携带 `Origin` 的状态变更请求只接受 `FILEMATE_CORS_ORIGINS` 白名单来源。资料 API 不返回 `source_path`、`workspace_id` 等服务器内部字段；`.ics` 只允许从当前身份已应用的执行记录读取，且路径必须位于该身份归档目录内。
 
+Tauri 桌面启动合同：Sidecar 固定使用 `127.0.0.1:8001`、`FILEMATE_ENV=development` 和 `FILEMATE_IDENTITY_MODE=local`；Host 白名单为 `localhost,127.0.0.1,tauri.localhost`。发布构建的 CORS Origin 仅为 `tauri://localhost`、`http://tauri.localhost` 和 `https://tauri.localhost`；debug 构建额外允许 `http://localhost:5173`、`http://127.0.0.1:5173`。父进程的网站运行参数不改变桌面数据空间或安全边界；直接启动 Python API 时仍由环境变量控制网站模式。本次不修改 HTTP API、schema、LLM 凭据、功能开关或外发同意合同。
+
 | 方法 | 路径 | 作用 | 持久化结果 |
 |---|---|---|---|
 | `POST` | `/ai/summarize` | 生成摘要 | `Source + summary Artifact + Context` |
