@@ -315,9 +315,14 @@ function trapMobileFocus(event: KeyboardEvent): void {
   if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
 }
-function handleShortcut(event: KeyboardEvent): void {
+async function handleShortcut(event: KeyboardEvent): Promise<void> {
   if (route.meta.layout === 'auth') return
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); mobileNavOpen.value = false; showFinder.value = !showFinder.value }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    if (event.repeat) return
+    if (mobileNavOpen.value) await closeMobileNav()
+    showFinder.value = !showFinder.value
+  }
 }
 watch(() => route.fullPath, () => {
   if (mobileNavOpen.value) void finishMobileNavigation()

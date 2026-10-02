@@ -20,20 +20,41 @@ const routes = ['/', '/today', '/import', '/classification', '/naming', '/schedu
 await fs.mkdir(out, { recursive: true })
 const browser = await chromium.launch({ channel: process.env.FILEMATE_BROWSER_CHANNEL || (process.platform === 'win32' ? 'msedge' : undefined) })
 const context = await browser.newContext()
+const relayErrors = []
 // Optional relay targets a real isolated API, never the existing user's local service.
 if (api && new URL(api).origin !== new URL(base).origin) {
   await context.route(base + '/**', async route => {
     const request = route.request(), url = new URL(request.url())
     if (['fetch', 'xhr'].includes(request.resourceType()) && !/^\/(assets|interview-vision)\//.test(url.pathname)) {
-      return route.fulfill({ response: await context.request.fetch(api + url.pathname + url.search, {
-        method: request.method(), data: request.postData(), headers: { 'Content-Type': 'application/json' }
-      }) })
+      try {
+        const method = request.method(), body = request.postData()
+        const options = { method }
+        if (!['GET', 'HEAD'].includes(method) && body !== null) {
+          options.data = body
+          options.headers = { 'Content-Type': 'application/json' }
+        }
+        return await route.fulfill({ response: await context.request.fetch(api + url.pathname + url.search, options) })
+      } catch (error) {
+        relayErrors.push({ path: url.pathname, error: String(error) })
+        await route.abort('failed').catch(() => {})
+        return
+      }
     }
     return route.continue()
   })
 }
 const page = await context.newPage()
 const results = []
+let complete = false
+async function persist() {
+  await fs.writeFile(path.join(out, 'accessibility.json'), JSON.stringify({
+    generated_at: new Date().toISOString(), base, api_relay: api || null,
+    sample_kind: 'automated_ui_accessibility_regression', axe_version: require('axe-core/package.json').version,
+    scope: 'Empty/default pages and named transient surfaces; no real user or full WCAG certification',
+    complete, passed: complete && relayErrors.length === 0 && results.every(r => r.passed), relayErrors, results
+  }, null, 2))
+}
+await persist()
 async function audit() {
   await page.evaluate(axeSource)
   return page.evaluate(async () => {
@@ -47,12 +68,7 @@ async function audit() {
 async function check(name, task) {
   try { const evidence = await task(); results.push({ name, passed: true, evidence }); console.log('PASS ' + name) }
   catch (error) { results.push({ name, passed: false, error: String(error) }); console.log('FAIL ' + name + ': ' + String(error).slice(0, 180)) }
-  await fs.writeFile(path.join(out, 'accessibility.json'), JSON.stringify({
-    generated_at: new Date().toISOString(), base, api_relay: api || null,
-    sample_kind: 'automated_ui_accessibility_regression', axe_version: require('axe-core/package.json').version,
-    scope: 'Empty/default pages and named transient surfaces; no real user or full WCAG certification',
-    passed: results.every(r => r.passed), results
-  }, null, 2))
+  await persist()
 }
 try {
   for (const width of [375, 768, 1280]) {
@@ -97,6 +113,11 @@ try {
     await page.keyboard.press('Escape')
     assert.equal(await menu.evaluate(e => e === document.activeElement), true)
     assert.equal(await page.locator('#main-content').evaluate(e => e.inert), false)
+    await menu.click(); await page.keyboard.press('Control+k')
+    await page.getByRole('dialog', { name: '查找功能', exact: true }).waitFor()
+    await page.waitForTimeout(350)
+    await page.keyboard.press('Escape'); await page.waitForTimeout(350)
+    assert.equal(await menu.evaluate(e => e === document.activeElement), true)
     await menu.click(); await drawer.locator('.brand-link').click()
     assert.equal(await page.locator('#main-content').evaluate(e => e === document.activeElement), true)
     await menu.click(); await page.setViewportSize({ width: 1280, height: 844 })
@@ -149,5 +170,8 @@ try {
     const longAnimations = await page.evaluate(() => document.getAnimations().filter(a => a.playState === 'running' && Number(a.effect?.getComputedTiming().duration) > 1).length)
     assert.equal(longAnimations, 0)
   })
-} finally { await browser.close() }
-if (results.some(r => !r.passed)) process.exitCode = 1
+  complete = true
+} catch (error) {
+  results.push({ name: 'fatal harness failure', passed: false, error: String(error) })
+} finally { await browser.close(); await persist() }
+if (!complete || relayErrors.length || results.some(r => !r.passed)) process.exitCode = 1
