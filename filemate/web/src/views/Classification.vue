@@ -329,7 +329,7 @@ function updateChart() {
   justify-content: center;
   gap: 10px;
   text-align: center;
-  color: #6d8077;
+  color: var(--text-muted);
   font-size: 13px;
   background: var(--bg-surface);
 }

@@ -8,17 +8,18 @@
       'mobile-nav-open': mobileNavOpen
     }"
   >
-    <a class="skip-link" href="#main-content">跳到主要内容</a>
+    <a class="skip-link" href="#main-content" :inert="mobileNavOpen">跳到主要内容</a>
     <button
       v-if="mobileNavOpen"
       class="mobile-backdrop"
-      aria-label="关闭导航"
+      aria-hidden="true"
+      tabindex="-1"
       @click="closeMobileNav"
     />
 
-    <aside id="main-navigation" class="sidebar" aria-label="主导航" @keydown.esc="closeMobileNav" @keydown.tab="trapMobileFocus">
+    <aside id="main-navigation" class="sidebar" aria-label="主导航" :role="mobileNavOpen ? 'dialog' : undefined" :aria-modal="mobileNavOpen ? 'true' : undefined" @keydown.esc="closeMobileNav" @keydown.tab="trapMobileFocus">
       <div class="sidebar-head">
-        <router-link class="brand-link" to="/" @click="mobileNavOpen = false">
+        <router-link class="brand-link" to="/" @click="finishMobileNavigation">
           <Logo />
         </router-link>
         <button
@@ -28,9 +29,12 @@
         >
           <el-icon><Fold v-if="!sidebarCollapsed" /><Expand v-else /></el-icon>
         </button>
+        <button v-if="mobileNavOpen" type="button" class="icon-button mobile-close-button" aria-label="关闭导航" @click="closeMobileNav">
+          <el-icon><Close /></el-icon>
+        </button>
       </div>
 
-      <router-link class="space-switch" to="/knowledge" title="打开个人知识库">
+      <router-link class="space-switch" to="/knowledge" title="打开个人知识库" @click="finishMobileNavigation">
         <span class="space-icon"><el-icon><FolderOpened /></el-icon></span>
         <span class="space-copy"><strong>个人学习空间</strong><small>资料 · 知识 · 成长</small></span>
         <el-icon class="space-arrow"><ArrowRight /></el-icon>
@@ -46,7 +50,7 @@
             :title="item.title"
             :aria-label="item.title"
             class="nav-item"
-            @click="mobileNavOpen = false"
+            @click="finishMobileNavigation"
           >
             <el-icon><component :is="item.icon" /></el-icon>
             <span>{{ item.title }}</span>
@@ -63,7 +67,7 @@
       </div>
     </aside>
 
-    <main id="main-content" class="workspace" tabindex="-1">
+    <main id="main-content" class="workspace" tabindex="-1" :inert="mobileNavOpen">
       <div v-if="backendConnected === false" class="service-banner" role="alert">
         <el-icon><Connection /></el-icon>
         <div>
@@ -120,7 +124,7 @@
           >
             <el-icon><Setting /></el-icon>
           </button>
-          <div class="avatar" aria-label="FileMate 学习伙伴">
+          <div class="avatar" role="img" aria-label="FileMate 学习伙伴">
             <img src="./assets/filemate-mascot.png" alt="" aria-hidden="true" />
           </div>
         </div>
@@ -193,6 +197,7 @@ import {
   Calendar,
   Clock,
   Collection,
+  Close,
   Connection,
   Share,
   DataLine,
@@ -289,7 +294,20 @@ async function openMobileNav(): Promise<void> {
   await nextTick()
   document.querySelector<HTMLAnchorElement>('.sidebar .brand-link')?.focus()
 }
-function closeMobileNav(): void { mobileNavOpen.value = false; mobileMenuButton.value?.focus() }
+async function closeMobileNav(): Promise<void> {
+  mobileNavOpen.value = false
+  await nextTick()
+  mobileMenuButton.value?.focus()
+}
+async function finishMobileNavigation(): Promise<void> {
+  if (!mobileNavOpen.value) return
+  mobileNavOpen.value = false
+  await nextTick()
+  document.getElementById('main-content')?.focus()
+}
+function handleResize(): void {
+  if (window.innerWidth > 900 && mobileNavOpen.value) void finishMobileNavigation()
+}
 function trapMobileFocus(event: KeyboardEvent): void {
   if (!mobileNavOpen.value) return
   const links = Array.from(document.querySelectorAll<HTMLElement>('.sidebar a, .sidebar button')).filter(item => item.getClientRects().length)
@@ -297,12 +315,17 @@ function trapMobileFocus(event: KeyboardEvent): void {
   if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
 }
-function handleShortcut(event: KeyboardEvent): void {
+async function handleShortcut(event: KeyboardEvent): Promise<void> {
   if (route.meta.layout === 'auth') return
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); mobileNavOpen.value = false; showFinder.value = !showFinder.value }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    if (event.repeat) return
+    if (mobileNavOpen.value) await closeMobileNav()
+    showFinder.value = !showFinder.value
+  }
 }
 watch(() => route.fullPath, () => {
-  mobileNavOpen.value = false
+  if (mobileNavOpen.value) void finishMobileNavigation()
   if (route.meta.layout !== 'auth') void loadShellState()
   else { showFinder.value = false; showSettings.value = false }
 })
@@ -345,8 +368,13 @@ onMounted(() => {
     if (!isAuthPath(route.path)) void loadShellState()
   })
   window.addEventListener('keydown', handleShortcut)
+  window.addEventListener('resize', handleResize)
 })
-onUnmounted(() => { window.removeEventListener('keydown', handleShortcut); window.clearTimeout(refreshTimer) })
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleShortcut)
+  window.removeEventListener('resize', handleResize)
+  window.clearTimeout(refreshTimer)
+})
 
 function isAuthPath(path: string): boolean {
   return path === '/login' || path === '/register'
@@ -937,7 +965,7 @@ function isAuthPath(path: string): boolean {
 .finder-trigger:hover { border-color: var(--accent-border); color: var(--accent); }
 .finder-trigger kbd { margin-left: 24px; padding: 3px 5px; border: 1px solid var(--border-subtle); border-radius: 4px; font: 10px var(--font-mono); }
 .finder-input { display: flex; align-items: center; gap: 12px; border: 1px solid var(--border-strong); border-radius: 8px; padding: 0 14px; color: var(--text-muted); }
-.finder-input:focus-within { border-color: var(--accent); outline: 2px solid var(--accent-soft); }
+.finder-input:focus-within { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 2px; }
 .finder-input input { min-width: 0; width: 100%; min-height: 48px; border: 0; background: transparent; color: var(--text-primary); outline: none; font-size: 14px; }
 .finder-results { max-height: 360px; overflow: auto; margin-top: 12px; }
 .finder-results a { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 12px; border-radius: 8px; color: var(--text-primary); font-size: 13px; text-decoration: none; }

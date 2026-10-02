@@ -50,9 +50,9 @@
             <div class="field-control" :class="{ invalid: errors.confirmPassword }"><el-icon><Key /></el-icon><input id="confirm-password" v-model="confirmPassword" name="confirmPassword" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" placeholder="请再次输入密码" :aria-invalid="Boolean(errors.confirmPassword)" :aria-describedby="errors.confirmPassword ? 'confirm-password-error' : undefined" /></div>
             <p v-if="errors.confirmPassword" id="confirm-password-error" class="field-error" role="alert">{{ errors.confirmPassword }}</p>
           </div>
-          <label v-if="isRegister" class="check-row" :class="{ invalid: errors.accepted }"><input v-model="accepted" type="checkbox" /><span>我已了解这是界面预览，不会创建真实账号</span></label>
+          <label v-if="isRegister" class="check-row" :class="{ invalid: errors.accepted }"><input v-model="accepted" type="checkbox" :aria-invalid="Boolean(errors.accepted)" :aria-describedby="errors.accepted ? 'agreement-error' : undefined" /><span>我已了解这是界面预览，不会创建真实账号</span></label>
           <label v-else class="check-row"><input v-model="rememberMe" type="checkbox" /><span>在这台设备上保持登录</span></label>
-          <p v-if="errors.accepted" class="field-error agreement-error" role="alert">{{ errors.accepted }}</p>
+          <p v-if="errors.accepted" id="agreement-error" class="field-error agreement-error" role="alert">{{ errors.accepted }}</p>
           <button class="primary-action" type="submit" :aria-label="isRegister ? '创建账号' : '登录'">{{ isRegister ? '创建账号' : '登录' }}<el-icon><Right /></el-icon></button>
         </form>
         <div class="guest-divider"><span>暂时不使用账号</span></div>
@@ -64,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { DocumentAdd, Hide, Key, Lock, Message, Notebook, Reading, Right, User, View } from '@element-plus/icons-vue'
@@ -99,7 +99,14 @@ function validate(): boolean {
   return Object.keys(errors).length === 0
 }
 
-function handleSubmit(): void { if (validate()) ElMessage.info('账号服务尚未接入，本次未保存任何账号或密码') }
+async function handleSubmit(): Promise<void> {
+  if (validate()) {
+    ElMessage.info('账号服务尚未接入，本次未保存任何账号或密码')
+    return
+  }
+  await nextTick()
+  document.querySelector<HTMLInputElement>('form input[aria-invalid="true"]')?.focus()
+}
 function showUnavailableNotice(): void { ElMessage.info('找回密码功能将在账号服务接入后开放') }
 </script>
 
@@ -195,7 +202,7 @@ function showUnavailableNotice(): void { ElMessage.info('找回密码功能将�
 .field-label-row label { color: var(--text-primary); font-size: 13px; font-weight: 500; }
 .field-label-row { display: flex; justify-content: space-between; align-items: center; min-height: 30px; margin-top: -8px; }
 .field-control { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; margin-top: 9px; padding: 0 12px; min-height: 52px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: white; transition: border-color var(--motion-fast); }
-.field-control:focus-within { border-color: var(--accent); outline: 2px solid var(--accent-soft); outline-offset: 1px; }
+.field-control:focus-within { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 2px; }
 .field-control.invalid { border-color: var(--danger); }
 .field-control > .el-icon { color: var(--text-muted); font-size: 18px; }
 .field-control input { width: 100%; min-width: 0; height: 50px; padding: 0; border: 0; outline: 0; color: var(--text-primary); background: transparent; font-size: 14px; }
