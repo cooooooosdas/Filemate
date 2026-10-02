@@ -46,6 +46,7 @@
       <div v-else class="uploading-content">
         <div class="upload-progress-wrap">
           <el-progress
+            aria-label="资料上传进度"
             type="circle"
             :percentage="uploadProgress"
             :width="140"
@@ -388,7 +389,6 @@ const getStatusText = (status: string) => {
 
   --text-primary: #183229;
   --text-secondary: #4d655b;
-  --text-muted: #6d8077;
 
   --radius-sm: 8px;
   --radius-md: 12px;
