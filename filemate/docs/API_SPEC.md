@@ -688,6 +688,8 @@ SQLite v24 **追加** `career_positions`、`career_trainings` 和 `career_events
 
 ## 变更记录
 
+alpha.2 集成发布不修改 API 或 schema。桌面壳为已有 `FILEMATE_CPP_TOOLCHAIN_DIR` 设置持久应用数据目录 `cpp-toolchain`，开发默认目录不变。生产静态网关对缺失的已知资源返回 404；前端文件更新期间不可用返回 503/Retry-After，不退出 API 网关进程。详见集成发布报告。
+
 | 日期 | 版本 | 内容 | 作者 |
 |---|---|---|---|
 | 2026-07-14 | v0.1 | 创建占位文件 | 胡希 |

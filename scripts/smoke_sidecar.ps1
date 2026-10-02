@@ -1,7 +1,7 @@
 param(
     [string]$BinaryPath = "",
     [string]$EvidencePath = "",
-    [int]$TimeoutSeconds = 30
+    [int]$TimeoutSeconds = 45
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,6 +15,10 @@ $stdoutPath = Join-Path $workingDir "sidecar.stdout.log"
 $stderrPath = Join-Path $workingDir "sidecar.stderr.log"
 $shutdownToken = [guid]::NewGuid().ToString("N")
 $process = $null
+$expectedVersion = (
+    Get-Content -Raw -LiteralPath (Join-Path $tauriRoot 'tauri.conf.json') |
+        ConvertFrom-Json
+).version
 
 if (-not $BinaryPath) {
     $binary = Get-ChildItem -LiteralPath (Join-Path $tauriRoot "binaries") `
@@ -38,8 +42,19 @@ $environment = @{
     FILEMATE_UPLOAD_DIR = (Join-Path $dataDir "inbox")
     FILEMATE_ARCHIVE_DIR = $archiveDir
     FILEMATE_SHUTDOWN_TOKEN = $shutdownToken
+    FILEMATE_HOST = '127.0.0.1'
+    FILEMATE_PORT = '8001'
+    FILEMATE_ENV = 'development'
+    FILEMATE_IDENTITY_MODE = 'local'
+    FILEMATE_INTERVIEW_LOCAL_ONLY = '1'
+    FILEMATE_ENABLE_DIGITAL_HUMAN = '1'
+    FILEMATE_ENABLE_KNOWLEDGE_GRAPH = '1'
+    FILEMATE_ENABLE_PROGRAMMING = '1'
+    FILEMATE_ENABLE_INTERVIEW_REVIEW = '1'
+    FILEMATE_ENABLE_CAREER = '1'
 }
 $previousEnvironment = @{}
+$previousProxy = [Net.WebRequest]::DefaultWebProxy
 
 function Get-ProcessLogs {
     $stdout = if (Test-Path -LiteralPath $stdoutPath) {
@@ -49,6 +64,17 @@ function Get-ProcessLogs {
         Get-Content -Raw -LiteralPath $stderrPath -ErrorAction SilentlyContinue
     } else { "" }
     return "stdout:`n$stdout`nstderr:`n$stderr"
+}
+
+function Get-BinarySha256 {
+    $stream = [IO.File]::OpenRead($BinaryPath)
+    $hasher = [Security.Cryptography.SHA256]::Create()
+    try {
+        return [BitConverter]::ToString($hasher.ComputeHash($stream)).Replace('-', '').ToLowerInvariant()
+    } finally {
+        $hasher.Dispose()
+        $stream.Dispose()
+    }
 }
 
 function Test-BackendPort {
@@ -68,6 +94,8 @@ function Test-BackendPort {
 }
 
 try {
+    # All requests here are loopback; a system proxy must not intercept readiness checks.
+    [Net.WebRequest]::DefaultWebProxy = $null
     New-Item -ItemType Directory -Force -Path $workingDir, $dataDir, $archiveDir | Out-Null
     if (Test-BackendPort) {
         throw "Port 8001 is already in use; sidecar smoke requires an isolated runner."
@@ -94,19 +122,66 @@ try {
         try {
             $health = Invoke-RestMethod -Uri "http://127.0.0.1:8001/api/health" `
                 -Method Get -TimeoutSec 2 -UseBasicParsing
-            if ($health.success -and $health.data.version) {
+            if ($health.success -and $health.data.version -eq $expectedVersion) {
                 break
             }
         } catch {}
         Start-Sleep -Milliseconds 250
     }
-    if (-not $health -or -not $health.success -or -not $health.data.version) {
-        throw "Sidecar did not become ready within $TimeoutSeconds seconds. $(Get-ProcessLogs)"
+    if (-not $health -or -not $health.success -or $health.data.version -ne $expectedVersion) {
+        throw "Sidecar did not report expected version $expectedVersion within $TimeoutSeconds seconds. $(Get-ProcessLogs)"
     }
 
     $databasePath = $environment.FILEMATE_DB_PATH
     if (-not (Test-Path -LiteralPath $databasePath)) {
         throw "Sidecar health succeeded but SQLite database was not created."
+    }
+
+    $moduleChecks = [ordered]@{}
+    foreach ($endpoint in @(
+        '/api/digital-human/playbacks', '/api/knowledge-graph',
+        '/api/programming/problems', '/interview/review/status', '/api/career/catalog'
+    )) {
+        $moduleResponse = Invoke-RestMethod -Uri "http://127.0.0.1:8001$endpoint" `
+            -Method Get -TimeoutSec 10 -UseBasicParsing
+        if (-not $moduleResponse.success) {
+            throw "Bundled module contract failed: $endpoint"
+        }
+        $moduleChecks[$endpoint] = $true
+    }
+
+    # Verify bundled modules and fonts in an isolated database without model calls.
+    $interviewBody = [Text.Encoding]::UTF8.GetBytes((@{
+        target_role = 'Packaged runtime synthetic check'
+        allow_external_analysis = $false
+    } | ConvertTo-Json))
+    $created = Invoke-RestMethod -Uri 'http://127.0.0.1:8001/interviews' `
+        -Method Post -Body $interviewBody -ContentType 'application/json; charset=utf-8' `
+        -TimeoutSec 10 -UseBasicParsing
+    $interviewId = $created.data.interview_id
+    if (-not $created.success -or -not $interviewId) {
+        throw 'Bundled interview creation failed.'
+    }
+    $answerBody = [Text.Encoding]::UTF8.GetBytes((@{
+        answer = 'I explain the background and task, then the action, result and boundaries to review.'
+        question_index = 0
+        request_key = "release-smoke-$runId"
+    } | ConvertTo-Json))
+    $answered = Invoke-RestMethod -Uri "http://127.0.0.1:8001/interviews/$interviewId/answers" `
+        -Method Post -Body $answerBody -ContentType 'application/json; charset=utf-8' `
+        -TimeoutSec 10 -UseBasicParsing
+    if (-not $answered.success -or $answered.data.turns.Count -ne 1) {
+        throw 'Bundled interview answer persistence failed.'
+    }
+    $report = Invoke-RestMethod -Uri "http://127.0.0.1:8001/interviews/$interviewId/review" `
+        -Method Post -TimeoutSec 10 -UseBasicParsing
+    if (-not $report.success) { throw 'Bundled interview report failed.' }
+    $pdfPath = Join-Path $workingDir 'synthetic-interview-report.pdf'
+    Invoke-WebRequest -Uri "http://127.0.0.1:8001/interviews/$interviewId/review/export?format=pdf" `
+        -OutFile $pdfPath -TimeoutSec 15 -UseBasicParsing | Out-Null
+    $pdfBytes = [IO.File]::ReadAllBytes($pdfPath)
+    if ($pdfBytes.Length -lt 1000 -or [Text.Encoding]::ASCII.GetString($pdfBytes, 0, 5) -ne '%PDF-') {
+        throw 'Bundled Chinese PDF export is invalid.'
     }
 
     $headers = @{ "X-FileMate-Shutdown-Token" = $shutdownToken }
@@ -146,6 +221,13 @@ try {
         checked_at = (Get-Date).ToUniversalTime().ToString("o")
         binary = $BinaryPath
         version = $health.data.version
+        expected_version = $expectedVersion
+        binary_sha256 = Get-BinarySha256
+        sample_kind = 'synthetic_packaged_runtime_regression'
+        module_contracts = $moduleChecks
+        interview_answer_persisted = $true
+        chinese_pdf_exported = $true
+        pdf_bytes = $pdfBytes.Length
         ready = $true
         database_created = $true
         graceful_shutdown = $true
@@ -194,4 +276,5 @@ try {
             "Process"
         )
     }
+    [Net.WebRequest]::DefaultWebProxy = $previousProxy
 }

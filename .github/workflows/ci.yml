@@ -27,12 +27,17 @@ jobs:
           cache-dependency-glob: "pyproject.toml"
       - name: Install project
         run: uv sync --extra dev
+      - name: Set up Node for release gateway contracts
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
       - name: Static checks
         run: >-
           uv run ruff check
           server.py main.py
           filemate/execution
           filemate/tests/test_storage.py
+          filemate/tests/test_release_contract.py
           filemate/tests/test_file_ops.py
           filemate/tests/test_archiver.py
           filemate/tests/test_confirmation_executor.py
@@ -109,7 +114,7 @@ jobs:
         uses: astral-sh/setup-uv@v9.0.0
         with:
           python-version: "3.11"
-          enable-cache: true
+          enable-cache: false
           cache-dependency-glob: "requirements-desktop.txt"
       - name: Set up Node
         uses: actions/setup-node@v6

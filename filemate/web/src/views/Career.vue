@@ -93,7 +93,7 @@
             </p>
           </details>
         </aside>
-        <main class="career-detail">
+        <section class="career-detail" aria-label="岗位详情与训练">
           <section
             v-if="draft"
             class="panel import-panel"
@@ -554,7 +554,7 @@
               ><small>{{ date(item.created_at) }}</small>
             </button>
           </section>
-        </main>
+        </section>
       </div>
       <details class="panel operation-log">
         <summary>求职操作记录 · 最近100条</summary>

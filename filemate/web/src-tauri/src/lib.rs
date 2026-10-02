@@ -51,6 +51,7 @@ pub fn run() {
                 .env("FILEMATE_DATA_DIR", &data_dir)
                 .env("FILEMATE_DB_PATH", data_dir.join("filemate.db"))
                 .env("FILEMATE_UPLOAD_DIR", data_dir.join("inbox"))
+                .env("FILEMATE_CPP_TOOLCHAIN_DIR", data_dir.join("cpp-toolchain"))
                 .env("FILEMATE_ARCHIVE_DIR", &archive_dir)
                 .env("FILEMATE_SHUTDOWN_TOKEN", &shutdown_token);
             let (mut receiver, child) = sidecar.spawn()?;

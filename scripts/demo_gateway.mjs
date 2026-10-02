@@ -21,7 +21,7 @@ if (!fs.existsSync(path.join(staticRoot, 'index.html'))) {
 const apiPrefixes = [
   '/process', '/sessions', '/ai', '/knowledge', '/quiz', '/wrongbook',
   '/interview', '/interviews', '/analytics', '/review', '/study-plans',
-  '/evaluation',
+  '/evaluation', '/goals', '/trust', '/agents',
 ]
 
 const contentTypes = new Map([
@@ -34,7 +34,16 @@ const contentTypes = new Map([
   ['.svg', 'image/svg+xml'],
   ['.webp', 'image/webp'],
   ['.woff2', 'font/woff2'],
+  ['.wasm', 'application/wasm'],
 ])
+
+const securityHeaders = {
+  'content-security-policy': "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+  'x-content-type-options': 'nosniff',
+  'x-frame-options': 'DENY',
+  'referrer-policy': 'strict-origin-when-cross-origin',
+  'permissions-policy': 'camera=(self), microphone=(self), geolocation=(), payment=(), usb=()',
+}
 
 function safeEqual(left, right) {
   const leftBuffer = Buffer.from(left)
@@ -126,9 +135,24 @@ function serveFrontend(pathname, response) {
 
   const candidate = path.resolve(staticRoot, relativePath || 'index.html')
   const insideStaticRoot = candidate === staticRoot || candidate.startsWith(`${staticRoot}${path.sep}`)
-  const selected = insideStaticRoot && fs.existsSync(candidate) && fs.statSync(candidate).isFile()
-    ? candidate
-    : path.join(staticRoot, 'index.html')
+  let selected = path.join(staticRoot, 'index.html')
+  let descriptor
+  let stat
+  try {
+    if (insideStaticRoot && fs.statSync(candidate, { throwIfNoEntry: false })?.isFile()) {
+      selected = candidate
+    } else if (relativePath.startsWith('assets/') || relativePath.startsWith('interview-vision/') || contentTypes.has(path.extname(relativePath))) {
+      sendJson(response, 404, { success: false, error: 'Static resource not found' })
+      return
+    }
+    // Keep the opened file stable if a release directory changes during this response.
+    descriptor = fs.openSync(selected, 'r')
+    stat = fs.fstatSync(descriptor)
+  } catch {
+    if (descriptor !== undefined) fs.closeSync(descriptor)
+    sendJson(response, 503, { success: false, error: 'Frontend temporarily unavailable' }, { 'retry-after': '5' })
+    return
+  }
   const extension = path.extname(selected).toLowerCase()
   const headers = {
     'content-type': contentTypes.get(extension) || 'application/octet-stream',
@@ -139,16 +163,19 @@ function serveFrontend(pathname, response) {
       ? 'no-cache'
       : 'public, max-age=31536000, immutable',
   }
-  const stat = fs.statSync(selected)
   response.writeHead(200, { ...headers, 'content-length': stat.size })
   if (response.req.method === 'HEAD') {
+    fs.closeSync(descriptor)
     response.end()
   } else {
-    fs.createReadStream(selected).pipe(response)
+    fs.createReadStream(selected, { fd: descriptor, autoClose: true })
+      .on('error', () => response.destroy())
+      .pipe(response)
   }
 }
 
 const server = http.createServer((request, response) => {
+  for (const [name, value] of Object.entries(securityHeaders)) response.setHeader(name, value)
   if (!isAuthorized(request)) {
     sendJson(
       response,
@@ -170,5 +197,5 @@ const server = http.createServer((request, response) => {
 })
 
 server.listen(port, host, () => {
-  process.stdout.write(`FileMate demo gateway: http://${host}:${port}\n`)
+  process.stdout.write(`FileMate demo gateway: http://${host}:${server.address().port}\n`)
 })
