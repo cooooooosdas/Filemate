@@ -112,6 +112,12 @@ def test_sidecar_explicitly_bundles_report_assets_without_editable_install() -> 
     ).stat().st_size > 1_000_000
 
 
+def test_sidecar_hash_evidence_does_not_require_parent_powershell_modules() -> None:
+    source = (ROOT / "scripts/smoke_sidecar.ps1").read_text(encoding="utf-8")
+    assert "Get-FileHash" not in source
+    assert "$hasher.ComputeHash($stream)" in source
+
+
 class _SyntheticBackend(BaseHTTPRequestHandler):
     """只用于验证路由转发的合成上游，不模拟学习功能。"""
 

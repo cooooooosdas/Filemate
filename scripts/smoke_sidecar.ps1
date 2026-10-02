@@ -66,6 +66,17 @@ function Get-ProcessLogs {
     return "stdout:`n$stdout`nstderr:`n$stderr"
 }
 
+function Get-BinarySha256 {
+    $stream = [IO.File]::OpenRead($BinaryPath)
+    $hasher = [Security.Cryptography.SHA256]::Create()
+    try {
+        return [BitConverter]::ToString($hasher.ComputeHash($stream)).Replace('-', '').ToLowerInvariant()
+    } finally {
+        $hasher.Dispose()
+        $stream.Dispose()
+    }
+}
+
 function Test-BackendPort {
     $client = New-Object System.Net.Sockets.TcpClient
     try {
@@ -211,7 +222,7 @@ try {
         binary = $BinaryPath
         version = $health.data.version
         expected_version = $expectedVersion
-        binary_sha256 = (Get-FileHash -LiteralPath $BinaryPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        binary_sha256 = Get-BinarySha256
         sample_kind = 'synthetic_packaged_runtime_regression'
         module_contracts = $moduleChecks
         interview_answer_persisted = $true
