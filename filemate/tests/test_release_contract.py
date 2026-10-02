@@ -104,6 +104,14 @@ def test_packaged_smoke_restores_loopback_proxy_setting() -> None:
     assert source.rstrip().endswith("[Net.WebRequest]::DefaultWebProxy = $previousProxy\n}")
 
 
+def test_sidecar_explicitly_bundles_report_assets_without_editable_install() -> None:
+    source = (ROOT / "scripts/build_sidecar.ps1").read_text(encoding="utf-8")
+    assert '"$interviewAssets;filemate/interview_review/assets"' in source
+    assert (
+        ROOT / "filemate/interview_review/assets/NotoSansSC-Regular.ttf"
+    ).stat().st_size > 1_000_000
+
+
 class _SyntheticBackend(BaseHTTPRequestHandler):
     """只用于验证路由转发的合成上游，不模拟学习功能。"""
 
@@ -202,7 +210,9 @@ def test_release_gateway_missing_static_asset_is_not_html(release_gateway: str) 
     assert missing.value.code == 404
 
 
-def test_release_gateway_survives_frontend_replacement(release_gateway: str, tmp_path: Path) -> None:
+def test_release_gateway_survives_frontend_replacement(
+    release_gateway: str, tmp_path: Path
+) -> None:
     (tmp_path / "static/index.html").unlink()
     with pytest.raises(HTTPError) as unavailable:
         _gateway_get(release_gateway, accept="text/html")
