@@ -11,6 +11,9 @@ const { chromium } = require('playwright')
 const axeSource = await fs.readFile(require.resolve('axe-core/axe.min.js'), 'utf8')
 const base = process.env.FILEMATE_WEB_URL || 'http://127.0.0.1:5189'
 const api = process.env.FILEMATE_API_URL
+const gatewayUser = process.env.FILEMATE_ACCEPTANCE_GATEWAY_USER
+const gatewayPassword = process.env.FILEMATE_ACCEPTANCE_GATEWAY_PASSWORD
+assert.equal(Boolean(gatewayUser), Boolean(gatewayPassword), 'Gateway credentials must be supplied together')
 if (['localhost', '127.0.0.1', '[::1]'].includes(new URL(base).hostname)) assert.ok(api, 'Local preview requires an explicitly selected isolated FILEMATE_API_URL')
 const out = path.resolve(process.env.FILEMATE_EVIDENCE_DIR || path.join(root, '_working/a4-accessibility'))
 assert.ok(out.startsWith(path.join(root, '_working') + path.sep), 'Evidence must stay in this project _working')
@@ -19,7 +22,7 @@ assert.ok(Number.isInteger(settleMs) && settleMs >= 800 && settleMs <= 30000)
 const routes = ['/', '/today', '/import', '/classification', '/naming', '/schedule', '/history', '/ai-tools', '/study-plan', '/wrongbook', '/interview', '/interview-bank', '/growth', '/knowledge', '/digital-human', '/knowledge-graph', '/programming', '/career', '/goals', '/trust', '/login', '/register']
 await fs.mkdir(out, { recursive: true })
 const browser = await chromium.launch({ channel: process.env.FILEMATE_BROWSER_CHANNEL || (process.platform === 'win32' ? 'msedge' : undefined) })
-const context = await browser.newContext()
+const context = await browser.newContext(gatewayUser ? { httpCredentials: { username: gatewayUser, password: gatewayPassword } } : {})
 const relayErrors = []
 // Optional relay targets a real isolated API, never the existing user's local service.
 if (api && new URL(api).origin !== new URL(base).origin) {

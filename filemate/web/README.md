@@ -40,6 +40,8 @@ node filemate/web/tests/accessibility.browser.mjs
 
 脚本将相对 API 请求转发到显式指定的真实隔离后端，不 Stub 返回数据；静态资源仍来自生产构建。对网站直接验收时，两地址设为同一 HTTPS 地址，并设 `FILEMATE_ROUTE_SETTLE_MS=5000` 避免触发网关限流。Windows 默认 Edge，其他平台需预先安装 Playwright Chromium；可用 `FILEMATE_BROWSER_CHANNEL` 指定渠道。
 
+优先使用 `scripts/demo_gateway.mjs` 的真实同源网关连接隔离 API 和生产构建，两地址均设为网关地址。网关启用 Basic Auth 时，通过环境变量成对提供 `FILEMATE_ACCEPTANCE_GATEWAY_USER` / `FILEMATE_ACCEPTANCE_GATEWAY_PASSWORD`；凭据不写入证据或仓库。此方式不启用请求转发，可复核实际 CSP 与浏览器 HTTP 行为。
+
 覆盖 22 条路由的 375/768/1280 px 默认页面、控制台、主内容与横向溢出；另外验证手机导航模态/焦点循环/同页导航/宽度切换、表单错误焦点、题库编辑弹窗、设置/查找弹窗、跳过导航和减少动画。任何失败返回非零退出码。JSON 与截图只写入 `_working/a4-accessibility`，`FILEMATE_EVIDENCE_DIR` 可选本项目 `_working` 内的新目录。不会放宽部署 CSP，也不会保存账号、创建题目或调用模型。
 
 以下为源码状态盘点，不代表每个加载/错误/成功分支均已做本轮浏览器故障注入；本轮自动扫描主要覆盖空/默认页面及上述瞬态表面。模型、归档和持久化成功流程另见 `scripts/acceptance/README.md` 的专项验收。
