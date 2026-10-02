@@ -136,7 +136,7 @@ curl -u '用户名:密码' https://你的域名/api/health
 
 ### 4.3 更新与回滚
 
-更新前先备份数据，再拉取已验证版本：
+更新前先备份数据，再拉取已验证版本。下面的单库命令只适用于确认没有租户目录的历史单用户环境；匿名设备分库不能只备份 `/data/filemate.db`：
 
 ```bash
 docker compose exec -T api python -c "import sqlite3; src=sqlite3.connect('/data/filemate.db'); dst=sqlite3.connect('/data/filemate-backup.db'); src.backup(dst); dst.close(); src.close()"
@@ -145,6 +145,8 @@ docker compose --env-file .env.production up -d --build
 ```
 
 生产更新必须使用 Git tag 或明确 commit，不直接部署未测试的开发分支。若新版本异常，切回上一个已知正常 tag，恢复备份后重新构建。
+
+匿名设备环境的备份必须覆盖数据根目录下全部 SQLite 数据库、`identity.secret`、上传和归档（包括外置归档路径）。迁移前短暂停止应用写入，每库使用 SQLite backup API 生成独立快照，并执行 `PRAGMA integrity_check`；不能复制仍在写入的 `.db` 而遗漏 WAL。恢复演练在独立目录执行，不打开或修改用户原库。保留旧发布目录、对应依赖环境和完整备份；迁移已执行时，旧代码必须配套恢复旧 schema 的数据，不能仅切代码后继续写新库。
 
 ## 5. 数据、备份与安全
 
@@ -180,6 +182,8 @@ docker compose --env-file .env.production up -d --build
 5. 补代码签名证书，降低 SmartScreen 警告；发布安装包 SHA-256 校验值。
 
 桌面端默认只监听 `127.0.0.1:8001`，数据存放在系统应用数据目录，不向局域网暴露。网站部署通过 `FILEMATE_HOST=0.0.0.0` 在容器内部监听，只有 Caddy 能从公网转发访问。
+
+alpha.2 桌面壳将 C++ 工具链缓存设置为应用数据目录的 `cpp-toolchain`；开发模式仍使用项目 `_working/cpp-toolchain`。安装包验收脚本不得在有真实数据的日常电脑运行；一次性虚拟机需加 `-IsolatedRunner`，GitHub Windows CI 自动允许。Sidecar 验收仅对 localhost 在测试进程内绕过系统代理，并恢复原设置，避免把代理超时误报为后端启动失败。
 
 ## 8. 发布验收清单
 

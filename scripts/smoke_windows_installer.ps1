@@ -2,7 +2,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$BundleRoot,
     [string]$EvidencePath = "",
-    [int]$TimeoutSeconds = 45
+    [int]$TimeoutSeconds = 45,
+    [switch]$IsolatedRunner
 )
 
 $ErrorActionPreference = "Stop"
@@ -13,6 +14,7 @@ $workingDir = Join-Path $projectRoot "_working\installer-smoke\$runId"
 $installRoot = Join-Path $workingDir "installed\FileMate"
 $appProcess = $null
 $originalPath = $env:PATH
+$originalProxy = [Net.WebRequest]::DefaultWebProxy
 $uninstaller = $null
 $roamingAppData = [Environment]::GetFolderPath("ApplicationData")
 $localAppData = [Environment]::GetFolderPath("LocalApplicationData")
@@ -21,6 +23,10 @@ $expectedVersion = (
         Join-Path $projectRoot "filemate\web\src-tauri\tauri.conf.json"
     ) | ConvertFrom-Json
 ).version
+
+if (-not $IsolatedRunner -and $env:GITHUB_ACTIONS -ne 'true') {
+    throw 'Installer smoke may only run in disposable Windows CI or with -IsolatedRunner on a disposable VM.'
+}
 
 if (-not $EvidencePath) {
     $EvidencePath = Join-Path $workingDir "installer-smoke-evidence.json"
@@ -51,13 +57,14 @@ function Test-BackendPort {
 }
 
 try {
+    [Net.WebRequest]::DefaultWebProxy = $null
     New-Item -ItemType Directory -Force -Path $workingDir | Out-Null
     if (Test-BackendPort) {
         throw "Port 8001 is already in use; installer smoke requires an isolated runner."
     }
 
     $install = Start-Process -FilePath $nsis.FullName `
-        -ArgumentList "/S /D=$installRoot" -Wait -PassThru
+        -ArgumentList "/S /D=$installRoot" -WindowStyle Hidden -Wait -PassThru
     if ($install.ExitCode -ne 0) {
         throw "NSIS silent install failed with exit code $($install.ExitCode)."
     }
@@ -86,7 +93,7 @@ try {
     }
 
     $appProcess = Start-Process -FilePath $appExecutable.FullName `
-        -WorkingDirectory $appExecutable.DirectoryName -PassThru
+        -WorkingDirectory $appExecutable.DirectoryName -WindowStyle Hidden -PassThru
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     $health = $null
     while ((Get-Date) -lt $deadline) {
@@ -158,7 +165,7 @@ try {
     }
 
     $uninstall = Start-Process -FilePath $uninstaller.FullName `
-        -ArgumentList "/S" -Wait -PassThru
+        -ArgumentList "/S" -WindowStyle Hidden -Wait -PassThru
     if ($uninstall.ExitCode -ne 0) {
         throw "NSIS silent uninstall failed with exit code $($uninstall.ExitCode)."
     }
@@ -194,6 +201,7 @@ try {
     Write-Host "Windows installer smoke passed. Evidence: $EvidencePath"
 } finally {
     $env:PATH = $originalPath
+    [Net.WebRequest]::DefaultWebProxy = $originalProxy
     if ($appProcess) {
         $appProcess.Refresh()
         if (-not $appProcess.HasExited) {
@@ -207,6 +215,6 @@ try {
     }
     if ($uninstaller -and (Test-Path -LiteralPath $uninstaller.FullName)) {
         Start-Process -FilePath $uninstaller.FullName `
-            -ArgumentList "/S" -Wait -ErrorAction SilentlyContinue | Out-Null
+            -ArgumentList "/S" -WindowStyle Hidden -Wait -ErrorAction SilentlyContinue | Out-Null
     }
 }

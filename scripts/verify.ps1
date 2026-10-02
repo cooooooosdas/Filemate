@@ -26,6 +26,7 @@ try {
     Assert-LastExitCode "uv sync"
     uv run ruff check server.py main.py filemate/execution `
         filemate/tests/test_storage.py `
+        filemate/tests/test_release_contract.py `
         filemate/tests/test_file_ops.py `
         filemate/tests/test_archiver.py `
         filemate/tests/test_confirmation_executor.py `
