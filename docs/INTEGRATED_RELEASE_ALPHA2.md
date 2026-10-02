@@ -70,3 +70,7 @@ Windows 干净环境验收已全部通过：[Actions 36971016770](https://github
 本机分发遵从负责人选择：保留 `D:\FileMate-Project` 与原桌面联接为开发草稿；新版单独放在 Downloads 的 `FileMate_1.3.0-alpha.2`，新增桌面文件夹入口，不静默安装/卸载。旧数据库、旧版本和竞赛文书不动。交付目录包含经过上述干净环境验证的 EXE、干净 Git 源码、校验值和不含隐私的工程证据。
 
 CI 安装包 `FileMate_1.3.0-alpha.2_x64-setup.exe` 为 76,685,134 字节，SHA-256：`571c002d41d91f38cc73799a44cf719ff50ed3fb5936c478747f930648d8b036`。安装包未签名；本机仅分发，不把日常电脑当一次性卸载测试环境。正式签名、跨版本升级、真实用户试用与专家校准仍是后续依赖。
+
+## 同版本桌面环境隔离修复
+
+后续 [PR #51](https://github.com/cooooooosdas/Filemate/pull/51) 修复桌面继承网站运行环境导致本机后端无法连接的问题。新的 [Windows CI 36984501430](https://github.com/cooooooosdas/Filemate/actions/runs/36984501430) 完整通过，包括实际安装版的父进程环境污染场景。该构建仍为 alpha.2，但安装包字节和 SHA-256 与上面原始构建不同；两份构建及失败复现记录分别保留，不能混用校验值。详情见 [桌面环境隔离验收](DESKTOP_ENVIRONMENT_ACCEPTANCE.md)。此修复不改变网站模式和数据库 migration，不代表跨版本升级或真实学生研究已完成。

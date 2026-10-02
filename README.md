@@ -677,6 +677,7 @@ powershell -ExecutionPolicy Bypass -File scripts/verify.ps1
 |---|---|---|
 | [`filemate/docs/API_SPEC.md`](filemate/docs/API_SPEC.md) | 核心 Python 接口、HTTP API、可信执行合同 | 现役 |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | 网站上线、服务器选型、备份安全与桌面安装包路线 | 现役交付方案 |
+| [`docs/DESKTOP_ENVIRONMENT_ACCEPTANCE.md`](docs/DESKTOP_ENVIRONMENT_ACCEPTANCE.md) | 桌面父进程环境隔离、失败复现与真实 Windows 安装验收 | 发布加固证据 |
 | [`docs/AGENT_DEVELOPMENT_EXECUTION_PLAN.md`](docs/AGENT_DEVELOPMENT_EXECUTION_PLAN.md) | 其他 Agent 的分阶段任务卡、文件边界与验收合同 | 现役执行计划 |
 | [`docs/V2_1_1_DIGITAL_HUMAN_DELIVERY.md`](docs/V2_1_1_DIGITAL_HUMAN_DELIVERY.md) | V2.1.1 数字人加固、真实浏览器验收与全项目门禁限制 | 本轮交付证据 |
 | [`docs/V2_2_KNOWLEDGE_GRAPH_DELIVERY.md`](docs/V2_2_KNOWLEDGE_GRAPH_DELIVERY.md) | V2.2 知识图谱、学习画像、公开教材闭环与回滚方式 | 阶段交付证据 |
