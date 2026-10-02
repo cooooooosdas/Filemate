@@ -148,6 +148,18 @@ docker compose --env-file .env.production up -d --build
 
 匿名设备环境的备份必须覆盖数据根目录下全部 SQLite 数据库、`identity.secret`、上传和归档（包括外置归档路径）。迁移前短暂停止应用写入，每库使用 SQLite backup API 生成独立快照，并执行 `PRAGMA integrity_check`；不能复制仍在写入的 `.db` 而遗漏 WAL。恢复演练在独立目录执行，不打开或修改用户原库。保留旧发布目录、对应依赖环境和完整备份；迁移已执行时，旧代码必须配套恢复旧 schema 的数据，不能仅切代码后继续写新库。
 
+备份和恢复同时保留 UID/GID、文件权限及身份密钥，不能仅使用默认复制行为恢复内容。新 Python 环境先以实际服务账户验证目录可遍历、依赖可导入；不要关闭 `ProtectHome` 或扩大为全局可写权限。解除维护模式后若已恢复公众写入，不得再自动覆盖数据为旧快照，应保留当前数据并进入人工核查。
+
+### 4.4 既有 Nginx Proxy Manager + systemd 拓扑
+
+当前 `filemate.asia` 使用该拓扑，而不是上节的 Caddy Compose。可审查配置见 `deploy/nginx.filemate.conf`；应用前核对实际容器网络的 upstream、挂载目录和证书路径，并先执行 `nginx -t`。不要将配置盲目套用到 Caddy 或其他服务器。
+
+前端 `current` 在挂载目录内指向 `releases/<版本>` 的相对符号链接；宿主机绝对路径在 Nginx 容器里可能不存在，导致页面 500，即使 `/api/health` 仍是 200。切换必须同时检查 HTML、JS、WASM、模型资源和业务 API，不能只检查后端健康。
+
+`/interview-vision/` 与 `/assets/` 使用独立静态资源 location，缺失资源返回 404；`/interview` API 前缀按路径边界匹配，不能误代理本地视觉模型。模型 WASM 明确返回 `application/wasm`。压缩仅作用于这两个公开静态资源目录，不改变私有业务响应。保留 Host/Origin、CSP、120 次/分钟普通接口与 6 次/分钟 AI 限流。
+
+线上浏览器验收可设置 `FILEMATE_ROUTE_SETTLE_MS=5000`（默认 800ms，允许 800–30000ms），以较慢节奏执行已有页面与接口检查，而不是关闭生产限流。视觉验收最后用同一匿名上下文预览并确认删除自己创建的合成面试记录，不清理其他用户资料。
+
 ## 5. 数据、备份与安全
 
 - `filemate_data` Docker 卷包含 SQLite、上传目录和归档目录；删除容器不会删除该卷。

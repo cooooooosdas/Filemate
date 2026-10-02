@@ -77,12 +77,13 @@ def test_release_manifest_versions_match_backend(relative_path: str) -> None:
     assert Version(match.group(1)) == Version(__version__)
 
 
-@pytest.mark.parametrize("target", ["desktop", "caddy"])
+@pytest.mark.parametrize("target", ["desktop", "caddy", "nginx"])
 def test_release_csp_supports_local_vision_and_recording(target: str) -> None:
     if target == "desktop":
         csp = _json_file("filemate/web/src-tauri/tauri.conf.json")["app"]["security"]["csp"]
     else:
-        config = (ROOT / "deploy/Caddyfile").read_text(encoding="utf-8")
+        config_path = "deploy/Caddyfile" if target == "caddy" else "deploy/nginx.filemate.conf"
+        config = (ROOT / config_path).read_text(encoding="utf-8")
         csp = re.search(r'Content-Security-Policy "([^"]+)"', config).group(1)
     directives = {entry.split()[0]: entry.split()[1:] for entry in csp.split(";") if entry.strip()}
     assert "'wasm-unsafe-eval'" in directives["script-src"]
@@ -90,6 +91,20 @@ def test_release_csp_supports_local_vision_and_recording(target: str) -> None:
     assert "blob:" in directives["media-src"]
     assert "'self'" in directives["worker-src"]
     assert directives["object-src"] == ["'none'"]
+
+
+def test_nginx_vision_assets_do_not_match_interview_api_prefix() -> None:
+    config = (ROOT / "deploy/nginx.filemate.conf").read_text(encoding="utf-8")
+    assert "~^/interview 1;" not in config
+    assert "~^/interview(/|$) 1;" in config
+    for prefix in ("/interview-vision/", "/assets/"):
+        block = re.search(r"location \^~ " + re.escape(prefix) + r"\s*\{([\s\S]*?)\n    \}", config)
+        assert block is not None
+        assert "try_files $uri =404;" in block.group(1)
+        assert "proxy_pass" not in block.group(1)
+        assert "gzip on;" in block.group(1)
+    assert "application/wasm wasm;" in config
+    assert "rate=120r/m" in config and "rate=6r/m" in config
 
 
 def test_desktop_toolchain_uses_persistent_app_data() -> None:

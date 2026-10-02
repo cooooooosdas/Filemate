@@ -5,6 +5,10 @@ import { fileURLToPath } from 'url'
 
 const base = process.env.FILEMATE_WEB_URL || 'http://127.0.0.1:5173'
 const api = process.env.FILEMATE_API_URL || 'http://127.0.0.1:8001'
+const settleMs = Number(process.env.FILEMATE_ROUTE_SETTLE_MS || 800)
+if (!Number.isInteger(settleMs) || settleMs < 800 || settleMs > 30000) {
+  throw new Error('FILEMATE_ROUTE_SETTLE_MS must be an integer between 800 and 30000')
+}
 const scriptDir = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(scriptDir, '..', '..')
 const outDir = process.env.FILEMATE_EVIDENCE_DIR || path.join(repoRoot, '_working', 'browser-acceptance')
@@ -35,7 +39,7 @@ for (const route of routes) {
   page.on('pageerror', onPageError)
   try {
     const resp = await page.goto(base + route, { waitUntil: 'domcontentloaded', timeout: 30000 })
-    await page.waitForTimeout(800)
+    await page.waitForTimeout(settleMs)
     const title = await page.title()
     const mainRegionCount = await page.locator('main').count()
     const mainText = await page.locator('main').innerText().catch(() => '')
@@ -72,6 +76,7 @@ for (const ep of ['/api/health', '/sessions', '/knowledge/sources', '/wrongbook'
   } catch (err) {
     apiResults.push({ endpoint: ep, status: null, ok: false, error: String(err) })
   }
+  if (settleMs > 800) await new Promise(resolve => setTimeout(resolve, settleMs))
 }
 await ctx.dispose()
 
@@ -84,6 +89,7 @@ const report = {
   generated_at: new Date().toISOString(),
   sample_kind: 'empty_state_production_browser_regression',
   same_origin: new URL(base).origin === new URL(api).origin,
+  route_settle_ms: settleMs,
   route_count: routes.length,
   passed: routeFailures.length === 0 && apiFailures.length === 0,
   routes: results,
