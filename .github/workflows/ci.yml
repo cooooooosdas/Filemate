@@ -142,6 +142,7 @@ jobs:
           ./scripts/smoke_windows_installer.ps1
           -BundleRoot ./filemate/web/src-tauri/target/release/bundle
           -EvidencePath ./_working/installer-smoke-evidence.json
+          -VerifyInheritedEnvironment
       - name: Upload Windows installers
         uses: actions/upload-artifact@v7
         with:

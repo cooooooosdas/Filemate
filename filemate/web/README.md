@@ -1,6 +1,6 @@
 # FileMate Web 与桌面端
 
-本目录包含 Vue 3 前端和 Tauri 2 Windows 桌面宿主。当前优先支持队友本地开发运行；桌面版工程会继续保留，待产品功能稳定后再进行安装包发布验收。
+本目录包含 Vue 3 前端和 Tauri 2 Windows 桌面宿主。alpha.2 安装包已有一次性 Windows CI 验收；开发草稿和真实数据不得作为静默卸载测试对象。
 
 ## Web 开发
 
@@ -41,7 +41,9 @@ npm run desktop:build
 
 1. 在应用数据目录创建 SQLite、上传缓存和运行数据；
 2. 在用户“文档/FileMate”下保存确认归档的学习资料；
-3. 自动启动本机 `127.0.0.1:8001` 后端；
+3. 自动启动本机 `127.0.0.1:8001` 后端，固定本地身份、非生产模式及 Host/CORS 白名单，不继承网站环境配置；
 4. 退出时先请求后端优雅关闭，再执行进程兜底清理。
 
-正式发布前，CI 会在 Windows runner 上先验证 sidecar 的启动、SQLite 创建与优雅关闭，再构建 NSIS/MSI，最后执行静默安装、隔离 Python PATH 启动、桌面退出、静默卸载和用户数据保留测试。该门禁不再阻塞当前功能开发，但正式提供安装包下载前仍必须通过。
+发布构建仅允许 `tauri://localhost`、`http://tauri.localhost`、`https://tauri.localhost`；debug 构建额外允许 Vite 的 `http://localhost:5173` 和 `http://127.0.0.1:5173`。这些约束不改变直接启动 Python API 的网站配置，也不覆盖 LLM 凭据、功能开关和外发同意设置。
+
+手动触发 `FileMate CI` 时，Windows runner 先验证 Sidecar，再构建 NSIS，最后执行静默安装、隔离 Python PATH、父进程环境污染场景、桌面退出、静默卸载和数据文件保留检查。出现已有 FileMate 数据目录时拒绝开始安装；失败证据明确记录 `passed=false` 和阶段。正式提供新构建下载前必须通过，不能把数据库文件存在当作跨版本资料内容已完整保留。

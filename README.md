@@ -486,6 +486,8 @@ uv run python main.py --check --db _working/check.db
 
 不要提交真实 `.env`、API Key、个人资料、数据库或用户导出文件。
 
+Tauri 桌面宿主固定 Sidecar 的 `FILEMATE_HOST=127.0.0.1`、`FILEMATE_PORT=8001`、`FILEMATE_ENV=development` 和 `FILEMATE_IDENTITY_MODE=local`，不会继承网站运维终端的对应配置。Host 白名单固定为 `localhost,127.0.0.1,tauri.localhost`；发布构建仅允许三个 Tauri Origin，debug 构建额外允许 `http://localhost:5173` 和 `http://127.0.0.1:5173`。直接启动 Python API 的环境变量配置仍按下表生效；LLM 密钥、功能开关及评分隐私设置不被桌面壳重写。
+
 | 变量 | 默认值/要求 | 用途 |
 |---|---|---|
 | `LLM_PROVIDER` | `auto` | 根据 Base URL 选择 Provider |
@@ -675,6 +677,7 @@ powershell -ExecutionPolicy Bypass -File scripts/verify.ps1
 |---|---|---|
 | [`filemate/docs/API_SPEC.md`](filemate/docs/API_SPEC.md) | 核心 Python 接口、HTTP API、可信执行合同 | 现役 |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | 网站上线、服务器选型、备份安全与桌面安装包路线 | 现役交付方案 |
+| [`docs/DESKTOP_ENVIRONMENT_ACCEPTANCE.md`](docs/DESKTOP_ENVIRONMENT_ACCEPTANCE.md) | 桌面父进程环境隔离、失败复现与真实 Windows 安装验收 | 发布加固证据 |
 | [`docs/AGENT_DEVELOPMENT_EXECUTION_PLAN.md`](docs/AGENT_DEVELOPMENT_EXECUTION_PLAN.md) | 其他 Agent 的分阶段任务卡、文件边界与验收合同 | 现役执行计划 |
 | [`docs/V2_1_1_DIGITAL_HUMAN_DELIVERY.md`](docs/V2_1_1_DIGITAL_HUMAN_DELIVERY.md) | V2.1.1 数字人加固、真实浏览器验收与全项目门禁限制 | 本轮交付证据 |
 | [`docs/V2_2_KNOWLEDGE_GRAPH_DELIVERY.md`](docs/V2_2_KNOWLEDGE_GRAPH_DELIVERY.md) | V2.2 知识图谱、学习画像、公开教材闭环与回滚方式 | 阶段交付证据 |
