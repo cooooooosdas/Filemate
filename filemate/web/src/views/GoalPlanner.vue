@@ -292,7 +292,7 @@ onMounted(load)
 .goal-hero::after { content: ''; position: absolute; left: 48px; bottom: 0; width: 42%; height: 4px; background: linear-gradient(90deg, #2563eb, #43aa8b, transparent); }
 .eyebrow { margin: 0 0 12px; color: #2468d7; font-size: 12px; font-weight: 800; letter-spacing: .14em; }
 .goal-hero h1 { max-width: 850px; margin: 0 0 16px; font-size: clamp(34px, 4.5vw, 62px); line-height: 1.07; letter-spacing: -.055em; }
-.goal-hero h1 em { color: #247f75; font-style: normal; }
+.goal-hero h1 em { color: var(--accent); font-style: normal; }
 .lead { max-width: 760px; margin: 0; color: var(--text-secondary); font-size: 16px; line-height: 1.8; }
 .evidence-seal { z-index: 1; display: grid; place-content: center; width: 176px; aspect-ratio: 1; justify-self: end; text-align: center; border: 1px solid rgba(36, 127, 117, .35); border-radius: 50%; background: rgba(255,255,255,.75); box-shadow: inset 0 0 0 10px rgba(36,127,117,.05), 0 16px 40px rgba(36,127,117,.1); }
 .evidence-seal span, .evidence-seal small { color: #4c7771; font-size: 10px; letter-spacing: .1em; }
@@ -316,13 +316,13 @@ onMounted(load)
 .create-button, .toolbar-actions button { min-height: 44px; padding: 0 20px; border: 0; border-radius: 11px; background: #175fba; color: white; font-weight: 750; cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .55; }
 .loading-state, .empty-state { margin-top: 22px; padding: 70px 24px; text-align: center; border: 1px dashed #cbdce7; border-radius: 24px; color: var(--text-secondary); background: #f9fcfe; }
-.empty-state span { color: #247f75; font-size: 12px; font-weight: 800; letter-spacing: .12em; }
+.empty-state span { color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: .12em; }
 .empty-state h2 { margin: 10px 0; color: var(--text-primary); }
 .empty-state p { margin: 0; }
 .goal-toolbar { display: flex; justify-content: space-between; gap: 24px; align-items: end; margin-top: 34px; padding: 0 4px; }
 .goal-toolbar h2 { margin: 8px 0 4px; font-size: 30px; letter-spacing: -.03em; }
 .goal-toolbar p { margin: 0; color: var(--text-secondary); }
-.goal-type { color: #247f75; font-size: 12px; font-weight: 800; letter-spacing: .12em; }
+.goal-type { color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: .12em; }
 .toolbar-actions { display: flex; gap: 12px; align-items: end; }
 .toolbar-actions label { min-width: 190px; }
 .backcast-rail { display: grid; grid-template-columns: repeat(6, 1fr); margin-top: 20px; overflow: hidden; border: 1px solid #dce8ef; border-radius: 20px; background: #f8fbfd; }

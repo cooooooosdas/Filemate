@@ -5,10 +5,10 @@
     <p v-if="error" role="alert">{{ error }} <button :disabled="loading" @click="load">重试求职汇总</button></p>
     <template v-if="data">
       <dl>
-        <div><dt>已保存岗位</dt><dd>{{ data.counts.positions }}</dd><small>其中 {{ data.counts.active_positions }} 个可继续训练</small></div>
-        <div><dt>已完成基础笔试</dt><dd>{{ data.counts.completed_written }} 轮</dd><small v-if="data.counts.written_answers">实际答对 {{ data.counts.written_correct }} / {{ data.counts.written_answers }} 题</small><small v-else>作答表现待评测</small></div>
-        <div><dt>关联岗位面试</dt><dd>{{ data.counts.interviews }} 场</dd><small>已答 {{ data.counts.interview_answers }} 题，内容评估 {{ data.counts.assessed_answers }} 题</small></div>
-        <div><dt>已保存对比快照</dt><dd>{{ data.counts.review_snapshots }} 份</dd><small>按当时的岗位与证据保留</small></div>
+        <div><dt>已保存岗位</dt><dd>{{ data.counts.positions }}<small>其中 {{ data.counts.active_positions }} 个可继续训练</small></dd></div>
+        <div><dt>已完成基础笔试</dt><dd>{{ data.counts.completed_written }} 轮<small v-if="data.counts.written_answers">实际答对 {{ data.counts.written_correct }} / {{ data.counts.written_answers }} 题</small><small v-else>作答表现待评测</small></dd></div>
+        <div><dt>关联岗位面试</dt><dd>{{ data.counts.interviews }} 场<small>已答 {{ data.counts.interview_answers }} 题，内容评估 {{ data.counts.assessed_answers }} 题</small></dd></div>
+        <div><dt>已保存对比快照</dt><dd>{{ data.counts.review_snapshots }} 份<small>按当时的岗位与证据保留</small></dd></div>
       </dl>
       <p class="method">{{ data.method }}</p>
       <p class="updated">记录更新：{{ data.updated_at ? new Date(data.updated_at).toLocaleString('zh-CN') : '尚无记录' }}<span v-if="data.counts.excluded_records"> · {{ data.counts.excluded_records }} 条异常记录未计入，原记录保留。</span></p>
@@ -44,5 +44,7 @@ onBeforeUnmount(() => { disposed = true; epoch++ })
 </script>
 
 <style scoped>
+.career-growth dd small{display:block;font-size:14px;font-weight:400;line-height:1.7}
+
 .career-growth{padding:28px;border:1px solid var(--border-subtle);border-radius:16px;background:var(--bg-surface);margin-bottom:24px;overflow-wrap:anywhere}.career-growth header{display:flex;align-items:center;justify-content:space-between;gap:16px}.career-growth h2{font-size:22px;margin:0 0 12px}.career-growth header p{color:var(--accent);font-size:12px;margin:0 0 8px}.career-growth dl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:20px 0}.career-growth dt,.career-growth small{font-size:12px;color:var(--text-secondary)}.career-growth dd{font-size:27px;margin:10px 0}.career-growth small{display:block;line-height:1.7}.method,.updated{font-size:12px;line-height:1.9;color:var(--text-secondary)}.career-growth a{color:var(--accent);line-height:1.8}.career-growth li{margin:14px 0}.career-growth ul{padding-left:20px}.career-growth button{min-height:44px;padding:10px 14px;border-radius:10px;border:1px solid var(--accent-border);background:var(--accent-soft);color:var(--accent);cursor:pointer}.career-growth button:disabled{opacity:.5;cursor:default}.career-growth a:focus-visible,.career-growth button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}@media(max-width:1000px){.career-growth dl{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.career-growth{padding:18px}.career-growth header{align-items:start}.career-growth h2{font-size:20px}.career-growth header button{flex-shrink:0}}
 </style>

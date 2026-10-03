@@ -99,6 +99,11 @@ def stage(args: argparse.Namespace) -> None:
     assert marker['commit'] == args.commit and marker['version'] == args.version
     assert not (release / '.env').exists()
     account = pwd.getpwnam('filemate')
+    for node in [release, *release.rglob('*')]:
+        os.chown(node, 0, account.pw_gid)
+        node.chmod(0o750 if node.is_dir() else 0o640)
+    for node in [static, *static.rglob('*')]:
+        node.chmod(0o755 if node.is_dir() else 0o644)
     shutil.copy2(BACKEND / 'current/.env.production', release / '.env.production')
     os.chown(release / '.env.production', 0, account.pw_gid)
     (release / '.env.production').chmod(0o640)
@@ -106,6 +111,12 @@ def stage(args: argparse.Namespace) -> None:
     run(str(environment / 'bin/python'), '-m', 'pip', 'install', '--require-hashes',
         '-r', str(release / 'deploy/requirements-production.lock'))
     run(str(environment / 'bin/python'), '-m', 'pip', 'check')
+    # SSH管理员的umask可能令venv归root独占；只授予服务组读取/遍历。
+    for node in [environment, *environment.rglob('*')]:
+        if not node.is_symlink():
+            os.chown(node, 0, account.pw_gid)
+            mode = stat.S_IMODE(node.stat().st_mode)
+            node.chmod(mode | ((mode & 0o500) >> 3))
     temporary = Path('/var/lib/filemate-preflight') / args.release_id
     temporary.mkdir(parents=True, mode=0o700)
     temporary.parent.chmod(0o755)
