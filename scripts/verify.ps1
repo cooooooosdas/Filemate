@@ -24,7 +24,7 @@ Push-Location $projectRoot
 try {
     uv sync --extra dev
     Assert-LastExitCode "uv sync"
-    uv run ruff check server.py main.py filemate/execution `
+    uv run ruff check server.py main.py filemate/execution filemate/accounts.py filemate/tests/test_accounts.py `
         filemate/tests/test_storage.py `
         filemate/tests/test_release_contract.py `
         filemate/tests/test_deploy_existing.py `

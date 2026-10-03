@@ -21,93 +21,154 @@
     <section class="auth-panel" aria-labelledby="auth-form-title">
       <div class="auth-card">
         <header class="auth-card-head">
-          <p>{{ isRegister ? 'YOUR NEXT CHAPTER' : 'WELCOME TO FILEMATE' }}</p>
-          <h2 id="auth-form-title">{{ isRegister ? '注册 FileMate' : '登录 FileMate' }}</h2>
-          <span>{{ isRegister ? '让每一份努力，都有自己的归处。' : '留一点时间，给今天想学的东西。' }}</span>
+          <p>YOUR SPACE TO LEARN</p>
+          <h2 id="auth-form-title">{{ recoveryResult ? '保存你的恢复码' : isRecover ? '找回密码' : isRegister ? '注册 FileMate' : '登录 FileMate' }}</h2>
+          <span>{{ recoveryResult ? '恢复码只显示这一次，请妥善保存。' : isRecover ? '使用注册时保存的恢复码，设置新密码。' : '把每一份努力，留在自己的学习空间。' }}</span>
         </header>
-        <nav class="auth-switch" aria-label="账号操作">
-          <router-link to="/login" :aria-current="!isRegister ? 'page' : undefined">登录</router-link>
-          <router-link to="/register" :aria-current="isRegister ? 'page' : undefined">注册</router-link>
-        </nav>
-        <form novalidate @submit.prevent="handleSubmit">
-          <div v-if="isRegister" class="field-group">
-            <label for="display-name">姓名或昵称</label>
-            <div class="field-control" :class="{ invalid: errors.displayName }"><el-icon><User /></el-icon><input id="display-name" v-model.trim="displayName" name="displayName" autocomplete="name" maxlength="30" placeholder="例如：林同学" :aria-invalid="Boolean(errors.displayName)" :aria-describedby="errors.displayName ? 'display-name-error' : undefined" /></div>
-            <p v-if="errors.displayName" id="display-name-error" class="field-error" role="alert">{{ errors.displayName }}</p>
-          </div>
-          <div class="field-group">
-            <label for="account">手机号或邮箱</label>
-            <div class="field-control" :class="{ invalid: errors.account }"><el-icon><Message /></el-icon><input id="account" v-model.trim="account" name="account" autocomplete="username" inputmode="email" placeholder="请输入手机号或邮箱" :aria-invalid="Boolean(errors.account)" :aria-describedby="errors.account ? 'account-error' : undefined" /></div>
-            <p v-if="errors.account" id="account-error" class="field-error" role="alert">{{ errors.account }}</p>
-          </div>
-          <div class="field-group">
-            <div class="field-label-row"><label for="password">密码</label><button v-if="!isRegister" class="text-button" type="button" @click="showUnavailableNotice">忘记密码？</button></div>
-            <div class="field-control" :class="{ invalid: errors.password }"><el-icon><Key /></el-icon><input id="password" v-model="password" name="password" :type="showPassword ? 'text' : 'password'" :autocomplete="isRegister ? 'new-password' : 'current-password'" :placeholder="isRegister ? '至少 8 位，包含字母和数字' : '请输入密码'" :aria-invalid="Boolean(errors.password)" :aria-describedby="errors.password ? 'password-error' : undefined" /><button class="reveal-button" type="button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" @click="showPassword = !showPassword"><el-icon><View v-if="!showPassword" /><Hide v-else /></el-icon></button></div>
-            <p v-if="errors.password" id="password-error" class="field-error" role="alert">{{ errors.password }}</p>
-          </div>
-          <div v-if="isRegister" class="field-group">
-            <label for="confirm-password">确认密码</label>
-            <div class="field-control" :class="{ invalid: errors.confirmPassword }"><el-icon><Key /></el-icon><input id="confirm-password" v-model="confirmPassword" name="confirmPassword" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" placeholder="请再次输入密码" :aria-invalid="Boolean(errors.confirmPassword)" :aria-describedby="errors.confirmPassword ? 'confirm-password-error' : undefined" /></div>
-            <p v-if="errors.confirmPassword" id="confirm-password-error" class="field-error" role="alert">{{ errors.confirmPassword }}</p>
-          </div>
-          <label v-if="isRegister" class="check-row" :class="{ invalid: errors.accepted }"><input v-model="accepted" type="checkbox" :aria-invalid="Boolean(errors.accepted)" :aria-describedby="errors.accepted ? 'agreement-error' : undefined" /><span>我已了解这是界面预览，不会创建真实账号</span></label>
-          <label v-else class="check-row"><input v-model="rememberMe" type="checkbox" /><span>在这台设备上保持登录</span></label>
-          <p v-if="errors.accepted" id="agreement-error" class="field-error agreement-error" role="alert">{{ errors.accepted }}</p>
-          <button class="primary-action" type="submit" :aria-label="isRegister ? '创建账号' : '登录'">{{ isRegister ? '创建账号' : '登录' }}<el-icon><Right /></el-icon></button>
-        </form>
-        <div class="guest-divider"><span>暂时不使用账号</span></div>
-        <router-link class="guest-action" to="/">以游客身份继续</router-link>
-        <p class="auth-boundary"><el-icon><Lock /></el-icon>账号功能即将开放。当前为界面预览，可先以游客身份体验。</p>
+        <section v-if="recoveryResult" class="recovery-result" aria-label="恢复码保存">
+          <p>{{ isRecover ? '密码已更新，所有设备已退出登录。旧恢复码已失效。' : '账号已创建，当前设备已登录。' }}</p>
+          <label for="saved-recovery-code">{{ isRecover ? '新的恢复码' : '账号恢复码' }}</label>
+          <textarea id="saved-recovery-code" :value="recoveryResult" readonly rows="2" spellcheck="false" />
+          <div class="recovery-actions"><button type="button" class="guest-action" @click="copyRecovery">复制恢复码</button><button type="button" class="guest-action" @click="saveRecovery">下载保存</button></div>
+          <p class="auth-boundary">拥有恢复码的人可以重设你的密码。请保存到私密位置，切勿分享。丢失密码和恢复码后，无法找回账号。</p>
+          <label class="check-row"><input v-model="savedRecovery" type="checkbox" /><span>我已妥善保存恢复码</span></label>
+          <button class="primary-action" type="button" :disabled="!savedRecovery" @click="finishRecovery">{{ isRecover ? '返回登录' : '进入学习空间' }}</button>
+        </section>
+        <template v-else>
+          <nav class="auth-switch" aria-label="账号操作">
+            <router-link to="/login" :aria-current="!isRegister && !isRecover ? 'page' : undefined">登录</router-link>
+            <router-link to="/register" :aria-current="isRegister ? 'page' : undefined">注册</router-link>
+          </nav>
+          <p v-if="serviceUnavailable" class="auth-boundary" role="status">{{ serviceUnavailable }}</p>
+          <form novalidate :aria-busy="submitting" @submit.prevent="handleSubmit">
+            <fieldset :disabled="submitting" class="auth-fields">
+              <div v-if="isRegister" class="field-group">
+                <label for="display-name">姓名或昵称</label>
+                <div class="field-control"><el-icon><User /></el-icon><input id="display-name" v-model.trim="displayName" autocomplete="name" maxlength="30" placeholder="例如：林同学" /></div>
+              </div>
+              <div class="field-group">
+                <label for="account">邮箱</label>
+                <div class="field-control"><el-icon><Message /></el-icon><input id="account" v-model.trim="account" type="email" autocomplete="username" maxlength="254" placeholder="请输入邮箱地址" /></div>
+              </div>
+              <div v-if="isRecover" class="field-group">
+                <label for="recovery-code">恢复码</label>
+                <div class="field-control"><el-icon><Key /></el-icon><input id="recovery-code" v-model.trim="recoveryCode" autocomplete="off" maxlength="64" placeholder="粘贴已保存的恢复码" /></div>
+              </div>
+              <div class="field-group">
+                <div class="field-label-row"><label for="password">{{ isRecover ? '新密码' : '密码' }}</label><router-link v-if="!isRegister && !isRecover" class="text-button" to="/recover">忘记密码？</router-link></div>
+                <div class="field-control"><el-icon><Key /></el-icon><input id="password" v-model="password" :type="showPassword ? 'text' : 'password'" :autocomplete="isRegister || isRecover ? 'new-password' : 'current-password'" maxlength="128" :placeholder="isRegister || isRecover ? '15–128 个字符，支持中文长口令' : '请输入密码'" /><button type="button" class="reveal-button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" @click="showPassword = !showPassword"><el-icon><View v-if="!showPassword" /><Hide v-else /></el-icon></button></div>
+              </div>
+              <div v-if="isRegister || isRecover" class="field-group">
+                <label for="confirm-password">确认密码</label>
+                <div class="field-control"><el-icon><Key /></el-icon><input id="confirm-password" v-model="confirmPassword" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" maxlength="128" placeholder="请再次输入密码" /></div>
+              </div>
+              <template v-if="isRegister">
+                <label class="check-row"><input v-model="keepGuestData" type="checkbox" /><span>把当前游客资料保留到新账号</span></label>
+                <label class="check-row"><input v-model="accepted" type="checkbox" /><span>我会保存恢复码，并了解邮箱暂不验证归属</span></label>
+              </template>
+              <label v-if="!isRecover" class="check-row"><input v-model="rememberMe" type="checkbox" /><span>在这台设备上保持登录 30 天</span></label>
+              <p v-if="error" class="field-error" role="alert" tabindex="-1" ref="errorElement">{{ error }}</p>
+              <button class="primary-action" type="submit" :disabled="Boolean(serviceUnavailable)">{{ submitting ? '正在处理…' : isRecover ? '重设密码' : isRegister ? '创建账号' : '登录' }}<el-icon><Right /></el-icon></button>
+            </fieldset>
+          </form>
+          <div class="guest-divider"><span>先开始学习</span></div>
+          <button class="guest-action" type="button" :disabled="submitting" @click="continueGuest">以游客身份继续</button>
+          <p class="auth-boundary"><el-icon><Lock /></el-icon>邮箱用于登录识别，密码和恢复码不会明文保存。找回密码无需邮件服务。</p>
+        </template>
       </div>
     </section>
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { DocumentAdd, Hide, Key, Lock, Message, Notebook, Reading, Right, User, View } from '@element-plus/icons-vue'
+import { DocumentAdd, Hide, Key, Lock, Message, Notebook, Reading, Right, User, View } from '../icons'
 import Logo from '../components/Logo.vue'
+import { getAccountState, loginAccount, logoutAccount, recoverAccount, registerAccount } from '../services/api'
 
-interface FormErrors { displayName?: string; account?: string; password?: string; confirmPassword?: string; accepted?: string }
 const route = useRoute()
 const isRegister = computed(() => route.name === 'Register')
-const displayName = ref('')
-const account = ref('')
-const password = ref('')
-const confirmPassword = ref('')
-const accepted = ref(false)
-const rememberMe = ref(true)
-const showPassword = ref(false)
-const errors = reactive<FormErrors>({})
+const isRecover = computed(() => route.name === 'Recover')
+const displayName = ref(''), account = ref(''), password = ref(''), confirmPassword = ref(''), recoveryCode = ref('')
+const accepted = ref(false), rememberMe = ref(true), keepGuestData = ref(true), showPassword = ref(false)
+const submitting = ref(false), recoveryResult = ref(''), savedRecovery = ref(false), error = ref(''), serviceUnavailable = ref('')
+const errorElement = ref<HTMLElement | null>(null)
+let accountEnabled = false
+let mustLogout = false
+watch(() => route.name, () => { password.value = ''; confirmPassword.value = ''; recoveryCode.value = ''; error.value = ''; showPassword.value = false })
+onMounted(async () => {
+  try {
+    const state = await getAccountState()
+    accountEnabled = state.enabled
+    mustLogout = Boolean(state.user || state.expired)
+    if (!accountEnabled) serviceUnavailable.value = '当前是本地独立模式，无需账号，可直接进入学习空间。'
+  } catch { serviceUnavailable.value = '账号服务暂时未连接，请刷新后重试。' }
+})
 
-function clearErrors(): void { Object.keys(errors).forEach(key => delete errors[key as keyof FormErrors]) }
-watch(isRegister, () => { clearErrors(); password.value = ''; confirmPassword.value = ''; showPassword.value = false })
-
-function validate(): boolean {
-  clearErrors()
-  const phonePattern = /^1\d{10}$/
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (isRegister.value && displayName.value.length < 2) errors.displayName = '请输入至少 2 个字的姓名或昵称'
-  if (!phonePattern.test(account.value) && !emailPattern.test(account.value)) errors.account = '请输入有效的手机号或邮箱'
-  if (!password.value) errors.password = '请输入密码'
-  else if (isRegister.value && (password.value.length < 8 || !/[A-Za-z]/.test(password.value) || !/\d/.test(password.value))) errors.password = '密码至少 8 位，并同时包含字母和数字'
-  if (isRegister.value && !confirmPassword.value) errors.confirmPassword = '请再次输入密码'
-  else if (isRegister.value && confirmPassword.value !== password.value) errors.confirmPassword = '两次输入的密码不一致'
-  if (isRegister.value && !accepted.value) errors.accepted = '请确认已了解当前为界面预览'
-  return Object.keys(errors).length === 0
-}
-
-async function handleSubmit(): Promise<void> {
-  if (validate()) {
-    ElMessage.info('账号服务尚未接入，本次未保存任何账号或密码')
-    return
-  }
+async function showError(message: string): Promise<void> {
+  error.value = message
   await nextTick()
-  document.querySelector<HTMLInputElement>('form input[aria-invalid="true"]')?.focus()
+  errorElement.value?.focus()
 }
-function showUnavailableNotice(): void { ElMessage.info('找回密码功能将在账号服务接入后开放') }
+async function handleSubmit(): Promise<void> {
+  if (submitting.value) return
+  error.value = ''
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account.value)) return showError('请输入有效的邮箱地址')
+  if (!password.value) return showError('请输入密码')
+  if (isRegister.value || isRecover.value) {
+    if ([...password.value].length < 15 || [...password.value].length > 128) return showError('密码需为 15–128 个字符，可使用中文长口令')
+    if (password.value !== confirmPassword.value) return showError('两次输入的密码不一致')
+  }
+  if (isRegister.value && (displayName.value.length < 2 || !accepted.value)) return showError('请输入至少 2 个字的昵称，并确认会保存恢复码')
+  if (isRecover.value && !recoveryCode.value) return showError('请输入注册时保存的恢复码')
+  submitting.value = true
+  try {
+    if (isRegister.value) {
+      const result = await registerAccount({ email: account.value, display_name: displayName.value, password: password.value, keep_guest_data: keepGuestData.value, remember: rememberMe.value })
+      recoveryResult.value = result.recovery_code
+    } else if (isRecover.value) {
+      recoveryResult.value = await recoverAccount(account.value, recoveryCode.value, password.value)
+    } else {
+      await loginAccount(account.value, password.value, rememberMe.value)
+      window.location.assign('/')
+    }
+    password.value = ''; confirmPassword.value = ''; recoveryCode.value = ''
+  } catch (cause) { await showError(cause instanceof Error ? cause.message : '操作失败，请重试') }
+  finally { submitting.value = false }
+}
+async function continueGuest(): Promise<void> {
+  if (submitting.value) return
+  submitting.value = true
+  try {
+    if (accountEnabled && mustLogout) await logoutAccount()
+    window.location.assign('/')
+  } catch (cause) { await showError(cause instanceof Error ? cause.message : '退出失败，请重试') }
+  finally { submitting.value = false }
+}
+async function copyRecovery(): Promise<void> {
+  try { await navigator.clipboard.writeText(recoveryResult.value); ElMessage.success('恢复码已复制，请保存到私密位置') }
+  catch { ElMessage.info('请选中恢复码复制，或下载保存') }
+}
+function saveRecovery(): void {
+  const url = URL.createObjectURL(new Blob([`FileMate 账号：${account.value}\n恢复码：${recoveryResult.value}\n请保密；重设密码后此恢复码失效。\n`], { type: 'text/plain;charset=utf-8' }))
+  const link = document.createElement('a'); link.href = url; link.download = 'FileMate-恢复码.txt'; link.click()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+function finishRecovery(): void {
+  if (!savedRecovery.value) return
+  recoveryResult.value = ''
+  window.location.assign(isRecover.value ? '/login' : '/')
+}
+function guardRecovery(): boolean { return !recoveryResult.value || savedRecovery.value }
+onBeforeRouteLeave(guardRecovery)
+onBeforeRouteUpdate(guardRecovery)
+function beforeUnload(event: BeforeUnloadEvent): void {
+  if (!guardRecovery()) { event.preventDefault(); event.returnValue = '' }
+}
+window.addEventListener('beforeunload', beforeUnload)
+onUnmounted(() => { window.removeEventListener('beforeunload', beforeUnload); recoveryResult.value = ''; password.value = '' })
 </script>
 
 <style scoped>
@@ -257,4 +318,10 @@ function showUnavailableNotice(): void { ElMessage.info('找回密码功能将�
 .auth-card-head > span, .field-group > label, .field-label-row label, .check-row { font-size:16px; }
 .field-control input, .auth-switch a, .primary-action, .guest-action { font-size:17px; }
 .field-control input::placeholder, .text-button, .auth-boundary { font-size:14px; }
+.auth-fields { border:0; padding:0; margin:0; min-width:0; }
+.primary-action:disabled, .guest-action:disabled { opacity:.6; cursor:wait; }
+.recovery-result { margin-top:28px; font-size:16px; line-height:1.8; }
+.recovery-result textarea { width:100%; box-sizing:border-box; margin:12px 0; padding:14px; border:1px solid var(--accent-border); border-radius:10px; font:16px var(--font-mono); background:var(--panel-tint); color:var(--text-primary); resize:none; }
+.recovery-actions { display:flex; gap:12px; margin-bottom:16px; }
+.text-button { text-decoration:none; }
 </style>

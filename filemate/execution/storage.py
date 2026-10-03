@@ -560,6 +560,31 @@ CREATE INDEX idx_career_trainings ON career_trainings(position_id, created_at DE
 CREATE INDEX idx_career_events ON career_events(position_id, event_id DESC);
 """
 
+_ACCOUNT_SCHEMA = """\
+CREATE TABLE accounts (
+    account_id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    display_name TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    recovery_hash TEXT NOT NULL,
+    workspace_id TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
+);
+CREATE TABLE account_sessions (
+    token_hash TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES accounts(account_id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL
+);
+CREATE INDEX idx_account_sessions_owner ON account_sessions(account_id);
+CREATE INDEX idx_account_sessions_expiry ON account_sessions(expires_at);
+CREATE TABLE account_attempts (
+    attempt_key TEXT PRIMARY KEY,
+    window_start INTEGER NOT NULL,
+    attempts INTEGER NOT NULL
+);
+"""
+
 _MIGRATIONS = (
     (1, "initial_execution_schema", _SCHEMA),
     (2, "knowledge_persistence", _KNOWLEDGE_SCHEMA),
@@ -583,6 +608,7 @@ _MIGRATIONS = (
     (22, "isolated_programming_submissions", _PROGRAMMING_SCHEMA),
     (23, "interview_observation_and_review", _INTERVIEW_REVIEW_SCHEMA),
     (24, "career_training_center", _CAREER_SCHEMA),
+    (25, "accounts_and_revocable_sessions", _ACCOUNT_SCHEMA),
 )
 
 

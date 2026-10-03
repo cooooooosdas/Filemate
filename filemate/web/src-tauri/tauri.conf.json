@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "FileMate",
-  "version": "1.3.0-alpha.3",
+  "version": "1.3.0-alpha.4",
   "identifier": "cn.filemate.campus-twin",
   "build": {
     "beforeDevCommand": "npm run dev",

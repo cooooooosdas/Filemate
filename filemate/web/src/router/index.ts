@@ -3,6 +3,10 @@ import { pageLoadFailure } from './load-errors'
 
 const routes: RouteRecordRaw[] = [
   {
+    path: '/recover', name: 'Recover', component: () => import('../views/Auth.vue'),
+    meta: { title: '找回密码', layout: 'auth' }
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('../views/Auth.vue'),

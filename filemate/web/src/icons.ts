@@ -10,5 +10,7 @@ export {
   IconSettings as Setting, IconSitemap as Share, IconTargetArrow as Aim,
   IconNotes as Tickets, IconUser as User, IconPlayerPlay as VideoPlay,
   IconTrash as Trash, IconX as Close, IconChevronDown as ChevronDown,
-  IconFileText as Document, IconArrowUpRight as ArrowUpRight
+  IconFileText as Document, IconArrowUpRight as ArrowUpRight,
+  IconEye as View, IconEyeOff as Hide, IconKey as Key,
+  IconMail as Message, IconArrowRight as Right
 } from '@tabler/icons-vue'

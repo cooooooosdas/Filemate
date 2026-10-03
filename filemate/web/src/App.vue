@@ -63,12 +63,17 @@
           <span class="state-indicator" />
           <span>{{ backendConnected === null ? '正在连接…' : backendConnected ? '服务已连接' : '服务未连接' }}</span>
         </div>
-        <button class="version-label" title="整合版本 1.3.0-alpha.3" aria-label="打开应用设置" @click="showSettings = true">v1.3 α3</button>
+        <button class="version-label" title="整合版本 1.3.0-alpha.4" aria-label="打开应用设置" @click="showSettings = true">v1.3 α4</button>
       </div>
     </aside>
 
     <main id="main-content" class="workspace" tabindex="-1" :inert="mobileNavOpen">
       <PageLoadError />
+      <div v-if="accountState?.expired" class="service-banner" role="alert">
+        <el-icon><Lock /></el-icon><div><strong>登录已过期</strong><span>重新登录后可继续访问账号资料。</span></div>
+        <router-link to="/login">重新登录</router-link>
+        <button type="button" :disabled="loggingOut" @click="signOut">以游客继续</button>
+      </div>
       <div v-if="backendConnected === false" class="service-banner" role="alert">
         <el-icon><Connection /></el-icon>
         <div>
@@ -99,7 +104,8 @@
 
         <div class="topbar-actions">
           <router-link class="global-import desktop-only" to="/import"><el-icon><DocumentAdd /></el-icon>导入资料</router-link>
-          <router-link class="account-entry" to="/login" aria-label="登录 FileMate"><el-icon><User /></el-icon><span>登录</span></router-link>
+          <button v-if="accountState?.user" class="account-entry" type="button" aria-label="查看我的账号" @click="showAccount = true"><el-icon><User /></el-icon><span>{{ accountState.user.display_name }}</span></button>
+          <router-link v-else class="account-entry" to="/login" aria-label="登录 FileMate"><el-icon><User /></el-icon><span>登录</span></router-link>
           <button class="finder-trigger" aria-label="查找功能" @click="showFinder = true"><el-icon><Search /></el-icon><span>查找功能</span><kbd>Ctrl K</kbd></button>
           <button
             class="icon-button"
@@ -147,6 +153,10 @@
       </div>
     </main>
 
+    <el-dialog v-model="showAccount" title="我的账号" width="min(480px, calc(100vw - 32px))">
+      <div v-if="accountState?.user" class="account-details"><strong>{{ accountState.user.display_name }}</strong><p>{{ accountState.user.email }}</p><p>资料保存在该账号的私有学习空间，换设备登录后可继续使用。</p><p>忘记密码时，请在登录页使用保存的恢复码。</p></div>
+      <template #footer><el-button @click="showAccount = false">关闭</el-button><el-button type="primary" :loading="loggingOut" @click="signOut">退出登录</el-button></template>
+    </el-dialog>
     <el-dialog v-model="showSettings" title="应用设置" width="min(660px, calc(100vw - 32px))">
       <div class="settings-list">
         <div class="setting-row">
@@ -161,7 +171,7 @@
           <el-icon><Lock /></el-icon>
           <div>
             <strong>数据边界</strong>
-            <span>学习资料与执行记录默认保存在本机</span>
+            <span>{{ accountState?.enabled ? '网站资料保存在服务器的独立私有空间' : '学习资料与执行记录默认保存在本机' }}</span>
           </div>
           <el-tag type="success" effect="plain">本地优先</el-tag>
         </div>
@@ -231,13 +241,17 @@ import {
 } from './icons'
 import Logo from './components/Logo.vue'
 import LLMSettingsPanel from './components/LLMSettingsPanel.vue'
-import { checkHealth } from './services/api'
+import { checkHealth, getAccountState, logoutAccount } from './services/api'
+import type { AccountState } from './types/account'
 
 const route = useRoute()
 const router = useRouter()
 const sidebarCollapsed = ref(false)
 const mobileNavOpen = ref(false)
 const showSettings = ref(false)
+const showAccount = ref(false)
+const loggingOut = ref(false)
+const accountState = ref<AccountState | null>(null)
 const backendConnected = ref<boolean | null>(null)
 const serviceChecking = ref(false)
 const refreshing = ref(false)
@@ -345,18 +359,32 @@ async function handleShortcut(event: KeyboardEvent): Promise<void> {
 watch(() => route.fullPath, () => {
   if (mobileNavOpen.value) void finishMobileNavigation()
   if (route.meta.layout !== 'auth') void loadShellState()
-  else { showFinder.value = false; showSettings.value = false }
+  else { showFinder.value = false; showSettings.value = false; showAccount.value = false }
 })
 
 async function loadShellState(): Promise<void> {
   serviceChecking.value = true
   try {
-    backendConnected.value = await checkHealth()
+    const [health, account] = await Promise.all([checkHealth(), getAccountState().catch(() => null)])
+    backendConnected.value = health
+    if (account) accountState.value = account
   } catch {
     backendConnected.value = false
   } finally {
     serviceChecking.value = false
   }
+}
+
+async function signOut(): Promise<void> {
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try { await logoutAccount(); window.location.assign('/') }
+  catch (cause) { ElMessage.error(cause instanceof Error ? cause.message : '退出失败，请重试') }
+  finally { loggingOut.value = false }
+}
+function expireSession(): void {
+  accountState.value = { user: null, enabled: true, expired: true }
+  showAccount.value = false
 }
 
 async function refreshPage(): Promise<void> {
@@ -392,19 +420,23 @@ onMounted(() => {
   })
   window.addEventListener('keydown', handleShortcut)
   window.addEventListener('resize', handleResize)
+  window.addEventListener('filemate:session-expired', expireSession)
 })
 onUnmounted(() => {
   window.removeEventListener('keydown', handleShortcut)
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('filemate:session-expired', expireSession)
   window.clearTimeout(refreshTimer)
 })
 
 function isAuthPath(path: string): boolean {
-  return path === '/login' || path === '/register'
+  return path === '/login' || path === '/register' || path === '/recover'
 }
 </script>
 
 <style scoped>
+.account-entry span { max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.account-details { font-size:16px; line-height:1.8; overflow-wrap:anywhere; }
 .app-shell {
   min-height: 100vh;
   display: grid;

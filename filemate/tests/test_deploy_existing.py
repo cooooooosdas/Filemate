@@ -106,3 +106,14 @@ def test_preflight_reads_existing_public_get_routes() -> None:
         and isinstance(node.args[0], ast.Constant)
     }
     assert set(deploy.PREFLIGHT_PATHS) <= routes
+
+
+def test_upgrade_allows_append_but_rejects_changed_referenced_sql(tmp_path) -> None:
+    old = tmp_path / 'old.py'
+    new = tmp_path / 'new.py'
+    old.write_text('_SQL = "CREATE TABLE x(a INT)"\n_MIGRATIONS = ((24, "old", _SQL),)')
+    new.write_text('_SQL = "CREATE TABLE x(a INT)"\n_MIGRATIONS = ((24, "old", _SQL), (25, "accounts", "CREATE TABLE y(a INT)"))')
+    deploy.check_migration_upgrade(old, new)
+    new.write_text('_SQL = "CREATE TABLE x(a TEXT)"\n_MIGRATIONS = ((24, "old", _SQL), (25, "accounts", "CREATE TABLE y(a INT)"))')
+    with pytest.raises(AssertionError, match='改写'):
+        deploy.check_migration_upgrade(old, new)

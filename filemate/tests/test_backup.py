@@ -62,7 +62,7 @@ def test_preview_and_three_databases_restore(managed: Path, tmp_path: Path) -> N
         entry["database"]["schema_version"]
         for entry in report["manifest"]["entries"]
         if entry["kind"] == "database"
-    } == {24}
+    } == {25}
     target = tmp_path / "staged"
     restore_plan = backup.plan_restore(snapshot, target)
     assert not target.exists()
@@ -272,7 +272,7 @@ def test_invalid_database_is_not_backed_up(managed: Path, tmp_path: Path, fault:
         with closing(sqlite3.connect(path)) as conn:
             if fault == "future":
                 conn.execute(
-                    "INSERT INTO schema_migrations(version, name) VALUES (25, 'synthetic-future')"
+                    "INSERT INTO schema_migrations(version, name) SELECT MAX(version)+1, 'synthetic-future' FROM schema_migrations"
                 )
             elif fault == "gap":
                 conn.execute("DELETE FROM schema_migrations WHERE version=2")

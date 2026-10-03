@@ -219,18 +219,37 @@ def restore_drill(source: Path, target: Path, manifest: dict[str, Any]) -> None:
 
 def atomic_link(target: str, link: Path) -> None:
     """原子切换符号链接，保留所有发布目录。"""
-    temporary = link.with_name(link.name + '.alpha3-new')
+    temporary = link.with_name(link.name + '.release-new')
     assert not temporary.exists() and not temporary.is_symlink()
     temporary.symlink_to(target)
     temporary.replace(link)
 
 
-def migration_signature(path: Path) -> str:
-    """确认本次候选与旧服务使用相同迁移，允许代码回退保留现役数据。"""
+def migration_contract(path: Path) -> list[tuple[int, str, str]]:
+    """静态读取版本、名称和 SQL，拒绝改写已发布迁移。"""
     tree = ast.parse(path.read_text(encoding='utf-8'))
+    constants = {
+        target.id: ast.literal_eval(node.value)
+        for node in tree.body if isinstance(node, ast.Assign)
+        and isinstance(node.value, ast.Constant)
+        for target in node.targets if isinstance(target, ast.Name)
+    }
     node = next(n for n in tree.body if isinstance(n, ast.Assign)
                 and any(isinstance(t, ast.Name) and t.id == '_MIGRATIONS' for t in n.targets))
-    return hashlib.sha256(ast.dump(node.value).encode()).hexdigest()
+    return [tuple(constants[value.id] if isinstance(value, ast.Name) else ast.literal_eval(value)
+                  for value in migration.elts) for migration in node.value.elts]
+
+
+def migration_signature(path: Path) -> str:
+    """对完整 SQL 合同计算摘要。"""
+    return hashlib.sha256(json.dumps(migration_contract(path)).encode()).hexdigest()
+
+
+def check_migration_upgrade(before: Path, after: Path) -> None:
+    """只允许同版本或在完整旧合同之后追加新迁移。"""
+    old, new = migration_contract(before), migration_contract(after)
+    assert new[:len(old)] == old, '候选改写或删除了已发布迁移'
+    assert all(new[index][0] > new[index - 1][0] for index in range(1, len(new)))
 
 
 def activate(args: argparse.Namespace) -> None:
@@ -242,8 +261,8 @@ def activate(args: argparse.Namespace) -> None:
     old_backend = os.readlink(BACKEND / 'current')
     old_web = os.readlink(WEB / 'current')
     release = BACKEND / 'releases' / args.release_id
-    assert migration_signature(BACKEND / 'current/filemate/execution/storage.py') == \
-        migration_signature(release / 'filemate/execution/storage.py')
+    check_migration_upgrade(BACKEND / 'current/filemate/execution/storage.py',
+                            release / 'filemate/execution/storage.py')
     backup = Path('/var/backups/filemate') / (args.release_id + '-' +
               datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'))
     backup.mkdir(mode=0o700)
@@ -280,7 +299,7 @@ def activate(args: argparse.Namespace) -> None:
              'file_count': sum(bool(r['sha256']) for r in manifest['records']),
              'schemas': sorted({d['schema_version'] for d in manifest['databases']}),
              'commit': args.commit, 'version': args.version,
-             'rollback_policy': 'same migrations; retain current data after reopening public writes'})
+             'rollback_policy': 'after public writes use a release preserving accounts and schema; never restore old snapshot over new data'})
     except Exception:
         run('systemctl', 'stop', 'filemate-api')
         atomic_link(old_backend, BACKEND / 'current')
@@ -321,7 +340,7 @@ def main() -> None:
     parser.add_argument('--backend-sha256', required=True)
     parser.add_argument('--web-sha256', required=True)
     args = parser.parse_args()
-    assert os.geteuid() == 0 and re.fullmatch(r'alpha3-[0-9a-f]{7,40}', args.release_id)
+    assert os.geteuid() == 0 and re.fullmatch(r'alpha[1-9][0-9]*-[0-9a-f]{7,40}', args.release_id)
     assert re.fullmatch(r'[0-9a-f]{40}', args.commit)
     assert all(re.fullmatch(r'[0-9a-f]{64}', value) for value in
                [args.backend_sha256, args.web_sha256])

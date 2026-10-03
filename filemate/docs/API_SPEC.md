@@ -317,7 +317,7 @@ storage = SQLiteStorage(db_path="filemate.db")
 storage.init_schema()
 ```
 
-**数据库版本：** `schema_migrations` 记录已应用迁移，当前 schema 为 v24。`init_schema()` 可对旧数据库安全、幂等升级。
+**数据库版本：** `schema_migrations` 记录已应用迁移，当前 schema 为 v25。`init_schema()` 可对旧数据库安全、幂等升级。
 
 **核心表：**
 
@@ -391,7 +391,25 @@ HTTP 错误同样保持该结构：参数错误使用 `400/422`，资源不存�
 
 部署模板的TLS网关对已声明超过32 MiB的请求体在传输前返回统一JSON `413`，并对读取正文设置32 MiB上限；文件自身仍受后端25 MiB限制。分块传输中途超限可能终止连接，客户端需保留输入并允许重试。HTML和API使用`Cache-Control: no-store`，内容哈希资源长期缓存，本地视觉模型/WASM使用`no-cache`校验更新。`/knowledge`、`/wrongbook`、`/interview`、`/goals`、`/trust`同时作为页面和API入口，只有这些精确路径的HTML导航交给前端；其余API不因`Accept: text/html`而变成页面。实际部署复核见[网关交付](../../docs/GATEWAY_PREFLIGHT_DELIVERY_2026-10-03.md)。
 
-生产环境默认启用 `FILEMATE_IDENTITY_MODE=anonymous`。服务端首次响应签发 `HttpOnly`、`Secure`、`SameSite=Lax` 的签名设备 Cookie；前端请求必须使用 `withCredentials=true`。每个设备身份使用独立 SQLite、上传目录和归档目录，任一资源 ID 在其他身份下统一返回 `404`。该机制是匿名设备隔离，不是登录账号：清除 Cookie 或更换浏览器后无法自动恢复原身份。开发和桌面 Sidecar 默认使用 `local` 模式。
+生产环境默认启用 `FILEMATE_IDENTITY_MODE=anonymous`，同时支持游客和邮箱账号。未登录时签发 `HttpOnly`、`Secure`、`SameSite=Lax` 的签名设备 Cookie；账号使用独立的 `filemate_session` 不透明会话 Cookie，前端请求必须使用 `withCredentials=true`。资料继续按独立 SQLite、上传和归档目录隔离，跨身份资源统一返回 `404`。游客清除 Cookie 后无法恢复原身份；账号换设备登录可恢复资料空间。开发和桌面 Sidecar 默认 `local` 模式，无需账号且禁止创建网站账户。
+
+### 邮箱账号与恢复码（alpha.4 / schema v25）
+
+所有账号 `POST` 必须为 JSON，附 `X-FileMate-Action: account`，并遵守 Origin 白名单。响应为统一信封且 `Cache-Control: no-store`。主 SQLite 追加 `accounts`、`account_sessions`、`account_attempts`；业务资料留在原独立目录。没有新增环境变量或邮件服务。
+
+| 方法 | 路径 | 输入与输出 |
+|---|---|---|
+| GET | `/api/auth/me` | `user`（账号ID、邮箱、昵称、创建时间）或 null；`enabled`、`expired` |
+| POST | `/api/auth/register` | `email`、`display_name`、`password`、`keep_guest_data=true`、`remember=true`；返回 `user` 和仅此次显示的 `recovery_code`，设置会话 Cookie |
+| POST | `/api/auth/login` | `email`、`password`、`remember=true`；返回 `user`，轮换当前设备会话 |
+| POST | `/api/auth/logout` | `{}`；撤销当前设备会话并删除 Cookie；重复退出幂等 |
+| POST | `/api/auth/recover` | `email`、`recovery_code`、新 `password`；更换密码、撤销全部会话并返回新的恢复码；旧码不能复用，需重新登录 |
+
+邮箱去首尾空格并 casefold，暂不验证邮件归属，因此不是已验证联系方式。昵称2–30字符，密码15–128字符，允许中文和长口令；scrypt `N=32768,r=8,p=3` 独立随机盐，最多两个并发密码派生。恢复码和会话为256位随机令牌，数据库仅存SHA-256摘要，秘密不进入客户端持久存储。勾选保持登录使用30天有效Cookie，否则为浏览器会话Cookie且服务端最长12小时；每账号最多10个活跃设备会话。登录/注册/恢复分别每邮箱15分钟最多10次；Nginx认证动作另限每IP20次/分钟、突发8次，`me`和退出不计此额度。
+
+注册可显式选择把当前游客空间归入账号；保留时只原子绑定目录、不复制或删除资料，已绑定空间的旧游客Cookie立即失去访问权。取消保留则创建新账号空间，退出后可回到原游客空间。登录已有账号不会合并游客资料。过期/撤销会话的业务请求返回401，禁止悄悄写入新的游客空间；`me`、健康和账号端点可继续使用。页面路由为 `/login`、`/register`、`/recover`；恢复码须保存后才进入学习空间。
+
+完整备份必须同时包含主库、`identity.secret` 和用户分库/托管资料。恢复演练保留密码摘要、恢复码摘要及账号归属。发布允许完整旧迁移之后追加v25；开放账号写入后禁止回退到只识别游客的alpha.3，否则旧游客凭证会绕过账号归属检查。回退必须保留账号服务和v25，不能以旧快照覆盖新写入。
 
 携带 `Origin` 的状态变更请求只接受 `FILEMATE_CORS_ORIGINS` 白名单来源。资料 API 不返回 `source_path`、`workspace_id` 等服务器内部字段；`.ics` 只允许从当前身份已应用的执行记录读取，且路径必须位于该身份归档目录内。
 

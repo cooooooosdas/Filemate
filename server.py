@@ -26,11 +26,12 @@ from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFi
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from filemate import __version__
+from filemate.accounts import REMEMBER_SECONDS, AccountError, AccountStore
 from filemate.career.models import (
     DeleteRequest,
     PlanConfirm,
@@ -90,6 +91,7 @@ if IDENTITY_MODE not in {"local", "anonymous"}:
     raise RuntimeError("FILEMATE_IDENTITY_MODE 只能是 local 或 anonymous")
 IDENTITY_COOKIE_NAME = "filemate_identity"
 IDENTITY_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
+ACCOUNT_COOKIE_NAME = "filemate_session"
 
 
 def _env_list(name: str, default: list[str]) -> list[str]:
@@ -332,6 +334,7 @@ def _managed_file_status(
 _local_storage = SQLiteStorage(DATABASE_PATH)
 _local_storage.init_schema()
 _local_storage.ensure_interview_questions(SEED_QUESTIONS)
+_accounts = AccountStore(DATABASE_PATH) if IDENTITY_MODE == "anonymous" else None
 _storage: SQLiteStorage | _StorageRouter = _StorageRouter(_local_storage)
 
 # =============== Models ===============
@@ -406,7 +409,7 @@ app.add_middleware(
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Accept", "Content-Type", "X-FileMate-Shutdown-Token"],
+    allow_headers=["Accept", "Content-Type", "X-FileMate-Shutdown-Token", "X-FileMate-Action"],
 )
 
 
@@ -436,12 +439,28 @@ async def isolate_anonymous_workspace(request: Request, call_next):
     if IDENTITY_MODE == "local":
         return await call_next(request)
 
+    session_token = request.cookies.get(ACCOUNT_COOKIE_NAME)
+    account = await run_in_threadpool(_accounts.resolve_session, session_token)
+    request.state.account = account
+    request.state.session_expired = bool(session_token and not account)
+    if request.state.session_expired and request.url.path not in {
+        "/api/auth/me", "/api/auth/login", "/api/auth/register", "/api/auth/logout",
+        "/api/auth/recover", "/api/health", "/health",
+    } and request.method != "OPTIONS":
+        return JSONResponse(status_code=401, content={
+            "success": False, "data": None, "error": "登录已过期，请重新登录或退出后以游客继续",
+        })
     identity_id = _verify_identity_cookie(
         request.cookies.get(IDENTITY_COOKIE_NAME)
     )
+    if identity_id and await run_in_threadpool(_accounts.workspace_claimed, identity_id):
+        identity_id = None
     should_issue_cookie = identity_id is None
     if identity_id is None:
         identity_id = f"u_{uuid.uuid4().hex}"
+    guest_identity_id = identity_id
+    if account:
+        identity_id = account["workspace_id"]
     tenant_root = DATA_DIR / "users" / identity_id
     context = (identity_id, tenant_root / "inbox", tenant_root / "archive")
     with _tenant_storage_lock:
@@ -461,7 +480,7 @@ async def isolate_anonymous_workspace(request: Request, call_next):
     if should_issue_cookie:
         response.set_cookie(
             key=IDENTITY_COOKIE_NAME,
-            value=_sign_identity(identity_id),
+            value=_sign_identity(guest_identity_id),
             max_age=IDENTITY_COOKIE_MAX_AGE,
             httponly=True,
             secure=IS_PRODUCTION,
@@ -469,6 +488,94 @@ async def isolate_anonymous_workspace(request: Request, call_next):
             path="/",
         )
     return response
+
+
+class AccountRegisterRequest(BaseModel):
+    email: str = Field(max_length=254)
+    display_name: str = Field(max_length=30)
+    password: SecretStr = Field(max_length=128)
+    keep_guest_data: bool = True
+    remember: bool = True
+
+
+class AccountLoginRequest(BaseModel):
+    email: str = Field(max_length=254)
+    password: SecretStr = Field(max_length=128)
+    remember: bool = True
+
+
+class AccountRecoverRequest(BaseModel):
+    email: str = Field(max_length=254)
+    recovery_code: SecretStr = Field(max_length=64)
+    password: SecretStr = Field(max_length=128)
+
+
+def _account_service(request: Request) -> AccountStore:
+    """账号写入要求 JSON 和自定义头，避免跨站表单请求。"""
+    if _accounts is None:
+        raise HTTPException(409, "本地独立模式无需账号；网站模式支持邮箱注册和登录")
+    if request.headers.get("x-filemate-action") != "account" or request.headers.get("content-type", "").split(";", 1)[0] != "application/json":
+        raise HTTPException(403, "请通过 FileMate 账号页面操作")
+    return _accounts
+
+
+def _account_response(data: dict[str, Any], token: str | None = None, remember: bool = False) -> JSONResponse:
+    """会话只进入 HttpOnly Cookie，不返回给前端脚本。"""
+    response = JSONResponse(content={"success": True, "data": data, "error": None}, headers={"Cache-Control": "no-store"})
+    if token:
+        response.set_cookie(ACCOUNT_COOKIE_NAME, token, max_age=REMEMBER_SECONDS if remember else None,
+                            httponly=True, secure=IS_PRODUCTION, samesite="lax", path="/")
+    return response
+
+
+@app.exception_handler(AccountError)
+async def account_exception_handler(request: Request, exc: AccountError) -> JSONResponse:
+    del request
+    return JSONResponse(status_code=exc.status, content={"success": False, "data": None, "error": str(exc)},
+                        headers={"Cache-Control": "no-store", **({"Retry-After": "900"} if exc.status == 429 else {})})
+
+
+@app.get("/api/auth/me")
+def account_me(request: Request) -> JSONResponse:
+    account = getattr(request.state, "account", None)
+    return _account_response({"user": account["user"] if account else None,
+                              "enabled": _accounts is not None,
+                              "expired": getattr(request.state, "session_expired", False)})
+
+
+@app.post("/api/auth/register")
+def account_register(request: Request, payload: AccountRegisterRequest) -> JSONResponse:
+    service = _account_service(request)
+    if getattr(request.state, "account", None):
+        raise HTTPException(409, "请先退出当前账号再注册")
+    workspace_id = _current_identity_id() if payload.keep_guest_data else f"u_{uuid.uuid4().hex}"
+    user, token, recovery = service.register(payload.email, payload.password.get_secret_value(), payload.display_name, workspace_id, payload.remember)
+    service.logout(request.cookies.get(ACCOUNT_COOKIE_NAME))
+    return _account_response({"user": user, "recovery_code": recovery}, token, payload.remember)
+
+
+@app.post("/api/auth/login")
+def account_login(request: Request, payload: AccountLoginRequest) -> JSONResponse:
+    service = _account_service(request)
+    user, token = service.login(payload.email, payload.password.get_secret_value(), payload.remember)
+    service.logout(request.cookies.get(ACCOUNT_COOKIE_NAME))
+    return _account_response({"user": user}, token, payload.remember)
+
+
+@app.post("/api/auth/logout")
+def account_logout(request: Request) -> JSONResponse:
+    service = _account_service(request)
+    service.logout(request.cookies.get(ACCOUNT_COOKIE_NAME))
+    response = _account_response({"user": None})
+    response.delete_cookie(ACCOUNT_COOKIE_NAME, httponly=True, secure=IS_PRODUCTION, samesite="lax", path="/")
+    return response
+
+
+@app.post("/api/auth/recover")
+def account_recover(request: Request, payload: AccountRecoverRequest) -> JSONResponse:
+    service = _account_service(request)
+    recovery = service.recover(payload.email, payload.recovery_code.get_secret_value(), payload.password.get_secret_value())
+    return _account_response({"recovery_code": recovery})
 
 
 @app.exception_handler(HTTPException)

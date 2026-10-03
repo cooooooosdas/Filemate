@@ -1,5 +1,7 @@
 # FileMate
 
+2026-10-04账号升级候选：`v1.3.0-alpha.4` / schema v25，邮箱注册、登录、保持登录、退出及恢复码找回已实现；账号保留游客资料后，旧游客凭证不再有权访问。Windows全量793后端、33前端及构建通过，继续执行浏览器、Linux和公网验收。合同、边界及证据见[账号交付记录](docs/ACCOUNT_AUTH_DELIVERY_2026-10-04.md)，实际线上版本以 `/release.json` 为准。
+
 2026-10-04最新网站补丁：[首页诗词一言](docs/HOME_POETRY_DELIVERY_2026-10-04.md)已推送并上线。保留左侧标题，右侧银蓝区域从一言诗词库随机获取原文及作者/出处；返回保持、刷新换句，断网有缓存与经典备用。Linux CI为792后端/33前端，32项隔离布局与8项真实公网检查通过。网站`/release.json`分别记录前端和后台提交；用户指定下一卡优先实现真实账号，再检查各功能/API。
 
 2026-10-03当前整合版本`v1.3.0-alpha.3`已推送主分支并上线：[filemate.asia](https://filemate.asia)。五模块/B2/B3、运维备份、钴蓝界面及学习流程与主分支修复完成整合；Linux CI为792后端、21前端，最终47项TLS/91路径及72项无障碍通过，公网22页/9接口及6项真实模型合成资料闭环通过。备份、包指纹、当前代码提交和限制统一见[alpha.3发布记录](docs/INTEGRATED_RELEASE_ALPHA3.md)。以下alpha.1/alpha.2阶段记录保留当时状态，不能当作最新线上状态。
@@ -137,7 +139,7 @@ FileMate 是一个面向大学生的本地优先 AI 学习工作台。它把散�
 
 - Windows 队友执行 `scripts/dev.ps1 -Setup` 后可启动前后端。
 - 所有高影响文件操作必须先预览确认，不覆盖已有目标，并可撤销。
-- 数据写入当前 SQLite schema v24，关闭并重启后仍能读取。
+- 数据写入当前 SQLite schema v25，关闭并重启后仍能读取。
 - 非 e2e 后端测试不得少于当前 `370 passed` 基线；新增功能必须新增测试。
 - `npm run build`、CI 静态检查和离线评测通过。
 - P0 缺陷为 0；P1 缺陷必须有负责人、复现步骤和明确截止日期。
@@ -241,7 +243,7 @@ Source（原始资料）
 | 本地 API | FastAPI、Uvicorn、Pydantic | 默认监听 `127.0.0.1:8001` |
 | 桌面壳 | Tauri 2、Rust | 工程已建立；安装包仅手动验收 |
 | 核心语言 | Python 3.10+ | 推荐 3.11/3.12；统一 UTF-8 |
-| 数据存储 | SQLite WAL，schema v24 | 本地优先、版本迁移、线程连接管理；生产环境按匿名设备分库 |
+| 数据存储 | SQLite WAL，schema v25 | 本地优先、版本迁移、线程连接管理；生产环境按匿名设备分库 |
 | 文件解析 | PyPDF2、pdfplumber、python-docx、python-pptx | PaddleOCR 为可选依赖 |
 | 检索 | 本地分块 + BM25 风格词法评分 | 支持页码/片段引用；无外部向量库 |
 | LLM | DeepSeek V4 Flash；OpenAI 兼容 HTTP API | 通过 `LLMClient` 和 Provider 适配层接入 |

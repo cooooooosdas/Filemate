@@ -1,4 +1,5 @@
 import axios from 'axios'
+import type { AccountState, AccountUser, RegisterAccount } from '../types/account'
 
 export async function getPoetryQuote(): Promise<unknown> {
   const response = await fetch('https://v1.hitokoto.cn/?c=i&encode=json&min_length=8&max_length=22', {
@@ -127,9 +128,29 @@ api.interceptors.response.use(
     if (import.meta.env.DEV) {
       console.error('[API Error]', message)
     }
+    if (error.response?.status === 401 && !error.config?.url?.startsWith('/api/auth/')) {
+      window.dispatchEvent(new Event('filemate:session-expired'))
+    }
     return Promise.reject(new Error(message))
   }
 )
+
+const accountOptions = { timeout: 20000, headers: { 'X-FileMate-Action': 'account' } }
+export async function getAccountState(): Promise<AccountState> {
+  return (await api.get<any, ApiResponse<AccountState>>('/api/auth/me', { timeout: 10000 })).data!
+}
+export async function registerAccount(payload: RegisterAccount): Promise<{ user: AccountUser; recovery_code: string }> {
+  return (await api.post<any, ApiResponse<{ user: AccountUser; recovery_code: string }>>('/api/auth/register', payload, accountOptions)).data!
+}
+export async function loginAccount(email: string, password: string, remember: boolean): Promise<void> {
+  await api.post('/api/auth/login', { email, password, remember }, accountOptions)
+}
+export async function logoutAccount(): Promise<void> {
+  await api.post('/api/auth/logout', {}, accountOptions)
+}
+export async function recoverAccount(email: string, recovery_code: string, password: string): Promise<string> {
+  return (await api.post<any, ApiResponse<{ recovery_code: string }>>('/api/auth/recover', { email, recovery_code, password }, accountOptions)).data!.recovery_code
+}
 
 // 上传文件
 export async function uploadFile(
