@@ -26,6 +26,8 @@ try {
     Assert-LastExitCode "uv sync"
     uv run ruff check server.py main.py filemate/execution `
         filemate/tests/test_storage.py `
+        filemate/tests/test_release_contract.py `
+        filemate/tests/test_deploy_existing.py `
         filemate/tests/test_interview_review.py `
         filemate/tests/test_career.py `
         filemate/tests/test_career_planning.py `
@@ -57,6 +59,7 @@ try {
         scripts/acceptance/release_readiness.py `
         scripts/acceptance/backup_restore.py `
         scripts/acceptance/gateway_preflight.py `
+        scripts/deploy_existing.py `
         scripts/acceptance/workspace_model_fixture.py `
         evaluation/analyze_feedback.py
     Assert-LastExitCode "Ruff"

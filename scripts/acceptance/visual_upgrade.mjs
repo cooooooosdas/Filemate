@@ -78,7 +78,7 @@ try {
     assert.equal(facts.overflow, false)
     assert.ok(facts.title >= 44 && facts.copy >= 17)
     assert.ok(facts.buttons.every(button => button.size >= 16 && button.height >= 44))
-    assert.ok(facts.canvas.includes('radial-gradient') && facts.accent === '#2454d7')
+    assert.ok(facts.canvas.includes('radial-gradient') && facts.accent === '#2352d3')
     assert.equal(facts.surface, '#f2f6ff')
     assert.ok(facts.sceneRatio >= .98 && facts.sceneHeight >= 440)
     await page.screenshot({ path: path.join(out, `home-${width}.png`), fullPage: true })

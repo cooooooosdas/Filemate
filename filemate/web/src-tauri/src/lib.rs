@@ -45,12 +45,29 @@ pub fn run() {
             std::fs::create_dir_all(&archive_dir)?;
 
             let shutdown_token = Uuid::new_v4().to_string();
+            let cors_origins = if cfg!(debug_assertions) {
+                "tauri://localhost,http://tauri.localhost,https://tauri.localhost,\
+                 http://localhost:5173,http://127.0.0.1:5173"
+            } else {
+                "tauri://localhost,http://tauri.localhost,https://tauri.localhost"
+            };
             let sidecar = app
                 .shell()
                 .sidecar("filemate-server")?
+                // 网站运维终端的环境变量不能改变桌面的本地身份和回环监听。
+                .env("FILEMATE_HOST", "127.0.0.1")
+                .env("FILEMATE_PORT", "8001")
+                .env("FILEMATE_ENV", "development")
+                .env("FILEMATE_IDENTITY_MODE", "local")
+                .env(
+                    "FILEMATE_ALLOWED_HOSTS",
+                    "localhost,127.0.0.1,tauri.localhost",
+                )
+                .env("FILEMATE_CORS_ORIGINS", cors_origins)
                 .env("FILEMATE_DATA_DIR", &data_dir)
                 .env("FILEMATE_DB_PATH", data_dir.join("filemate.db"))
                 .env("FILEMATE_UPLOAD_DIR", data_dir.join("inbox"))
+                .env("FILEMATE_CPP_TOOLCHAIN_DIR", data_dir.join("cpp-toolchain"))
                 .env("FILEMATE_ARCHIVE_DIR", &archive_dir)
                 .env("FILEMATE_SHUTDOWN_TOKEN", &shutdown_token);
             let (mut receiver, child) = sidecar.spawn()?;

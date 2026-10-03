@@ -22,7 +22,7 @@
       <small v-if="evidence">{{ evidence }}</small>
       <div v-if="growth" class="growth-progress">
         <div><span>伙伴阶段 · {{ growth.stage }}</span><b>{{ growth.points }} 成长值</b></div>
-        <i role="progressbar" :aria-valuenow="growth.progress" aria-valuemin="0" aria-valuemax="100"><em :style="{ width: `${growth.progress}%` }" /></i>
+        <i role="progressbar" aria-label="学习伙伴阶段进度" :aria-valuenow="growth.progress" aria-valuemin="0" aria-valuemax="100"><em :style="{ width: `${growth.progress}%` }" /></i>
         <p>{{ growth.nextStage ? `距“${growth.nextStage}”还需 ${growth.pointsToNext} 成长值` : '伙伴阶段已全部解锁' }} · 这是互动进度，不是能力分数</p>
       </div>
     </div>
@@ -131,7 +131,7 @@ const portraitStyle = computed(() => ({
 .growth-progress > div b { color: #176f52; }
 .growth-progress > i { display: block; height: 6px; margin-top: 6px; overflow: hidden; border-radius: 99px; background: rgba(41, 92, 125, .12); }
 .growth-progress > i em { display: block; height: 100%; border-radius: inherit; background: var(--accent);  }
-.growth-progress > p { margin: 5px 0 0; color: #708595; font-size: 10px; }
+.growth-progress > p { margin: 5px 0 0; color: var(--text-muted); font-size: 10px; }
 .companion-action {
   position: relative;
   z-index: 1;

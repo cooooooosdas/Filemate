@@ -509,6 +509,18 @@ def test_changed_source_chunk_invalidates_oral_training(
         assert "资料片段已变化" in stale["invalidated_reason"]
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 def test_workspace_import_is_local_and_deduplicated(server_module, monkeypatch):
     module, storage = server_module
     import filemate.llm_client as llm
@@ -1606,6 +1618,8 @@ def test_daily_coach_budget_order_and_diagnosis_persist(
             "available_minutes": 30,
             "item_order": [f"wrong:{first_id}", f"wrong:{first_id}"],
         }).status_code == 422
+
+
 
 
 def test_mock_interview_progresses_and_persists(

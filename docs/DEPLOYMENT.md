@@ -151,6 +151,22 @@ docker compose --env-file .env.production up -d --build
 
 生产更新必须使用Git tag或明确commit，不直接部署未测试分支。异常时停止新服务、保留新旧卷，先在新目录校验恢复，再挂载至原逻辑`/data`；切回已知正常tag并核对迁移兼容性。不得直接覆盖现役卷或用旧schema覆盖新用户写入。
 
+匿名设备环境的备份必须覆盖数据根目录下全部 SQLite 数据库、`identity.secret`、上传和归档（包括外置归档路径）。迁移前短暂停止应用写入，每库使用 SQLite backup API 生成独立快照，并执行 `PRAGMA integrity_check`；不能复制仍在写入的 `.db` 而遗漏 WAL。恢复演练在独立目录执行，不打开或修改用户原库。保留旧发布目录、对应依赖环境和完整备份；迁移已执行时，旧代码必须配套恢复旧 schema 的数据，不能仅切代码后继续写新库。
+
+备份和恢复同时保留 UID/GID、文件权限及身份密钥，不能仅使用默认复制行为恢复内容。新 Python 环境先以实际服务账户验证目录可遍历、依赖可导入；不要关闭 `ProtectHome` 或扩大为全局可写权限。解除维护模式后若已恢复公众写入，不得再自动覆盖数据为旧快照，应保留当前数据并进入人工核查。
+
+### 4.4 既有 Nginx Proxy Manager + systemd 拓扑
+
+alpha.3使用[scripts/deploy_existing.py](../scripts/deploy_existing.py)执行指纹校验、隔离候选预检、完整备份/恢复演练和原子切换；实际发布与回滚证据见[发布记录](INTEGRATED_RELEASE_ALPHA3.md)。它保留旧环境和发布目录，不能用于其他未核实拓扑。
+
+当前 `filemate.asia` 使用该拓扑，而不是上节的 Caddy Compose。可审查配置见 `deploy/nginx.filemate.conf`；应用前核对实际容器网络的 upstream、挂载目录和证书路径，并先执行 `nginx -t`。不要将配置盲目套用到 Caddy 或其他服务器。
+
+前端 `current` 在挂载目录内指向 `releases/<版本>` 的相对符号链接；宿主机绝对路径在 Nginx 容器里可能不存在，导致页面 500，即使 `/api/health` 仍是 200。切换必须同时检查 HTML、JS、WASM、模型资源和业务 API，不能只检查后端健康。
+
+`/interview-vision/` 与 `/assets/` 使用独立静态资源 location，缺失资源返回 404；`/interview` API 前缀按路径边界匹配，不能误代理本地视觉模型。模型 WASM 明确返回 `application/wasm`。压缩仅作用于这两个公开静态资源目录，不改变私有业务响应。保留 Host/Origin、CSP、120 次/分钟普通接口与 6 次/分钟 AI 限流。
+
+线上浏览器验收可设置 `FILEMATE_ROUTE_SETTLE_MS=5000`（默认 800ms，允许 800–30000ms），以较慢节奏执行已有页面与接口检查，而不是关闭生产限流。视觉验收最后用同一匿名上下文预览并确认删除自己创建的合成面试记录，不清理其他用户资料。
+
 ## 5. 数据、备份与安全
 
 - `filemate_data` Docker 卷包含 SQLite、上传目录和归档目录；删除容器不会删除该卷。
@@ -185,6 +201,8 @@ docker compose --env-file .env.production up -d --build
 5. 补代码签名证书，降低 SmartScreen 警告；发布安装包 SHA-256 校验值。
 
 桌面端默认只监听 `127.0.0.1:8001`，数据存放在系统应用数据目录，不向局域网暴露。网站部署通过 `FILEMATE_HOST=0.0.0.0` 在容器内部监听，只有 Caddy 能从公网转发访问。
+
+alpha.2 桌面壳将 C++ 工具链缓存设置为应用数据目录的 `cpp-toolchain`；开发模式仍使用项目 `_working/cpp-toolchain`。安装包验收脚本不得在有真实数据的日常电脑运行；一次性虚拟机需加 `-IsolatedRunner`，GitHub Windows CI 自动允许。Sidecar 验收仅对 localhost 在测试进程内绕过系统代理，并恢复原设置，避免把代理超时误报为后端启动失败。
 
 ## 8. 发布验收清单
 

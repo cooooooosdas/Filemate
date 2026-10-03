@@ -58,6 +58,7 @@ def main() -> int:
     parser.add_argument("--review-checks", action="store_true")
     parser.add_argument("--workspace-checks", action="store_true")
     parser.add_argument("--layout-checks", action="store_true")
+    parser.add_argument("--a11y-checks", action="store_true")
     parser.add_argument("--fixture-port", type=int, default=8036)
     args = parser.parse_args()
     out, web = args.out.resolve(), args.web_root.resolve()
@@ -91,6 +92,8 @@ def main() -> int:
         fingerprint_paths.append(ROOT / "scripts/acceptance/workspace.mjs")
     if args.layout_checks:
         fingerprint_paths.append(ROOT / "scripts/acceptance/knowledge_layout.mjs")
+    if args.a11y_checks:
+        fingerprint_paths.append(ROOT / "filemate/web/tests/accessibility.browser.mjs")
     fingerprints = {
         str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
         for path in fingerprint_paths
@@ -567,6 +570,8 @@ def main() -> int:
             browser_cases.append("workspace")
         if args.layout_checks:
             browser_cases.append("knowledge_layout")
+        if args.a11y_checks:
+            browser_cases.append("accessibility")
         fixture_started = False
         for name in browser_cases:
             if name in {"file_review", "workspace", "knowledge_layout"} and not fixture_started:
@@ -594,7 +599,12 @@ def main() -> int:
             folder = out / name
             folder.mkdir()
             env["FILEMATE_EVIDENCE_DIR"] = str(folder)
-            command(name, [node, f"scripts/acceptance/{name}.mjs"], 180)
+            if name == "accessibility":
+                env["FILEMATE_ACCEPTANCE_GATEWAY_USER"] = env["FILEMATE_ACCEPTANCE_BASIC_USER"]
+                env["FILEMATE_ACCEPTANCE_GATEWAY_PASSWORD"] = env["FILEMATE_ACCEPTANCE_BASIC_PASSWORD"]
+                command(name, [node, "filemate/web/tests/accessibility.browser.mjs"], 420)
+            else:
+                command(name, [node, f"scripts/acceptance/{name}.mjs"], 180)
     except (
         AssertionError,
         OSError,

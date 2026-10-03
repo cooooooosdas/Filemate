@@ -10,6 +10,7 @@ $workingDir = Join-Path $projectRoot "_working\pyinstaller"
 $uvCacheDir = Join-Path $projectRoot "_working\uv-cache"
 $promptData = Join-Path $projectRoot "filemate\understanding\prompts"
 $rulesData = Join-Path $projectRoot "filemate\understanding\rules"
+$interviewAssets = Join-Path $projectRoot "filemate\interview_review\assets"
 
 if (-not $TargetTriple) {
     $isWindows = [System.Environment]::OSVersion.Platform -eq `
@@ -106,6 +107,8 @@ try {
         "$promptData;filemate/understanding/prompts"
         "--add-data"
         "$rulesData;filemate/understanding/rules"
+        "--add-data"
+        "$interviewAssets;filemate/interview_review/assets"
         "server.py"
     )
     & $pyinstallerProgram @pyinstallerPrefix @pyinstallerArguments

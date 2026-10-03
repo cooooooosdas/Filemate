@@ -27,12 +27,18 @@ jobs:
           cache-dependency-glob: "pyproject.toml"
       - name: Install project
         run: uv sync --extra dev
+      - name: Set up Node for release gateway contracts
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
       - name: Static checks
         run: >-
           uv run ruff check
           server.py main.py
           filemate/execution
           filemate/tests/test_storage.py
+          filemate/tests/test_release_contract.py
+          filemate/tests/test_deploy_existing.py
           filemate/tests/test_file_ops.py
           filemate/tests/test_archiver.py
           filemate/tests/test_confirmation_executor.py
@@ -64,6 +70,7 @@ jobs:
           scripts/acceptance/release_readiness.py
           scripts/acceptance/backup_restore.py
           scripts/acceptance/gateway_preflight.py
+          scripts/deploy_existing.py
           evaluation/analyze_feedback.py
       - name: Unit and integration tests
         run: uv run pytest filemate/tests -q -m "not e2e"
@@ -128,7 +135,7 @@ jobs:
         uses: astral-sh/setup-uv@v9.0.0
         with:
           python-version: "3.11"
-          enable-cache: true
+          enable-cache: false
           cache-dependency-glob: "requirements-desktop.txt"
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -156,6 +163,7 @@ jobs:
           ./scripts/smoke_windows_installer.ps1
           -BundleRoot ./filemate/web/src-tauri/target/release/bundle
           -EvidencePath ./_working/installer-smoke-evidence.json
+          -VerifyInheritedEnvironment
       - name: Upload Windows installers
         uses: actions/upload-artifact@v7
         with:
