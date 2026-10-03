@@ -12,9 +12,17 @@ const browser = await chromium.launch({channel:'msedge',headless:true})
 const context = await browser.newContext({viewport:{width:1440,height:1100},ignoreHTTPSErrors:true,
   httpCredentials:{username:process.env.FILEMATE_ACCEPTANCE_BASIC_USER,password:process.env.FILEMATE_ACCEPTANCE_BASIC_PASSWORD}})
 const page = await context.newPage()
-const checks=[], errors=[], external=[]
+const checks=[], errors=[], external=[], poetryChecks=[]
 page.on('pageerror',error=>errors.push(String(error)))
-page.on('request',request=>{if(!['127.0.0.1','localhost'].includes(new URL(request.url()).hostname))external.push(request.url())})
+page.on('request',request=>{
+  if(['127.0.0.1','localhost'].includes(new URL(request.url()).hostname))return
+  if(request.url()==='https://v1.hitokoto.cn/?c=i&encode=json&min_length=8&max_length=22') {
+    poetryChecks.push(request.allHeaders().then(headers=>({
+      method:request.method(), type:request.resourceType(), body:request.postData()!==null,
+      privateHeaders:['cookie','authorization','referer'].some(name=>Boolean(headers[name]))
+    })))
+  } else external.push(request.url())
+})
 async function check(name,run) {
   try { await run(); checks.push({name,passed:true}) }
   catch(error) { checks.push({name,passed:false,error:String(error)}); await page.screenshot({path:path.join(out,`failure-${checks.length}.png`),fullPage:true}) }
@@ -170,12 +178,13 @@ try {
     await card(secondName).waitFor({state:'hidden'});await page.getByText('范围：全部资料',{exact:true}).waitFor()
     assert.equal((await context.request.get(base+`/knowledge/artifacts/${bn.artifact_id}`)).status(),404)
   })
-  await check('no page exceptions, external assets or accumulating surface nodes after navigation',async()=>{
+  await check('no page exceptions, unexpected external assets or accumulating surface nodes; public poetry carries no private data',async()=>{
     for(let index=0;index<3;index++){await page.goto(base+'/');await page.locator('.welcome').waitFor();await library();assert.equal(await page.locator('.motion-surface').count(),1)}
     assert.deepEqual(errors,[]);assert.deepEqual(external,[])
+    for(const request of await Promise.all(poetryChecks))assert.deepEqual(request,{method:'GET',type:'fetch',body:false,privateHeaders:false})
   })
 } finally {
-  fs.writeFileSync(path.join(out,'summary.json'),JSON.stringify({passed:checks.every(item=>item.passed),checks,errors,externalRequests:external,scope:'Actual compiled Vue and TLS API; original synthetic materials and explicitly local model HTTP fixture; no real learners or model-quality conclusion'},null,2))
+  fs.writeFileSync(path.join(out,'summary.json'),JSON.stringify({passed:checks.every(item=>item.passed),checks,errors,externalRequests:external,publicPoetryRequestCount:poetryChecks.length,scope:'Actual compiled Vue and TLS API; original synthetic materials and explicitly local model HTTP fixture; public poetry requests independently checked for no credentials, body or referrer; no real learners or model-quality conclusion'},null,2))
   await browser.close()
 }
 if(checks.some(item=>!item.passed))process.exitCode=1
