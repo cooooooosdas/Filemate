@@ -33,6 +33,7 @@ try {
         filemate/tests/test_career_planning.py `
         filemate/tests/test_evaluation_study.py `
         filemate/tests/test_evidence_profile.py `
+        filemate/tests/test_knowledge_graph.py `
         filemate/tests/test_beta_tools.py `
         filemate/tests/test_backup.py `
         filemate/tests/test_programming.py `

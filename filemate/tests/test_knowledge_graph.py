@@ -8,6 +8,7 @@ import pytest
 
 from filemate.study.knowledge_graph import (
     RELATIONS,
+    LLMGraphProvider,
     extract_local,
     learning_profile,
     mastery_metrics,
@@ -33,6 +34,68 @@ def test_hallucinated_or_invalid_graph_is_rejected():
     ):
         with pytest.raises((ValueError, TypeError)):
             validate_graph(payload, "树包含二叉树。", "source", [])
+
+
+def test_model_reextracts_once_when_relation_uses_a_reordered_alias():
+    text = "二分查找是在有序数组中定位目标的算法。二分查找依赖数组有序。"
+    invalid = {"nodes": [{"label": "二分查找", "excerpt": text},
+                         {"label": "有序数组", "excerpt": text}],
+               "edges": [{"from": "二分查找", "to": "有序数组", "relation": "depends_on",
+                          "excerpt": "二分查找依赖数组有序。"}]}
+    valid = {"nodes": [{"label": "二分查找", "excerpt": text},
+                       {"label": "数组有序", "excerpt": "二分查找依赖数组有序。"}],
+             "edges": [{"from": "二分查找", "to": "数组有序", "relation": "depends_on",
+                        "excerpt": "二分查找依赖数组有序。"}]}
+    calls = []
+
+    class Client:
+        def call_structured(self, **kwargs):
+            calls.append(kwargs)
+            return invalid if len(calls) == 1 else valid
+
+    result = LLMGraphProvider(Client()).extract(text)
+    assert result == valid and len(calls) == 2
+    assert len(calls[0]["messages"]) == 1 and len(calls[1]["messages"]) == 3
+    assert "知识关系缺少可核对的原文出处" in calls[1]["messages"][-1]["content"]
+    assert 'edges[0]' in calls[1]["messages"][-1]["content"]
+    assert '有序数组' in calls[1]["messages"][-1]["content"]
+    assert all(call["timeout"] == 45 and call["retry"] == 1 for call in calls)
+    assert validate_graph(result, text, "source", [])["edges"]
+
+
+def test_model_correction_still_rejects_invented_citations_and_stops_after_two_calls():
+    calls = []
+
+    class Client:
+        def call_structured(self, **kwargs):
+            calls.append(kwargs)
+            return {"nodes": [{"label": "不存在", "excerpt": "不存在"}], "edges": []}
+
+    with pytest.raises(ValueError, match="原文出处"):
+        LLMGraphProvider(Client()).extract("树包含二叉树。")
+    assert len(calls) == 2
+
+
+def test_valid_graph_needs_one_call_and_model_transport_failure_is_not_retried():
+    calls = []
+    payload = {"nodes": [{"label": "栈", "excerpt": "栈：后进先出"}], "edges": []}
+
+    class Client:
+        def call_structured(self, **kwargs):
+            calls.append(kwargs)
+            return payload
+
+    assert LLMGraphProvider(Client()).extract("栈：后进先出" + "。" * 21000) == payload
+    assert len(calls) == 1 and len(calls[0]["messages"][0]["content"]) == 20000
+
+    class Unavailable:
+        def call_structured(self, **kwargs):
+            calls.append(kwargs)
+            raise RuntimeError("synthetic transport unavailable")
+
+    with pytest.raises(RuntimeError, match="transport unavailable"):
+        LLMGraphProvider(Unavailable()).extract("栈：后进先出")
+    assert len(calls) == 2
 
 
 def test_distinct_labels_cannot_share_a_graph_node_id():

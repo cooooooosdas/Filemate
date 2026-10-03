@@ -59,7 +59,7 @@ try {
         if (kind === 'summary') assert.ok(typeof result.content === 'string' && result.content.length > 20)
         if (kind === 'notes') assert.ok(result.content.sections.length)
         if (kind === 'knowledge_cards') assert.ok(result.content.every(card => card.front && card.back))
-        if (kind === 'questions') assert.ok(result.content.length && result.content.every(question => question.question && question.answer))
+        if (kind === 'questions') assert.ok(result.content.length && result.content.every(question => question.stem && question.answer && question.question_type))
         assert.deepEqual((await api(`/knowledge/artifacts/${result.artifact_id}`)).content, result.content)
         assert.equal((await other.request.get(base + `/knowledge/artifacts/${result.artifact_id}`)).status(), 404)
         return { artifact_type: kind, persisted: true, other_device_status: 404 }

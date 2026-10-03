@@ -14,7 +14,7 @@ const routes = [
   '/', '/today', '/import', '/classification', '/naming', '/schedule', '/history',
   '/ai-tools', '/study-plan', '/wrongbook', '/interview', '/interview-bank',
   '/growth', '/knowledge', '/digital-human', '/knowledge-graph', '/programming', '/career',
-  '/goals', '/trust', '/login', '/register'
+  '/goals', '/trust', '/login', '/register', '/recover'
 ]
 
 const browser = await chromium.launch({ channel: process.env.FILEMATE_BROWSER_CHANNEL || (process.platform === 'win32' ? 'msedge' : undefined) })
