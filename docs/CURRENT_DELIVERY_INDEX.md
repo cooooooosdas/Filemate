@@ -1,18 +1,18 @@
 # FileMate 当前交付资源索引
 
-2026-10-04最新入口：[首页诗词接口与银蓝欢迎区交付](HOME_POETRY_DELIVERY_2026-10-04.md)，含源码/编译包匹配、792后端/33前端CI及8项真实公网验收。当前前端为`857782b`、后台为`9c133e1`，以站点`/release.json`分别核对。下一任务由用户指定为真实注册/登录及各功能/API实测，账号目前仍为预览。
+2026-10-04最新入口：[alpha.4账号交付](ACCOUNT_AUTH_DELIVERY_2026-10-04.md)与[真实API复核](API_CONNECTIVITY_AUDIT_2026-10-04.md)，版本 `1.3.0-alpha.4` / schema v25。邮箱账号和恢复码已公网验收；Windows796后端/33前端、Linux805后端/33前端及构建通过；当前运行提交以 `/release.json` 核对。图谱引用已修复，Linux C++执行与真实研究仍待完成，实际模型回退记录保留。
 
-最新整合入口：[已上线alpha.3的发布、测试与备份记录](INTEGRATED_RELEASE_ALPHA3.md)。主分支、最终CI、22页/9接口和真实模型合成资料闭环已验证；下列alpha.1/alpha.2交付是历史证据，上线版本、提交以alpha.3记录及站点`/release.json`核对。
+历史整合入口：[alpha.3发布、测试与备份](INTEGRATED_RELEASE_ALPHA3.md)及[首页诗词接口](HOME_POETRY_DELIVERY_2026-10-04.md)。下列alpha.1–alpha.3记录是对应快照的历史证据，不表示当前线上提交。
 
 2026-10-03后续开发：[DEV-01学习资料入口](LEARNING_TEXT_INPUTS_DELIVERY_2026-10-03.md)已完成，支持UTF-8 Markdown及代码文本本地导入、引用/会话复用和确认图谱；760后端、18前端及类型/构建/原体积门禁通过；最终同包46项TLS父级/91路径、12视觉、17归档、25学习工作区、18知识库通过。原视觉基线`UI-2026.10.03-r1`及交付包保留，新开发基线`DEV-01-2026.10.03`独立固定；下一卡UI-02整合图谱的提取、核对、证据与学习路径。软件仍为`1.3.0-alpha.1`，未部署，真实研究尚未采集。
 
 - 最新：[布局、动效与图标交付](UI_LAYOUT_CLOSEOUT_2026-10-03.md)、[开发流程v2](DEVELOPMENT_WORKFLOW_V2.md)、[知识库](../filemate/web/src/views/Knowledge.vue)、[任务内导航](../filemate/web/src/components/TaskNavigation.vue)、[入场/指针反馈](../filemate/web/src/components/MotionSurface.vue)、[18项专项](../scripts/acceptance/knowledge_layout.mjs)。本地视觉基线`UI-2026.10.03-r1`固定最终副本与文件哈希；46项TLS父级/91路径、12视觉/17归档/23工作区/18知识库通过，线上未更新。
 
-核对日期：2026-10-03。此索引指向现役源码、合同、测试和阶段报告；五模块/服务器历史实测见[总验收](INTEGRATED_AUDIT_2026-10-02.md)，B2/B3工程完成状态见[收口交付](B2_B3_ENGINEERING_CLOSEOUT_2026-10-02.md)，当前前端质量见[阶段交付](FRONTEND_PRODUCTION_QUALITY_DELIVERY_2026-10-03.md)。完整后续要求见[执行账本](FULL_PROJECT_EXECUTION_PLAN.md)。历史报告保留当时结果，不等同于当前线上版本。
+核对日期：2026-10-04。此索引指向现役源码、合同、测试和阶段报告；五模块历史实测见[总验收](INTEGRATED_AUDIT_2026-10-02.md)，B2/B3工程状态见[收口交付](B2_B3_ENGINEERING_CLOSEOUT_2026-10-02.md)，完整后续要求见[执行账本](FULL_PROJECT_EXECUTION_PLAN.md)。历史报告保留当时结果，不等同于当前线上版本。
 
 ## 权威合同与运行
 
-- [README](../README.md)：现役入口、技术栈、环境变量与schema v24。
+- [README](../README.md)：现役入口、技术栈、环境变量与schema v25。
 - [项目规则](../AGENTS.md)、[分阶段任务合同](AGENT_DEVELOPMENT_EXECUTION_PLAN.md)、[设计系统](../design-system/filemate/MASTER.md)。任务合同中的旧v9基线属于2026-08-27历史，当前版本以migration为准。
 - [公共API合同](../filemate/docs/API_SPEC.md)、[FastAPI入口](../server.py)、[迁移与存储](../filemate/execution/storage.py)、[前端API调用](../filemate/web/src/services/api.ts)。
 - [开发启动](../scripts/dev.ps1)、[全项目门禁](../scripts/verify.ps1)、[持续集成](../.github/workflows/ci.yml)、[网站/桌面部署边界](DEPLOYMENT.md)。

@@ -1,6 +1,6 @@
 # 邮箱账号与恢复码交付 — 2026-10-04
 
-用户选择先完成邮箱＋密码、恢复码找回的可用版本。当前 alpha.4 候选实现真实注册、登录、保持登录、退出和恢复密码；上线状态以本记录后续验收及站点 `/release.json` 为准。
+用户选择先完成邮箱＋密码、恢复码找回的可用版本。alpha.4 / schema v25 已推送主分支并上线，实现真实注册、登录、保持登录、退出和恢复密码。2026-10-04首次账号发布提交为 `6d4e0c73bd6ec5fddf7643f2191277ae10a69b25`；后续接口修复和当前运行提交见[实际API复核](API_CONNECTIVITY_AUDIT_2026-10-04.md)及站点 `/release.json`。
 
 ## 用户流程
 
@@ -24,7 +24,14 @@
 ## 当前工程证据
 
 - `filemate/tests/test_accounts.py`：9项专项通过，涵盖资料归属、跨设备、退出、撤销会话、旧恢复码失效、并发单次使用、CSRF、尝试限额、秘密摘要和可用备份。
-- `_working/account-auth/verify-final.log`：Windows全量793通过、19跳过、5排除；Ruff、33前端行为测试、Vue类型、构建和体积门禁通过。跳过原因包括现役可选OCR/外部真实文档及Linux部署工具，未把失败改为跳过。
-- `scripts/acceptance/accounts.mjs`：通过真实UI测试账号流程，16个布局/无障碍组合，截图隐藏恢复码；生产复核将使用原创合成资料，不读取或修改真实用户资料。
+- `_working/account-auth/verify-release.log`：账号发布快照的Windows全量793通过、19跳过、5排除；Ruff、33前端行为测试、Vue类型、构建和体积门禁通过。跳过原因包括现役可选OCR/外部真实文档及Linux部署工具，未把失败改为跳过。后续图谱补丁的全量结果独立记录在API复核中，不相加。
+- [账号发布Linux CI](https://github.com/cooooooosdas/Filemate/actions/runs/37146838089)：802后端通过、18跳过、5排除；33前端、构建、Python打包及合成评测流程通过。Windows安装包任务只在手动触发时执行，本轮未生成新安装包。
+- `_working/account-auth/gateway-release/summary.json`：账号发布对应编译包的实际TLS网关47组/96路径、72无障碍检查通过；另有17归档、25学习工作区、18知识布局及12视觉检查。源码指纹在检查期间一致，模型来自明确的合成HTTP夹具，此项不是公网模型质量研究。
+- `scripts/acceptance/accounts.mjs` 与 `_working/account-auth/live-accounts/summary.json`：公网12组真实UI操作通过，包含注册/登录/找回/恢复码四页面状态在375/768/1024/1440px的16个布局/无障碍组合。验证了Secure/HttpOnly/SameSite Cookie、游客资料绑定、旧游客隔离、跨设备、退出、全设备恢复撤销、旧密码/旧码拒绝、新密码取回资料与确认删除。修复表单错误焦点及无障碍关联；截图隐藏恢复码，临时下载已清理。
+- `_working/account-auth/live-routes/summary.json`：公网23页面、9读取接口通过，无JS异常或横向溢出。上述用例仅创建原创合成账号与资料，不读取或修改真实用户资料。
 
-真实学生学习效果数据尚未采集。API实际接入、公网和Linux验收结果将在执行后追加，当前证据不能代替真人实验。
+首次部署完整备份与新目录恢复演练通过：`/var/backups/filemate/alpha4-6d4e0c73-20261003T191656Z`，90数据库/103文件，包含旧分库及当前主库、身份秘密与权限。备份不提交Git。运行包为 `alpha4-6d4e0c73`，后端SHA256 `3f7f04c28aea796808f8da3975052557e34c37beb2dca578b73a509dc0d8ac1c`，前端SHA256 `de17843ca6e5c611d950d9565718c95afcf65cf7bdbba8c0f2b3f98a349d236c`；源码和前端76源文件/99编译文件一致，网关保留旧哈希资源供已打开页面使用。后续每次发布重新备份，不能以此旧快照覆盖新账号写入。
+
+真实学生学习效果数据尚未采集。工程验收证明当前账号操作和资料隔离可用，不能代替真人学习效果实验。
+
+图谱补丁发布 `f0b92ba1` 后再次执行 `_working/account-auth/live-accounts-final/summary.json`：同12组公网账号流程、16个布局/无障碍组合及零JS异常通过；当前实际运行提交、98库完整备份和API结果见[API复核](API_CONNECTIVITY_AUDIT_2026-10-04.md)。

@@ -13,12 +13,12 @@ const page = await context.newPage()
 const checks = [], dependencies = [], errors = []
 page.on('pageerror', error => errors.push(String(error)))
 const headers = { Origin: base, 'X-FileMate-Action': 'account' }
-let source, interview
+let source, interview, questionSet, graphDraft
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 async function check(name, action) {
   const started = Date.now()
   try { const detail = await action(); checks.push({ name, passed: true, elapsed_ms: Date.now() - started, ...(detail || {}) }) }
-  catch (error) { checks.push({ name, passed: false, error: String(error) }) }
+  catch (error) { checks.push({ name, passed: false, elapsed_ms: Date.now() - started, error: String(error) }) }
 }
 async function api(path, method = 'get', data) {
   const response = await context.request[method](base + path, { headers, ...(data ? { data } : {}), timeout: 150000 })
@@ -62,10 +62,24 @@ try {
         if (kind === 'questions') assert.ok(result.content.length && result.content.every(question => question.stem && question.answer && question.question_type))
         assert.deepEqual((await api(`/knowledge/artifacts/${result.artifact_id}`)).content, result.content)
         assert.equal((await other.request.get(base + `/knowledge/artifacts/${result.artifact_id}`)).status(), 404)
+        if (kind === 'questions') questionSet = result
         return { artifact_type: kind, persisted: true, other_device_status: 404 }
       })
       await delay(1500)
     }
+    if (questionSet) await check('actual generated question records a wrong answer and successful re-practice', async () => {
+      const question = questionSet.content[0]
+      const request = { artifact_id: questionSet.artifact_id, question_index: 0, expected_question: question }
+      const wrong = await api('/quiz/attempts', 'post', { ...request, user_answer: '【合成接口验收错误答案】' })
+      assert.equal(wrong.is_correct, false)
+      assert.ok((await api('/wrongbook')).length)
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const correct = await api('/quiz/attempts', 'post', { ...request, user_answer: question.answer })
+        assert.equal(correct.is_correct, true)
+      }
+      assert.ok((await api('/wrongbook?mastered=true')).some(item => item.mastered === true || item.mastered === 1))
+      return { persisted: true, sample_kind: 'synthetic engineered answers; not student mastery' }
+    })
     await check('actual model answers with valid citations and persisted context', async () => {
       const contextRecord = await api(`/knowledge/sources/${source.source_id}/contexts`, 'post', {})
       const answer = await api('/ai/chat', 'post', { ctx_id: contextRecord.ctx_id, question: '栈遵循什么顺序？将1、2、3入栈后，连续出栈的顺序是什么？' })
@@ -79,7 +93,20 @@ try {
       const draft = await api('/api/knowledge-graph/drafts', 'post', { source_id: source.source_id, mode: 'llm', allow_external_model: true })
       assert.equal(draft.status, 'draft')
       assert.ok(draft.payload.nodes.length)
+      assert.equal((await api('/api/knowledge-graph')).nodes.length, 0)
+      graphDraft = draft
       return { status: draft.status, node_count: draft.payload.nodes.length }
+    })
+    if (graphDraft) await check('own graph confirmation, undo and restore persist and repeat idempotently', async () => {
+      for (const [action, status] of [['confirm', 'confirmed'], ['undo', 'undone'], ['restore', 'confirmed']]) {
+        const path = `/api/knowledge-graph/batches/${graphDraft.batch_id}/${action}`
+        const changed = await api(path, 'post', {})
+        assert.equal(changed.status, status)
+        assert.deepEqual(await api(path, 'post', {}), changed)
+        const graph = await api('/api/knowledge-graph')
+        assert.equal(graph.nodes.length, action === 'undo' ? 0 : graphDraft.payload.nodes.length)
+      }
+      return { persisted: true, idempotent: true }
     })
     await check('source-grounded simulated interview and actual model scoring are persisted', async () => {
       interview = await api('/interviews', 'post', { target_role: '合成软件开发测试岗位', scenario: '求职面试', difficulty: '入门', source_id: source.source_id, allow_external_analysis: true })

@@ -77,6 +77,8 @@ const routeFailures = results.filter((item) =>
 const apiFailures = apiResults.filter((item) => !item.ok)
 const report = {
   baseline: process.env.FILEMATE_BASELINE || 'local',
+  web_base: base,
+  api_base: api,
   generated_at: new Date().toISOString(),
   passed: routeFailures.length === 0 && apiFailures.length === 0,
   routes: results,
