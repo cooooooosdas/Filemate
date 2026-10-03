@@ -2,6 +2,7 @@
   <div class="dashboard">
     <header class="welcome">
       <div class="welcome-copy"><div class="welcome-meta"><span>{{ greeting }}，学习者</span><time>{{ todayLabel }}</time></div><h1>今天，<br />让知识<span class="title-dot">成形。</span></h1><p>读懂一份资料，走向你的下一步。</p><router-link class="solid-link hero-start" to="/import"><el-icon><Plus /></el-icon>导入新资料<el-icon><ArrowRight /></el-icon></router-link></div>
+      <HeroEncouragement />
       <KnowledgeBackdrop />
     </header>
     <div v-if="loading" class="load-state" role="status"><el-icon class="loading-icon"><Loading /></el-icon>正在读取你的学习记录…</div>
@@ -66,6 +67,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ArrowRight, Calendar, Cpu, DocumentAdd, FolderChecked, Loading, Lock, Microphone, Plus, Reading, Share, Tickets, Aim, VideoPlay } from '../icons'
 import KnowledgeBackdrop from '../components/KnowledgeBackdrop.vue'
+import HeroEncouragement from '../components/HeroEncouragement.vue'
 import { getHistory, getTodayReview, type TodayReview } from '../services/api'
 import type { HistoryItem, SessionStatus } from '../types'
 const loading = ref(true)
@@ -157,8 +159,8 @@ onMounted(loadDashboard)
 
 .dashboard { max-width:1360px; margin:0 auto; min-width:0; }
 a { color:inherit; text-decoration:none; }
-.welcome { position:relative; isolation:isolate; display:flex; align-items:center; gap:16px; overflow:hidden; padding:42px; margin-bottom:28px; background:var(--hero-background); color:var(--hero-ink); border:1px solid #779eef66; border-radius:28px; min-height:450px; }
-.welcome-copy { position:relative; z-index:1; max-width:65%; }
+.welcome { --hero-background:radial-gradient(ellipse at 94% 6%,#426581,#263f60 52%,#152b4a); position:relative; isolation:isolate; display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); align-items:center; gap:32px; overflow:hidden; padding:42px; margin-bottom:28px; background:var(--hero-background); color:var(--hero-ink); border:1px solid #86a5c766; border-radius:28px; min-height:450px; }
+.welcome-copy { position:relative; z-index:1; min-width:0; }
 .welcome-meta { display:flex; flex-wrap:wrap; gap:10px 18px; color:var(--hero-highlight); font-size:15px; font-weight:600; }
 .welcome time { color:var(--hero-copy); font-weight:400; }
 .welcome h1 { margin:22px 0 18px; font-size:clamp(44px,4.6vw,70px); font-weight:650; letter-spacing:-.06em; line-height:1.18; }
@@ -196,6 +198,6 @@ a { color:inherit; text-decoration:none; }
 .intent-reveal-enter-active,.intent-reveal-leave-active { transition:opacity 220ms ease,transform 220ms ease; }.intent-reveal-enter-from { opacity:0; transform:translateY(14px); }.intent-reveal-leave-to { opacity:0; transform:translateY(-8px); }
 @container(max-width:620px) { .overview { grid-template-columns:1fr 1fr; gap:22px 0; }.overview > :nth-child(2) { border:0; }.overview > :nth-child(3) { padding-left:0; } }
 @media(max-width:1150px) { .welcome { padding:32px; }.welcome h1 { font-size:52px; }.welcome p { font-size:18px; }.desk-grid { grid-template-columns:minmax(0,1fr) 270px; gap:20px; }.focus-sheet,.recent-section { padding:24px; }.focus-body { grid-template-columns:1fr; gap:14px; }.focus-symbol { display:none; }.focus-body .solid-link { grid-column:1; }.intent-options button { gap:7px; font-size:16px; }.intent-options .el-icon { display:none; }.today-sheet { padding:24px; }.partner-note img { width:116px; } }
-@media(max-width:900px) { .desk-grid { grid-template-columns:1fr; }.desk-aside { display:grid; grid-template-columns:1fr 1fr; gap:24px; }.partner-note { margin:0; }.privacy-link { grid-column:1 / -1; }.welcome { gap:0; }.welcome h1 { font-size:46px; } }
-@media(max-width:700px) { .welcome { padding:30px 24px 190px; min-height:530px; }.welcome-copy { max-width:100%; }.welcome h1 { font-size:44px; margin-top:20px; }.welcome p { font-size:18px; }.welcome-meta { font-size:14px; gap:8px 16px; }.welcome-meta time { display:none; }.overview { grid-template-columns:1fr 1fr; gap:20px 0; padding:22px 0; }.overview > * { padding:0 18px; }.overview > :nth-child(3) { padding-left:0; }.overview > :nth-child(2) { border:0; }.overview strong { font-size:30px; }.overview span { font-size:15px; }.desk-aside { display:block; }.focus-sheet,.recent-section { padding:24px 20px; }.section-heading h2 { font-size:23px; }.intent-options { gap:5px; }.intent-options button { padding:12px 5px; white-space:nowrap; }.focus-body h3 { font-size:26px; }.focus-body { min-height:250px; padding-top:28px; }.file-row { grid-template-columns:36px minmax(0,1fr); gap:10px; }.file-status { grid-column:2; }.row-arrow { display:none; }.file-list-head { display:none; }.today-sheet { margin-top:0; }.partner-note { margin-top:20px; }.partner-note img { width:145px; right:16px; } }
+@media(max-width:900px) { .desk-grid { grid-template-columns:1fr; }.desk-aside { display:grid; grid-template-columns:1fr 1fr; gap:24px; }.partner-note { margin:0; }.privacy-link { grid-column:1 / -1; }.welcome { grid-template-columns:1fr; gap:28px; }.welcome h1 { font-size:46px; } }
+@media(max-width:700px) { .welcome { padding:30px 24px; min-height:530px; }.welcome h1 { font-size:44px; margin-top:20px; }.welcome p { font-size:18px; }.welcome-meta { font-size:14px; gap:8px 16px; }.welcome-meta time { display:none; }.overview { grid-template-columns:1fr 1fr; gap:20px 0; padding:22px 0; }.overview > * { padding:0 18px; }.overview > :nth-child(3) { padding-left:0; }.overview > :nth-child(2) { border:0; }.overview strong { font-size:30px; }.overview span { font-size:15px; }.desk-aside { display:block; }.focus-sheet,.recent-section { padding:24px 20px; }.section-heading h2 { font-size:23px; }.intent-options { gap:5px; }.intent-options button { padding:12px 5px; white-space:nowrap; }.focus-body h3 { font-size:26px; }.focus-body { min-height:250px; padding-top:28px; }.file-row { grid-template-columns:36px minmax(0,1fr); gap:10px; }.file-status { grid-column:2; }.row-arrow { display:none; }.file-list-head { display:none; }.today-sheet { margin-top:0; }.partner-note { margin-top:20px; }.partner-note img { width:145px; right:16px; } }
 </style>

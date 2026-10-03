@@ -1,6 +1,10 @@
 # API 规范
 
 > 核心 Python 模块与现役 HTTP API 的输入输出契约。
+
+2026-10-04 首页接入外部[一言诗词API](https://developer.hitokoto.cn/sentence/)：前端`services/api.ts`发起HTTPS GET `https://v1.hitokoto.cn/?c=i&encode=json&min_length=8&max_length=22`，仅读取`uuid/hitokoto/type/from/from_who`，不携带Cookie、Referer、资料或学习内容。没有新增本服务路由、环境变量或schema。请求2.5秒超时，每次页面加载最多一次，同次SPA切页共享结果；允许的外部CSP连接仅为该端点。
+
+正文须为8–22字、类型为`i`且UUID有效；无效响应、HTTP错误/429和断网回退到最多24条已验证格式的本机缓存或已核对出处的经典备用句，作者缺失不补写。只取JSON并以Vue文本节点显示，不使用接口的JS输出。来源归属按一言记录展示，外链使用官方UUID详情地址；不将语句库审核等同于逐句学术校勘。协议及离线句出处见设计系统/本次交付记录。
 >
 > - 4.1 分类模块接口
 > - 4.2 实体抽取模块接口

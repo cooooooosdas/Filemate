@@ -1,4 +1,13 @@
 import axios from 'axios'
+
+export async function getPoetryQuote(): Promise<unknown> {
+  const response = await fetch('https://v1.hitokoto.cn/?c=i&encode=json&min_length=8&max_length=22', {
+    credentials: 'omit', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(2500),
+    headers: { Accept: 'application/json' },
+  })
+  if (!response.ok) throw new Error('诗词接口暂时不可用')
+  return response.json()
+}
 import type { CareerComparison, CareerEvent, CareerOverview, CareerPosition, CareerRecord, CareerTraining, CareerPlanPreview, CareerLearningPlan } from '../types/career'
 import type { ContentAnalysis, InterviewDeletePreview, InterviewReport, InterviewReviewEvent, VisualMetrics } from '../types/interviewReview'
 import type { CodingProblem, CodingSubmission, CodingOverview, ProgrammingStatus } from '../types/programming'

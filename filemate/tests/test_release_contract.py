@@ -91,6 +91,9 @@ def test_release_csp_supports_local_vision_and_recording(target: str) -> None:
     assert "blob:" in directives["media-src"]
     assert "'self'" in directives["worker-src"]
     assert directives["object-src"] == ["'none'"]
+    assert "https://v1.hitokoto.cn" in directives["connect-src"]
+    assert "*" not in directives["connect-src"]
+    assert "https://v1.hitokoto.cn" not in directives["script-src"]
 
 
 def test_nginx_vision_assets_do_not_match_interview_api_prefix() -> None:
