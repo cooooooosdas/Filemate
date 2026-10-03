@@ -28,6 +28,10 @@ CONFIG = Path('/clouddream/nginx-proxy-manage/data/nginx/custom/http.conf')
 DROPIN = Path('/etc/systemd/system/filemate-api.service.d/30-release-runtime.conf')
 MAINTENANCE = WEB / 'maintenance.flag'
 HTTP = build_opener(ProxyHandler({}))
+PREFLIGHT_PATHS = (
+    '/api/knowledge-graph', '/api/career/status', '/api/programming/status',
+    '/api/digital-human/playbacks', '/knowledge/sources', '/analytics/overview',
+)
 
 
 def run(*arguments: str) -> None:
@@ -136,8 +140,7 @@ def stage(args: argparse.Namespace) -> None:
         ], cwd=release, env=env, stdout=output, stderr=subprocess.STDOUT)
         try:
             health('http://127.0.0.1:8012', args.version)
-            for path in ['/api/knowledge-graph', '/api/career/status', '/api/programming/status',
-                         '/api/digital-human/playbacks', '/knowledge/sources', '/analytics/learning']:
+            for path in PREFLIGHT_PATHS:
                 probe('http://127.0.0.1:8012', path)
         finally:
             process.terminate()

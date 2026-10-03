@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import io
 import sqlite3
 import tarfile
@@ -91,3 +92,17 @@ def test_migration_signature_detects_sql_changes(tmp_path) -> None:
     before.write_text('_MIGRATIONS = ((24, "test", "CREATE TABLE x(a INT)"),)')
     after.write_text('_MIGRATIONS = ((24, "test", "CREATE TABLE x(a TEXT)"),)')
     assert deploy.migration_signature(before) != deploy.migration_signature(after)
+
+
+def test_preflight_reads_existing_public_get_routes() -> None:
+    source = Path(__file__).resolve().parents[2] / 'server.py'
+    tree = ast.parse(source.read_text(encoding='utf-8'))
+    routes = {
+        node.args[0].value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+        and node.func.attr == 'get' and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == 'app' and node.args
+        and isinstance(node.args[0], ast.Constant)
+    }
+    assert set(deploy.PREFLIGHT_PATHS) <= routes
