@@ -44,30 +44,30 @@
             <fieldset :disabled="submitting" class="auth-fields">
               <div v-if="isRegister" class="field-group">
                 <label for="display-name">姓名或昵称</label>
-                <div class="field-control"><el-icon><User /></el-icon><input id="display-name" v-model.trim="displayName" autocomplete="name" maxlength="30" placeholder="例如：林同学" /></div>
+                <div class="field-control"><el-icon><User /></el-icon><input id="display-name" :aria-invalid="invalidField === 'display-name'" :aria-describedby="invalidField === 'display-name' ? 'auth-error' : undefined" v-model.trim="displayName" autocomplete="name" maxlength="30" placeholder="例如：林同学" /></div>
               </div>
               <div class="field-group">
                 <label for="account">邮箱</label>
-                <div class="field-control"><el-icon><Message /></el-icon><input id="account" v-model.trim="account" type="email" autocomplete="username" maxlength="254" placeholder="请输入邮箱地址" /></div>
+                <div class="field-control"><el-icon><Message /></el-icon><input id="account" :aria-invalid="invalidField === 'account'" :aria-describedby="invalidField === 'account' ? 'auth-error' : undefined" v-model.trim="account" type="email" autocomplete="username" maxlength="254" placeholder="请输入邮箱地址" /></div>
               </div>
               <div v-if="isRecover" class="field-group">
                 <label for="recovery-code">恢复码</label>
-                <div class="field-control"><el-icon><Key /></el-icon><input id="recovery-code" v-model.trim="recoveryCode" autocomplete="off" maxlength="64" placeholder="粘贴已保存的恢复码" /></div>
+                <div class="field-control"><el-icon><Key /></el-icon><input id="recovery-code" :aria-invalid="invalidField === 'recovery-code'" :aria-describedby="invalidField === 'recovery-code' ? 'auth-error' : undefined" v-model.trim="recoveryCode" autocomplete="off" maxlength="64" placeholder="粘贴已保存的恢复码" /></div>
               </div>
               <div class="field-group">
                 <div class="field-label-row"><label for="password">{{ isRecover ? '新密码' : '密码' }}</label><router-link v-if="!isRegister && !isRecover" class="text-button" to="/recover">忘记密码？</router-link></div>
-                <div class="field-control"><el-icon><Key /></el-icon><input id="password" v-model="password" :type="showPassword ? 'text' : 'password'" :autocomplete="isRegister || isRecover ? 'new-password' : 'current-password'" maxlength="128" :placeholder="isRegister || isRecover ? '15–128 个字符，支持中文长口令' : '请输入密码'" /><button type="button" class="reveal-button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" @click="showPassword = !showPassword"><el-icon><View v-if="!showPassword" /><Hide v-else /></el-icon></button></div>
+                <div class="field-control"><el-icon><Key /></el-icon><input id="password" :aria-invalid="invalidField === 'password'" :aria-describedby="invalidField === 'password' ? 'auth-error' : undefined" v-model="password" :type="showPassword ? 'text' : 'password'" :autocomplete="isRegister || isRecover ? 'new-password' : 'current-password'" maxlength="128" :placeholder="isRegister || isRecover ? '15–128 个字符，支持中文长口令' : '请输入密码'" /><button type="button" class="reveal-button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" @click="showPassword = !showPassword"><el-icon><View v-if="!showPassword" /><Hide v-else /></el-icon></button></div>
               </div>
               <div v-if="isRegister || isRecover" class="field-group">
                 <label for="confirm-password">确认密码</label>
-                <div class="field-control"><el-icon><Key /></el-icon><input id="confirm-password" v-model="confirmPassword" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" maxlength="128" placeholder="请再次输入密码" /></div>
+                <div class="field-control"><el-icon><Key /></el-icon><input id="confirm-password" :aria-invalid="invalidField === 'confirm-password'" :aria-describedby="invalidField === 'confirm-password' ? 'auth-error' : undefined" v-model="confirmPassword" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" maxlength="128" placeholder="请再次输入密码" /></div>
               </div>
               <template v-if="isRegister">
                 <label class="check-row"><input v-model="keepGuestData" type="checkbox" /><span>把当前游客资料保留到新账号</span></label>
-                <label class="check-row"><input v-model="accepted" type="checkbox" /><span>我会保存恢复码，并了解邮箱暂不验证归属</span></label>
+                <label class="check-row"><input id="agreement" :aria-invalid="invalidField === 'agreement'" :aria-describedby="invalidField === 'agreement' ? 'auth-error' : undefined" v-model="accepted" type="checkbox" /><span>我会保存恢复码，并了解邮箱暂不验证归属</span></label>
               </template>
               <label v-if="!isRecover" class="check-row"><input v-model="rememberMe" type="checkbox" /><span>在这台设备上保持登录 30 天</span></label>
-              <p v-if="error" class="field-error" role="alert" tabindex="-1" ref="errorElement">{{ error }}</p>
+              <p v-if="error" id="auth-error" class="field-error" role="alert" tabindex="-1" ref="errorElement">{{ error }}</p>
               <button class="primary-action" type="submit" :disabled="Boolean(serviceUnavailable)">{{ submitting ? '正在处理…' : isRecover ? '重设密码' : isRegister ? '创建账号' : '登录' }}<el-icon><Right /></el-icon></button>
             </fieldset>
           </form>
@@ -95,9 +95,10 @@ const displayName = ref(''), account = ref(''), password = ref(''), confirmPassw
 const accepted = ref(false), rememberMe = ref(true), keepGuestData = ref(true), showPassword = ref(false)
 const submitting = ref(false), recoveryResult = ref(''), savedRecovery = ref(false), error = ref(''), serviceUnavailable = ref('')
 const errorElement = ref<HTMLElement | null>(null)
+const invalidField = ref('')
 let accountEnabled = false
 let mustLogout = false
-watch(() => route.name, () => { password.value = ''; confirmPassword.value = ''; recoveryCode.value = ''; error.value = ''; showPassword.value = false })
+watch(() => route.name, () => { password.value = ''; confirmPassword.value = ''; recoveryCode.value = ''; error.value = ''; invalidField.value = ''; showPassword.value = false })
 onMounted(async () => {
   try {
     const state = await getAccountState()
@@ -107,22 +108,25 @@ onMounted(async () => {
   } catch { serviceUnavailable.value = '账号服务暂时未连接，请刷新后重试。' }
 })
 
-async function showError(message: string): Promise<void> {
+async function showError(message: string, field = ''): Promise<void> {
   error.value = message
+  invalidField.value = field
   await nextTick()
-  errorElement.value?.focus()
+  if (field) document.getElementById(field)?.focus()
+  else errorElement.value?.focus()
 }
 async function handleSubmit(): Promise<void> {
   if (submitting.value) return
-  error.value = ''
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account.value)) return showError('请输入有效的邮箱地址')
-  if (!password.value) return showError('请输入密码')
+  error.value = ''; invalidField.value = ''
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account.value)) return showError('请输入有效的邮箱地址', 'account')
+  if (!password.value) return showError('请输入密码', 'password')
   if (isRegister.value || isRecover.value) {
-    if ([...password.value].length < 15 || [...password.value].length > 128) return showError('密码需为 15–128 个字符，可使用中文长口令')
-    if (password.value !== confirmPassword.value) return showError('两次输入的密码不一致')
+    if ([...password.value].length < 15 || [...password.value].length > 128) return showError('密码需为 15–128 个字符，可使用中文长口令', 'password')
+    if (password.value !== confirmPassword.value) return showError('两次输入的密码不一致', 'confirm-password')
   }
-  if (isRegister.value && (displayName.value.length < 2 || !accepted.value)) return showError('请输入至少 2 个字的昵称，并确认会保存恢复码')
-  if (isRecover.value && !recoveryCode.value) return showError('请输入注册时保存的恢复码')
+  if (isRegister.value && displayName.value.length < 2) return showError('请输入至少 2 个字的昵称', 'display-name')
+  if (isRegister.value && !accepted.value) return showError('请确认会保存恢复码', 'agreement')
+  if (isRecover.value && !recoveryCode.value) return showError('请输入注册时保存的恢复码', 'recovery-code')
   submitting.value = true
   try {
     if (isRegister.value) {

@@ -29,7 +29,7 @@ async function check(name, body) {
 async function layoutAndAxe(label, mask = []) {
   for (const width of [375, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 1000 })
-    await page.addScriptTag({ content: axe })
+    await page.evaluate(axe)
     const violations = await page.evaluate(async () => (await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } })).violations.map(item => ({ id: item.id, targets: item.nodes.map(node => node.target) })))
     assert.deepEqual(violations, [], `${label} ${width} accessibility`)
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${label} ${width} overflow`)
