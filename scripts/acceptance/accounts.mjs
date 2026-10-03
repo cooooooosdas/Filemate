@@ -15,8 +15,8 @@ const other = await browser.newContext()
 const guest = await browser.newContext()
 const page = await context.newPage(), device = await other.newPage()
 const email = `synthetic-auth-${crypto.randomUUID()}@example.invalid`
-const password = 'synthetic learning passphrase 2026'
-const newPassword = 'new synthetic learning phrase 2027'
+const password = crypto.randomBytes(24).toString('base64url')
+const newPassword = crypto.randomBytes(24).toString('base64url')
 const checks = [], errors = []
 const headers = { Origin: base, 'X-FileMate-Action': 'account' }
 let sourceId, oldCode, newCode

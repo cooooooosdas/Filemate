@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import secrets
 import sqlite3
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -13,8 +14,8 @@ from fastapi.testclient import TestClient
 from filemate.accounts import AccountError, AccountStore
 from filemate.execution.storage import SQLiteStorage
 
-PASSWORD = "synthetic learning passphrase 2026"
-NEW_PASSWORD = "new synthetic learning phrase 2027"
+PASSWORD = secrets.token_urlsafe(24)
+NEW_PASSWORD = secrets.token_urlsafe(24)
 HEADERS = {"X-FileMate-Action": "account"}
 
 
