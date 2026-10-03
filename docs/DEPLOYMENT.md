@@ -134,26 +134,31 @@ curl -u '用户名:密码' https://你的域名/api/health
 
 期望返回 `success: true`。随后人工验证访问认证、文件上传、处理、知识库、问答、错题本、面试题库和数据导出流程。
 
+### 4.2.1 生产网关预检
+
+当前`deploy/Caddyfile`将非共用路径的API显式转发至后端，五个精确共用路径按HTML导航区分；`/interview-vision/*`保持静态资源，不与`/interview/*`API混淆。CSP允许本地WASM编译，HTML/API不缓存，哈希资源长期缓存，视觉模型按响应校验更新。单请求正文上限32 MiB，已声明超限在正文传输前返回JSON413，后端文件上限仍为25 MiB；分块传输超限可中断连接。
+
+可使用[实际HTTPS预检工具](../scripts/acceptance/gateway_preflight.py)对可信Caddy二进制和已构建的隔离前端复核。10月3日本机验收覆盖91个现役API路径、22个页面、实际Monaco/本地视觉推理、上传拒绝和8访客128次有限读取，详见[报告](GATEWAY_PREFLIGHT_DELIVERY_2026-10-03.md)。该结果只证明Windows本机TLS网关与候选包；Linux Compose镜像、正式证书、真实服务器容量和线上版本同步仍须单独验收。
+
 ### 4.3 更新与回滚
 
-更新前先备份数据，再拉取已验证版本：
+更新前按[完整备份恢复手册](BACKUP_RESTORE_RUNBOOK.md)停止写入、预览确认、创建并校验托管快照，覆盖匿名分库、附件和身份密钥。只复制主库不能作为完整备份。确认备份成功且原服务可正常恢复后，再拉取已验证版本：
 
 ```bash
-docker compose exec -T api python -c "import sqlite3; src=sqlite3.connect('/data/filemate.db'); dst=sqlite3.connect('/data/filemate-backup.db'); src.backup(dst); dst.close(); src.close()"
 git pull --ff-only
 docker compose --env-file .env.production up -d --build
 ```
 
-生产更新必须使用 Git tag 或明确 commit，不直接部署未测试的开发分支。若新版本异常，切回上一个已知正常 tag，恢复备份后重新构建。
+生产更新必须使用Git tag或明确commit，不直接部署未测试分支。异常时停止新服务、保留新旧卷，先在新目录校验恢复，再挂载至原逻辑`/data`；切回已知正常tag并核对迁移兼容性。不得直接覆盖现役卷或用旧schema覆盖新用户写入。
 
 ## 5. 数据、备份与安全
 
 - `filemate_data` Docker 卷包含 SQLite、上传目录和归档目录；删除容器不会删除该卷。
-- 每天执行 SQLite 在线备份，并把备份同步到另一存储位置；至少保留 7 个每日版本和 4 个每周版本。
+- 完整快照使用SQLite备份接口，但附件和多个分库要求统一停写；按[手册](BACKUP_RESTORE_RUNBOOK.md)预览/确认/校验/暂存恢复。每日备份及异地同步、7个每日和4个每周版本为运维目标，实际服务器调度尚未接线。
 - 每月执行一次“从备份恢复到临时实例”的演练，仅有备份文件但未验证恢复不算完成。
 - 全站启用 HTTPS；私有 Alpha 使用共享密码，公开竞赛体验站展示数据使用脱敏或公开资料；不得公开 API 端口 8001。
 - 生产环境显式配置 `FILEMATE_ENV=production`、`FILEMATE_ALLOWED_HOSTS` 与 `FILEMATE_CORS_ORIGINS`，关闭 API 文档和公网设置接口。
-- 网关限制并发、请求频率和请求体大小，设置 CSP、点击劫持、MIME 嗅探与权限策略响应头。
+- 当前网关限制请求体大小并设置CSP、点击劫持、MIME嗅探与权限策略响应头；并发准入、请求频率、用户配额及指标告警仍需后续任务落实。
 - 不上传真实隐私资料作为演示数据；日志中不得记录文档全文、密码或模型 API Key。
 - 上线后观察磁盘、内存、5xx、接口响应时间和模型调用失败率。
 

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from . import register
+from . import PLAIN_TEXT_SUFFIXES, register
 
 
 def parse(path: Path) -> dict:
@@ -12,4 +12,6 @@ def parse(path: Path) -> dict:
 
 
 # 注册解析器
-register("txt", type("TXTParser", (), {"parse": staticmethod(parse)})())
+_parser = type("TXTParser", (), {"parse": staticmethod(parse)})()
+for _suffix in PLAIN_TEXT_SUFFIXES:
+    register(_suffix, _parser)

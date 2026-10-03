@@ -1,10 +1,16 @@
 # FileMate
 
+2026-10-03后续开发：[DEV-01学习资料入口](docs/LEARNING_TEXT_INPUTS_DELIVERY_2026-10-03.md)已完成，支持UTF-8 Markdown及代码文本本地导入、引用/会话复用和确认图谱；760后端、18前端及类型/构建/原体积门禁通过；最终同包46项TLS父级/91路径、12视觉、17归档、25学习工作区、18知识库通过。原视觉基线`UI-2026.10.03-r1`及交付包保留，新开发基线`DEV-01-2026.10.03`独立固定；下一卡UI-02整合图谱的提取、核对、证据与学习路径。软件仍为`1.3.0-alpha.1`，未部署，真实研究尚未采集。
+
+2026-10-03最新收口：[布局、动效与图标交付](docs/UI_LAYOUT_CLOSEOUT_2026-10-03.md)通过同包46项TLS父级/91路径、12视觉、17归档、23学习工作区及18知识库检查。保留LOGO，统一Tabler公共图标、导航选中反馈和知识证据入口；最终前端18测试/类型/构建/体积通过，默认后端740通过。按[开发流程v2](docs/DEVELOPMENT_WORKFLOW_V2.md)固定本地视觉基线`UI-2026.10.03-r1`；软件仍为`1.3.0-alpha.1`，线上未同步，正式发布与真实研究依赖保留。
+
+2026-10-03最新视觉：[大背景与全站配色重做](docs/BACKGROUND_REDESIGN_DELIVERY_2026-10-03.md)已完成本地实装与验收。重新制作钴蓝、琥珀、银蓝三份整页样例，选择钴蓝光束/冰蓝画布/暖金主动作；740后端、18前端、同包12视觉/17归档/23学习工作区及HTTPS专项通过。旧自然绿方案为历史快照，当前未同步线上。
+
 FileMate 是一个面向大学生的本地优先 AI 学习工作台。它把散落的课程资料转化为可追踪、可复习、可验证的学习资产，并通过“资料导入 → AI 理解 → 用户确认 → 学习计划 → 练习与错题 → 复习与成长分析”形成完整闭环。
 
 > 项目类型：国家级大学生创新创业训练计划项目
-> 当前版本：`v1.3.0-alpha.1` 安全加固版
-> 当前基线日期：2026-09-12
+> 当前工作区版本标识：`v1.3.0-alpha.1`；线上标识为 `v1.3.0-alpha.2`，两者不是同一代码快照
+> 当前工程复核日期：2026-10-03；五模块与线上历史状态见[统一验收](docs/INTEGRATED_AUDIT_2026-10-02.md)，B2/B3工程尾项见[收口交付](docs/B2_B3_ENGINEERING_CLOSEOUT_2026-10-02.md)，当前前端质量见[阶段交付](docs/FRONTEND_PRODUCTION_QUALITY_DELIVERY_2026-10-03.md)
 > 初步版本截止：2026-08-31
 > 最终版本截止：2026-09-30
 
@@ -17,8 +23,23 @@ FileMate 是一个面向大学生的本地优先 AI 学习工作台。它把散�
 3. [`filemate/docs/API_SPEC.md`](filemate/docs/API_SPEC.md)：Python 核心接口与 HTTP API 合同。
 4. [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)：网站生产部署、服务器选型、安全边界与桌面端交付方案。
 5. [`PRODUCT.md`](PRODUCT.md)：用户、产品原则、视觉承诺与竞赛证据边界。
-6. [`design-system/filemate/MASTER.md`](design-system/filemate/MASTER.md)：自然绿色 UI 设计系统。
-7. 与任务直接相关的源码和测试；代码与文档冲突时，以当前 `main` 代码、测试和 CI 为准，并同步修正文档。
+6. [`docs/FILEMATE_LEARNING_EVIDENCE_PRODUCT_BLUEPRINT.md`](docs/FILEMATE_LEARNING_EVIDENCE_PRODUCT_BLUEPRINT.md)：长期产品主线与 A＋B 分阶段落地。
+7. [`design-system/filemate/MASTER.md`](design-system/filemate/MASTER.md)：钴蓝主视觉与冰蓝阅读 UI 设计系统。
+8. 与任务直接相关的源码和测试；代码与文档冲突时，以当前 `main` 代码、测试和 CI 为准，并同步修正文档。
+
+[当前交付资源索引](docs/CURRENT_DELIVERY_INDEX.md)汇集五大模块、B2岗位计划和学习证据说明、B3采集导出与RC准备、API与schema、测试和可复跑命令。历史报告保留当时结果，最新状态以对应交付报告、源码和测试为准。
+
+2026-10-02 后续工程收口：原创7份合成资料连接实际模型完成85项检查；成长页补齐四类证据的样本数、时间、公式及原记录；B3补齐匿名CSV校验导出、分条件探索性区间和[RC准备清单](docs/RC_ACCEPTANCE_CHECKLIST.md)。真实学生与导师数据仍为0，正式版本冻结、团队研究审查和网站同步尚待完成；工具通过不证明学习有效。
+
+2026-10-03 全项目继续推进：已补齐按需组件/样式、首页总依赖体积门禁和页面资源失败恢复；后端718项、前端18项及受影响的浏览器复测通过。完整目标和剩余工作持续记录于[后续执行账本](docs/FULL_PROJECT_EXECUTION_PLAN.md)，当前继续服务与数据运维，不将阶段通过视为项目完成。
+
+运维新增[完整托管备份恢复CLI](docs/BACKUP_RESTORE_RUNBOOK.md)：覆盖主库、匿名分库、附件及有效身份密钥，需预览确认和明确停写，只恢复至新目录；22项专项和19项实际匿名HTTP恢复演练通过。最新全门禁为后端740项、前端18项、类型检查/构建/包预算通过。发布预检、指标、容量和实际服务器/容器演练仍待继续，详见[运维交付](docs/OPERATIONS_BACKUP_DELIVERY_2026-10-03.md)。
+
+实际[HTTPS网关预检](docs/GATEWAY_PREFLIGHT_DELIVERY_2026-10-03.md)已完成：修复API与视觉资源转发、缓存/CSP及超限提前拒绝；40项网关、91个路径、28项页面和4项实际视觉检查通过，8个匿名访客128次读取成功。仅为本机工程验收，指标/配额、Linux容器和正式同步仍待推进。用户最新要求将前端视觉升级提到当前优先级，先完成设计样例和选型，再串行推进整体样式与任务整合。
+
+视觉升级已交付[六站参考、三份样例及“知识生长”首页](docs/FRONTEND_VISUAL_UPGRADE_DELIVERY_2026-10-03.md)，随后合并[资料分类与命名审核](docs/INTEGRATED_FILE_REVIEW_DELIVERY_2026-10-03.md)，一屏预览并确认、撤销或下载日程；最终候选42项TLS网关、91路径、28页面、10视觉和17审核操作通过，原首屏体积预算保持。19组首次回归的面试开发期自动刷新已修复，最终副本的面试14项、页面/接口及生产专项复测通过。下一卡继续学习工作区与五模块界面整合；未部署至线上，真实研究仍待采集。
+
+[学习工作区整合](docs/LEARNING_WORKSPACE_VISUAL_DELIVERY_2026-10-03.md)已交付：大字两栏阅读、资料目录按需展开、笔记/卡片/练习/摘要直接选择，已有内容优先阅读、创建配置按需展开；保留真实保存/引用/作答/下载和输入保护。最终编译包45项父级TLS检查、91路径、28页面、4本地视觉、10首页、17归档和23工作区检查通过；18项前端与原首屏预算通过，后端沿用本轮740项通过的未变源码。模型内容明确为本地合成HTTP合同夹具，不证明模型质量或学习收益；下一卡处理知识与证据入口，再按账本推进五模块。
 
 以下文档属于长期规划或专项材料，不能当作现役实现清单：
 
@@ -36,21 +57,31 @@ FileMate 是一个面向大学生的本地优先 AI 学习工作台。它把散�
 | 文件理解 | 文本解析、关键词/LLM 分类、课程与任务实体抽取、多里程碑识别、规范命名 | `filemate/perception/`、`filemate/understanding/` |
 | 可信执行 | 草稿编辑、最终确认、目标冲突保护、失败回滚、幂等确认、一键撤销 | `confirmation_executor.py` |
 | 日程管理 | 从截止日期和里程碑生成 RFC 5545 `.ics`，确认前只预览 | `scheduler.py`、`Schedule.vue` |
-| 学习工作区 | 资料/对话/产物同屏；本地导入一次，复用资料生成摘要、笔记、翻面卡片、逐题练习；会话深链恢复 | `workspace.py`、`LearningWorkspace.vue` |
+| 学习工作区 | 资料/对话/产物同屏；课件、UTF-8 Markdown和代码笔记本地导入一次，复用资料生成摘要/笔记/卡片/练习并恢复会话；源码只作文本阅读 | `workspace.py`、`LearningWorkspace.vue` |
+| V2.1 AI 导师讲解 | 从已保存的 AI 回答进入数字人页面，或手动输入文本；浏览器 TTS、分段播报、播放控制、口型动画与可删除的最小日志；V2.1.1 增加超时恢复、取消保护、同页回答切换与记录同步重试 | `DigitalHuman.vue`、`digital-human/`、`/api/digital-human/playbacks` |
+| V2.2 知识图谱与学习画像 | 从资料提取有原文依据的节点与关系，核对确认后展示；真实作答更新画像和薄弱点，可确认生成学习路径，保留撤销与操作记录 | `KnowledgeGraph.vue`、`knowledge_graph.py`、`/api/knowledge-graph` |
+| V2.3 编程练习与评测 | Monaco C++17 编辑器、8 道原创题、真实隔离编译与逐测试点评分；编程错题、复盘笔记、模型参考建议、全部有效提交统计和撤销恢复 | `Programming.vue`、`filemate/programming/`、`/api/programming` |
+| V2.4 面试增强 | 本机视觉观察、录像定位时间轴、六项内容复盘与原句证据；持久报告及 PDF/JSON/Markdown 导出、取消分析与确认删除 | `Interview.vue`、`InterviewReviewPanel.vue`、`filemate/interview_review/` |
+| V2.5 求职训练中心 | 核对保存岗位来源与要求，创建原创笔试和岗位面试，引用实际图谱/代码/作答证据；历史对比快照、导出与撤销恢复 | `Career.vue`、`filemate/career/`、`/api/career` |
 | 个人知识库 | 资料源、AI 产物、聊天上下文持久化；跨资料检索与引用；六阶段学习资产链 | `storage.py`、`retrieval.py`、`Knowledge.vue` |
-| 学习闭环 | 练习作答、自动错题本、掌握状态、间隔重复、今日复习队列 | `/quiz`、`/wrongbook`、`/review/today` |
+| 学习闭环 | 练习作答、自动错题本、资料范围内知识点标识、可修正错因、间隔重复和按时间预算调整的今日复习队列 | `/quiz`、`/wrongbook`、`/review/today` |
 | 学习计划 | 根据考试日期生成日计划，持久记录每日完成状态，支持 CSV/ICS 导出 | `StudyPlan.vue` |
 | 目标反推 | 依据资料、练习、错题、计划与面试记录诊断差距，生成任务并动态重排 | `goal_planner.py`、`GoalPlanner.vue` |
+| 错题口头复练 | 从目标资料中的待纠错题生成口头解释任务，保留失败作答、题目、资料版本及页码/片段引用；证据变化后阻止旧训练并提示重排 | `goal_planner.py`、`interview.py`、`GoalPlanner.vue`、`Interview.vue` |
 | 模拟面试 | 摄像头/麦克风独立授权、本地录像回放、语音流畅度与时间轴、资料驱动追问、本地降级 | `interview.py`、`Interview.vue` |
 | 可信 Agent | 面试、目标与授权任务按需选择角色；记录真实步骤、来源标识与输出摘要；共享记忆可撤销 | `trusted_agents.py`、`TrustCenter.vue` |
 | 版权与隐私 | 资料默认未确认且仅自己可用；授权声明、分享边界与记忆撤销可视化 | `/trust/overview`、`source_rights` |
 | 网站访客隔离 | 生产环境为每个浏览器签发不可伪造的 HttpOnly 匿名设备身份，并使用独立 SQLite、上传和归档目录 | `server.py`、`test_server_tenant_isolation.py` |
-| 成长数据 | 真实行为统计、匿名反馈导出；学习伙伴表情与阶段由本地学习证据驱动 | `Growth.vue`、`evaluation/` |
+| 成长数据 | 真实行为统计、匿名反馈导出；求职训练实际计数和原记录回看；学习伙伴表情与阶段由本地学习证据驱动 | `Growth.vue`、`CareerGrowthPanel.vue`、`evaluation/` |
 | 多端工程 | Vue Web、FastAPI Sidecar、Tauri 2 桌面工程、CLI | `filemate/web/`、`server.py`、`main.py` |
 
 ### 2.2 已有基础，但仍需完善
 
-前端采用自然绿与浅色工作台布局。首页提供按时间问候，以及「整理资料 / 复习备考 / 面试练习」方向切换；方向选择仅用于当前页面快捷入口，不作为学习记录保存。`/login`、`/register` 为账号界面预览，支持表单校验与游客返回，尚未接入真实账号服务。页面不保存账号密码，登录页学习流程为示意，不代表用户活动。
+题集正文修订会为已有作答/错题保留只读历史题集，旧题仍可复练，成绩不会转移到新知识点；过期页面或判题期间的题目变更返回409并要求刷新。机制与旧库不确定证据边界见 [API 规范](filemate/docs/API_SPEC.md#题目修订与学习证据)。本轮结果是本地工程验收，不代表生产网站或 EXE 安装包已经升级；发布状态见 [V2.2 报告](docs/V2_2_KNOWLEDGE_GRAPH_DELIVERY.md)。
+
+前端依用户最新背景要求采用钴蓝光束主视觉、连续冰蓝画布和浅色阅读工作台。首页提供大字“让知识成形”主视觉和「读懂资料 / 复习备考 / 面试求职」方向切换；方向选择仅用于当前页面快捷入口，不作为学习记录保存。9项主要导航配合任务内相关功能及工具查找；分类与命名在同一个[资料审核模块](filemate/web/src/views/FileReview.vue)核对，可保存草稿或一次确认归档，旧分类/命名URL保留。背景动效遵守减弱动画偏好，并在滚出视口时暂停。[新背景来源与改写提示词](docs/BACKGROUND_REDESIGN_PROMPT_2026-10-03.md)记录选型依据；首轮绿白方案保留为历史快照。
+
+`/login`、`/register` 为账号界面预览，支持表单校验与游客返回，尚未接入真实账号服务。页面不保存账号密码，登录页学习流程为示意，不代表用户活动。
 
 | 能力 | 当前边界 | 8–9 月工作重点 |
 |---|---|---|
@@ -64,7 +95,7 @@ FileMate 是一个面向大学生的本地优先 AI 学习工作台。它把散�
 
 - Neo4j 知识图谱、Chroma/其他向量数据库和完整 GraphRAG。
 - 用户注册、跨设备账户同步、找回身份和多人协作权限体系；当前匿名设备身份不等同于正式账号。
-- 可替换的数字人供应商和实时口型驱动。
+- 外部数字人供应商、音素级实时口型同步与服务端语音生成；V2.1 目前仅接入浏览器 Web Speech Provider 和近似口型动画。
 - 正式监控告警、数据库配额和基于账号的多租户授权；当前仅完成匿名设备级隔离。
 - 大规模真实用户实验结论；当前 100% 离线指标只代表小型合成回归集。
 
@@ -102,7 +133,7 @@ FileMate 是一个面向大学生的本地优先 AI 学习工作台。它把散�
 
 - Windows 队友执行 `scripts/dev.ps1 -Setup` 后可启动前后端。
 - 所有高影响文件操作必须先预览确认，不覆盖已有目标，并可撤销。
-- 数据写入 SQLite v15，关闭并重启后仍能读取。
+- 数据写入当前 SQLite schema v24，关闭并重启后仍能读取。
 - 非 e2e 后端测试不得少于当前 `370 passed` 基线；新增功能必须新增测试。
 - `npm run build`、CI 静态检查和离线评测通过。
 - P0 缺陷为 0；P1 缺陷必须有负责人、复现步骤和明确截止日期。
@@ -155,7 +186,7 @@ flowchart LR
     A --> E["确认执行器：预览 / 确认 / 回滚 / 撤销"]
     A --> K["学习服务：检索 / 练习 / 错题 / 计划 / 面试"]
     E --> F["本地文件系统 / ICS"]
-    P --> S["SQLite v15"]
+    P --> S["SQLite v24"]
     E --> S
     K --> S
 ```
@@ -202,17 +233,17 @@ Source（原始资料）
 | 层 | 现役技术 | 说明 |
 |---|---|---|
 | Web 前端 | Vue 3.5、TypeScript 6、Vite 8 | 单页应用与按路由懒加载 |
-| UI 与状态 | Element Plus 2、Pinia 4、Vue Router 4、ECharts 6 | 自然绿色亮色设计系统 |
+| UI 与状态 | Element Plus 2、Pinia 4、Vue Router 4、ECharts 6 | 钴蓝主视觉、冰蓝画布与浅色阅读系统 |
 | 本地 API | FastAPI、Uvicorn、Pydantic | 默认监听 `127.0.0.1:8001` |
 | 桌面壳 | Tauri 2、Rust | 工程已建立；安装包仅手动验收 |
 | 核心语言 | Python 3.10+ | 推荐 3.11/3.12；统一 UTF-8 |
-| 数据存储 | SQLite WAL，schema v15 | 本地优先、版本迁移、线程连接管理；生产环境按匿名设备分库 |
+| 数据存储 | SQLite WAL，schema v24 | 本地优先、版本迁移、线程连接管理；生产环境按匿名设备分库 |
 | 文件解析 | PyPDF2、pdfplumber、python-docx、python-pptx | PaddleOCR 为可选依赖 |
 | 检索 | 本地分块 + BM25 风格词法评分 | 支持页码/片段引用；无外部向量库 |
 | LLM | DeepSeek V4 Flash；OpenAI 兼容 HTTP API | 通过 `LLMClient` 和 Provider 适配层接入 |
 | 测试与质量 | pytest、Ruff、vue-tsc、GitHub Actions | e2e 模型测试与普通离线测试分离 |
 
-计划中的 Neo4j、Chroma、BGE、数字人和云端部署不是当前运行依赖。新增外部能力必须通过适配层接入，并保留本地可运行的降级路径。
+计划中的 Neo4j、Chroma、BGE 与外部数字人供应商不是当前运行依赖。现役数字人采用浏览器语音，网站已有独立部署；新增外部能力必须通过适配层接入，并保留本地可运行的降级路径。
 
 ## 6. 目录结构与职责
 
@@ -265,7 +296,7 @@ FileMate/
 | `server.py` | HTTP 合同、参数校验、服务编排、统一错误 | 重复实现底层领域算法 |
 | `web` | 用户交互、状态反馈、响应式布局、API 调用 | 直接读取 SQLite 或本地任意路径 |
 
-## 7. SQLite v15 数据模型
+## 7. SQLite v24 数据模型
 
 数据库由 `schema_migrations` 管理，`init_schema()` 必须保持幂等。不要直接修改已经发布的迁移；新增字段或表必须增加新版本迁移和升级测试。
 
@@ -284,6 +315,15 @@ FileMate/
 | v13 | `interview_turns.fluency_metrics` | 持久化语音回答时长、字速、口头语、较长停顿和流畅度参考分 |
 | v14 | `agent_runs`、`agent_steps`、`agent_memories`、`source_rights` | 真实 Agent 轨迹、可撤销摘要记忆、资料授权与分享边界 |
 | v15 | `interview_turns.scoring_mode`、`scoring_version` | 区分模型评分、本地降级与历史未知来源，避免把降级结果误报为模型评分 |
+| v16 | `wrong_questions` 知识点与错因字段 | 保存资料范围内稳定知识点标识、本地规则建议、用户确认的错因与备注 |
+| v17 | `digital_human_playbacks` | 当前身份的播报字数、声线、形象、状态和时间；不保存正文或音频，支持软删除 |
+| v18 | `knowledge_graph_batches` | 本地知识图谱的草稿、确认和撤销记录 |
+| v19 | `daily_coach_preferences` | 按日期保存今日可用时长和用户调整的任务顺序 |
+| v20 | `interview_sessions.expression_review` | 错题表达复练的结构化记录 |
+| v21 | `knowledge_graph_events` | 图谱提取、失败、确认、撤销、恢复及学习路径操作元数据；随资料级联删除 |
+| v22 | `coding_submissions` / `coding_events` | C++ 提交索引、取消和撤销状态、幂等请求键、最小操作日志；代码/判题/复盘保存为现役 Artifact |
+| v23 | `interview_review_state` / `interview_review_events`；回答新增观察、内容证据及请求键 | 面试分析取消修订、幂等回答、确认删除；报告复用 `interview_report` Artifact |
+| v24 | `career_positions` / `career_trainings` / `career_events` | 岗位来源与修订、训练快照索引与有限操作日志；训练正文复用 Artifact |
 
 关键关系：
 
@@ -357,6 +397,11 @@ FileMate/
 | POST | `/interviews` | 创建模拟面试 |
 | GET | `/interviews/{id}` | 获取面试进度 |
 | POST | `/interviews/{id}/answers` | 提交回答并评分 |
+| GET/POST | `/interviews/{id}/review` | 读取或生成持久化面试复盘报告 |
+| POST | `/interviews/{id}/turns/{turn_id}/analyze` | 确认外发后分析原回答，保留各维度原句证据 |
+| GET | `/interviews/{id}/review/export` | 下载 PDF、JSON 或 Markdown 报告 |
+| POST | `/interviews/{id}/analysis/cancel`、`/analysis/clear` | 取消迟到分析，或确认清空派生结果 |
+| GET/DELETE | `/interviews/{id}/delete-preview`、`/interviews/{id}` | 预览后确认删除本场练习 |
 | GET/POST | `/interview/questions` | 筛选题库或新增题目 |
 | PATCH/DELETE | `/interview/questions/{id}` | 更新、启停或删除题目 |
 | GET | `/analytics/overview` | 获取真实学习行为统计 |
@@ -380,6 +425,8 @@ FileMate/
 | `/schedule` | 日程预览 | 查看里程碑和日历内容 |
 | `/history` | 历史记录 | Session、执行状态和撤销 |
 | `/ai-tools` | AI 工具箱 | 摘要、卡片、题目、笔记、问答 |
+| `/digital-human` | AI 导师讲解 | 朗读已保存的 AI 回答或手动讲解稿；语音控制、字幕、形象切换与播放记录 |
+| `/career` | 求职训练中心 | 岗位来源核对、原创笔试、算法与面试训练、证据对比 |
 | `/study-plan` | AI 学习计划 | 生成、查看和完成每日任务 |
 | `/goals` | 目标反推 | 目标、证据、能力缺口、行动任务与动态重排 |
 | `/wrongbook` | 错题复盘 | 错题、掌握状态和复习安排 |
@@ -389,7 +436,7 @@ FileMate/
 | `/knowledge` | 个人知识库 | 资料、产物、跨资料检索、编辑和六阶段资产链 |
 | `/trust` | 可信与隐私 | Agent 时间线、共享记忆撤销、资料授权与分享边界 |
 
-视觉必须遵循“日光学习台”：浅色、低饱和自然绿、真实数据优先；不使用暗色主界面、紫粉 AI 渐变、Emoji 功能图标、虚构准确率或无意义机器人视觉。
+视觉遵循用户2026-10-03最新要求：钴蓝光束主视觉、冰蓝背景、清晰的浅色正文和集中动作，真实数据优先；不使用紫粉 AI 渐变、Emoji 功能图标、虚构准确率或无意义机器人视觉。原自然绿限定已由该次明确要求替代。
 
 ## 10. 本地开发与运行
 
@@ -475,8 +522,35 @@ uv run python main.py --check --db _working/check.db
 | `FILEMATE_PORT` | `8001` | API 监听端口 |
 | `FILEMATE_SHUTDOWN_TOKEN` | 桌面宿主注入 | 只允许本机优雅关闭 Sidecar |
 | `FILEMATE_INTERVIEW_LOCAL_ONLY` | `1` 时强制本地评分 | 面试隐私/离线模式 |
+| `FILEMATE_ENABLE_INTERVIEW_REVIEW` | `1` | 设为 `0` 时关闭 V2.4 分析、报告、清空/删除和导出接口；原有面试仍可使用 |
+| `VITE_ENABLE_INTERVIEW_REVIEW` | 开启 | 前端构建时设为 `false`，隐藏视觉观察与增强报告，保留原面试页面 |
+| `FILEMATE_ENABLE_CAREER` | `1` | 设为 `0` 关闭 V2.5 求职接口，状态仍可读取；保留原学习、编程与面试 |
+| `VITE_ENABLE_CAREER` | 开启 | 前端构建时设为 `false` 隐藏求职导航，旧 `/career` 链接返回学习工作区 |
+| `FILEMATE_ENABLE_DIGITAL_HUMAN` | `1` | 设为 `0` 时独立关闭数字人日志 API；其他学习接口继续可用 |
+| `VITE_ENABLE_DIGITAL_HUMAN` | 开启 | 前端构建时设为 `false`，关闭数字人页面并隐藏导航与回答讲解入口；旧讲解链接返回学习工作区 |
+| `FILEMATE_ENABLE_KNOWLEDGE_GRAPH` | `1` | 设为 `0` 时关闭 V2.2 图谱接口，不影响其他学习接口 |
+| `VITE_ENABLE_KNOWLEDGE_GRAPH` | 开启 | 前端构建时设为 `false`，隐藏知识图谱路由和入口 |
+| `FILEMATE_ENABLE_PROGRAMMING` | `1` | 设为 `0` 时关闭编程 API，保留提交数据与其他模块 |
+| `VITE_ENABLE_PROGRAMMING` | 开启 | 前端构建时设为 `false`，隐藏编程导航，旧 `/programming` 地址转到学习工作区 |
+| `FILEMATE_CPP_TOOLCHAIN_DIR` | 项目 `_working/cpp-toolchain` | 本机 MSVC/SDK 的专用只读副本；评测工作目录在其相邻 `cpp-runs` 中 |
 
 未配置模型密钥时，Web、历史、持久化和部分本地功能仍可启动；需要模型的能力应返回明确配置提示，不能静默伪造结果。
+
+求职训练中心提供少量有日期和官方链接的岗位摘要，并支持本地TXT/Markdown导入。核对要求原句后才保存，岗位修改不会重写旧训练。基础题由平台原创，算法训练复用C++17引擎，岗位口头训练复用V2.4；不声称企业真题或实时招聘信息。证据对比展示实际训练量与引用，无样本为待评测，不生成岗位适配率或录用结论。删除求职岗位保留原资料、图谱、编程提交及面试，面试可单独在V2.4删除。完整边界与验收见 [V2.5交付报告](docs/V2_5_CAREER_DELIVERY.md)。
+
+成长数据页同步展示已保存岗位、完成的基础笔试、实际答对/作答题数、岗位面试已答/已评估题数和对比快照。汇总读取全部有效训练，包含撤销岗位的历史；最近五份记录可直接回看，异常记录保留并说明排除数量。刷新只读，读取失败保留已显示的证据，求职开关关闭时隐藏该面板。没有作答时显示待评测，完成数量不转为能力分或招聘效果。
+
+岗位学习计划按本地规则列出最近基础题错误、待复习关联和最近失败代码提交的原记录，并对无作答要求显示待评测。先预览确认，再原子新增现役学习计划和证据快照；已有计划及进度保留，同证据重试不会重复保存。支持原练习链接、每日进度、CSV/日历导出和撤销恢复。删除岗位时同时预览并清除该岗位生成的计划和进度，保留其他学习计划。当前最多安排7项、每天建议30分钟，不调用模型或据此修改能力画像；范围与验收见 [B2岗位学习闭环](docs/B2_CAREER_LEARNING_PLAN_DELIVERY.md)。
+
+面试页面默认本地保存回答，视觉观察须主动开启。MediaPipe 模型及运行时从本机同源资源加载；摄像头录像只在当前页面内存，支持用户主动下载，刷新后清除。业务服务只接收有限观察摘要，不接收录像、音频、帧或人脸坐标。浏览器语音识别可能使用浏览器厂商在线服务，页面明确提示。开启外部内容分析前逐题确认发送问题、回答和训练方向；四维模型分数与六项内容建议均须含原句证据，失败保留旧结果，无模型时不生成内容分数。
+
+复盘报告作为 Artifact 持久化，可导出嵌入中文字体的 PDF、JSON 和 Markdown。清空分析保留原回答和语音节奏，删除整场须先预览影响并确认。视觉比例只是实际采样统计，不推断情绪、人格或录用结果；真实专家校准仍为“待评测”。匿名盲评模板和 Spearman 工具见 [V2.4 交付报告](docs/V2_4_INTERVIEW_REVIEW_DELIVERY.md)。
+
+编程模块当前支持 Windows x64 与本机已安装的 Visual Studio C++ 桌面开发组件/Windows SDK。页面中的“准备本地评测环境”复制工具链到应用目录并执行真实隔离自检，不安装系统组件。编译使用无网络能力的 AppContainer，运行使用 LPAC，均绑定 Job Object；Windows BFE/MpsSvc 服务不可用时拒绝执行。学生程序限制为单进程、256 MB、每点 1 秒、输出 64 KB；编译上限 30 秒/768 MB/8 进程。使用标准 C++17 头文件，不支持 GCC 专用 `bits/stdc++.h`。其他系统或环境未就绪时可查看题目/历史，评测入口关闭。
+
+代码复盘与正确性裁决分开。本地提示自动保存；外部模型需要用户确认发送题面、代码和测试结果，模型反馈须校验源代码行号与全部失败测试点编号。模型失败保留原判题和既有复盘。类别通过率、本周记录、每题平均提交次数均来自有效完成记录，取消、基础设施失败与撤销记录不进入统计。
+
+编程历史中损坏或无法对应固定题目版本的记录暂停操作、排除统计并保留原始字节；单条损坏的孤立运行记录不会阻断记录页。当前V2.3为本地工程验收，独立提交、网站部署和安装包更新仍待完成，具体证据与限制见 [V2.3报告](docs/V2_3_PROGRAMMING_DELIVERY.md)。
 
 桌面端或本机 Web 启动后，也可点击右上角“设置”，直接填写自己的 DeepSeek API 密钥。密钥由当前系统用户的安全凭据库保存，不进入浏览器存储、SQLite、日志或 Git；保存后立即生效。本机安全凭据优先于 `LLM_API_KEY`，删除后自动回退到环境变量。为避免公共服务器上的用户互相覆盖密钥，该界面只允许回环地址访问，公网部署仍使用服务器环境变量。
 
@@ -494,6 +568,7 @@ uv run python filemate/tests/stress_test_storage.py
 
 # 前端类型检查与生产构建
 Set-Location filemate/web
+npm test
 npm run build
 
 # 无服务器临时公网演示（共享前必须保管好输出的访问密码）
@@ -538,7 +613,7 @@ uv run python evaluation/run_evaluation.py --output _working/evaluation-report.j
 1. 在 `src/views/` 建页面，在 `router/index.ts` 注册懒加载路由。
 2. API 调用只放 `src/services/api.ts`，共享类型放 `src/types/`。
 3. 复用 Pinia 状态，不把持久数据只放组件局部变量。
-4. 遵循自然绿色设计系统，使用 `@element-plus/icons-vue`。
+4. 遵循当前钴蓝与冰蓝设计系统，使用 `@element-plus/icons-vue`。
 5. 验证桌面、900px 和 375px；状态不能只靠颜色表达。
 
 ### 13.4 新增 LLM/Embedding/数字人供应商
@@ -633,6 +708,7 @@ powershell -ExecutionPolicy Bypass -File scripts/verify.ps1
 | SQLite 适合单机，不适合多人并发 | WAL、busy timeout、写锁 | 只有多人协作需求确认后才评估 PostgreSQL |
 | 面试本地评分较粗 | 明示降级，保留四维结构 | 与教师/导师盲评做相关性验证 |
 | 桌面安装包尚未作为当前门禁 | 手动 workflow 保留 | 9 月稳定后决定是否纳入最终验收 |
+| V2.1 浏览器声线与口型精度 | Web Speech 由浏览器/系统提供，部分声线可能联网；口型跟随语音事件近似动画，不是音素级同步 | 后续在用户许可下评估可离线运行的 TTS/音素驱动 Provider |
 
 ## 18. 项目文档索引
 
@@ -641,6 +717,11 @@ powershell -ExecutionPolicy Bypass -File scripts/verify.ps1
 | [`filemate/docs/API_SPEC.md`](filemate/docs/API_SPEC.md) | 核心 Python 接口、HTTP API、可信执行合同 | 现役 |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | 网站上线、服务器选型、备份安全与桌面安装包路线 | 现役交付方案 |
 | [`docs/AGENT_DEVELOPMENT_EXECUTION_PLAN.md`](docs/AGENT_DEVELOPMENT_EXECUTION_PLAN.md) | 其他 Agent 的分阶段任务卡、文件边界与验收合同 | 现役执行计划 |
+| [`docs/V2_1_1_DIGITAL_HUMAN_DELIVERY.md`](docs/V2_1_1_DIGITAL_HUMAN_DELIVERY.md) | V2.1.1 数字人加固、真实浏览器验收与全项目门禁限制 | 本轮交付证据 |
+| [`docs/V2_2_KNOWLEDGE_GRAPH_DELIVERY.md`](docs/V2_2_KNOWLEDGE_GRAPH_DELIVERY.md) | V2.2 知识图谱、学习画像、公开教材闭环与回滚方式 | 阶段交付证据 |
+| [`docs/V2_3_PROGRAMMING_DELIVERY.md`](docs/V2_3_PROGRAMMING_DELIVERY.md) | V2.3 原创题、真实编译评测、Windows 隔离、复盘与关闭回滚方式 | 阶段交付证据 |
+| [`docs/V2_4_INTERVIEW_REVIEW_DELIVERY.md`](docs/V2_4_INTERVIEW_REVIEW_DELIVERY.md) | V2.4 本地观察、内容证据、报告导出、隐私操作与验收边界 | 阶段交付证据 |
+| [`docs/V2_5_CAREER_DELIVERY.md`](docs/V2_5_CAREER_DELIVERY.md) | V2.5 岗位核对、原创训练、真实证据与撤销恢复边界 | 阶段交付证据 |
 | [`design-system/filemate/MASTER.md`](design-system/filemate/MASTER.md) | UI 色彩、布局、组件和禁止项 | 现役 |
 | [`docs/PHASE0_ACCEPTANCE_REPORT.md`](docs/PHASE0_ACCEPTANCE_REPORT.md) | 可信执行与工程门禁证据 | 现役证据 |
 | [`docs/FILEMATE_EVALUATION_BASELINE.md`](docs/FILEMATE_EVALUATION_BASELINE.md) | 离线可复现评测口径 | 现役证据 |

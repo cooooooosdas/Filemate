@@ -3,6 +3,7 @@ from filemate.understanding.interview import (
     InterviewEvaluator,
     build_interview_questions,
     build_source_grounded_question,
+    build_wrong_grounded_question,
     generate_interview_questions_with_llm,
     select_question_ids_with_llm,
 )
@@ -101,6 +102,30 @@ def test_source_grounded_question_names_selected_evidence() -> None:
 
     assert "FileMate 项目申报书.pdf" in question
     assert "材料中能够支撑" in question
+
+
+def test_wrong_grounded_question_uses_stem_without_reference_answer() -> None:
+    question = build_wrong_grounded_question(
+        "数据库课件",
+        {"question": "B+ 树为什么适合范围查询？", "answer": "叶子节点有序"},
+    )
+
+    assert "B+ 树为什么适合范围查询" in question
+    assert "数据库课件" in question
+    assert "叶子节点有序" not in question
+
+
+def test_wrong_grounded_question_applies_confirmed_error_cause() -> None:
+    question = build_wrong_grounded_question(
+        "算法课件",
+        {"stem": "说明 BFS 的执行过程", "answer": "使用队列逐层访问"},
+        error_cause="reasoning_break",
+        knowledge_label="广度优先搜索",
+    )
+
+    assert "广度优先搜索" in question
+    assert "条件、步骤、结论" in question
+    assert "使用队列逐层访问" not in question
 
 
 def test_build_interview_questions_ai_selects_then_fills_deterministically(

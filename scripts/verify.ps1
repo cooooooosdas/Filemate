@@ -1,3 +1,7 @@
+﻿param(
+    [switch]$IsolateFrontend
+)
+
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 
@@ -22,6 +26,14 @@ try {
     Assert-LastExitCode "uv sync"
     uv run ruff check server.py main.py filemate/execution `
         filemate/tests/test_storage.py `
+        filemate/tests/test_interview_review.py `
+        filemate/tests/test_career.py `
+        filemate/tests/test_career_planning.py `
+        filemate/tests/test_evaluation_study.py `
+        filemate/tests/test_evidence_profile.py `
+        filemate/tests/test_beta_tools.py `
+        filemate/tests/test_backup.py `
+        filemate/tests/test_programming.py `
         filemate/tests/test_file_ops.py `
         filemate/tests/test_archiver.py `
         filemate/tests/test_confirmation_executor.py `
@@ -29,10 +41,23 @@ try {
         filemate/tests/test_retrieval.py `
         filemate/tests/test_study.py `
         filemate/study `
+        filemate/programming `
+        filemate/interview_review `
+        filemate/career `
+        filemate/operations `
         filemate/understanding/interview.py `
         filemate/understanding/retrieval.py `
         evaluation/run_evaluation.py `
+        evaluation/calibrate_interview.py `
         evaluation/analyze_study.py `
+        evaluation/analyze_competition_trials.py `
+        evaluation/csv_contract.py `
+        evaluation/intervals.py `
+        evaluation/prepare_beta.py `
+        scripts/acceptance/release_readiness.py `
+        scripts/acceptance/backup_restore.py `
+        scripts/acceptance/gateway_preflight.py `
+        scripts/acceptance/workspace_model_fixture.py `
         evaluation/analyze_feedback.py
     Assert-LastExitCode "Ruff"
     uv run pytest filemate/tests -q -m "not e2e"
@@ -43,12 +68,36 @@ try {
     if ($realItem.LinkType -eq 'Junction' -and $realItem.Target) {
         $realRoot = [string]$realItem.Target
     }
-    Push-Location (Join-Path $realRoot "filemate/web")
+    $frontendRoot = Join-Path $realRoot "filemate/web"
+    if ($IsolateFrontend) {
+        # Keep npm ci away from native binaries locked by a running Windows Vite process.
+        $frontendCopy = Join-Path $realRoot ("_working/verify-web-" + [guid]::NewGuid().ToString("N"))
+        New-Item -ItemType Directory -Path $frontendCopy | Out-Null
+        foreach ($folder in @("src", "public", "tests", "scripts")) {
+            $sourceFolder = Join-Path $frontendRoot $folder
+            if (Test-Path -LiteralPath $sourceFolder) {
+                Copy-Item -LiteralPath $sourceFolder -Destination $frontendCopy -Recurse
+            }
+        }
+        foreach ($file in @("package.json", "package-lock.json", "index.html", "vite.config.ts", "tsconfig.json", "tsconfig.app.json", "tsconfig.node.json", "env.d.ts")) {
+            $sourceFile = Join-Path $frontendRoot $file
+            if (Test-Path -LiteralPath $sourceFile) {
+                Copy-Item -LiteralPath $sourceFile -Destination $frontendCopy
+            }
+        }
+        Write-Output "Frontend verification workspace: $frontendCopy"
+        $frontendRoot = $frontendCopy
+    }
+    Push-Location $frontendRoot
     try {
         npm.cmd ci
         Assert-LastExitCode "npm ci"
+        npm.cmd test
+        Assert-LastExitCode "frontend tests"
         npm.cmd run build
         Assert-LastExitCode "frontend build"
+        npm.cmd run check:bundle
+        Assert-LastExitCode "frontend initial bundle budget"
     }
     finally {
         Pop-Location

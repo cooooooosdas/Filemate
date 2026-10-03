@@ -6,7 +6,7 @@
 <template>
   <div class="import-page">
     <WorkflowSteps :current="1" />
-    <h2 class="page-title"><el-icon><Upload /></el-icon> 导入文件</h2>
+    <h1 class="page-title">让资料，<span>成为起点。</span></h1>
 
     <!-- Upload Zone -->
     <label
@@ -117,7 +117,7 @@
               class="action-btn review"
               @click.stop="reviewResult(item.session)"
             >
-              审核结果
+              核对并归档
             </button>
             <button
               v-if="item.status === 'error'"
@@ -142,12 +142,8 @@
     <div class="tips-card">
       <div class="tips-icon" aria-hidden="true"><el-icon><InfoFilled /></el-icon></div>
       <div class="tips-content">
-        <h4>使用提示</h4>
-        <ul>
-          <li>支持批量上传，每个文件最大 25 MB</li>
-          <li>上传后自动进行分类、命名和日程提取</li>
-          <li>处理完成后点击“审核结果”，确认后才会归档文件</li>
-        </ul>
+        <h4>上传 → 核对 → 归档</h4>
+        <p>可批量导入，每份最多25 MB。分类、名称和日程在同一处核对，确认后才归档。</p>
       </div>
     </div>
   </div>
@@ -383,12 +379,6 @@ const getStatusText = (status: string) => {
    ═══════════════════════════════════════════════════════ */
 .import-page {
   --bg-card: var(--bg-surface);
-  --border-subtle: #d7e3d9;
-  --border-default: #bfd0c3;
-
-  --text-primary: #183229;
-  --text-secondary: #4d655b;
-  --text-muted: #6d8077;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -403,12 +393,14 @@ const getStatusText = (status: string) => {
 }
 
 .page-title {
-  font-size: 24px;
+  font-size: clamp(34px, 4vw, 48px);
   font-weight: 600;
   color: var(--text-primary);
   margin: 0 0 24px;
   animation: fadeDown 0.4s ease-out;
 }
+
+.page-title span { color: var(--accent); }
 
 @keyframes fadeDown {
   from {
@@ -425,7 +417,7 @@ const getStatusText = (status: string) => {
    Upload Zone with Micro-interactions
    ═══════════════════════════════════════════════════════ */
 .upload-zone {
-  background: var(--bg-card);
+  background: var(--panel-tint);
   border: 2px dashed var(--border-default);
   border-radius: var(--radius-xl);
   padding: 56px 32px;
@@ -491,14 +483,14 @@ const getStatusText = (status: string) => {
 }
 
 .upload-content h3 {
-  font-size: 20px;
+  font-size: 30px;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0 0 8px;
 }
 
 .upload-content p {
-  font-size: 14px;
+  font-size: 18px;
   color: var(--text-muted);
   margin: 0 0 20px;
 }
@@ -511,7 +503,7 @@ const getStatusText = (status: string) => {
 }
 
 .format-tag {
-  font-size: 11px;
+  font-size: 14px;
   padding: 4px 12px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-subtle);
@@ -621,7 +613,7 @@ const getStatusText = (status: string) => {
   border: none;
   border-radius: var(--radius-md);
   color: #fff;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -655,7 +647,7 @@ const getStatusText = (status: string) => {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 500;
   cursor: pointer;
   transition:
@@ -695,14 +687,14 @@ const getStatusText = (status: string) => {
 }
 
 .queue-header h3 {
-  font-size: 16px;
+  font-size: 23px;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
 }
 
 .queue-count {
-  font-size: 13px;
+  font-size: 16px;
   color: var(--text-muted);
 }
 
@@ -796,7 +788,7 @@ const getStatusText = (status: string) => {
 }
 
 .queue-item .queue-name {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 500;
   color: var(--text-primary);
   margin-bottom: 2px;
@@ -806,7 +798,7 @@ const getStatusText = (status: string) => {
 }
 
 .queue-item .queue-size {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-muted);
 }
 
@@ -816,7 +808,7 @@ const getStatusText = (status: string) => {
 
 .status-badge {
   display: inline-block;
-  font-size: 12px;
+  font-size: 14px;
   padding: 4px 12px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
@@ -825,7 +817,7 @@ const getStatusText = (status: string) => {
 
 .status-badge.status-pending {
   background: rgba(251, 191, 36, 0.1);
-  color: #fbbf24;
+  color: #9a651d;
 }
 
 .status-badge.status-uploading {
@@ -835,12 +827,12 @@ const getStatusText = (status: string) => {
 
 .status-badge.status-success {
   background: rgba(34, 197, 94, 0.1);
-  color: #4ade80;
+  color: #2f7d55;
 }
 
 .status-badge.status-error {
   background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
+  color: #b44b4b;
 }
 
 .queue-actions {
@@ -861,7 +853,8 @@ const getStatusText = (status: string) => {
 }
 
 .action-btn {
-  font-size: 12px;
+  font-size: 16px;
+  min-height: 44px;
   padding: 6px 12px;
   background: transparent;
   border: 1px solid var(--border-default);
@@ -908,7 +901,7 @@ const getStatusText = (status: string) => {
 }
 
 .tips-content h4 {
-  font-size: 14px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--accent);
   margin: 0 0 8px;
@@ -926,8 +919,14 @@ const getStatusText = (status: string) => {
   margin: 0;
 }
 
+.tips-content p { font-size: 17px; line-height: 1.8; margin: 0; color: var(--text-secondary); }
+
 /* Responsive */
 @media (max-width: 640px) {
+  .queue-item { display: grid; grid-template-columns: 46px minmax(0, 1fr); padding: 18px; gap: 14px; }
+  .queue-item .queue-name { white-space: normal; overflow-wrap: anywhere; }
+  .queue-status, .queue-actions { grid-column: 2; }
+  .queue-actions { flex-wrap: wrap; }
   .upload-zone {
     padding: 40px 20px;
   }

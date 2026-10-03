@@ -1,1 +1,1 @@
-participant_id,condition,assigned_tasks,completed_tasks,due_reviews,completed_reviews,returned_next_day
+participant_id,condition,assigned_tasks,completed_tasks,due_reviews,completed_reviews,returned_next_day,study_date,consent_confirmed,sample_kind

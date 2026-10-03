@@ -1,4 +1,8 @@
 import axios from 'axios'
+import type { CareerComparison, CareerEvent, CareerOverview, CareerPosition, CareerRecord, CareerTraining, CareerPlanPreview, CareerLearningPlan } from '../types/career'
+import type { ContentAnalysis, InterviewDeletePreview, InterviewReport, InterviewReviewEvent, VisualMetrics } from '../types/interviewReview'
+import type { CodingProblem, CodingSubmission, CodingOverview, ProgrammingStatus } from '../types/programming'
+import type { KnowledgeGraphData, GraphBatch, GraphPlanPreview, GraphPlanResult } from '../types/knowledgeGraph'
 import type {
   ProcessingSession,
   ApiResponse,
@@ -52,6 +56,39 @@ const api = axios.create({
     'Content-Type': 'application/json'
   }
 })
+
+export async function getProgrammingProblems(): Promise<CodingProblem[]> {
+  return (await api.get<any, ApiResponse<CodingProblem[]>>('/api/programming/problems', { timeout: 15000 })).data!
+}
+export async function getProgrammingStatus(): Promise<ProgrammingStatus> {
+  return (await api.get<any, ApiResponse<ProgrammingStatus>>('/api/programming/status', { timeout: 15000 })).data!
+}
+export async function setupProgramming(): Promise<ProgrammingStatus> {
+  return (await api.post<any, ApiResponse<ProgrammingStatus>>('/api/programming/setup', {}, { timeout: 120000 })).data!
+}
+export async function getCodingOverview(): Promise<CodingOverview> {
+  return (await api.get<any, ApiResponse<CodingOverview>>('/api/programming/overview', { timeout: 15000 })).data!
+}
+export async function getCodingSubmission(id: string): Promise<CodingSubmission> {
+  return (await api.get<any, ApiResponse<CodingSubmission>>(`/api/programming/submissions/${id}`, { timeout: 15000 })).data!
+}
+export async function createCodingSubmission(problemId: string, code: string, requestKey: string): Promise<CodingSubmission> {
+  return (await api.post<any, ApiResponse<CodingSubmission>>('/api/programming/submissions',
+    { problem_id: problemId, code, request_key: requestKey, language: 'cpp17' }, { timeout: 15000 })).data!
+}
+export async function runCodingSubmission(id: string): Promise<CodingSubmission> {
+  return (await api.post<any, ApiResponse<CodingSubmission>>(`/api/programming/submissions/${id}/run`, {}, { timeout: 120000 })).data!
+}
+export async function changeCodingSubmission(id: string, action: 'cancel' | 'undo' | 'restore'): Promise<CodingSubmission> {
+  return (await api.post<any, ApiResponse<CodingSubmission>>(`/api/programming/submissions/${id}/${action}`, {}, { timeout: 15000 })).data!
+}
+export async function reviewCodingSubmission(id: string, mode: 'local' | 'llm', consent: boolean): Promise<CodingSubmission> {
+  return (await api.post<any, ApiResponse<CodingSubmission>>(`/api/programming/submissions/${id}/review`,
+    { mode, allow_external_model: consent }, { timeout: 65000 })).data!
+}
+export async function saveCodingNotes(id: string, notes: string): Promise<CodingSubmission> {
+  return (await api.post<any, ApiResponse<CodingSubmission>>(`/api/programming/submissions/${id}/notes`, { notes }, { timeout: 15000 })).data!
+}
 
 export async function checkHealth(): Promise<boolean> {
   const response = await api.get<any, ApiResponse<{ version: string }>>('/api/health')
@@ -317,6 +354,7 @@ export interface AIQuestion {
   options?: string[]
   answer: string
   explanation?: string
+  snapshot?: object
 }
 
 export interface AIQuestionsRequest {
@@ -358,7 +396,8 @@ function normalizeAIQuestion(q: RawAIQuestion): AIQuestion {
     question: q.stem || q.question || '',
     options: Array.isArray(q.options) ? q.options : [],
     answer: q.answer || '',
-    explanation: q.analysis || q.explanation || ''
+    explanation: q.analysis || q.explanation || '',
+    snapshot: { ...q }
   }
 }
 
@@ -545,11 +584,12 @@ export interface QuizAttemptResult {
 export async function submitQuizAttempt(
   artifactId: string,
   questionIndex: number,
-  userAnswer: string
+  userAnswer: string,
+  expectedQuestion?: object
 ): Promise<QuizAttemptResult> {
   const response = await api.post<any, ApiResponse<QuizAttemptResult>>(
     '/quiz/attempts',
-    { artifact_id: artifactId, question_index: questionIndex, user_answer: userAnswer }
+    { artifact_id: artifactId, question_index: questionIndex, user_answer: userAnswer, expected_question: expectedQuestion }
   )
   if (response.success && response.data) return response.data
   throw new Error(response.error || '提交答案失败')
@@ -558,6 +598,7 @@ export async function submitQuizAttempt(
 export interface WrongQuestion {
   wrong_id: string
   artifact_id: string
+  source_id: string | null
   question_index: number
   question: AIQuestion
   latest_answer: string
@@ -568,8 +609,130 @@ export interface WrongQuestion {
   interval_days: number
   ease_factor: number
   review_count: number
+  knowledge_key: string
+  knowledge_label: string
+  error_cause: WrongErrorCause
+  error_cause_source: 'rule' | 'user' | 'unconfirmed'
+  error_cause_confidence: number
+  error_cause_note: string
+  diagnosed_at: string | null
   updated_at: string
 }
+
+export async function getKnowledgeGraph(): Promise<KnowledgeGraphData> {
+  const response = await api.get<unknown, ApiResponse<KnowledgeGraphData>>('/api/knowledge-graph', { timeout: 15000 })
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '知识图谱加载失败')
+}
+
+export async function createGraphDraft(sourceId: string, mode: 'local' | 'llm', allowExternalModel: boolean): Promise<GraphBatch> {
+  const response = await api.post<unknown, ApiResponse<GraphBatch>>('/api/knowledge-graph/drafts', {
+    source_id: sourceId, mode, allow_external_model: allowExternalModel
+  }, { timeout: mode === 'llm' ? 120000 : 15000 })
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '提取失败，请重试')
+}
+
+export async function changeGraphBatch(batchId: string, action: 'confirm' | 'undo' | 'restore'): Promise<GraphBatch> {
+  const response = await api.post<unknown, ApiResponse<GraphBatch>>(`/api/knowledge-graph/batches/${encodeURIComponent(batchId)}/${action}`, {}, { timeout: 15000 })
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '图谱更新失败')
+}
+
+export async function previewGraphPlan(nodeId: string): Promise<GraphPlanPreview> {
+  const response = await api.get<unknown, ApiResponse<GraphPlanPreview>>(`/api/knowledge-graph/nodes/${encodeURIComponent(nodeId)}/plan`, { timeout: 15000 })
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '学习路径加载失败')
+}
+
+export async function confirmGraphPlan(nodeId: string, evidenceRevision: string): Promise<GraphPlanResult> {
+  const response = await api.post<unknown, ApiResponse<GraphPlanResult>>(`/api/knowledge-graph/nodes/${encodeURIComponent(nodeId)}/plan`, { evidence_revision: evidenceRevision }, { timeout: 15000 })
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '学习计划保存失败，请重新预览')
+}
+
+export async function changeGraphPlan(planId: string, action: 'undo' | 'restore'): Promise<void> {
+  const response = await api.post<unknown, ApiResponse<unknown>>(`/api/knowledge-graph/plans/${encodeURIComponent(planId)}/${action}`, {}, { timeout: 15000 })
+  if (!response.success) throw new Error(response.error || '学习计划更新失败')
+}
+
+export interface DigitalHumanPlayback {
+  playback_id: string
+  context_id: string | null
+  message_index: number | null
+  text_length: number
+  avatar_id: string
+  voice_id: string
+  provider: string
+  module_version: string
+  status: 'started' | 'completed' | 'stopped' | 'failed'
+  error_code: string
+  created_at: string
+  updated_at: string
+}
+
+export async function createDigitalHumanPlayback(input: {
+  text_length: number
+  avatar_id: string
+  voice_id: string
+  provider: 'web_speech'
+  context_id?: string
+  message_index?: number
+}): Promise<DigitalHumanPlayback> {
+  const response = await api.post<any, ApiResponse<DigitalHumanPlayback>>(
+    '/api/digital-human/playbacks', input,
+    { timeout: 15000 },
+  )
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '无法记录讲解')
+}
+
+export async function finishDigitalHumanPlayback(
+  playbackId: string, status: 'completed' | 'stopped' | 'failed', errorCode = '',
+): Promise<DigitalHumanPlayback> {
+  const response = await api.patch<any, ApiResponse<DigitalHumanPlayback>>(
+    `/api/digital-human/playbacks/${playbackId}`, { status, error_code: errorCode },
+    { timeout: 15000 },
+  )
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '无法更新讲解记录')
+}
+
+export async function listDigitalHumanPlaybacks(): Promise<DigitalHumanPlayback[]> {
+  const response = await api.get<any, ApiResponse<DigitalHumanPlayback[]>>(
+    '/api/digital-human/playbacks',
+    { timeout: 15000 },
+  )
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '无法读取讲解记录')
+}
+
+export async function deleteDigitalHumanPlayback(playbackId: string): Promise<boolean> {
+  const response = await api.delete<any, ApiResponse<{ deleted: boolean }>>(
+    `/api/digital-human/playbacks/${playbackId}`,
+    { timeout: 15000 },
+  )
+  if (response.success && response.data) return response.data.deleted
+  throw new Error(response.error || '无法删除讲解记录')
+}
+
+export async function restoreDigitalHumanPlayback(playbackId: string): Promise<boolean> {
+  const response = await api.post<any, ApiResponse<{ restored: boolean }>>(
+    `/api/digital-human/playbacks/${playbackId}/restore`,
+    undefined, { timeout: 15000 },
+  )
+  if (response.success && response.data) return response.data.restored
+  throw new Error(response.error || '无法恢复讲解记录')
+}
+
+export type WrongErrorCause =
+  | 'unconfirmed'
+  | 'concept_gap'
+  | 'memory_gap'
+  | 'reasoning_break'
+  | 'expression_gap'
+  | 'option_confusion'
+  | 'careless'
 
 export async function getWrongbook(mastered: boolean = false): Promise<WrongQuestion[]> {
   const response = await api.get<any, ApiResponse<WrongQuestion[]>>(
@@ -582,6 +745,21 @@ export async function getWrongbook(mastered: boolean = false): Promise<WrongQues
     }))
   }
   throw new Error(response.error || '获取错题本失败')
+}
+
+export async function updateWrongDiagnosis(
+  wrongId: string,
+  errorCause: WrongErrorCause,
+  note: string
+): Promise<WrongQuestion> {
+  const response = await api.patch<any, ApiResponse<WrongQuestion>>(
+    `/wrongbook/${wrongId}/diagnosis`,
+    { error_cause: errorCause, note }
+  )
+  if (response.success && response.data) {
+    return { ...response.data, question: normalizeAIQuestion(response.data.question) }
+  }
+  throw new Error(response.error || '错因保存失败')
 }
 
 export interface InterviewEvaluation {
@@ -602,6 +780,9 @@ export interface InterviewTurn {
   dimensions: Record<string, number>
   feedback: string
   fluency_metrics?: InterviewFluencyMetrics
+  visual_metrics?: VisualMetrics
+  content_analysis?: ContentAnalysis
+  analysis_data_error?: boolean
 }
 
 export type LLMKeySource = 'secure_store' | 'environment' | 'none'
@@ -643,12 +824,24 @@ export interface InterviewFluencyMetrics {
   reference_score?: number
   source: 'speech_recognition'
   markers?: InterviewFluencyMarker[]
+  recording_offset_seconds?: number
 }
 
 export interface InterviewFluencyMarker {
   second: number
   kind: 'long_pause' | 'filler'
   label: string
+}
+
+export interface SourceEvidenceRef {
+  status: 'matched' | 'unavailable'
+  method: 'local_bm25'
+  chunk_id?: string
+  chunk_index?: number
+  page_number?: number | null
+  score?: number
+  chunk_revision?: string
+  reason: string
 }
 
 export interface InterviewSession {
@@ -670,6 +863,9 @@ export interface InterviewSession {
     source_id: string | null
     source_name: string | null
     mode: 'none' | 'local_metadata_only' | 'authorized_excerpt'
+    focus_wrong_id?: string | null
+    goal_id?: string | null
+    source_evidence?: SourceEvidenceRef | null
   }
 }
 
@@ -677,13 +873,19 @@ export async function startInterview(
   targetRole: string,
   scenario: string,
   difficulty: string,
-  sourceId?: string
+  sourceId?: string,
+  focusWrongId?: string,
+  goalId?: string,
+  allowExternalAnalysis?: boolean
 ): Promise<InterviewSession> {
   const response = await api.post<any, ApiResponse<InterviewSession>>('/interviews', {
     target_role: targetRole,
     scenario,
     difficulty,
-    source_id: sourceId || null
+    source_id: sourceId || null,
+    focus_wrong_id: focusWrongId || null,
+    goal_id: goalId || null,
+    allow_external_analysis: allowExternalAnalysis
   })
   if (response.success && response.data) return response.data
   throw new Error(response.error || '创建模拟面试失败')
@@ -698,14 +900,41 @@ export async function getInterview(interviewId: string): Promise<InterviewSessio
 export async function answerInterview(
   interviewId: string,
   answer: string,
-  fluencyMetrics?: InterviewFluencyMetrics
+  fluencyMetrics?: InterviewFluencyMetrics,
+  options?: { questionIndex: number; requestKey: string; visualMetrics?: VisualMetrics }
 ): Promise<InterviewSession> {
   const response = await api.post<any, ApiResponse<InterviewSession>>(
     `/interviews/${interviewId}/answers`,
-    { answer, fluency_metrics: fluencyMetrics }
+    { answer, fluency_metrics: fluencyMetrics, question_index: options?.questionIndex, request_key: options?.requestKey, visual_metrics: options?.visualMetrics }
   )
   if (response.success && response.data) return response.data
   throw new Error(response.error || '面试回答评分失败')
+}
+
+export async function getInterviewReviewStatus(): Promise<{ enabled: boolean; calibration: string }> {
+  return (await api.get<any, ApiResponse<{ enabled: boolean; calibration: string }>>('/interview/review/status', { timeout: 10000 })).data!
+}
+export async function getInterviewReview(id: string): Promise<{ report: InterviewReport | null; events: InterviewReviewEvent[] }> {
+  return (await api.get<any, ApiResponse<{ report: InterviewReport | null; events: InterviewReviewEvent[] }>>(`/interviews/${id}/review`, { timeout: 15000 })).data!
+}
+export async function generateInterviewReview(id: string): Promise<InterviewReport> {
+  return (await api.post<any, ApiResponse<InterviewReport>>(`/interviews/${id}/review`, {}, { timeout: 20000 })).data!
+}
+export async function analyzeInterviewTurn(id: string, turnId: string): Promise<InterviewSession> {
+  return (await api.post<any, ApiResponse<InterviewSession>>(`/interviews/${id}/turns/${turnId}/analyze`, { external_consent: true }, { timeout: 65000 })).data!
+}
+export async function cancelInterviewAnalysis(id: string): Promise<void> { await api.post(`/interviews/${id}/analysis/cancel`, {}, { timeout: 10000 }) }
+export async function clearInterviewAnalysis(id: string): Promise<InterviewSession> {
+  return (await api.post<any, ApiResponse<InterviewSession>>(`/interviews/${id}/analysis/clear`, { confirmed: true }, { timeout: 15000 })).data!
+}
+export async function previewInterviewDelete(id: string): Promise<InterviewDeletePreview> {
+  return (await api.get<any, ApiResponse<InterviewDeletePreview>>(`/interviews/${id}/delete-preview`, { timeout: 15000 })).data!
+}
+export async function deleteInterviewSession(id: string, token: string): Promise<void> {
+  await api.delete(`/interviews/${id}`, { data: { confirmed: true, confirmation_token: token }, timeout: 15000 })
+}
+export async function exportInterviewReview(id: string, format: 'json' | 'markdown' | 'pdf'): Promise<Blob> {
+  return await api.get(`/interviews/${id}/review/export`, { params: { format }, responseType: 'blob', timeout: 20000 }) as unknown as Blob
 }
 
 export interface InterviewQuestion {
@@ -775,6 +1004,7 @@ export async function deleteInterviewQuestion(
 }
 
 export interface LearningAnalytics {
+  evidence_profile: LearningEvidenceProfile
   source_count: number
   artifact_count: number
   pending_wrong_count: number
@@ -824,9 +1054,37 @@ export interface TodayReviewItem {
   day_index?: number
   artifact_id?: string
   question_index?: number
+  question_snapshot?: object
   wrong_id?: string
   explanation?: string
+  error_cause?: WrongErrorCause
+  error_cause_source?: 'rule' | 'user' | 'unconfirmed'
   route: string
+}
+
+export interface LearningEvidenceMetric {
+  label: string
+  value: number | null
+  sample_count: number
+  sample_unit: string
+  minimum_samples: number
+  updated_at: string | null
+  status: 'pending_assessment' | 'insufficient_samples' | 'observed' | 'historical_only'
+  basis: string
+  excluded_count: number
+  records: Array<{ record_id: string; record_type: string; href: string }>
+}
+
+export interface LearningEvidenceProfile {
+  version: string
+  scope: 'source' | 'device'
+  window: string
+  metrics: Record<'quiz' | 'wrong' | 'plan' | 'interview', LearningEvidenceMetric>
+  dimensions: Record<string, LearningEvidenceMetric>
+  notice: string
+  unassessed_interview_turns: number
+  archived_plans_excluded: number
+  unreadable_interview_sessions: number
 }
 
 export interface TodayReview {
@@ -835,6 +1093,9 @@ export interface TodayReview {
   active_plan_count: number
   pending_wrong_count: number
   recommended_minutes: number
+  available_minutes: number
+  item_order: string[]
+  deferred_count: number
 }
 
 export async function getTodayReview(): Promise<TodayReview> {
@@ -894,8 +1155,38 @@ export interface ReverseGoalTask {
   title: string
   reason: string
   route: string
-  status: 'pending' | 'completed'
+  status: 'pending' | 'completed' | 'invalidated'
   due_date: string
+  focus_wrong_id?: string
+  source_id?: string
+  knowledge_key?: string
+  knowledge_label?: string
+  error_cause?: WrongErrorCause
+  error_cause_label?: string
+  error_cause_source?: 'rule' | 'user' | 'unconfirmed'
+  invalidated_reason?: string
+  source_evidence?: SourceEvidenceRef
+  evidence_ref?: {
+    artifact_id?: string | null
+    question_index?: number | null
+    attempt_id?: string | null
+    attempt_at?: string | null
+    source_revision?: string | null
+    question_revision?: string | null
+    diagnosis_revision?: string | null
+  }
+}
+
+export async function saveTodayReviewPreferences(
+  availableMinutes: number,
+  itemOrder: string[]
+): Promise<TodayReview> {
+  const response = await api.put<any, ApiResponse<TodayReview>>(
+    '/review/today/preferences',
+    { available_minutes: availableMinutes, item_order: itemOrder }
+  )
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '今日学习偏好保存失败')
 }
 
 export interface ReverseGoalPlan {
@@ -910,6 +1201,12 @@ export interface ReverseGoalPlan {
   evidence_status: 'ready' | 'insufficient'
   gaps: ReverseGoalGap[]
   tasks: ReverseGoalTask[]
+  invalidated_tasks?: Array<{
+    focus_wrong_id?: string
+    attempt_id?: string
+    reason: string
+    invalidated_at: string
+  }>
   last_agent_run_id: string
   created_at: string
   updated_at: string
@@ -1115,7 +1412,7 @@ export interface KnowledgeSearchResult {
 
 export async function getKnowledgeSources(limit = 100): Promise<KnowledgeSource[]> {
   const response = await api.get<any, ApiResponse<KnowledgeSource[]>>(
-    `/knowledge/sources?limit=${limit}`
+    `/knowledge/sources?limit=${limit}`, { timeout: 15000 }
   )
   if (response.success && response.data) return response.data
   throw new Error(response.error || '获取知识库失败')
@@ -1130,6 +1427,8 @@ export interface SourceDeletionResult {
     quiz_attempts: number
     wrong_questions: number
     study_plans: number
+    knowledge_graph_batches: number
+    knowledge_graph_events: number
   }
   managed_file: {
     path: string | null
@@ -1211,6 +1510,7 @@ export interface StudyDay {
   tasks: string[]
   duration_minutes: number
   review_method: string
+  training_actions?: { label: string; route: string }[]
 }
 
 export interface StudyCheckpoint {
@@ -1295,6 +1595,42 @@ export async function getStudyPlans(
   if (status) params.set('status', status)
   const response = await api.get<any, ApiResponse<StudyPlanRecord[]>>(
     `/study-plans?${params.toString()}`
+  )
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '学习计划加载失败')
+}
+
+async function careerRequest<T>(method: 'get' | 'post' | 'patch' | 'delete', path: string, data?: unknown): Promise<T> {
+  const response = await api.request<any, ApiResponse<T>>({ method, url: '/api/career' + path, data, timeout: 20000 })
+  if (response.success && response.data !== undefined && response.data !== null) return response.data
+  throw new Error(response.error || '求职训练操作未完成，请重试')
+}
+export const getCareerStatus = () => careerRequest<{ enabled: boolean; version: string }>('get', '/status')
+export const getCareerCatalog = () => careerRequest<CareerPosition[]>('get', '/catalog')
+export const getCareerPositions = () => careerRequest<CareerRecord[]>('get', '/positions')
+export const getCareerPosition = (id: string) => careerRequest<CareerRecord>('get', `/positions/${encodeURIComponent(id)}`)
+export const extractCareerRequirements = (description: string) => careerRequest<{ requirements: CareerPosition['requirements']; method: string }>('post', '/extract', { description })
+export const saveCareerPosition = (position: CareerPosition, key: string) => careerRequest<CareerRecord>('post', '/positions', { position, request_key: key, confirmed: true })
+export const editCareerPosition = (id: string, position: CareerPosition, revision: number) => careerRequest<CareerRecord>('patch', `/positions/${encodeURIComponent(id)}`, { position, expected_revision: revision, confirmed: true })
+export const changeCareerPosition = (id: string, action: 'undo' | 'restore') => careerRequest<CareerRecord>('post', `/positions/${encodeURIComponent(id)}/state/${action}`, { confirmed: true })
+export const getCareerEvidence = (id: string) => careerRequest<CareerComparison>('get', `/positions/${encodeURIComponent(id)}/evidence`)
+export const getCareerTrainings = (id: string) => careerRequest<CareerTraining[]>('get', `/positions/${encodeURIComponent(id)}/trainings`)
+export const startCareerTraining = (id: string, kind: CareerTraining['kind'], key: string, revision: number) => careerRequest<CareerTraining>('post', `/positions/${encodeURIComponent(id)}/trainings`, { kind, request_key: key, expected_revision: revision, confirmed: true })
+export const getCareerTraining = (id: string) => careerRequest<CareerTraining>('get', `/trainings/${encodeURIComponent(id)}`)
+export const answerCareerWritten = (id: string, answers: Record<string, number>) => careerRequest<CareerTraining>('post', `/trainings/${encodeURIComponent(id)}/answers`, { answers })
+export const getCareerEvents = () => careerRequest<CareerEvent[]>('get', '/events')
+export const getCareerOverview = () => careerRequest<CareerOverview>('get', '/overview')
+export const previewCareerDelete = (id: string) => careerRequest<{ training_count: number; learning_plan_count: number; confirmation_token: string; scope: string }>('get', `/positions/${encodeURIComponent(id)}/delete-preview`)
+export const deleteCareerPosition = (id: string, token: string) => careerRequest<{ deleted: boolean }>('delete', `/positions/${encodeURIComponent(id)}`, { confirmed: true, confirmation_token: token })
+export const exportCareerTraining = (id: string, format: 'json' | 'markdown') => api.get<any, Blob>(`/api/career/trainings/${encodeURIComponent(id)}/export`, { params: { format }, responseType: 'blob', timeout: 20000 })
+export const previewCareerPlan = (id: string) => careerRequest<CareerPlanPreview>('get', `/positions/${encodeURIComponent(id)}/plan-preview`)
+export const getCareerPlans = (id: string) => careerRequest<CareerLearningPlan[]>('get', `/positions/${encodeURIComponent(id)}/plans`)
+export const saveCareerPlan = (id: string, revision: string) => careerRequest<CareerLearningPlan>('post', `/positions/${encodeURIComponent(id)}/plans`, { confirmed: true, evidence_revision: revision })
+export const changeCareerPlan = (id: string, planId: string, action: 'undo' | 'restore') => careerRequest<CareerLearningPlan>('post', `/positions/${encodeURIComponent(id)}/plans/${encodeURIComponent(planId)}/${action}`, { confirmed: true })
+
+export async function getStudyPlan(planId: string): Promise<StudyPlanRecord> {
+  const response = await api.get<any, ApiResponse<StudyPlanRecord>>(
+    `/study-plans/${encodeURIComponent(planId)}`
   )
   if (response.success && response.data) return response.data
   throw new Error(response.error || '学习计划加载失败')

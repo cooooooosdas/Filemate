@@ -63,7 +63,7 @@
       </button>
     </section>
 
-    <DataState v-if="error" :error="error" @retry="createPlan" />
+    <DataState v-if="error" :error="error" @retry="retryPlan" />
 
     <p v-else-if="!plan && !isGenerating" class="study-empty">
       上传课程资料并填写考试日期与目标，点击「生成个性化学习计划」。
@@ -133,6 +133,7 @@
             <ul>
               <li v-for="task in day.tasks" :key="task">{{ task }}</li>
             </ul>
+            <div v-if="trainingActions(day).length" class="training-actions"><router-link v-for="action in trainingActions(day)" :key="action.route" :to="action.route">{{ action.label }}</router-link></div>
           </div>
         </article>
       </div>
@@ -141,13 +142,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
 import DataState from '../components/DataState.vue'
 import {
   generateStudyPlan,
+  getStudyPlan,
   getStudyPlans,
   updateStudyPlanDay,
+  type StudyDay,
   type StudyPlan
 } from '../services/api'
 
@@ -164,6 +168,7 @@ const defaultExam = new Date()
 defaultExam.setDate(defaultExam.getDate() + 14)
 
 const selectedFile = ref<File | null>(null)
+const route = useRoute()
 const isDragging = ref(false)
 const isGenerating = ref(false)
 const error = ref('')
@@ -250,16 +255,25 @@ const toggleDay = async (index: number) => {
   }
 }
 
+let restoreEpoch = 0
 const restoreLatestPlan = async () => {
+  const epoch = ++restoreEpoch
+  plan.value = null; planId.value = ''; completedDays.value = new Set(); error.value = ''
   try {
-    const [latest] = await getStudyPlans(undefined, 1)
+    const requestedId = typeof route.query.plan === 'string' ? route.query.plan : ''
+    const latest = requestedId ? await getStudyPlan(requestedId) : (await getStudyPlans(undefined, 1))[0]
+    if (epoch !== restoreEpoch) return
     if (!latest) return
+    if (latest.status === 'archived') {
+      error.value = '这份计划已撤销，请从生成它的知识图谱或求职岗位恢复。'
+      return
+    }
     plan.value = latest.plan_data
     planId.value = latest.plan_id
     completedDays.value = new Set(latest.completed_days)
     restoredTitle.value = latest.title
-  } catch {
-    // 后端未启动时由全局服务状态提示，不阻塞页面表单。
+  } catch (cause) {
+    if (epoch === restoreEpoch) error.value = cause instanceof Error ? cause.message : '读取学习计划失败，请刷新重试。'
   }
 }
 
@@ -299,6 +313,8 @@ const exportCsv = () => {
   download(`\uFEFF日期,重点,任务,时长（分钟）,复习方法,状态\n${rows.join('\n')}`, 'text/csv;charset=utf-8', 'FileMate学习计划.csv')
 }
 
+const trainingActions = (day: StudyDay) => (Array.isArray(day.training_actions) ? day.training_actions : []).filter(action => action && typeof action.label === 'string' && typeof action.route === 'string' && action.route.startsWith('/') && !action.route.startsWith('//'))
+const retryPlan = () => route.query.plan || restoredTitle.value ? restoreLatestPlan() : createPlan()
 const escapeIcs = (value: string) => value.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;')
 const exportIcs = () => {
   if (!plan.value) return
@@ -315,6 +331,8 @@ const exportIcs = () => {
 }
 
 onMounted(restoreLatestPlan)
+watch(() => route.query.plan, restoreLatestPlan)
+onUnmounted(() => { restoreEpoch++ })
 </script>
 
 <style scoped>
@@ -391,6 +409,7 @@ input:focus, select:focus { outline: 2px solid var(--accent-border); border-colo
 .day-heading h3 { margin: 0; font-size: 15px; }
 .day-heading span { color: var(--accent); font-size: 11px; }
 .day-content ul { margin: 9px 0 0; padding-left: 18px; color: var(--text-secondary); font-size: 13px; line-height: 1.7; }
+.training-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;overflow-wrap:anywhere}.training-actions a{color:var(--accent);min-height:44px;display:inline-flex;align-items:center}.training-actions a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 
 @media (max-width: 760px) {
   .study-plan-page { padding: 16px 0; }

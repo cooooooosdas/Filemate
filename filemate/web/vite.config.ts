@@ -1,9 +1,45 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import ElementPlus from 'unplugin-element-plus/vite'
+import { createReadStream, existsSync, readFileSync, readdirSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
+
+const visionRoot = dirname(createRequire(import.meta.url).resolve('@mediapipe/tasks-vision'))
+const elementPlusComponents = join(dirname(createRequire(import.meta.url).resolve('element-plus/package.json')), 'es/components')
+const elementPlusStyles = readdirSync(elementPlusComponents, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && existsSync(join(elementPlusComponents, entry.name, 'style/css.mjs')))
+  .map((entry) => `element-plus/es/components/${entry.name}/style/css`)
+const apiTarget = process.env.VITE_API_URL || 'http://127.0.0.1:8001'
+const visionFiles = ['vision_wasm_internal.js', 'vision_wasm_internal.wasm', 'vision_wasm_nosimd_internal.js', 'vision_wasm_nosimd_internal.wasm', 'vision_wasm_module_internal.js', 'vision_wasm_module_internal.wasm']
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), Components({
+    dirs: [],
+    dts: false,
+    resolvers: [ElementPlusResolver({ importStyle: 'css', directives: true })],
+  }), ElementPlus({}), {
+    name: 'local-interview-vision-assets',
+    configureServer(server) {
+      server.middlewares.use('/interview-vision/wasm', (request, response, next) => {
+        const filename = request.url?.split('?')[0]?.replace(/^\//, '') || ''
+        if (!visionFiles.includes(filename)) return next()
+        response.setHeader('Content-Type', filename.endsWith('.wasm') ? 'application/wasm' : 'text/javascript')
+        createReadStream(join(visionRoot, 'wasm', filename)).pipe(response)
+      })
+    },
+    generateBundle() {
+      for (const filename of visionFiles) this.emitFile({ type: 'asset', fileName: 'interview-vision/wasm/' + filename, source: readFileSync(join(visionRoot, 'wasm', filename)) })
+    }
+  }],
+  build: { manifest: true },
+  optimizeDeps: {
+    // 首次打开懒加载页面时，样式入口不应触发依赖重编译和路由中断。
+    include: [...elementPlusStyles, '@mediapipe/tasks-vision', 'animejs/waapi'],
+  },
   server: {
     port: 5173,
     strictPort: true,
@@ -12,58 +48,58 @@ export default defineConfig({
     },
     proxy: {
       '^/ai/contexts': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '^/process': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
         ws: true,
       },
       '^/sessions': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
         ws: true,
       },
       '^/api': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
         ws: true,
       },
       '^/settings': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '/ai/summarize': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '/ai/knowledge-cards': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '/ai/questions': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '/ai/notes': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '/ai/study-plan': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '/ai/chat': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '/ai/learning/sessions': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '^/knowledge': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
         ws: true,
         bypass(req) {
@@ -73,11 +109,11 @@ export default defineConfig({
         },
       },
       '^/quiz': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '^/wrongbook': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
         bypass(req) {
           if (req.headers.accept?.includes('text/html')) {
@@ -86,31 +122,31 @@ export default defineConfig({
         },
       },
       '^/interview/questions': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '^/interviews': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '^/analytics': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '^/review': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '^/study-plans': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '^/evaluation': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
       '^/goals': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
         bypass(req) {
           if (req.headers.accept?.includes('text/html')) {
@@ -119,7 +155,7 @@ export default defineConfig({
         },
       },
       '^/trust': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
         bypass(req) {
           if (req.headers.accept?.includes('text/html')) {
@@ -128,7 +164,7 @@ export default defineConfig({
         },
       },
       '^/agents': {
-        target: 'http://127.0.0.1:8001',
+        target: apiTarget,
         changeOrigin: true,
       },
     },

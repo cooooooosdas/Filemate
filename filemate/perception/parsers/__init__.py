@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 _REGISTRY: dict[str, Any] = {}
+PLAIN_TEXT_SUFFIXES = frozenset({"txt", "md", "markdown", "c", "cpp", "h", "hpp", "py", "java", "js", "ts"})
 
 
 def register(suffix: str, cls: Any) -> None:
@@ -38,7 +39,7 @@ def _try_lazy_import(suffix: str) -> None:
         "doc": ".word",
         "pptx": ".ppt",
         "ppt": ".ppt",
-        "txt": ".txt",
+        **{suffix: ".txt" for suffix in PLAIN_TEXT_SUFFIXES},
     }
     module_path = mapping.get(suffix)
     if module_path:

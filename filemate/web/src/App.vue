@@ -37,7 +37,7 @@
       </router-link>
 
       <nav class="nav-groups">
-        <section v-for="group in menuGroups" :key="group.label" class="nav-group">
+        <section v-for="group in navigationGroups" :key="group.label" class="nav-group">
           <p class="nav-group-label">{{ group.label }}</p>
           <router-link
             v-for="item in group.items"
@@ -59,11 +59,12 @@
           <span class="state-indicator" />
           <span>{{ backendConnected === null ? '正在连接…' : backendConnected ? '服务已连接' : '服务未连接' }}</span>
         </div>
-        <button class="version-label" title="应用设置" aria-label="打开应用设置" @click="showSettings = true">v1.3 α</button>
+        <button class="version-label" title="本地工程版本 1.3.0-alpha.1" aria-label="打开应用设置" @click="showSettings = true">v1.3 α</button>
       </div>
     </aside>
 
     <main id="main-content" class="workspace" tabindex="-1">
+      <PageLoadError />
       <div v-if="backendConnected === false" class="service-banner" role="alert">
         <el-icon><Connection /></el-icon>
         <div>
@@ -93,6 +94,7 @@
         </div>
 
         <div class="topbar-actions">
+          <router-link class="global-import desktop-only" to="/import"><el-icon><DocumentAdd /></el-icon>导入资料</router-link>
           <router-link class="account-entry" to="/login" aria-label="登录 FileMate"><el-icon><User /></el-icon><span>登录</span></router-link>
           <button class="finder-trigger" aria-label="查找功能" @click="showFinder = true"><el-icon><Search /></el-icon><span>查找功能</span><kbd>Ctrl K</kbd></button>
           <button
@@ -127,6 +129,7 @@
       </header>
 
       <div class="content-scroll">
+        <TaskNavigation v-if="contextLinks.length" :items="contextLinks" />
         <router-view v-slot="{ Component }">
           <transition name="page-fade" mode="out-in">
             <component :is="Component" :key="`${$route.path === '/ai-tools' ? $route.path : $route.fullPath}-${refreshToken}`" />
@@ -146,7 +149,7 @@
           <el-icon><Monitor /></el-icon>
           <div>
             <strong>显示模式</strong>
-            <span>浅色背景与自然绿强调色</span>
+            <span>钴蓝光束主视觉与冰蓝阅读工作台</span>
           </div>
           <el-tag effect="plain">浅色</el-tag>
         </div>
@@ -189,14 +192,16 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import PageLoadError from './components/PageLoadError.vue'
+import TaskNavigation from './components/TaskNavigation.vue'
 import {
   Calendar,
   Clock,
   Collection,
   Connection,
+  Share,
   DataLine,
   DocumentAdd,
-  Edit,
   Expand,
   Fold,
   FullScreen,
@@ -204,19 +209,21 @@ import {
   Lock,
   Menu,
   Monitor,
+  Cpu,
   Notebook,
   Reading,
   Refresh,
   Setting,
   Tickets,
   Microphone,
+  VideoPlay,
   DataAnalysis,
   FolderOpened,
   Aim,
   Search,
   User,
   ArrowRight
-} from '@element-plus/icons-vue'
+} from './icons'
 import Logo from './components/Logo.vue'
 import LLMSettingsPanel from './components/LLMSettingsPanel.vue'
 import { checkHealth } from './services/api'
@@ -250,8 +257,8 @@ const menuGroups = [
     items: [
       { path: '/import', title: '导入资料', icon: DocumentAdd },
       { path: '/knowledge', title: '个人知识库', icon: FolderOpened },
-      { path: '/classification', title: '分类确认', icon: Collection },
-      { path: '/naming', title: '命名确认', icon: Edit },
+      ...(import.meta.env.VITE_ENABLE_KNOWLEDGE_GRAPH === 'false' ? [] : [{ path: '/knowledge-graph', title: '我的知识图谱', icon: Share }]),
+      { path: '/classification', title: '资料审核', icon: Collection },
       { path: '/history', title: '处理记录', icon: Clock }
     ]
   },
@@ -259,11 +266,14 @@ const menuGroups = [
     label: '学习与练习',
     items: [
       { path: '/ai-tools', title: '学习工作区', icon: Reading },
+      ...(import.meta.env.VITE_ENABLE_DIGITAL_HUMAN === 'false' ? [] : [{ path: '/digital-human', title: 'AI 导师讲解', icon: VideoPlay }]),
+      ...(import.meta.env.VITE_ENABLE_PROGRAMMING === 'false' ? [] : [{ path: '/programming', title: '编程练习', icon: Cpu }]),
       { path: '/study-plan', title: '学习计划', icon: Reading },
       { path: '/goals', title: '目标反推', icon: Aim },
       { path: '/wrongbook', title: '错题复盘', icon: Tickets },
       { path: '/interview', title: '模拟面试', icon: Microphone },
       { path: '/interview-bank', title: '题库管理', icon: Notebook },
+      ...(import.meta.env.VITE_ENABLE_CAREER === 'false' ? [] : [{ path: '/career', title: '求职训练中心', icon: Aim }]),
       { path: '/growth', title: '成长数据', icon: DataAnalysis },
       { path: '/trust', title: '可信与隐私', icon: Lock }
     ]
@@ -271,6 +281,21 @@ const menuGroups = [
 ]
 
 const pageTitle = computed(() => String(route.meta.title || '学习工作台'))
+const navigationGroups = computed(() => [
+  { label: '今天', items: menuGroups[0]!.items.filter(item => ['/', '/today'].includes(item.path)) },
+  { label: '读懂资料', items: menuGroups.flatMap(group => group.items).filter(item => ['/ai-tools', '/knowledge'].includes(item.path)) },
+  { label: '练习与表达', items: menuGroups.flatMap(group => group.items).filter(item => ['/programming', '/interview', '/career'].includes(item.path)) },
+  { label: '我的记录', items: menuGroups.flatMap(group => group.items).filter(item => ['/growth', '/trust'].includes(item.path)) },
+])
+const contextLinks = computed(() => {
+  let paths: string[] = []
+  if (['/import', '/classification', '/naming', '/schedule', '/history'].includes(route.path)) paths = ['/import', '/classification', '/schedule', '/history']
+  else if (['/ai-tools', '/knowledge', '/knowledge-graph', '/digital-human'].includes(route.path)) paths = ['/ai-tools', '/knowledge', '/knowledge-graph', '/digital-human', '/import']
+  else if (['/today', '/study-plan', '/wrongbook', '/goals'].includes(route.path)) paths = ['/today', '/study-plan', '/wrongbook', '/goals']
+  else if (['/interview', '/interview-bank', '/career'].includes(route.path)) paths = ['/interview', '/interview-bank', '/career']
+  const tools = menuGroups.flatMap(group => group.items)
+  return paths.flatMap(path => tools.filter(item => item.path === path))
+})
 const finderResults = computed(() => menuGroups.flatMap(group => group.items.map(item => ({ ...item, group: group.label }))).filter(item => item.title.includes(finderQuery.value.trim())))
 
 function openFirstResult(): void {
@@ -312,8 +337,13 @@ async function loadShellState(): Promise<void> {
 }
 
 async function refreshPage(): Promise<void> {
+  if (!window.dispatchEvent(new Event('filemate:before-refresh', { cancelable: true }))) return
   refreshing.value = true
   await loadShellState()
+  if (!window.dispatchEvent(new Event('filemate:before-refresh', { cancelable: true }))) {
+    refreshing.value = false
+    return
+  }
   refreshToken.value += 1
   refreshTimer = window.setTimeout(() => {
     refreshing.value = false
@@ -352,7 +382,7 @@ function isAuthPath(path: string): boolean {
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   color: var(--text-primary);
-  background: var(--bg-base);
+  background: var(--workspace-background);
 }
 
 .app-shell.sidebar-collapsed {
@@ -360,6 +390,8 @@ function isAuthPath(path: string): boolean {
 }
 
 .sidebar {
+  --bg-surface: #e1eafe;
+  --bg-base: #d1dffa;
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -490,13 +522,14 @@ function isAuthPath(path: string): boolean {
 }
 
 .nav-item.router-link-active {
-  color: var(--accent);
-  background: var(--accent-soft);
+  color: #f2f6ff;
+  background: var(--accent);
   border-color: transparent;
   font-weight: 600;
 }
 
 .nav-item.router-link-active::before {
+  display: none;
   content: '';
   position: absolute;
   inset: 12px auto 12px 0;
@@ -512,7 +545,7 @@ function isAuthPath(path: string): boolean {
   margin: 0 14px 10px;
   padding: 12px;
   color: var(--text-primary);
-  background: var(--bg-base);
+  background: var(--workspace-background);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-control);
   text-decoration: none;
@@ -637,6 +670,7 @@ function isAuthPath(path: string): boolean {
 }
 
 .topbar {
+  --bg-surface: #e1eafe;
   min-height: var(--topbar-height);
   padding: 0 36px;
   display: flex;
@@ -719,7 +753,7 @@ function isAuthPath(path: string): boolean {
   min-height: 0;
   padding: 28px 36px 48px;
   overflow: auto;
-  background: var(--bg-base);
+  background: var(--workspace-background);
 }
 
 .site-footer {
@@ -956,4 +990,22 @@ function isAuthPath(path: string): boolean {
   .page-title { font-size: 12px; }
 }
 
+.nav-item { min-height:50px; font-size:17px; gap:12px; }
+.nav-group-label { font-size:14px; letter-spacing:.03em; }
+.nav-group + .nav-group { margin-top:18px; }
+.space-copy strong { font-size:16px; }.space-copy small { font-size:14px; }.space-switch { min-height:70px; }
+.page-title { font-size:18px; font-weight:600; }.workspace-label { font-size:14px; }
+.service-state,.version-label,.site-footer,.setting-row span { font-size:14px; }
+.setting-row strong,.finder-results a,.finder-input input { font-size:16px; }
+.finder-trigger { font-size:15px; }.finder-results small,.finder-hint,.finder-empty { font-size:14px; }
+.global-import { display:inline-flex; align-items:center; gap:9px; min-height:44px; padding:0 16px; margin-right:8px; border-radius:10px; background:var(--accent); color:white; font-size:16px; font-weight:600; text-decoration:none; }
+.global-import:hover { background:var(--accent-hover); }
+
+.page-fade-enter-from { transform:translateY(10px); }
+.nav-item:hover:not(.router-link-active) .el-icon { transform:translateX(2px); }
+.nav-item .el-icon { transition:transform var(--motion-fast); }
+.topbar-actions svg,.nav-item svg,.finder-results svg { stroke-width:1.8; }
+@media(prefers-reduced-motion:reduce) { .nav-item .el-icon { transition:none; } .nav-item:hover:not(.router-link-active) .el-icon { transform:none; } }
+@media(max-width:1100px) { .global-import { display:none; } }
+@media(max-width:560px) { .page-title { font-size:16px; }.nav-item { font-size:18px; } }
 </style>

@@ -31,12 +31,21 @@ from starlette.concurrency import run_in_threadpool
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from filemate import __version__
+from filemate.career.models import (
+    DeleteRequest,
+    PlanConfirm,
+    PositionEdit,
+    PositionWrite,
+    TrainingStart,
+    WrittenAnswer,
+)
 from filemate.core.categories import CATEGORIES
 from filemate.execution.confirmation_executor import (
     ConfirmationExecutor,
     ExecutionError,
 )
-from filemate.execution.storage import SQLiteStorage
+from filemate.execution.storage import QuestionRevisionConflict, SQLiteStorage
+from filemate.interview_review.models import VisualMetrics
 from filemate.llm_client.credential_store import (
     CredentialStoreError,
     delete_stored_api_key,
@@ -44,6 +53,7 @@ from filemate.llm_client.credential_store import (
     secure_store_available,
     set_stored_api_key,
 )
+from filemate.perception.parsers import PLAIN_TEXT_SUFFIXES
 from filemate.understanding.interview_bank_seed import SEED_QUESTIONS
 
 # 加载 .env 文件
@@ -54,6 +64,7 @@ logger = logging.getLogger(__name__)
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 ALLOWED_UPLOAD_SUFFIXES = {".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt"}
+LEARNING_UPLOAD_SUFFIXES = ALLOWED_UPLOAD_SUFFIXES | {f".{suffix}" for suffix in PLAIN_TEXT_SUFFIXES}
 DATA_DIR = Path(
     os.getenv(
         "FILEMATE_DATA_DIR",
@@ -254,12 +265,13 @@ def _current_archive_dir() -> Path:
     return context[2] if context is not None else ARCHIVE_DIR
 
 
-async def _save_upload(file: UploadFile) -> tuple[Path, int]:
+async def _save_upload(file: UploadFile, *, learning_source: bool = False) -> tuple[Path, int]:
     """校验并保存上传文件，隔离同名文件与路径穿越。"""
     filename = Path(file.filename or "").name
     if not filename:
         raise HTTPException(status_code=400, detail="文件名不能为空")
-    if Path(filename).suffix.lower() not in ALLOWED_UPLOAD_SUFFIXES:
+    supported = LEARNING_UPLOAD_SUFFIXES if learning_source else ALLOWED_UPLOAD_SUFFIXES
+    if Path(filename).suffix.lower() not in supported:
         raise HTTPException(status_code=400, detail="不支持的文件格式")
 
     content = await file.read(MAX_UPLOAD_BYTES + 1)
@@ -361,6 +373,20 @@ class SourceRightsRequest(BaseModel):
     ]
     sharing_scope: Literal["private", "restricted", "shareable"] = "private"
     note: str = Field(default="", max_length=500)
+
+
+class DigitalHumanPlaybackRequest(BaseModel):
+    text_length: int = Field(ge=1, le=5000)
+    avatar_id: Literal["filemate-campus", "filemate-portrait"]
+    voice_id: str = Field(min_length=1, max_length=160)
+    provider: Literal["web_speech"] = "web_speech"
+    context_id: str | None = Field(default=None, max_length=80)
+    message_index: int | None = Field(default=None, ge=0)
+
+
+class DigitalHumanPlaybackFinishRequest(BaseModel):
+    status: Literal["completed", "stopped", "failed"]
+    error_code: str = Field(default="", max_length=80)
 
 
 # =============== App ===============
@@ -644,6 +670,87 @@ def health_check():
     return ApiResponse(success=True, data={"version": __version__})
 
 
+def _require_digital_human_enabled() -> None:
+    """允许独立关闭数字人，不影响既有学习接口。"""
+    if os.getenv("FILEMATE_ENABLE_DIGITAL_HUMAN", "1") == "0":
+        raise HTTPException(status_code=503, detail="数字人功能已暂时关闭")
+
+
+@app.get("/api/digital-human/playbacks", response_model=ApiResponse)
+def list_digital_human_playbacks(limit: int = Query(30, ge=1, le=100)):
+    """列出当前身份的播报元数据。"""
+    _require_digital_human_enabled()
+    return ApiResponse(
+        success=True, data=_storage.list_digital_human_playbacks(limit=limit),
+    )
+
+
+@app.post("/api/digital-human/playbacks", response_model=ApiResponse)
+def create_digital_human_playback(request: DigitalHumanPlaybackRequest):
+    """记录开始播放，不接收或保存讲解正文。"""
+    _require_digital_human_enabled()
+    if (request.context_id is None) != (request.message_index is None):
+        raise HTTPException(status_code=422, detail="会话和消息序号必须同时提供")
+    if request.context_id is not None:
+        context = _storage.get_document_context(request.context_id)
+        if context is None:
+            raise HTTPException(status_code=404, detail="学习会话不存在")
+        history = context.get("chat_history") or []
+        if request.message_index >= len(history):
+            raise HTTPException(status_code=422, detail="讲解消息不存在")
+        message = history[request.message_index]
+        if message.get("role") != "assistant":
+            raise HTTPException(status_code=422, detail="只能讲解已保存的 AI 回答")
+        if len(str(message.get("content") or "").strip()) != request.text_length:
+            raise HTTPException(status_code=409, detail="回答内容已变化，请重新打开讲解")
+    playback = _storage.create_digital_human_playback(
+        text_length=request.text_length,
+        avatar_id=request.avatar_id,
+        voice_id=request.voice_id,
+        provider=request.provider,
+        context_id=request.context_id,
+        message_index=request.message_index,
+    )
+    return ApiResponse(success=True, data=playback)
+
+
+@app.patch("/api/digital-human/playbacks/{playback_id}", response_model=ApiResponse)
+def finish_digital_human_playback(
+    playback_id: str, request: DigitalHumanPlaybackFinishRequest,
+):
+    """记录播放完成、用户停止或语音失败。"""
+    _require_digital_human_enabled()
+    playback = _storage.finish_digital_human_playback(
+        playback_id, request.status, request.error_code,
+    )
+    if playback is None:
+        raise HTTPException(status_code=404, detail="播报记录不存在")
+    return ApiResponse(success=True, data=playback)
+
+
+@app.delete("/api/digital-human/playbacks/{playback_id}", response_model=ApiResponse)
+def delete_digital_human_playback(playback_id: str):
+    """移除当前身份的一条播报元数据。"""
+    _require_digital_human_enabled()
+    return ApiResponse(
+        success=True,
+        data={"deleted": _storage.delete_digital_human_playback(playback_id)},
+    )
+
+
+@app.post(
+    "/api/digital-human/playbacks/{playback_id}/restore",
+    response_model=ApiResponse,
+)
+def restore_digital_human_playback(playback_id: str):
+    """撤销播报记录软删除，不会重新播放语音。"""
+    _require_digital_human_enabled()
+    return ApiResponse(
+        success=True,
+        data={"restored": _storage.restore_digital_human_playback(playback_id)},
+    )
+
+
 @app.get("/settings/llm", response_model=ApiResponse)
 def get_llm_settings(request: Request):
     """读取本机模型配置状态，绝不返回密钥正文。"""
@@ -916,13 +1023,333 @@ def list_knowledge_sources(limit: int = Query(50, ge=1, le=200)):
     return ApiResponse(success=True, data=sources)
 
 
+class CodingSubmissionRequest(BaseModel):
+    problem_id: str = Field(min_length=1, max_length=80)
+    code: str = Field(min_length=1, max_length=100000)
+    request_key: str = Field(pattern=r"^[a-zA-Z0-9_-]{16,80}$")
+    language: Literal["cpp17"] = "cpp17"
+
+
+class CodingReviewRequest(BaseModel):
+    mode: Literal["local", "llm"] = "local"
+    allow_external_model: bool = False
+
+
+class CodingNotesRequest(BaseModel):
+    notes: str = Field(max_length=8000)
+
+
+def _require_programming_enabled() -> None:
+    if os.getenv("FILEMATE_ENABLE_PROGRAMMING", "1") == "0":
+        raise HTTPException(status_code=503, detail="编程评测暂未启用，原有学习功能仍可使用")
+
+
+def _coding_repository():
+    from filemate.programming.repository import CodingRepository
+
+    context = _tenant_context.get()
+    return CodingRepository(_tenant_storage(context[0]) if context else
+                            (_storage.local_storage if isinstance(_storage, _StorageRouter) else _storage))
+
+
+def _coding_error(exc: Exception) -> HTTPException:
+    return HTTPException(status_code=404 if isinstance(exc, KeyError) else 409,
+                         detail="提交或题目不存在" if isinstance(exc, KeyError) else str(exc))
+
+
+@app.get("/api/programming/status", response_model=ApiResponse)
+def programming_status():
+    from filemate.programming.service import status
+
+    _require_programming_enabled()
+    return ApiResponse(success=True, data=status())
+
+
+@app.post("/api/programming/setup", response_model=ApiResponse)
+def programming_setup():
+    from filemate.programming.service import status
+    from filemate.programming.toolchain import prepare_toolchain
+    from filemate.programming.windows_sandbox import SandboxUnavailable
+
+    _require_programming_enabled()
+    try:
+        prepare_toolchain()
+        result = status(force=True)
+    except (SandboxUnavailable, OSError) as exc:
+        logger.warning("编程环境准备失败 (%s)", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="无法准备隔离环境，请检查 MSVC/SDK 与目录权限后重试") from exc
+    repository = _coding_repository()
+    with repository.storage._write_lock:
+        repository._event(None, "environment_checked", {"ready": result["ready"]})
+        repository.storage._conn().commit()
+    return ApiResponse(success=True, data=result)
+
+
+@app.get("/api/programming/problems", response_model=ApiResponse)
+def programming_problems():
+    from filemate.programming.problems import PROBLEMS, public_problem
+
+    _require_programming_enabled()
+    return ApiResponse(success=True, data=[public_problem(problem) for problem in PROBLEMS])
+
+
+@app.get("/api/programming/overview", response_model=ApiResponse)
+def programming_overview():
+    from filemate.programming.feedback import evidence_profile
+    from filemate.programming.service import recover
+
+    _require_programming_enabled()
+    repository = _coding_repository()
+    recover(repository)
+    submissions = repository.list(100)
+    return ApiResponse(success=True, data={"submissions": submissions[:100],
+                                          "profile": evidence_profile(repository.evidence()),
+                                          "evidence_scope": "all_active_completed_submissions",
+                                          "events": repository.events()})
+
+
+@app.post("/api/programming/submissions", response_model=ApiResponse)
+def create_coding_submission(request: CodingSubmissionRequest):
+    from filemate.programming.problems import get_problem
+
+    _require_programming_enabled()
+    if not request.code.strip():
+        raise HTTPException(status_code=422, detail="请输入 C++ 代码")
+    if len(request.code.encode("utf-8")) > 100000:
+        raise HTTPException(status_code=422, detail="源代码不能超过 100 KB")
+    try:
+        result = _coding_repository().create(get_problem(request.problem_id), request.code, request.request_key)
+    except (KeyError, ValueError) as exc:
+        raise _coding_error(exc) from exc
+    return ApiResponse(success=True, data=result)
+
+
+@app.get("/api/programming/submissions/{submission_id}", response_model=ApiResponse)
+def get_coding_submission(submission_id: str):
+    _require_programming_enabled()
+    try:
+        return ApiResponse(success=True, data=_coding_repository().get(submission_id))
+    except KeyError as exc:
+        raise _coding_error(exc) from exc
+
+
+@app.post("/api/programming/submissions/{submission_id}/run", response_model=ApiResponse)
+def run_coding_submission(submission_id: str):
+    from filemate.programming.service import execute
+    from filemate.programming.windows_sandbox import SandboxUnavailable
+
+    _require_programming_enabled()
+    try:
+        result = execute(_coding_repository(), submission_id)
+    except (KeyError, ValueError) as exc:
+        raise _coding_error(exc) from exc
+    except SandboxUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return ApiResponse(success=True, data=result)
+
+
+@app.post("/api/programming/submissions/{submission_id}/review", response_model=ApiResponse)
+def review_coding_submission(submission_id: str, request: CodingReviewRequest):
+    from filemate.execution.storage import _now_iso
+    from filemate.programming.feedback import local_feedback, model_feedback
+
+    _require_programming_enabled()
+    repository = _coding_repository()
+    try:
+        submission = repository.get(submission_id)
+    except KeyError as exc:
+        raise _coding_error(exc) from exc
+    if submission["status"] != "completed" or not submission["active"] or submission["data_error"]:
+        raise HTTPException(status_code=409, detail="请先完成有效评测，再生成代码复盘")
+    if request.mode == "llm" and not request.allow_external_model:
+        raise HTTPException(status_code=422, detail="请确认允许将题面、代码和测试结果发送给已配置的模型")
+    provider = "external_model" if request.mode == "llm" else "local_rules"
+    if isinstance(submission.get("review"), dict) and submission["review"].get("provider") == provider:
+        return ApiResponse(success=True, data=submission)
+    try:
+        if request.mode == "llm":
+            from filemate.llm_client import LLMClient
+
+            review = model_feedback(LLMClient(), submission)
+        else:
+            review = local_feedback(submission)
+    except Exception as exc:
+        logger.warning("代码模型复盘失败 (%s)", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="模型复盘失败，判题与已有复盘均已保留，可稍后重试") from exc
+    review["created_at"] = _now_iso()
+    with repository.storage._write_lock:
+        latest = repository.get(submission_id)
+        if not latest["active"] or latest["data_error"]:
+            raise HTTPException(status_code=409, detail="提交状态已变化，请刷新记录")
+        result = repository.update(submission_id, payload={"review": review}, event="review_saved")
+    return ApiResponse(success=True, data=result)
+
+
+@app.post("/api/programming/submissions/{submission_id}/notes", response_model=ApiResponse)
+def save_coding_notes(submission_id: str, request: CodingNotesRequest):
+    _require_programming_enabled()
+    repository = _coding_repository()
+    try:
+        with repository.storage._write_lock:
+            row = repository.get(submission_id)
+            if row["status"] in {"queued", "running"} or not row["active"]:
+                raise ValueError("请在评测结束后保存有效提交的笔记")
+            result = repository.update(submission_id, payload={"notes": request.notes}, event="notes_saved")
+    except (KeyError, ValueError) as exc:
+        raise _coding_error(exc) from exc
+    return ApiResponse(success=True, data=result)
+
+
+@app.post("/api/programming/submissions/{submission_id}/{action}", response_model=ApiResponse)
+def transition_coding_submission(submission_id: str, action: Literal["cancel", "undo", "restore"]):
+    from filemate.programming.service import cancel
+
+    _require_programming_enabled()
+    repository = _coding_repository()
+    try:
+        result = cancel(repository, submission_id) if action == "cancel" else repository.transition(submission_id, action)
+    except (KeyError, ValueError) as exc:
+        raise _coding_error(exc) from exc
+    return ApiResponse(success=True, data=result)
+
+
+class GraphDraftRequest(BaseModel):
+    source_id: str = Field(min_length=1, max_length=128)
+    mode: Literal["local", "llm"] = "local"
+    allow_external_model: bool = False
+
+
+class GraphPlanRequest(BaseModel):
+    evidence_revision: str = Field(min_length=64, max_length=64)
+
+
+def _require_graph_enabled() -> None:
+    if os.getenv("FILEMATE_ENABLE_KNOWLEDGE_GRAPH", "1") == "0":
+        raise HTTPException(status_code=503, detail="知识图谱暂未启用，原有学习功能仍可使用")
+
+
+@app.get("/api/knowledge-graph", response_model=ApiResponse)
+def knowledge_graph():
+    from filemate.study.knowledge_graph import build_graph
+
+    _require_graph_enabled()
+    with _storage._write_lock:
+        return ApiResponse(success=True, data=build_graph(_storage))
+
+
+@app.post("/api/knowledge-graph/drafts", response_model=ApiResponse)
+def create_graph_draft(request: GraphDraftRequest):
+    from filemate.study.knowledge_graph import (
+        INPUT_LIMIT,
+        LLMGraphProvider,
+        extract_local,
+        validate_graph,
+    )
+
+    _require_graph_enabled()
+    with _storage._write_lock:
+        source = _storage.get_source(request.source_id)
+        if source is None:
+            raise HTTPException(status_code=404, detail="资料不存在")
+        revision = _storage.get_source_revision(request.source_id)
+        chunks = _storage.list_source_chunks(request.source_id)
+    if request.mode == "llm" and not request.allow_external_model:
+        raise HTTPException(status_code=422, detail="请确认允许将资料正文发送给已配置的模型")
+    text = source["raw_text"][:INPUT_LIMIT]
+    try:
+        if request.mode == "llm":
+            from filemate.llm_client import LLMClient, LLMConfig
+
+            raw = LLMGraphProvider(LLMClient(LLMConfig.from_env())).extract(text)
+        else:
+            raw = extract_local(text)
+        payload = validate_graph(raw, text, request.source_id, chunks)
+        payload["source_truncated"] = len(source["raw_text"]) > INPUT_LIMIT
+        payload["external_model_authorized"] = request.mode == "llm"
+    except Exception as exc:
+        # 只记录错误类型，供应商异常可能包含密钥或用户正文。
+        logger.warning("知识图谱提取失败 (%s)", type(exc).__name__)
+        try:
+            _storage.save_graph_batch(request.source_id, revision, request.mode,
+                                      {"nodes": [], "edges": []},
+                                      error_code=type(exc).__name__)
+        except ValueError:
+            raise HTTPException(status_code=409, detail="提取期间资料已变化，请刷新后重试") from exc
+        detail = ("未能提取可核对的知识点。可使用标题、术语定义或明确关系句，或选择模型提取。"
+                  if isinstance(exc, (ValueError, TypeError)) else "模型提取失败，原图谱未改变，请稍后重试或使用本地提取。")
+        raise HTTPException(status_code=422 if isinstance(exc, (ValueError, TypeError)) else 502, detail=detail) from exc
+    try:
+        batch = _storage.save_graph_batch(request.source_id, revision, request.mode, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail="提取期间资料已变化，请刷新后重试") from exc
+    return ApiResponse(success=True, data=batch)
+
+
+@app.post("/api/knowledge-graph/batches/{batch_id}/{action}", response_model=ApiResponse)
+def change_graph_batch(batch_id: str, action: Literal["confirm", "undo", "restore"]):
+    _require_graph_enabled()
+    try:
+        batch = _storage.transition_graph_batch(batch_id, action)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="图谱批次不存在") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return ApiResponse(success=True, data=batch)
+
+
+def _graph_plan_suggestion(node_id: str) -> dict[str, Any]:
+    from filemate.study.knowledge_graph import build_graph, recommend_plan
+
+    try:
+        return recommend_plan(build_graph(_storage), node_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="知识点不存在或资料已变化，请刷新图谱") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get("/api/knowledge-graph/nodes/{node_id}/plan", response_model=ApiResponse)
+def preview_graph_plan(node_id: str):
+    _require_graph_enabled()
+    with _storage._write_lock:
+        return ApiResponse(success=True, data=_graph_plan_suggestion(node_id))
+
+
+@app.post("/api/knowledge-graph/nodes/{node_id}/plan", response_model=ApiResponse)
+def confirm_graph_plan(node_id: str, request: GraphPlanRequest):
+    from filemate.study.knowledge_graph import to_study_plan
+
+    _require_graph_enabled()
+    with _storage._write_lock:
+        suggestion = _graph_plan_suggestion(node_id)
+        if suggestion["evidence_revision"] != request.evidence_revision:
+            raise HTTPException(status_code=409, detail="学习证据已变化，请重新预览后确认")
+        result = _storage.save_graph_study_plan(
+            suggestion["source_id"], node_id, request.evidence_revision, to_study_plan(suggestion),
+        )
+    return ApiResponse(success=True, data=result)
+
+
+@app.post("/api/knowledge-graph/plans/{plan_id}/{action}", response_model=ApiResponse)
+def change_graph_plan(plan_id: str, action: Literal["undo", "restore"]):
+    _require_graph_enabled()
+    try:
+        result = (_storage.undo_graph_study_plan(plan_id) if action == "undo"
+                  else _storage.restore_graph_study_plan(plan_id))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="图谱学习计划不存在") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return ApiResponse(success=True, data=result)
+
+
 @app.post("/knowledge/import", response_model=ApiResponse)
 async def import_learning_source(file: Annotated[UploadFile, File()]):
     """仅在本地解析和入库，不调用外部模型。"""
     from filemate.perception import FileParser
     from filemate.understanding.retrieval import split_document
 
-    path, size = await _save_upload(file)
+    path, size = await _save_upload(file, learning_source=True)
     retained = False
     try:
         parsed = await run_in_threadpool(FileParser().parse, str(path))
@@ -1168,11 +1595,19 @@ def update_knowledge_artifact(
     title = request.title.strip()
     if not title:
         raise HTTPException(status_code=422, detail="标题不能为空")
-    artifact = _storage.update_artifact(
-        artifact_id,
-        title=title[:200],
-        content=request.content,
-    )
+    existing = _storage.get_artifact(artifact_id)
+    if existing and isinstance(existing.get("metadata"), dict) and existing["metadata"].get("origin") == "career_plan":
+        raise HTTPException(status_code=409, detail="岗位学习计划保留确认时的证据，请更新进度或重新预览新计划")
+    if existing and existing["artifact_type"] in {"coding_submission", "interview_report", "career_training"}:
+        raise HTTPException(status_code=409, detail="评测报告不能直接修改，请在对应工作台更新原始记录或复盘笔记")
+    try:
+        artifact = _storage.update_artifact(
+            artifact_id,
+            title=title[:200],
+            content=request.content,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     if artifact is None:
         raise HTTPException(status_code=404, detail="学习产物不存在")
     return ApiResponse(success=True, data=artifact)
@@ -1656,13 +2091,17 @@ class QuizAttemptRequest(BaseModel):
     artifact_id: str
     question_index: int
     user_answer: str
+    expected_question: dict[str, Any] | None = None
 
 
 class InterviewStartRequest(BaseModel):
     target_role: str = Field(max_length=120)
-    scenario: Literal["求职面试", "竞赛答辩", "保研复试"] = "求职面试"
+    scenario: Literal["求职面试", "竞赛答辩", "保研复试", "知识讲解"] = "求职面试"
     difficulty: Literal["入门", "标准", "压力面"] = "标准"
     source_id: str | None = Field(default=None, max_length=64)
+    focus_wrong_id: str | None = Field(default=None, max_length=64)
+    goal_id: str | None = Field(default=None, max_length=64)
+    allow_external_analysis: bool | None = None
 
 
 class InterviewFluencyMarker(BaseModel):
@@ -1677,22 +2116,35 @@ class InterviewFluencyMetrics(BaseModel):
     long_pause_count: int = Field(default=0, ge=0, le=100)
     source: Literal["speech_recognition"] = "speech_recognition"
     markers: list[InterviewFluencyMarker] = Field(default_factory=list, max_length=100)
+    recording_offset_seconds: float | None = Field(default=None, ge=0, le=1800, allow_inf_nan=False)
 
 
 class InterviewAnswerRequest(BaseModel):
     answer: str = Field(min_length=1, max_length=12000)
     fluency_metrics: InterviewFluencyMetrics | None = None
+    question_index: int | None = Field(default=None, ge=0, le=100)
+    request_key: str | None = Field(default=None, min_length=16, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
+    visual_metrics: VisualMetrics | None = None
+
+
+class InterviewAnalysisRequest(BaseModel):
+    external_consent: bool = False
+
+
+class InterviewPrivacyRequest(BaseModel):
+    confirmed: bool = False
+    confirmation_token: str = Field(default="", max_length=64)
 
 
 class InterviewQuestionCreate(BaseModel):
-    scenario: Literal["求职面试", "竞赛答辩", "保研复试"]
+    scenario: Literal["求职面试", "竞赛答辩", "保研复试", "知识讲解"]
     difficulty: Literal["入门", "标准", "压力面"]
     text: str = Field(min_length=1, max_length=1000)
     enabled: bool = True
 
 
 class InterviewQuestionUpdate(BaseModel):
-    scenario: Literal["求职面试", "竞赛答辩", "保研复试"] | None = None
+    scenario: Literal["求职面试", "竞赛答辩", "保研复试", "知识讲解"] | None = None
     difficulty: Literal["入门", "标准", "压力面"] | None = None
     text: str | None = Field(default=None, min_length=1, max_length=1000)
     enabled: bool | None = None
@@ -1700,6 +2152,11 @@ class InterviewQuestionUpdate(BaseModel):
 
 class StudyPlanDayRequest(BaseModel):
     completed: bool
+
+
+class DailyCoachPreferencesRequest(BaseModel):
+    available_minutes: int = Field(ge=10, le=240)
+    item_order: list[str] = Field(default_factory=list, max_length=50)
 
 
 class ReverseGoalRequest(BaseModel):
@@ -1712,6 +2169,19 @@ class ReverseGoalRequest(BaseModel):
 
 class GoalTaskUpdateRequest(BaseModel):
     completed: bool
+
+
+class WrongDiagnosisUpdateRequest(BaseModel):
+    error_cause: Literal[
+        "unconfirmed",
+        "concept_gap",
+        "memory_gap",
+        "reasoning_break",
+        "expression_gap",
+        "option_confusion",
+        "careless",
+    ]
+    note: str = Field(default="", max_length=300)
 
 
 def _answer_score(user_answer: str, reference_answer: str) -> float:
@@ -1777,10 +2247,133 @@ def update_study_plan_day(
 def _goal_from_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
     """把目标 Artifact 转成前端合同。"""
     content = dict(artifact.get("content") or {})
+    content["tasks"] = [dict(task) for task in content.get("tasks") or []]
+    for task in content["tasks"]:
+        reason = _oral_evidence_invalid_reason(task)
+        if reason:
+            task["status"] = "invalidated"
+            task["invalidated_reason"] = reason
     content["goal_id"] = artifact["artifact_id"]
     content["created_at"] = artifact["created_at"]
     content["updated_at"] = artifact["updated_at"]
     return content
+
+
+def _oral_evidence_invalid_reason(task: dict[str, Any]) -> str | None:
+    """核对口头训练任务引用的作答、错题和资料版本。"""
+    if task.get("task_id") != "explain-wrong-aloud":
+        return None
+    evidence = task.get("evidence_ref") or {}
+    if (not evidence.get("attempt_id") or not evidence.get("source_revision")
+            or not evidence.get("question_revision")
+            or not evidence.get("diagnosis_revision")):
+        return "旧任务缺少作答或资料版本证据，请重新规划。"
+    wrong = _storage.get_wrong_question(str(task.get("focus_wrong_id") or ""))
+    if wrong is None or wrong.get("source_id") != task.get("source_id"):
+        return "原错题或关联资料已不存在，请重新规划。"
+    if wrong.get("mastered"):
+        return "这道错题已通过复练掌握，请重新规划。"
+    if (wrong.get("artifact_id") != evidence.get("artifact_id")
+            or wrong.get("question_index") != evidence.get("question_index")):
+        return "错题对应题目已变化，请重新规划。"
+    artifact = _storage.get_artifact(str(wrong["artifact_id"]))
+    questions = artifact.get("content") if artifact else None
+    index = int(wrong["question_index"])
+    if (not isinstance(questions, list) or index >= len(questions)
+            or _question_revision(questions[index]) != evidence["question_revision"]):
+        return "原练习题内容已变化，请重新规划。"
+    latest = _storage.get_latest_wrong_attempt(str(wrong["wrong_id"]))
+    if latest is None or latest["attempt_id"] != evidence["attempt_id"]:
+        return "这道题已有更新的失败作答，请重新规划。"
+    if _diagnosis_revision(wrong) != evidence["diagnosis_revision"]:
+        return "错因诊断已更新，请重新规划训练方式。"
+    source_evidence = task.get("source_evidence") or {}
+    if source_evidence.get("status") not in {"matched", "unavailable"}:
+        return "旧任务缺少资料片段定位状态，请重新规划。"
+    if source_evidence.get("status") == "matched":
+        chunk = _storage.get_source_chunk(str(source_evidence.get("chunk_id") or ""))
+        if (
+            chunk is None
+            or chunk.get("source_id") != task.get("source_id")
+            or _chunk_revision(chunk) != source_evidence.get("chunk_revision")
+        ):
+            return "引用的资料片段已变化，请重新规划并核对来源。"
+    if _storage.get_source_revision(str(task["source_id"])) != evidence["source_revision"]:
+        return "资料内容已变化，请重新规划并重新核对训练题。"
+    return None
+
+
+def _question_revision(question: Any) -> str:
+    """生成不暴露题目和参考答案的内容指纹。"""
+    value = json.dumps(question, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _diagnosis_revision(wrong: dict[str, Any]) -> str:
+    """生成知识点与错因诊断指纹。"""
+    value = json.dumps(
+        {
+            "knowledge_key": wrong.get("knowledge_key"),
+            "knowledge_label": wrong.get("knowledge_label"),
+            "error_cause": wrong.get("error_cause"),
+            "error_cause_source": wrong.get("error_cause_source"),
+            "error_cause_note": wrong.get("error_cause_note"),
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _chunk_revision(chunk: dict[str, Any]) -> str:
+    """生成资料分块内容指纹，不把正文复制到任务。"""
+    value = json.dumps(
+        {
+            "chunk_id": chunk.get("chunk_id"),
+            "chunk_index": chunk.get("chunk_index"),
+            "page_number": chunk.get("page_number"),
+            "content": chunk.get("content"),
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _select_source_evidence(
+    source_id: str,
+    wrong: dict[str, Any],
+) -> dict[str, Any]:
+    """为错题选择一个可核对的本地词法匹配片段。"""
+    from filemate.understanding.retrieval import rank_chunks
+
+    chunks = _storage.list_source_chunks(source_id)
+    question = wrong.get("question") or {}
+    stem = (
+        str(question.get("stem") or question.get("question") or "")
+        if isinstance(question, dict) else ""
+    )
+    query = " ".join(
+        part for part in (str(wrong.get("knowledge_label") or ""), stem) if part.strip()
+    )
+    ranked = rank_chunks(query, chunks, limit=1)
+    if not ranked:
+        return {
+            "status": "unavailable",
+            "method": "local_bm25",
+            "reason": "未找到有词法重叠的资料片段，请人工核对原资料。",
+        }
+    chunk = ranked[0]
+    return {
+        "status": "matched",
+        "method": "local_bm25",
+        "chunk_id": chunk["chunk_id"],
+        "chunk_index": chunk["chunk_index"],
+        "page_number": chunk.get("page_number"),
+        "score": chunk["score"],
+        "chunk_revision": _chunk_revision(chunk),
+        "reason": "本地词法匹配结果，需要结合原资料核对。",
+    }
 
 
 def _run_goal_agents(
@@ -1789,6 +2382,11 @@ def _run_goal_agents(
     source_id: str | None,
     gap_count: int,
     task_count: int,
+    focus_wrong_id: str | None = None,
+    attempt_id: str | None = None,
+    knowledge_key: str | None = None,
+    error_cause: str | None = None,
+    source_chunk_id: str | None = None,
 ) -> str:
     """记录规划与学习教练的真实协作步骤。"""
     from filemate.core.trusted_agents import select_agents
@@ -1797,7 +2395,14 @@ def _run_goal_agents(
         task_type="study_plan",
         goal=f"从真实学习证据反推目标：{title}",
         selected_agents=select_agents("study_plan"),
-        context_refs={"source_id": source_id},
+        context_refs={
+            "source_id": source_id,
+            "focus_wrong_id": focus_wrong_id,
+            "attempt_id": attempt_id,
+            "knowledge_key": knowledge_key,
+            "error_cause": error_cause,
+            "source_chunk_id": source_chunk_id,
+        },
     )
     _storage.append_agent_step(
         run_id=run["run_id"],
@@ -1808,11 +2413,47 @@ def _run_goal_agents(
     _storage.append_agent_step(
         run_id=run["run_id"],
         agent_name="学习教练 Agent",
-        input_refs={"gap_count": gap_count},
+        input_refs={
+            "gap_count": gap_count,
+            "focus_wrong_id": focus_wrong_id,
+            "attempt_id": attempt_id,
+            "knowledge_key": knowledge_key,
+            "error_cause": error_cause,
+            "source_chunk_id": source_chunk_id,
+        },
         output_summary=f"已生成 {task_count} 项可执行任务并分配截止日期",
     )
     _storage.finish_agent_run(run["run_id"])
     return str(run["run_id"])
+
+
+def _select_focus_wrong(source_id: str | None) -> dict[str, Any] | None:
+    """选择当前资料里一条未掌握错题。"""
+    if not source_id:
+        return None
+    wrong_questions = _storage.list_wrong_questions(
+        mastered=False, source_id=source_id, limit=1,
+    )
+    if not wrong_questions:
+        return None
+    wrong = dict(wrong_questions[0])
+    artifact = _storage.get_artifact(str(wrong["artifact_id"]))
+    questions = artifact.get("content") if artifact else None
+    index = int(wrong["question_index"])
+    if not isinstance(questions, list) or index >= len(questions):
+        return None
+    if questions[index] != wrong["question"]:
+        return None
+    attempt = _storage.get_latest_wrong_attempt(str(wrong["wrong_id"]))
+    if attempt is None:
+        return None
+    wrong["attempt_id"] = attempt["attempt_id"]
+    wrong["attempt_at"] = attempt["created_at"]
+    wrong["source_revision"] = _storage.get_source_revision(source_id)
+    wrong["question_revision"] = _question_revision(questions[index])
+    wrong["diagnosis_revision"] = _diagnosis_revision(wrong)
+    wrong["source_evidence"] = _select_source_evidence(source_id, wrong)
+    return wrong
 
 
 @app.post("/goals/reverse-plan", response_model=ApiResponse)
@@ -1834,12 +2475,34 @@ def create_reverse_goal(request: ReverseGoalRequest):
         analytics=_storage.get_learning_analytics(source_id=request.source_id),
         source_id=request.source_id,
         source_name=source.get("original_name") if source else None,
+        focus_wrong=_select_focus_wrong(request.source_id),
     )
     run_id = _run_goal_agents(
         title=request.title,
         source_id=request.source_id,
         gap_count=sum(1 for item in plan["gaps"] if item["status"] == "gap"),
         task_count=len(plan["tasks"]),
+        focus_wrong_id=next(
+            (item["focus_wrong_id"] for item in plan["tasks"]
+             if item["task_id"] == "explain-wrong-aloud"), None,
+        ),
+        attempt_id=next(
+            (item["evidence_ref"]["attempt_id"] for item in plan["tasks"]
+             if item["task_id"] == "explain-wrong-aloud"), None,
+        ),
+        knowledge_key=next(
+            (item.get("knowledge_key") for item in plan["tasks"]
+             if item["task_id"] == "explain-wrong-aloud"), None,
+        ),
+        error_cause=next(
+            (item.get("error_cause") for item in plan["tasks"]
+             if item["task_id"] == "explain-wrong-aloud"), None,
+        ),
+        source_chunk_id=next(
+            ((item.get("source_evidence") or {}).get("chunk_id")
+             for item in plan["tasks"]
+             if item["task_id"] == "explain-wrong-aloud"), None,
+        ),
     )
     plan["last_agent_run_id"] = run_id
     artifact_id = _storage.save_artifact(
@@ -1891,6 +2554,9 @@ def update_reverse_goal_task(
     matched = False
     for task in tasks:
         if str(task.get("task_id")) == task_id:
+            reason = _oral_evidence_invalid_reason(task)
+            if reason:
+                raise HTTPException(status_code=409, detail=reason)
             task["status"] = "completed" if request.completed else "pending"
             matched = True
             break
@@ -1929,12 +2595,45 @@ def replan_reverse_goal(goal_id: str):
         source_id=source_id,
         source_name=source.get("original_name") if source else None,
         previous_tasks=current.get("tasks") or [],
+        focus_wrong=_select_focus_wrong(source_id),
     )
+    invalidated = list(current.get("invalidated_tasks") or [])
+    for task in current.get("tasks") or []:
+        reason = _oral_evidence_invalid_reason(task)
+        if reason:
+            invalidated.append({
+                "focus_wrong_id": task.get("focus_wrong_id"),
+                "attempt_id": (task.get("evidence_ref") or {}).get("attempt_id"),
+                "reason": reason,
+                "invalidated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+            })
+    plan["invalidated_tasks"] = invalidated[-20:]
     run_id = _run_goal_agents(
         title=str(current["title"]),
         source_id=source_id,
         gap_count=sum(1 for item in plan["gaps"] if item["status"] == "gap"),
         task_count=len(plan["tasks"]),
+        focus_wrong_id=next(
+            (item["focus_wrong_id"] for item in plan["tasks"]
+             if item["task_id"] == "explain-wrong-aloud"), None,
+        ),
+        attempt_id=next(
+            (item["evidence_ref"]["attempt_id"] for item in plan["tasks"]
+             if item["task_id"] == "explain-wrong-aloud"), None,
+        ),
+        knowledge_key=next(
+            (item.get("knowledge_key") for item in plan["tasks"]
+             if item["task_id"] == "explain-wrong-aloud"), None,
+        ),
+        error_cause=next(
+            (item.get("error_cause") for item in plan["tasks"]
+             if item["task_id"] == "explain-wrong-aloud"), None,
+        ),
+        source_chunk_id=next(
+            ((item.get("source_evidence") or {}).get("chunk_id")
+             for item in plan["tasks"]
+             if item["task_id"] == "explain-wrong-aloud"), None,
+        ),
     )
     plan["last_agent_run_id"] = run_id
     updated = _storage.update_artifact(
@@ -1951,6 +2650,12 @@ def submit_quiz_attempt(request: QuizAttemptRequest):
     artifact = _storage.get_artifact(request.artifact_id)
     if artifact is None:
         raise HTTPException(status_code=404, detail="题目集不存在")
+    if artifact["artifact_type"] != "questions":
+        raise HTTPException(status_code=422, detail="该产物不是题目集")
+    if (artifact.get("metadata", {}).get("question_revision")
+            and not artifact.get("metadata", {}).get("read_only_snapshot")
+            and request.expected_question is None):
+        raise HTTPException(status_code=409, detail="题集已修订，请刷新页面后提交带题目快照的作答")
     questions = artifact.get("content")
     if not isinstance(questions, list) or not 0 <= request.question_index < len(questions):
         raise HTTPException(status_code=422, detail="题目序号无效")
@@ -1976,6 +2681,8 @@ def submit_quiz_attempt(request: QuizAttemptRequest):
     raw_question = questions[request.question_index]
     if not isinstance(raw_question, dict):
         raise HTTPException(status_code=422, detail="题目数据格式无效")
+    if request.expected_question is not None and request.expected_question != raw_question:
+        raise HTTPException(status_code=409, detail="题目已更新，请刷新题集后重新作答")
     question = _normalize_question(raw_question)
     user_answer = (request.user_answer or "").strip()
 
@@ -1983,14 +2690,20 @@ def submit_quiz_attempt(request: QuizAttemptRequest):
     is_correct = check_answer(question, user_answer)
     score = 1.0 if is_correct else 0.0
 
-    result = _storage.record_quiz_attempt(
-        artifact_id=request.artifact_id,
-        question_index=request.question_index,
-        user_answer=user_answer,
-        is_correct=is_correct,
-        score=score,
-        feedback="回答正确" if is_correct else "已加入错题本，请结合解析复习",
-    )
+    try:
+        result = _storage.record_quiz_attempt(
+            artifact_id=request.artifact_id,
+            question_index=request.question_index,
+            user_answer=user_answer,
+            is_correct=is_correct,
+            score=score,
+            feedback="回答正确" if is_correct else "已加入错题本，请结合解析复习",
+            expected_question=raw_question,
+        )
+    except QuestionRevisionConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="题目集已删除，请重新打开资料") from exc
     return ApiResponse(success=True, data=result)
 
 
@@ -2010,6 +2723,25 @@ def list_wrongbook(
 def learning_analytics():
     """返回学习闭环与模拟面试的本地统计。"""
     return ApiResponse(success=True, data=_storage.get_learning_analytics())
+
+
+@app.patch("/wrongbook/{wrong_id}/diagnosis", response_model=ApiResponse)
+def update_wrongbook_diagnosis(
+    wrong_id: str,
+    request: WrongDiagnosisUpdateRequest,
+):
+    """保存用户确认的错因分类和备注。"""
+    try:
+        wrong = _storage.update_wrong_diagnosis(
+            wrong_id,
+            error_cause=request.error_cause,
+            note=request.note,
+        )
+    except ValueError as exc:
+        detail = str(exc)
+        status_code = 404 if detail == "错题不存在" else 422
+        raise HTTPException(status_code=status_code, detail=detail) from exc
+    return ApiResponse(success=True, data=wrong)
 
 
 def _anonymous_feedback_context(context: dict[str, Any] | None) -> dict[str, Any]:
@@ -2117,8 +2849,11 @@ def _parse_iso_date(value: str) -> date | None:
 
 @app.get("/review/today", response_model=ApiResponse)
 def today_review():
-    """聚合下一学习日与高优先级错题，形成今日执行队列。"""
+    """按证据、用户顺序和可用时长生成今日队列。"""
+    from filemate.study.daily_coach import select_daily_queue, wrong_review_guidance
+
     today = datetime.now().astimezone().date()
+    preferences = _storage.get_daily_coach_preferences(today.isoformat())
     items: list[dict[str, Any]] = []
     active_plans = _storage.list_study_plans(status="active", limit=20)
 
@@ -2138,7 +2873,8 @@ def today_review():
         exam = _parse_iso_date(str(plan.get("exam_date", "")))
         overdue = bool(scheduled and scheduled < today)
         due_today = scheduled == today
-        urgency = "high" if overdue or (exam and (exam - today).days <= 3) else "normal"
+        exam_soon = bool(exam and 0 <= (exam - today).days <= 3)
+        urgency = "high" if overdue or exam_soon else "normal"
         if overdue:
             reason = f"原定 {scheduled.isoformat()}，建议今天补上"
         elif due_today:
@@ -2147,12 +2883,14 @@ def today_review():
             reason = f"下一学习日为 {scheduled.isoformat()}"
         else:
             reason = "下一项未完成学习任务"
+        if exam_soon and not overdue:
+            reason += f"；距考试 {(exam - today).days} 天"
         items.append(
             {
                 "item_id": f"plan:{saved['plan_id']}:{day_index}",
                 "kind": "plan_day",
                 "priority": urgency,
-                "score": 90 if overdue else 70 if due_today else 45,
+                "score": 90 if overdue else 78 if exam_soon else 70 if due_today else 45,
                 "title": str(day.get("focus") or saved.get("title") or "学习计划"),
                 "reason": reason,
                 "duration_minutes": int(day.get("duration_minutes") or saved["daily_minutes"]),
@@ -2168,37 +2906,34 @@ def today_review():
         due_only=True,
         limit=50,
     )
-    wrong_questions.sort(
-        key=lambda item: (
-            int(item.get("error_count", 0)) * 3 - int(item.get("correct_streak", 0)),
-            str(item.get("updated_at", "")),
-        ),
-        reverse=True,
-    )
-    for wrong in wrong_questions[:5]:
+    for wrong in wrong_questions:
         question = wrong.get("question") or {}
+        guidance = wrong_review_guidance(wrong, today)
         items.append(
             {
                 "item_id": f"wrong:{wrong['wrong_id']}",
                 "kind": "wrong_question",
-                "priority": "high" if int(wrong["error_count"]) >= 2 else "normal",
-                "score": 80 + min(int(wrong["error_count"]), 5) * 3,
-                "title": str(question.get("question") or "待复习错题"),
-                "reason": (
-                    f"答错 {wrong['error_count']} 次，"
-                    f"已复习 {wrong['review_count']} 次"
-                ),
-                "duration_minutes": 10,
+                "priority": guidance["priority"],
+                "score": guidance["score"],
+                "title": str(question.get("stem") or question.get("question") or "待复习错题"),
+                "reason": guidance["reason"],
+                "duration_minutes": guidance["duration_minutes"],
+                "error_cause": guidance["error_cause"],
+                "error_cause_source": guidance["error_cause_source"],
                 "artifact_id": wrong["artifact_id"],
                 "question_index": wrong["question_index"],
+                "question_snapshot": question,
                 "wrong_id": wrong["wrong_id"],
                 "explanation": question.get("explanation", ""),
                 "route": "/wrongbook",
             }
         )
 
-    items.sort(key=lambda item: (-int(item["score"]), item["kind"]))
-    recommended = items[:8]
+    recommended, deferred_count = select_daily_queue(
+        items,
+        available_minutes=preferences["available_minutes"],
+        item_order=preferences["item_order"],
+    )
     return ApiResponse(
         success=True,
         data={
@@ -2206,11 +2941,30 @@ def today_review():
             "items": recommended,
             "active_plan_count": len(active_plans),
             "pending_wrong_count": len(wrong_questions),
+            "available_minutes": preferences["available_minutes"],
+            "item_order": preferences["item_order"],
+            "deferred_count": deferred_count,
             "recommended_minutes": sum(
                 int(item["duration_minutes"]) for item in recommended
             ),
         },
     )
+
+
+@app.put("/review/today/preferences", response_model=ApiResponse)
+def update_daily_coach_preferences(request: DailyCoachPreferencesRequest):
+    """保存今天的时间预算与手动任务顺序。"""
+    if any(len(item_id) > 100 for item_id in request.item_order):
+        raise HTTPException(status_code=422, detail="任务标识过长")
+    try:
+        _storage.set_daily_coach_preferences(
+            datetime.now().astimezone().date().isoformat(),
+            available_minutes=request.available_minutes,
+            item_order=request.item_order,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return today_review()
 
 
 @app.get("/interview/questions", response_model=ApiResponse)
@@ -2290,7 +3044,9 @@ def start_interview(request: InterviewStartRequest):
     from filemate.understanding import (
         build_interview_questions,
         build_source_grounded_question,
+        build_wrong_grounded_question,
     )
+
 
     source = None
     context_excerpt = ""
@@ -2305,8 +3061,49 @@ def start_interview(request: InterviewStartRequest):
             source_context_mode = "authorized_excerpt"
         else:
             source_context_mode = "local_metadata_only"
+    focus_wrong = None
+    linked_task = None
+    if request.focus_wrong_id:
+        if source is None:
+            raise HTTPException(status_code=422, detail="错题训练需要先选择资料")
+        focus_wrong = _storage.get_wrong_question(request.focus_wrong_id)
+        if (
+            focus_wrong is None
+            or focus_wrong.get("source_id") != request.source_id
+            or focus_wrong.get("mastered")
+        ):
+            raise HTTPException(status_code=422, detail="所选错题已失效，请重新规划目标")
+    if request.goal_id:
+        goal_artifact = _storage.get_artifact(request.goal_id)
+        goal_content = goal_artifact.get("content") if goal_artifact else None
+        linked_task = next(
+            (
+                task for task in (goal_content.get("tasks") or [])
+                if task.get("task_id") == "explain-wrong-aloud"
+                and task.get("focus_wrong_id") == request.focus_wrong_id
+            ), None,
+        ) if isinstance(goal_content, dict) else None
+        if (
+            not goal_artifact
+            or goal_artifact.get("artifact_type") != "reverse_goal_plan"
+            or goal_artifact.get("source_id") != request.source_id
+            or not request.focus_wrong_id
+            or linked_task is None
+            or _oral_evidence_invalid_reason(linked_task) is not None
+        ):
+            raise HTTPException(status_code=422, detail="目标训练关联已失效，请重新规划目标")
+
+    source_evidence = None
+    if focus_wrong and request.source_id:
+        source_evidence = (
+            dict(linked_task.get("source_evidence") or {})
+            if linked_task is not None
+            else _select_source_evidence(request.source_id, focus_wrong)
+        )
 
     try:
+        if os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") == "1" or request.allow_external_analysis is False:
+            raise RuntimeError("本地选题模式")
         llm = LLMClient(LLMConfig.from_env())
     except Exception:  # noqa: BLE001 - 未配置 LLM 时使用确定性选题
         llm = None
@@ -2324,10 +3121,16 @@ def start_interview(request: InterviewStartRequest):
 
     target_role = request.target_role.strip() or "通用岗位"
     if source is not None:
-        grounded_question = build_source_grounded_question(
-            str(source["original_name"]),
-            request.scenario,
-            target_role,
+        grounded_question = (
+            build_wrong_grounded_question(
+                str(source["original_name"]),
+                focus_wrong["question"],
+                error_cause=str(focus_wrong.get("error_cause") or "unconfirmed"),
+                knowledge_label=str(focus_wrong.get("knowledge_label") or ""),
+            )
+            if focus_wrong else build_source_grounded_question(
+                str(source["original_name"]), request.scenario, target_role,
+            )
         )
         remaining = [
             (question, question_id)
@@ -2342,10 +3145,29 @@ def start_interview(request: InterviewStartRequest):
         selected_agents=select_agents("interview_session"),
         context_refs={
             "scenario": request.scenario,
+            "allow_external_analysis": request.allow_external_analysis,
             "difficulty": request.difficulty,
             "question_ids": question_ids,
             "source_id": request.source_id,
             "source_context_mode": source_context_mode,
+            "focus_wrong_id": request.focus_wrong_id,
+            "goal_id": request.goal_id,
+            "attempt_id": (
+                (linked_task.get("evidence_ref") or {}).get("attempt_id")
+                if request.goal_id else None
+            ),
+            "knowledge_key": (
+                linked_task.get("knowledge_key")
+                if request.goal_id else focus_wrong.get("knowledge_key") if focus_wrong else None
+            ),
+            "error_cause": (
+                linked_task.get("error_cause")
+                if request.goal_id else focus_wrong.get("error_cause") if focus_wrong else None
+            ),
+            "source_evidence": source_evidence,
+            "source_chunk_id": (
+                source_evidence.get("chunk_id") if source_evidence else None
+            ),
         },
     )
     interview = _storage.create_interview(
@@ -2362,6 +3184,10 @@ def start_interview(request: InterviewStartRequest):
         input_refs={
             "interview_id": interview["interview_id"],
             "question_ids": question_ids,
+            "focus_wrong_id": request.focus_wrong_id,
+            "source_chunk_id": (
+                source_evidence.get("chunk_id") if source_evidence else None
+            ),
         },
         output_summary=(
             f"已按{request.scenario}·{request.difficulty}选择 "
@@ -2388,6 +3214,9 @@ def start_interview(request: InterviewStartRequest):
         "source_id": request.source_id,
         "source_name": source["original_name"] if source is not None else None,
         "mode": source_context_mode,
+        "focus_wrong_id": request.focus_wrong_id,
+        "goal_id": request.goal_id,
+        "source_evidence": source_evidence,
     }
     return ApiResponse(success=True, data=interview)
 
@@ -2403,6 +3232,9 @@ def _attach_interview_source_context(interview: dict[str, Any]) -> None:
         "source_id": source_id,
         "source_name": source.get("original_name") if source else None,
         "mode": refs.get("source_context_mode", "none"),
+        "focus_wrong_id": refs.get("focus_wrong_id"),
+        "goal_id": refs.get("goal_id"),
+        "source_evidence": refs.get("source_evidence"),
     }
 
 
@@ -2426,18 +3258,43 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
     interview = _storage.get_interview(interview_id)
     if interview is None:
         raise HTTPException(status_code=404, detail="模拟面试不存在")
+    digest = hashlib.sha256(json.dumps(
+        request.model_dump(exclude={"request_key"}), ensure_ascii=False, sort_keys=True,
+    ).encode()).hexdigest()
+    if request.request_key:
+        previous = next((turn for turn in interview["turns"]
+                         if turn.get("answer_key") == request.request_key), None)
+        if previous:
+            if previous.get("answer_digest") != digest:
+                raise HTTPException(status_code=409, detail="重复请求键的回答内容不同")
+            return get_interview(interview_id)
     if interview["status"] == "completed":
         raise HTTPException(status_code=409, detail="模拟面试已完成")
     if not request.answer.strip():
         raise HTTPException(status_code=422, detail="回答不能为空")
+    if request.question_index is not None and request.question_index != interview["current_index"]:
+        raise HTTPException(status_code=409, detail="面试进度已更新，请刷新后继续")
+    if request.visual_metrics:
+        _require_interview_review_enabled()
 
     from filemate.llm_client import LLMClient, LLMConfig
     from filemate.understanding import InterviewEvaluator
 
     index = interview["current_index"]
     question = interview["questions"][index]
+    run = _storage.get_agent_run(interview["agent_run_id"]) if interview.get("agent_run_id") else None
+    context_refs = run.get("context_refs", {}) if run else {}
+    private_wrong_question = bool(
+        context_refs.get("focus_wrong_id")
+        and context_refs.get("source_context_mode") == "local_metadata_only"
+    )
     try:
-        if os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") == "1":
+        if (
+            os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") == "1"
+            or interview["scenario"] == "知识讲解"
+            or private_wrong_question
+            or context_refs.get("allow_external_analysis") is False
+        ):
             raise RuntimeError("本地评分模式")
         evaluator = InterviewEvaluator(LLMClient(LLMConfig.from_env()))
     except Exception:  # noqa: BLE001 - 未配置模型或隐私模式下使用本地评分
@@ -2459,6 +3316,10 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
             feedback=evaluation["feedback"],
             fluency_metrics=evaluation.get("fluency"),
             scoring_mode=evaluation["scoring_mode"],
+            scoring_version="v2.4",
+            visual_metrics=request.visual_metrics.model_dump() if request.visual_metrics else None,
+            content_analysis=evaluation.get("content_analysis"),
+            answer_key=request.request_key, answer_digest=digest,
         )
     except ValueError as exc:
         detail = str(exc)
@@ -2491,6 +3352,25 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
         )
         if updated["status"] == "completed":
             _storage.finish_agent_run(run_id)
+    if updated["status"] == "completed" and context_refs.get("goal_id"):
+        goal_artifact = _storage.get_artifact(str(context_refs["goal_id"]))
+        if goal_artifact and goal_artifact.get("artifact_type") == "reverse_goal_plan":
+            goal_content = dict(goal_artifact.get("content") or {})
+            tasks = list(goal_content.get("tasks") or [])
+            for task in tasks:
+                if (
+                    task.get("task_id") == "explain-wrong-aloud"
+                    and task.get("focus_wrong_id") == context_refs.get("focus_wrong_id")
+                    and goal_artifact.get("source_id") == context_refs.get("source_id")
+                    and _oral_evidence_invalid_reason(task) is None
+                ):
+                    task["status"] = "completed"
+                    goal_content["tasks"] = tasks
+                    _storage.update_artifact(
+                        str(context_refs["goal_id"]),
+                        title=str(goal_artifact["title"]), content=goal_content,
+                    )
+                    break
     next_index = updated["current_index"]
     updated["current_question"] = (
         updated["questions"][next_index]
@@ -2500,6 +3380,347 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
     updated["latest_evaluation"] = evaluation
     _attach_interview_source_context(updated)
     return ApiResponse(success=True, data=updated)
+
+
+def _require_interview_review_enabled():
+    if os.getenv("FILEMATE_ENABLE_INTERVIEW_REVIEW", "1") == "0":
+        raise HTTPException(status_code=503, detail="面试增强暂未启用，原有文字和语音练习仍可使用")
+
+
+def _interview_review_repository():
+    from filemate.interview_review.repository import ReviewRepository
+
+    context = _tenant_context.get()
+    storage = (_tenant_storage(context[0]) if context else
+               (_storage.local_storage if isinstance(_storage, _StorageRouter) else _storage))
+    return ReviewRepository(storage)
+
+
+def _interview_review_error(exc: Exception):
+    return HTTPException(status_code=404 if isinstance(exc, KeyError) else 409,
+                         detail="面试或回答不存在" if isinstance(exc, KeyError) else str(exc))
+
+
+@app.get("/interview/review/status", response_model=ApiResponse)
+def interview_review_status():
+    return ApiResponse(success=True, data={
+        "enabled": os.getenv("FILEMATE_ENABLE_INTERVIEW_REVIEW", "1") != "0",
+        "version": "2.4", "video_uploaded": False, "calibration": "待校准",
+    })
+
+
+@app.get("/interviews/{interview_id}/review", response_model=ApiResponse)
+def get_interview_report(interview_id: str):
+    _require_interview_review_enabled()
+    try:
+        repo = _interview_review_repository()
+        return ApiResponse(success=True, data={"report": repo.report(interview_id),
+                                               "events": repo.events(interview_id)})
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
+
+
+@app.post("/interviews/{interview_id}/review", response_model=ApiResponse)
+def generate_interview_report(interview_id: str):
+    _require_interview_review_enabled()
+    try:
+        return ApiResponse(success=True, data=_interview_review_repository().generate(interview_id))
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
+
+
+@app.post("/interviews/{interview_id}/turns/{turn_id}/analyze", response_model=ApiResponse)
+def analyze_interview_turn(interview_id: str, turn_id: str, request: InterviewAnalysisRequest):
+    _require_interview_review_enabled()
+    if not request.external_consent:
+        raise HTTPException(status_code=422, detail="请先确认向已配置模型发送问题与回答；音视频不会外发")
+    if os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") == "1":
+        raise HTTPException(status_code=503, detail="当前面试处于本地模式，未向外部模型发送数据")
+    repo = _interview_review_repository()
+    try:
+        interview, revision = repo.snapshot(interview_id)
+        turn = next((item for item in interview["turns"] if item["turn_id"] == turn_id), None)
+        if not turn:
+            raise KeyError(turn_id)
+        if turn.get("analysis_data_error"):
+            raise ValueError("分析数据异常，请先清空分析；原回答保留")
+        if turn.get("content_analysis", {}).get("source") == "llm_reference":
+            return get_interview(interview_id)
+        _attach_interview_source_context(interview)
+        refs = interview.get("source_context") or {}
+        if refs.get("focus_wrong_id") and refs.get("mode") == "local_metadata_only":
+            raise HTTPException(status_code=403, detail="所选私有错题尚未授权外发，内容分析仅可本地复盘")
+        from filemate.llm_client import LLMClient, LLMConfig
+        from filemate.understanding import InterviewEvaluator
+
+        try:
+            evaluation = InterviewEvaluator(LLMClient(LLMConfig.from_env())).evaluate(
+                turn["question"], turn["answer"], interview["target_role"], turn.get("fluency_metrics"),
+            )
+        except Exception:  # noqa: BLE001 - 模型不可用时保留原始面试证据
+            evaluation = {"scoring_mode": "local_fallback"}
+        if evaluation["scoring_mode"] != "llm":
+            raise HTTPException(status_code=502, detail="模型分析暂不可用或缺少有效证据；原回答、节奏与报告保留")
+        updated = repo.apply_analysis(interview_id, turn_id, revision, evaluation)
+        _attach_interview_source_context(updated)
+        return ApiResponse(success=True, data=updated)
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
+
+
+@app.post("/interviews/{interview_id}/analysis/cancel", response_model=ApiResponse)
+def cancel_interview_analysis(interview_id: str):
+    _require_interview_review_enabled()
+    try:
+        return ApiResponse(success=True, data=_interview_review_repository().cancel(interview_id))
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
+
+
+@app.post("/interviews/{interview_id}/analysis/clear", response_model=ApiResponse)
+def clear_interview_analysis(interview_id: str, request: InterviewPrivacyRequest):
+    _require_interview_review_enabled()
+    if not request.confirmed:
+        raise HTTPException(status_code=422, detail="请确认清空内容评分、视觉观察和报告；原回答与节奏保留")
+    try:
+        data = _interview_review_repository().clear(interview_id)
+        _attach_interview_source_context(data)
+        return ApiResponse(success=True, data=data)
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
+
+
+@app.get("/interviews/{interview_id}/delete-preview", response_model=ApiResponse)
+def preview_interview_delete(interview_id: str):
+    _require_interview_review_enabled()
+    try:
+        return ApiResponse(success=True, data=_interview_review_repository().delete_preview(interview_id))
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
+
+
+@app.delete("/interviews/{interview_id}", response_model=ApiResponse)
+def delete_interview(interview_id: str, request: InterviewPrivacyRequest):
+    _require_interview_review_enabled()
+    if not request.confirmed or len(request.confirmation_token) != 64:
+        raise HTTPException(status_code=422, detail="请先预览并确认本场练习的删除影响")
+    try:
+        return ApiResponse(success=True, data=_interview_review_repository().delete(
+            interview_id, request.confirmation_token,
+        ))
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
+
+
+@app.get("/interviews/{interview_id}/review/export")
+def export_interview_report(interview_id: str, format: Literal["json", "markdown", "pdf"] = "json"):
+    _require_interview_review_enabled()
+    from filemate.interview_review.reports import report_markdown, report_pdf
+
+    repo = _interview_review_repository()
+    try:
+        report = repo.report(interview_id)
+        if report is None:
+            raise ValueError("请先生成当前记录的复盘报告")
+        if format == "pdf":
+            content, mime, extension = report_pdf(report), "application/pdf", "pdf"
+        elif format == "markdown":
+            content, mime, extension = report_markdown(report).encode(), "text/markdown; charset=utf-8", "md"
+        else:
+            content, mime, extension = json.dumps(report, ensure_ascii=False, indent=2).encode(), "application/json", "json"
+        repo.log_export(interview_id, format)
+        return Response(content=content, media_type=mime, headers={
+            "Content-Disposition": f'attachment; filename="filemate-interview-{interview_id}.{extension}"',
+            "Cache-Control": "no-store",
+        })
+    except (KeyError, ValueError) as exc:
+        raise _interview_review_error(exc) from exc
+
+
+def _career_repository() -> Any:
+    from filemate.career.repository import CareerRepository
+
+    if os.getenv("FILEMATE_ENABLE_CAREER", "1") == "0":
+        raise HTTPException(status_code=503, detail="求职训练中心暂未启用，原学习功能仍可使用")
+    context = _tenant_context.get()
+    storage = (_tenant_storage(context[0]) if context else
+               (_storage.local_storage if isinstance(_storage, _StorageRouter) else _storage))
+    return CareerRepository(storage)
+
+
+def _career_call(method: str, *args: Any) -> ApiResponse:
+    try:
+        return ApiResponse(success=True, data=getattr(_career_repository(), method)(*args))
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=404 if isinstance(exc, KeyError) else 409,
+                            detail="岗位或训练不存在" if isinstance(exc, KeyError) else str(exc)) from exc
+
+
+@app.get("/api/career/status", response_model=ApiResponse)
+def career_status() -> ApiResponse:
+    return ApiResponse(success=True, data={"enabled": os.getenv("FILEMATE_ENABLE_CAREER", "1") != "0",
+                                           "version": "2.5", "live_recruitment": False})
+
+
+@app.get("/api/career/catalog", response_model=ApiResponse)
+def career_catalog() -> ApiResponse:
+    _career_repository()
+    from filemate.career.catalog import CATALOG
+
+    return ApiResponse(success=True, data=CATALOG)
+
+
+class CareerExtractRequest(BaseModel):
+    description: str = Field(min_length=10, max_length=12000)
+
+
+@app.post("/api/career/extract", response_model=ApiResponse)
+def career_extract(request: CareerExtractRequest) -> ApiResponse:
+    _career_repository()
+    from filemate.career.catalog import extract_requirements
+
+    if not request.description.strip():
+        raise HTTPException(status_code=422, detail="请输入岗位描述")
+    return ApiResponse(success=True, data={"requirements": extract_requirements(request.description),
+                                           "method": "本地词表提取，保存前需核对原句和分类"})
+
+
+@app.get("/api/career/positions", response_model=ApiResponse)
+def career_positions() -> ApiResponse:
+    return _career_call("list")
+
+
+@app.post("/api/career/positions", response_model=ApiResponse)
+def create_career_position(request: PositionWrite) -> ApiResponse:
+    _career_repository()
+    if not request.confirmed:
+        raise HTTPException(status_code=422, detail="请核对岗位要求和来源后确认保存")
+    return _career_call("create", request.position.model_dump(mode="json"), request.request_key)
+
+
+@app.get("/api/career/positions/{identifier}", response_model=ApiResponse)
+def get_career_position(identifier: str) -> ApiResponse:
+    return _career_call("get", identifier)
+
+
+@app.patch("/api/career/positions/{identifier}", response_model=ApiResponse)
+def edit_career_position(identifier: str, request: PositionEdit) -> ApiResponse:
+    _career_repository()
+    if not request.confirmed:
+        raise HTTPException(status_code=422, detail="请确认岗位修改，既有训练保留原快照")
+    return _career_call("edit", identifier, request.position.model_dump(mode="json"), request.expected_revision)
+
+
+@app.post("/api/career/positions/{identifier}/state/{action}", response_model=ApiResponse)
+def transition_career_position(identifier: str, action: Literal["undo", "restore"], request: DeleteRequest) -> ApiResponse:
+    _career_repository()
+    if not request.confirmed:
+        raise HTTPException(status_code=422, detail="请确认撤销或恢复此岗位")
+    return _career_call("transition", identifier, action)
+
+
+@app.get("/api/career/positions/{identifier}/evidence", response_model=ApiResponse)
+def career_evidence(identifier: str) -> ApiResponse:
+    return _career_call("comparison", identifier)
+
+
+@app.get("/api/career/positions/{identifier}/trainings", response_model=ApiResponse)
+def career_trainings(identifier: str) -> ApiResponse:
+    return _career_call("trainings", identifier)
+
+
+@app.post("/api/career/positions/{identifier}/trainings", response_model=ApiResponse)
+def create_career_training(identifier: str, request: TrainingStart) -> ApiResponse:
+    _career_repository()
+    if not request.confirmed:
+        raise HTTPException(status_code=422, detail="请确认按当前岗位快照创建训练")
+    return _career_call("start", identifier, request.kind, request.request_key, request.expected_revision)
+
+
+@app.get("/api/career/trainings/{identifier}", response_model=ApiResponse)
+def career_training(identifier: str) -> ApiResponse:
+    return _career_call("training", identifier)
+
+
+@app.post("/api/career/trainings/{identifier}/answers", response_model=ApiResponse)
+def career_written_answers(identifier: str, request: WrittenAnswer) -> ApiResponse:
+    return _career_call("answer_written", identifier, request.answers)
+
+
+@app.get("/api/career/positions/{identifier}/delete-preview", response_model=ApiResponse)
+def career_delete_preview(identifier: str) -> ApiResponse:
+    return _career_call("preview_delete", identifier)
+
+
+@app.delete("/api/career/positions/{identifier}", response_model=ApiResponse)
+def delete_career_position(identifier: str, request: DeleteRequest) -> ApiResponse:
+    _career_repository()
+    if not request.confirmed or len(request.confirmation_token) != 64:
+        raise HTTPException(status_code=422, detail="请预览并确认删除范围")
+    return _career_call("delete", identifier, request.confirmation_token)
+
+
+@app.get("/api/career/events", response_model=ApiResponse)
+def career_events() -> ApiResponse:
+    return _career_call("events")
+
+
+@app.get("/api/career/overview", response_model=ApiResponse)
+def career_overview() -> ApiResponse:
+    return _career_call("overview")
+
+
+@app.get("/api/career/positions/{identifier}/plan-preview", response_model=ApiResponse)
+def career_plan_preview(identifier: str) -> ApiResponse:
+    return _career_call("plan_preview", identifier)
+
+
+@app.get("/api/career/positions/{identifier}/plans", response_model=ApiResponse)
+def career_plans(identifier: str) -> ApiResponse:
+    return _career_call("plans", identifier)
+
+
+@app.post("/api/career/positions/{identifier}/plans", response_model=ApiResponse)
+def save_career_plan(identifier: str, request: PlanConfirm) -> ApiResponse:
+    _career_repository()
+    if not request.confirmed:
+        raise HTTPException(status_code=422, detail="请先核对学习建议并确认保存")
+    return _career_call("save_plan", identifier, request.evidence_revision)
+
+
+@app.post("/api/career/positions/{identifier}/plans/{plan_id}/{action}", response_model=ApiResponse)
+def transition_career_plan(identifier: str, plan_id: str, action: Literal["undo", "restore"], request: DeleteRequest) -> ApiResponse:
+    _career_repository()
+    if not request.confirmed:
+        raise HTTPException(status_code=422, detail="请确认学习计划状态变更")
+    return _career_call("transition_plan", identifier, plan_id, action)
+
+
+@app.get("/api/career/trainings/{identifier}/export")
+def export_career_training(identifier: str, format: Literal["json", "markdown"] = "json") -> Response:
+    repo = _career_repository()
+    try:
+        row = repo.training(identifier)
+        if row["data_error"]:
+            raise ValueError("训练数据异常，原记录保留，暂不能导出")
+        if format == "json":
+            content, mime, extension = json.dumps(row, ensure_ascii=False, indent=2), "application/json", "json"
+        else:
+            p = row["payload"]["position"]
+            content = (f"# {p['company']} · {p['title']}训练快照\n\n"
+                       f"来源：{p['source']}\n\n采集时间：{p['collected_at']}\n\n"
+                       "平台原创模拟训练，不是企业真题或录用判断。\n\n```json\n"
+                       + json.dumps(row["payload"], ensure_ascii=False, indent=2) + "\n```\n")
+            mime, extension = "text/markdown; charset=utf-8", "md"
+        with repo.storage._write_lock, repo.storage._conn():
+            repo.event(row["position_id"], "exported", identifier, {"format": format})
+        return Response(content=content.encode(), media_type=mime, headers={
+            "Content-Disposition": f'attachment; filename="filemate-career-{identifier}.{extension}"',
+            "Cache-Control": "no-store",
+        })
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=404 if isinstance(exc, KeyError) else 409,
+                            detail="训练不存在" if isinstance(exc, KeyError) else str(exc)) from exc
 
 
 @app.post("/ai/chat", response_model=ApiResponse)

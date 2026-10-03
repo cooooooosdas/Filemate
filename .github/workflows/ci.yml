@@ -39,11 +39,31 @@ jobs:
           filemate/tests/test_server_persistence.py
           filemate/tests/test_retrieval.py
           filemate/tests/test_study.py
+          filemate/tests/test_evaluation_study.py
+          filemate/tests/test_evidence_profile.py
+          filemate/tests/test_beta_tools.py
+          filemate/tests/test_backup.py
+          filemate/tests/test_career_planning.py
+          filemate/tests/test_programming.py
+          filemate/tests/test_interview_review.py
           filemate/study
+          filemate/programming
+          filemate/interview_review
+          filemate/career
+          filemate/operations
+          filemate/tests/test_career.py
           filemate/understanding/interview.py
           filemate/understanding/retrieval.py
           evaluation/run_evaluation.py
+          evaluation/calibrate_interview.py
           evaluation/analyze_study.py
+          evaluation/analyze_competition_trials.py
+          evaluation/csv_contract.py
+          evaluation/intervals.py
+          evaluation/prepare_beta.py
+          scripts/acceptance/release_readiness.py
+          scripts/acceptance/backup_restore.py
+          scripts/acceptance/gateway_preflight.py
           evaluation/analyze_feedback.py
       - name: Unit and integration tests
         run: uv run pytest filemate/tests -q -m "not e2e"
@@ -62,6 +82,11 @@ jobs:
           uv run python evaluation/analyze_feedback.py
           evaluation/datasets/product_feedback.example.csv
           --output _working/product-feedback-example-report.json
+      - name: Validate Beta export pipeline with synthetic examples
+        run: >-
+          uv run python evaluation/prepare_beta.py
+          --study evaluation/datasets/user_study.example.csv
+          --output _working/beta-example-export
       - name: Upload evaluation evidence
         uses: actions/upload-artifact@v7
         with:
@@ -70,6 +95,7 @@ jobs:
             _working/evaluation-report.json
             _working/user-study-example-report.json
             _working/product-feedback-example-report.json
+            _working/beta-example-export
           if-no-files-found: error
 
   frontend:
@@ -88,8 +114,8 @@ jobs:
           cache-dependency-path: filemate/web/package-lock.json
       - name: Install dependencies
         run: npm ci
-      - name: Type-check and build
-        run: npm run build
+      - name: Test, type-check and build
+        run: npm test && npm run build && npm run check:bundle
 
   desktop:
     name: Desktop · Windows installer

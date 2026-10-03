@@ -116,7 +116,7 @@ function showUnavailableNotice(): void { ElMessage.info('找回密码功能将�
   padding: 40px clamp(32px, 6vw, 88px);
   display: flex;
   flex-direction: column;
-  background: #edf4ee;
+  background: radial-gradient(ellipse at 10% 100%, #91bbf788, transparent 65%), var(--panel-tint);
   border-right: 1px solid var(--border-subtle);
 }
 .auth-brand { display: block; width: fit-content; }
@@ -189,7 +189,7 @@ function showUnavailableNotice(): void { ElMessage.info('找回密码功能将�
 .auth-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin: 28px 0; background: var(--bg-base); border: 1px solid var(--border-subtle); border-radius: var(--radius-control); }
 .auth-switch a { display: grid; place-items: center; min-height: 44px; color: var(--text-secondary); border: 1px solid transparent; border-radius: 7px; font-size: 14px; font-weight: 500; text-decoration: none; }
 .auth-switch a:hover { color: var(--accent); }
-.auth-switch a[aria-current=page] { color: var(--accent); border-color: var(--accent-border); background: white; font-weight: 600; }
+.auth-switch a[aria-current=page] { color: var(--accent); border-color: var(--accent-border); background: var(--bg-reading); font-weight: 600; }
 .field-group { margin-bottom: 18px; }
 .field-group > label,
 .field-label-row label { color: var(--text-primary); font-size: 13px; font-weight: 500; }
@@ -247,4 +247,7 @@ function showUnavailableNotice(): void { ElMessage.info('找回密码功能将�
   .auth-story { padding: 20px; }
   .auth-panel { padding-inline: 20px; }
 }
+.auth-card-head > span, .field-group > label, .field-label-row label, .check-row { font-size:16px; }
+.field-control input, .auth-switch a, .primary-action, .guest-action { font-size:17px; }
+.field-control input::placeholder, .text-button, .auth-boundary { font-size:14px; }
 </style>

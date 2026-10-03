@@ -1,1 +1,1 @@
-participant_id,attempt_id,condition,completed,system_score,expert_score_a,expert_score_b,words_per_minute,long_pause_count
+participant_id,attempt_id,condition,completed,system_score,expert_score_a,expert_score_b,words_per_minute,long_pause_count,study_date,consent_confirmed,sample_kind

@@ -96,6 +96,419 @@ def test_reverse_goal_persists_tasks_and_agent_evidence(
     assert restored["content"]["title"] == "完成 FileMate 竞赛答辩"
 
 
+def test_wrong_question_drives_source_bound_oral_training(
+    server_module: tuple[ModuleType, SQLiteStorage],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module, storage = server_module
+    source_id = storage.save_source(
+        original_name="数据库课件.txt", source_path="/local/数据库课件.txt",
+    )
+    other_source_id = storage.save_source(
+        original_name="操作系统.txt", source_path="/local/操作系统.txt",
+    )
+    artifact_id = storage.save_artifact(
+        source_id=source_id, artifact_type="questions",
+        content=[{"stem": "B+ 树为什么适合范围查询？", "answer": "叶子节点有序"}],
+    )
+    attempt = storage.record_quiz_attempt(
+        artifact_id=artifact_id, question_index=0, user_answer="不知道",
+        is_correct=False, score=0, feedback="待复习",
+    )
+    wrong = storage.list_wrong_questions(mastered=False, source_id=source_id)[0]
+    deadline = (datetime.now().astimezone().date() + timedelta(days=7)).isoformat()
+
+    with TestClient(module.app) as client:
+        created = client.post("/goals/reverse-plan", json={
+            "title": "掌握数据库索引", "goal_type": "exam",
+            "deadline": deadline, "source_id": source_id,
+        })
+        assert created.status_code == 200
+        tasks = created.json()["data"]["tasks"]
+        oral = next(task for task in tasks if task["task_id"] == "explain-wrong-aloud")
+        assert oral["focus_wrong_id"] == wrong["wrong_id"]
+        assert oral["evidence_ref"]["attempt_id"] == attempt["attempt_id"]
+        assert oral["evidence_ref"]["source_revision"] == storage.get_source_revision(source_id)
+        assert "answer" not in oral["evidence_ref"]
+        goal_run = storage.get_agent_run(created.json()["data"]["last_agent_run_id"])
+        assert goal_run["context_refs"]["focus_wrong_id"] == wrong["wrong_id"]
+        assert goal_run["context_refs"]["attempt_id"] == attempt["attempt_id"]
+        assert goal_run["steps"][1]["input_refs"]["focus_wrong_id"] == wrong["wrong_id"]
+
+        mismatched = client.post("/interviews", json={
+            "target_role": "数据库索引", "scenario": "知识讲解",
+            "source_id": other_source_id, "focus_wrong_id": wrong["wrong_id"],
+        })
+        assert mismatched.status_code == 422
+
+        started = client.post("/interviews", json={
+            "target_role": "数据库索引", "scenario": "知识讲解",
+            "source_id": source_id, "focus_wrong_id": wrong["wrong_id"],
+            "goal_id": created.json()["data"]["goal_id"],
+        })
+        assert started.status_code == 200
+        interview = started.json()["data"]
+        assert "B+ 树为什么适合范围查询" in interview["current_question"]
+        assert "叶子节点有序" not in interview["current_question"]
+        run = storage.get_agent_run(interview["agent_run_id"])
+        assert run["context_refs"]["focus_wrong_id"] == wrong["wrong_id"]
+        assert run["context_refs"]["attempt_id"] == attempt["attempt_id"]
+        assert run["context_refs"]["goal_id"] == created.json()["data"]["goal_id"]
+
+        import filemate.llm_client as llm_module
+
+        class AvailableConfig:
+            @staticmethod
+            def from_env() -> object:
+                return object()
+
+        model_calls: list[object] = []
+
+        def create_model(config: object) -> object:
+            model_calls.append(config)
+            raise AssertionError("知识讲解不应调用外部模型")
+
+        monkeypatch.setattr(llm_module, "LLMConfig", AvailableConfig)
+        monkeypatch.setattr(llm_module, "LLMClient", create_model)
+
+        answered = client.post(
+            f"/interviews/{interview['interview_id']}/answers",
+            json={"answer": "我会先核对索引叶子节点的组织形式。"},
+        )
+        assert answered.status_code == 200
+        assert answered.json()["data"]["latest_evaluation"]["scoring_mode"] == "local_fallback"
+        assert model_calls == []
+        goal_before_completion = storage.get_artifact(created.json()["data"]["goal_id"])
+        oral_before = next(task for task in goal_before_completion["content"]["tasks"] if task["task_id"] == "explain-wrong-aloud")
+        assert oral_before["status"] == "pending"
+        for _ in range(4):
+            answered = client.post(
+                f"/interviews/{interview['interview_id']}/answers",
+                json={"answer": "我用自己的话讲清楚概念和推理过程。"},
+            )
+            assert answered.status_code == 200
+        assert answered.json()["data"]["status"] == "completed"
+        goal_after_completion = storage.get_artifact(created.json()["data"]["goal_id"])
+        oral_after = next(task for task in goal_after_completion["content"]["tasks"] if task["task_id"] == "explain-wrong-aloud")
+        assert oral_after["status"] == "completed"
+        assert storage.get_wrong_question(wrong["wrong_id"])["mastered"] == 0
+        replanned = client.post(f"/goals/{created.json()['data']['goal_id']}/replan")
+        assert replanned.status_code == 200
+        oral_replanned = next(task for task in replanned.json()["data"]["tasks"] if task["task_id"] == "explain-wrong-aloud")
+        assert oral_replanned["status"] == "completed"
+        assert model_calls == []
+
+
+def test_goal_invalidates_old_evidence_and_replan_archives_reason(
+    server_module: tuple[ModuleType, SQLiteStorage],
+) -> None:
+    module, storage = server_module
+    source_id = storage.save_source(
+        original_name="数据库课程.txt", source_path="/local/数据库课程.txt",
+        raw_text="B+ 树叶子节点按键值排列。",
+    )
+    artifact_id = storage.save_artifact(
+        source_id=source_id, artifact_type="questions",
+        content=[{"stem": "B+ 树适合哪种查询？", "answer": "范围查询"}],
+    )
+    first = storage.record_quiz_attempt(
+        artifact_id=artifact_id, question_index=0, user_answer="点查询",
+        is_correct=False, score=0, feedback="错误",
+    )
+    wrong = storage.list_wrong_questions(mastered=False, source_id=source_id)[0]
+    deadline = (datetime.now().astimezone().date() + timedelta(days=7)).isoformat()
+    with TestClient(module.app) as client:
+        created = client.post("/goals/reverse-plan", json={
+            "title": "掌握索引", "goal_type": "exam", "deadline": deadline,
+            "source_id": source_id,
+        }).json()["data"]
+        goal_id = created["goal_id"]
+        oral = next(task for task in created["tasks"] if task["task_id"] == "explain-wrong-aloud")
+        assert oral["evidence_ref"]["attempt_id"] == first["attempt_id"]
+
+        storage.record_quiz_attempt(
+            artifact_id=artifact_id, question_index=0, user_answer="不确定",
+            is_correct=False, score=0, feedback="错误",
+        )
+        listed = client.get("/goals").json()["data"][0]
+        stale = next(task for task in listed["tasks"] if task["task_id"] == "explain-wrong-aloud")
+        assert stale["status"] == "invalidated"
+        assert "更新的失败作答" in stale["invalidated_reason"]
+        assert client.patch(
+            f"/goals/{goal_id}/tasks/explain-wrong-aloud", json={"completed": True},
+        ).status_code == 409
+        assert client.post("/interviews", json={
+            "target_role": "索引", "scenario": "知识讲解", "source_id": source_id,
+            "focus_wrong_id": wrong["wrong_id"], "goal_id": goal_id,
+        }).status_code == 422
+
+        replanned = client.post(f"/goals/{goal_id}/replan").json()["data"]
+        fresh = next(task for task in replanned["tasks"] if task["task_id"] == "explain-wrong-aloud")
+        assert fresh["status"] == "pending"
+        assert fresh["evidence_ref"]["attempt_id"] != first["attempt_id"]
+        assert "更新的失败作答" in replanned["invalidated_tasks"][-1]["reason"]
+
+        storage.save_source(
+            source_id=source_id, original_name="数据库课程.txt",
+            source_path="/local/数据库课程.txt", raw_text="B+ 树的结构已修订。",
+        )
+        listed = client.get("/goals").json()["data"][0]
+        stale = next(task for task in listed["tasks"] if task["task_id"] == "explain-wrong-aloud")
+        assert stale["status"] == "invalidated"
+        assert "资料内容已变化" in stale["invalidated_reason"]
+        assert client.post(f"/goals/{goal_id}/replan").status_code == 200
+
+        storage.record_quiz_attempt(
+            artifact_id=artifact_id, question_index=0, user_answer="范围查询",
+            is_correct=True, score=1, feedback="正确",
+        )
+        storage.record_quiz_attempt(
+            artifact_id=artifact_id, question_index=0, user_answer="范围查询",
+            is_correct=True, score=1, feedback="正确",
+        )
+        listed = client.get("/goals").json()["data"][0]
+        stale = next(task for task in listed["tasks"] if task["task_id"] == "explain-wrong-aloud")
+        assert stale["status"] == "invalidated"
+        assert "已通过复练掌握" in stale["invalidated_reason"]
+        replanned = client.post(f"/goals/{goal_id}/replan").json()["data"]
+        assert all(task["task_id"] != "explain-wrong-aloud" for task in replanned["tasks"])
+        assert len(replanned["invalidated_tasks"]) == 3
+
+
+def test_source_deletion_cascades_goal_and_wrong_evidence(
+    server_module: tuple[ModuleType, SQLiteStorage],
+) -> None:
+    module, storage = server_module
+    source_id = storage.save_source(original_name="课程.txt", source_path="/local/课程.txt")
+    artifact_id = storage.save_artifact(
+        source_id=source_id, artifact_type="questions",
+        content=[{"stem": "问题", "answer": "答案"}],
+    )
+    storage.record_quiz_attempt(
+        artifact_id=artifact_id, question_index=0, user_answer="错误",
+        is_correct=False, score=0, feedback="错误",
+    )
+    wrong_id = storage.list_wrong_questions(source_id=source_id)[0]["wrong_id"]
+    deadline = (datetime.now().astimezone().date() + timedelta(days=7)).isoformat()
+    with TestClient(module.app) as client:
+        created = client.post("/goals/reverse-plan", json={
+            "title": "掌握课程", "goal_type": "exam", "deadline": deadline,
+            "source_id": source_id,
+        }).json()["data"]
+        assert storage.delete_source(source_id) is not None
+        assert storage.get_artifact(created["goal_id"]) is None
+        assert storage.get_wrong_question(wrong_id) is None
+        assert client.get("/goals").json()["data"] == []
+
+
+def test_user_diagnosis_drives_goal_training_and_invalidates_old_plan(
+    server_module: tuple[ModuleType, SQLiteStorage],
+) -> None:
+    module, storage = server_module
+    source_id = storage.save_source(
+        original_name="算法课程.txt", source_path="/local/算法课程.txt",
+        raw_text="广度优先搜索使用队列逐层访问。",
+    )
+    storage.replace_source_chunks(source_id, [{
+        "chunk_index": 0,
+        "page_number": 2,
+        "content": "广度优先搜索使用队列逐层访问。",
+        "metadata": {},
+    }])
+    artifact_id = storage.save_artifact(
+        source_id=source_id,
+        artifact_type="questions",
+        content=[{
+            "knowledge_point": "广度优先搜索",
+            "question_type": "short_answer",
+            "stem": "请说明 BFS 的执行过程。",
+            "answer": "使用队列逐层访问",
+        }],
+    )
+    storage.record_quiz_attempt(
+        artifact_id=artifact_id, question_index=0, user_answer="使用栈",
+        is_correct=False, score=0, feedback="错误",
+    )
+    wrong_id = storage.list_wrong_questions(source_id=source_id)[0]["wrong_id"]
+    deadline = (datetime.now().astimezone().date() + timedelta(days=7)).isoformat()
+
+    with TestClient(module.app) as client:
+        diagnosed = client.patch(f"/wrongbook/{wrong_id}/diagnosis", json={
+            "error_cause": "expression_gap",
+            "note": "知道队列，但讲不清逐层访问",
+        })
+        assert diagnosed.status_code == 200
+        assert diagnosed.json()["data"]["knowledge_label"] == "广度优先搜索"
+        assert diagnosed.json()["data"]["error_cause_source"] == "user"
+
+        created = client.post("/goals/reverse-plan", json={
+            "title": "讲清 BFS", "goal_type": "exam", "deadline": deadline,
+            "source_id": source_id,
+        }).json()["data"]
+        oral = next(task for task in created["tasks"] if task["task_id"] == "explain-wrong-aloud")
+        assert oral["title"] == "重组表达并完成讲解"
+        assert oral["knowledge_label"] == "广度优先搜索"
+        assert oral["error_cause"] == "expression_gap"
+        assert oral["error_cause_source"] == "user"
+        assert oral["evidence_ref"]["diagnosis_revision"]
+        assert oral["source_evidence"]["status"] == "matched"
+        assert oral["source_evidence"]["page_number"] == 2
+        assert "content" not in oral["source_evidence"]
+        goal_run = storage.get_agent_run(created["last_agent_run_id"])
+        assert goal_run["context_refs"]["knowledge_key"] == oral["knowledge_key"]
+        assert goal_run["context_refs"]["error_cause"] == "expression_gap"
+        assert goal_run["context_refs"]["source_chunk_id"] == oral["source_evidence"]["chunk_id"]
+
+        started = client.post("/interviews", json={
+            "target_role": "讲清 BFS", "scenario": "知识讲解",
+            "source_id": source_id, "focus_wrong_id": wrong_id,
+            "goal_id": created["goal_id"],
+        })
+        assert started.status_code == 200
+        assert "结论、依据、例子" in started.json()["data"]["current_question"]
+        assert started.json()["data"]["source_context"]["source_evidence"] == oral["source_evidence"]
+        interview_run = storage.get_agent_run(started.json()["data"]["agent_run_id"])
+        assert interview_run["context_refs"]["knowledge_key"] == oral["knowledge_key"]
+        assert interview_run["context_refs"]["error_cause"] == "expression_gap"
+        assert interview_run["context_refs"]["source_chunk_id"] == oral["source_evidence"]["chunk_id"]
+        assert interview_run["steps"][0]["input_refs"]["source_chunk_id"] == oral["source_evidence"]["chunk_id"]
+        restored = client.get(
+            f"/interviews/{started.json()['data']['interview_id']}"
+        ).json()["data"]
+        assert restored["source_context"]["source_evidence"] == oral["source_evidence"]
+
+        rediagnosed = client.patch(f"/wrongbook/{wrong_id}/diagnosis", json={
+            "error_cause": "reasoning_break", "note": "遍历顺序推理断了",
+        })
+        assert rediagnosed.status_code == 200
+        listed = client.get("/goals").json()["data"][0]
+        stale = next(task for task in listed["tasks"] if task["task_id"] == "explain-wrong-aloud")
+        assert stale["status"] == "invalidated"
+        assert "错因诊断已更新" in stale["invalidated_reason"]
+
+        replanned = client.post(f"/goals/{created['goal_id']}/replan").json()["data"]
+        fresh = next(task for task in replanned["tasks"] if task["task_id"] == "explain-wrong-aloud")
+        assert fresh["title"] == "分步讲清推理链"
+        assert fresh["status"] == "pending"
+        assert client.patch(f"/wrongbook/{wrong_id}/diagnosis", json={
+            "error_cause": "unsupported", "note": "",
+        }).status_code == 422
+
+
+def test_oral_training_does_not_invent_source_evidence(
+    server_module: tuple[ModuleType, SQLiteStorage],
+) -> None:
+    module, storage = server_module
+    source_id = storage.save_source(
+        original_name="离散数学.txt", source_path="/local/离散数学.txt",
+        raw_text="集合与命题逻辑课程资料。",
+    )
+    storage.replace_source_chunks(source_id, [{
+        "chunk_index": 0,
+        "page_number": 1,
+        "content": "集合的交集与并集运算。",
+        "metadata": {},
+    }])
+    artifact_id = storage.save_artifact(
+        source_id=source_id,
+        artifact_type="questions",
+        content=[{
+            "knowledge_point": "最短路径",
+            "stem": "Dijkstra 算法如何选择下一个节点？",
+            "answer": "选择当前距离最小的未访问节点",
+        }],
+    )
+    storage.record_quiz_attempt(
+        artifact_id=artifact_id, question_index=0, user_answer="随机选择",
+        is_correct=False, score=0, feedback="错误",
+    )
+    deadline = (datetime.now().astimezone().date() + timedelta(days=7)).isoformat()
+
+    with TestClient(module.app) as client:
+        created = client.post("/goals/reverse-plan", json={
+            "title": "掌握最短路径", "goal_type": "exam",
+            "deadline": deadline, "source_id": source_id,
+        }).json()["data"]
+        oral = next(
+            task for task in created["tasks"]
+            if task["task_id"] == "explain-wrong-aloud"
+        )
+        assert oral["source_evidence"]["status"] == "unavailable"
+        assert "chunk_id" not in oral["source_evidence"]
+        assert "人工核对" in oral["source_evidence"]["reason"]
+        run = storage.get_agent_run(created["last_agent_run_id"])
+        assert run["context_refs"]["source_chunk_id"] is None
+
+        artifact = storage.get_artifact(created["goal_id"])
+        legacy_content = dict(artifact["content"])
+        legacy_tasks = [dict(task) for task in legacy_content["tasks"]]
+        legacy_oral = next(
+            task for task in legacy_tasks
+            if task["task_id"] == "explain-wrong-aloud"
+        )
+        legacy_oral.pop("source_evidence")
+        legacy_content["tasks"] = legacy_tasks
+        storage.update_artifact(
+            created["goal_id"], title=artifact["title"], content=legacy_content,
+        )
+        listed = client.get("/goals").json()["data"][0]
+        stale = next(
+            task for task in listed["tasks"]
+            if task["task_id"] == "explain-wrong-aloud"
+        )
+        assert stale["status"] == "invalidated"
+        assert "缺少资料片段定位状态" in stale["invalidated_reason"]
+
+
+def test_changed_source_chunk_invalidates_oral_training(
+    server_module: tuple[ModuleType, SQLiteStorage],
+) -> None:
+    module, storage = server_module
+    source_id = storage.save_source(
+        original_name="算法课件.txt", source_path="/local/算法课件.txt",
+        raw_text="广度优先搜索使用队列。",
+    )
+    storage.replace_source_chunks(source_id, [{
+        "chunk_index": 0, "page_number": 3,
+        "content": "广度优先搜索使用队列。", "metadata": {},
+    }])
+    artifact_id = storage.save_artifact(
+        source_id=source_id, artifact_type="questions",
+        content=[{
+            "knowledge_point": "广度优先搜索",
+            "stem": "广度优先搜索使用什么结构？", "answer": "队列",
+        }],
+    )
+    storage.record_quiz_attempt(
+        artifact_id=artifact_id, question_index=0, user_answer="栈",
+        is_correct=False, score=0, feedback="错误",
+    )
+    deadline = (datetime.now().astimezone().date() + timedelta(days=7)).isoformat()
+
+    with TestClient(module.app) as client:
+        goal = client.post("/goals/reverse-plan", json={
+            "title": "掌握图搜索", "goal_type": "exam",
+            "deadline": deadline, "source_id": source_id,
+        }).json()["data"]
+        oral = next(
+            task for task in goal["tasks"]
+            if task["task_id"] == "explain-wrong-aloud"
+        )
+        assert oral["source_evidence"]["status"] == "matched"
+
+        storage.replace_source_chunks(source_id, [{
+            "chunk_index": 0, "page_number": 4,
+            "content": "广度优先搜索按层访问节点。", "metadata": {},
+        }])
+        listed = client.get("/goals").json()["data"][0]
+        stale = next(
+            task for task in listed["tasks"]
+            if task["task_id"] == "explain-wrong-aloud"
+        )
+        assert stale["status"] == "invalidated"
+        assert "资料片段已变化" in stale["invalidated_reason"]
+
+
 def test_workspace_import_is_local_and_deduplicated(server_module, monkeypatch):
     module, storage = server_module
     import filemate.llm_client as llm
@@ -1116,6 +1529,85 @@ def test_today_review_combines_plan_and_wrong_question(
     assert after_review["pending_wrong_count"] == 0
 
 
+def test_daily_coach_budget_order_and_diagnosis_persist(
+    server_module: tuple[ModuleType, SQLiteStorage],
+) -> None:
+    module, storage = server_module
+    source_id = storage.save_source(
+        original_name="算法课.txt", source_path="/tmp/算法课.txt",
+    )
+    plan_artifact_id = storage.save_artifact(
+        source_id=source_id, artifact_type="study_plan", content={"title": "算法复习"},
+    )
+    storage.create_study_plan(
+        artifact_id=plan_artifact_id, source_id=source_id,
+        plan={
+            "title": "算法复习", "exam_date": "2099-12-31",
+            "daily_minutes": 45, "goal": "完成算法复习",
+            "daily_plan": [{
+                "date": datetime.now().astimezone().date().isoformat(),
+                "focus": "图算法", "tasks": ["阅读原资料"],
+                "duration_minutes": 45,
+            }],
+        },
+    )
+    artifact_id = storage.save_artifact(
+        source_id=source_id, artifact_type="questions",
+        content=[
+            {"stem": "队列有什么特点？", "answer": "先进先出"},
+            {"stem": "BFS 如何遍历？", "answer": "逐层遍历"},
+        ],
+    )
+    for question_index in (0, 1, 1):
+        storage.record_quiz_attempt(
+            artifact_id=artifact_id, question_index=question_index,
+            user_answer="错误", is_correct=False, score=0, feedback="错误",
+        )
+    wrongs = storage.list_wrong_questions(source_id=source_id)
+    first_id = next(item["wrong_id"] for item in wrongs if item["question_index"] == 0)
+    second_id = next(item["wrong_id"] for item in wrongs if item["question_index"] == 1)
+
+    with TestClient(module.app) as client:
+        diagnosed = client.patch(f"/wrongbook/{second_id}/diagnosis", json={
+            "error_cause": "reasoning_break", "note": "步骤不清",
+        })
+        assert diagnosed.status_code == 200
+        initial = client.get("/review/today").json()["data"]
+        assert initial["available_minutes"] == 60
+        assert initial["recommended_minutes"] <= 60
+        second = next(item for item in initial["items"] if item.get("wrong_id") == second_id)
+        assert second["duration_minutes"] == 15
+        assert "已确认错因：推理断点" in second["reason"]
+
+        reordered = client.put("/review/today/preferences", json={
+            "available_minutes": 30,
+            "item_order": [f"wrong:{first_id}", f"wrong:{second_id}"],
+        })
+        assert reordered.status_code == 200
+        queue = reordered.json()["data"]
+        assert [item["wrong_id"] for item in queue["items"]] == [first_id, second_id]
+        assert queue["recommended_minutes"] == 25
+        assert queue["deferred_count"] == 1
+        assert storage.get_daily_coach_preferences(queue["date"])["item_order"] == [
+            f"wrong:{first_id}", f"wrong:{second_id}",
+        ]
+        assert client.get("/review/today").json()["data"]["available_minutes"] == 30
+
+        shortened = client.put("/review/today/preferences", json={
+            "available_minutes": 10,
+            "item_order": [f"wrong:{first_id}", f"wrong:{second_id}"],
+        }).json()["data"]
+        assert [item["wrong_id"] for item in shortened["items"]] == [first_id]
+        assert shortened["recommended_minutes"] == 10
+        assert client.put("/review/today/preferences", json={
+            "available_minutes": 5, "item_order": [],
+        }).status_code == 422
+        assert client.put("/review/today/preferences", json={
+            "available_minutes": 30,
+            "item_order": [f"wrong:{first_id}", f"wrong:{first_id}"],
+        }).status_code == 422
+
+
 def test_mock_interview_progresses_and_persists(
     server_module: tuple[ModuleType, SQLiteStorage],
 ) -> None:
@@ -1952,3 +2444,89 @@ def test_run_server_rejects_invalid_port(
 
     with pytest.raises(ValueError, match="FILEMATE_PORT"):
         module.run_server()
+
+
+@pytest.mark.parametrize("suffix", ["md", "markdown", "c", "cpp", "h", "hpp", "py", "java", "js", "ts"])
+def test_learning_text_import_keeps_original_citations_and_context(
+    server_module: tuple[ModuleType, SQLiteStorage],
+    monkeypatch: pytest.MonkeyPatch,
+    suffix: str,
+) -> None:
+    """文本学习资料复用存储/引用链，不调用模型或执行源码。"""
+    module, storage = server_module
+    import filemate.llm_client as llm
+
+    def unexpected(*args: Any, **kwargs: Any) -> None:
+        pytest.fail("本地文本导入不能调用模型")
+
+    monkeypatch.setattr(llm.LLMClient, "call", unexpected)
+    name = f"原创-栈笔记.{suffix.upper()}"
+    text = f"# 栈与队列 {suffix}\n```cpp\npush(value); // 入栈\n```\n栈遵循后进先出。"
+    with TestClient(module.app) as client:
+        response = client.post("/knowledge/import", files={"file": (name, text.encode("utf-8"))})
+        assert response.status_code == 200
+        source = response.json()["data"]
+        assert source["original_name"] == name
+        assert source["raw_text"] == text
+        assert "source_path" not in source
+        source_id = source["source_id"]
+        results = client.get("/knowledge/search", params={"q": "栈", "source_id": source_id}).json()["data"]
+        assert results and all(result["source_id"] == source_id for result in results)
+        assert "push(value)" in results[0]["excerpt"]
+        context = client.post(f"/knowledge/sources/{source_id}/contexts").json()["data"]
+        assert context["source_id"] == source_id
+        assert context["context_text"] == text
+        assert storage.list_artifacts() == []
+        repeated = client.post("/knowledge/import", files={"file": (name, text.encode("utf-8"))})
+        assert repeated.json()["data"]["source_id"] == source_id
+        assert len(storage.list_sources()) == 1
+
+
+@pytest.mark.parametrize("name,payload", [("错误编码.md", b"\xff\xfe\x00"), ("空白.cpp", b" \n\t")])
+def test_invalid_learning_text_is_rejected_and_upload_removed(
+    server_module: tuple[ModuleType, SQLiteStorage], name: str, payload: bytes,
+) -> None:
+    """解析失败或空白正文不留下资料和托管副本。"""
+    module, storage = server_module
+    with TestClient(module.app) as client:
+        response = client.post("/knowledge/import", files={"file": (name, payload)})
+        assert response.status_code == 422
+        assert storage.list_sources() == []
+        assert not list(module.UPLOAD_ROOT.rglob(name))
+
+
+@pytest.mark.parametrize("name", ["run.exe", "script.ps1", "page.html", "bundle.zip"])
+def test_learning_text_extension_allowlist_rejects_other_uploads(
+    server_module: tuple[ModuleType, SQLiteStorage], name: str,
+) -> None:
+    """学习资料扩展不接受程序包、脚本或网页文件。"""
+    module, storage = server_module
+    with TestClient(module.app) as client:
+        response = client.post("/knowledge/import", files={"file": (name, b"text")})
+        assert response.status_code == 400
+        assert storage.list_sources() == []
+        assert not module.UPLOAD_ROOT.exists()
+
+
+def test_python_learning_source_is_never_executed(
+    server_module: tuple[ModuleType, SQLiteStorage], tmp_path: Path,
+) -> None:
+    """Python资料仅保存原文，不产生源码中的文件副作用。"""
+    module, _ = server_module
+    marker = tmp_path / "must-not-exist.txt"
+    code = f"from pathlib import Path\nPath({str(marker)!r}).write_text('executed')\n"
+    with TestClient(module.app) as client:
+        response = client.post("/knowledge/import", files={"file": ("学习代码.py", code.encode())})
+        assert response.status_code == 200
+        assert response.json()["data"]["raw_text"] == code
+    assert not marker.exists()
+
+
+def test_classification_upload_contract_keeps_existing_formats(
+    server_module: tuple[ModuleType, SQLiteStorage],
+) -> None:
+    """代码学习入口扩展不会改变文件分类的上传合同。"""
+    module, _ = server_module
+    with TestClient(module.app) as client:
+        response = client.post("/process", files={"file": ("笔记.md", b"# notes")})
+        assert response.status_code == 400

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import sqlite3
 import threading
 import uuid
@@ -15,6 +16,10 @@ from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+class QuestionRevisionConflict(ValueError):
+    """拒绝把过期题目上的判题结果写入新题目。"""
 
 # ──────────────────────────────────────────────
 #  Schema（与 项目总纲 §3.6 保持一致）
@@ -400,6 +405,161 @@ ALTER TABLE interview_turns ADD COLUMN scoring_mode TEXT NOT NULL DEFAULT 'unkno
 ALTER TABLE interview_turns ADD COLUMN scoring_version TEXT NOT NULL DEFAULT 'legacy';
 """
 
+_WRONG_DIAGNOSIS_SCHEMA = """\
+ALTER TABLE wrong_questions ADD COLUMN knowledge_key TEXT NOT NULL DEFAULT '';
+ALTER TABLE wrong_questions ADD COLUMN knowledge_label TEXT NOT NULL DEFAULT '';
+ALTER TABLE wrong_questions ADD COLUMN error_cause TEXT NOT NULL DEFAULT 'unconfirmed';
+ALTER TABLE wrong_questions ADD COLUMN error_cause_source TEXT NOT NULL DEFAULT 'unconfirmed';
+ALTER TABLE wrong_questions ADD COLUMN error_cause_confidence REAL NOT NULL DEFAULT 0;
+ALTER TABLE wrong_questions ADD COLUMN error_cause_note TEXT NOT NULL DEFAULT '';
+ALTER TABLE wrong_questions ADD COLUMN diagnosed_at TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_wrong_knowledge
+    ON wrong_questions(source_id, knowledge_key, mastered);
+"""
+
+_DIGITAL_HUMAN_SCHEMA = """\
+CREATE TABLE IF NOT EXISTS digital_human_playbacks (
+    playback_id TEXT PRIMARY KEY,
+    context_id TEXT,
+    message_index INTEGER,
+    text_length INTEGER NOT NULL CHECK(text_length BETWEEN 1 AND 5000),
+    avatar_id TEXT NOT NULL,
+    voice_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    module_version TEXT NOT NULL DEFAULT '2.1',
+    status TEXT NOT NULL CHECK(status IN ('started','completed','stopped','failed')),
+    error_code TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_digital_human_playbacks_time
+    ON digital_human_playbacks(created_at DESC);
+"""
+
+_KNOWLEDGE_GRAPH_SCHEMA = """\
+CREATE TABLE IF NOT EXISTS knowledge_graph_batches (
+    batch_id TEXT PRIMARY KEY,
+    source_id TEXT NOT NULL REFERENCES sources(source_id) ON DELETE CASCADE,
+    source_revision TEXT NOT NULL,
+    mode TEXT NOT NULL CHECK(mode IN ('local','llm')),
+    status TEXT NOT NULL CHECK(status IN ('draft','confirmed','undone','failed')),
+    payload TEXT NOT NULL,
+    error_code TEXT NOT NULL DEFAULT '',
+    module_version TEXT NOT NULL DEFAULT '2.2',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_graph_batches_source
+    ON knowledge_graph_batches(source_id, created_at DESC);
+"""
+
+_DAILY_COACH_SCHEMA = """\
+CREATE TABLE IF NOT EXISTS daily_coach_preferences (
+    study_date TEXT PRIMARY KEY,
+    available_minutes INTEGER NOT NULL CHECK(available_minutes BETWEEN 10 AND 240),
+    item_order TEXT NOT NULL DEFAULT '[]',
+    updated_at TEXT NOT NULL
+);
+"""
+
+_EXPRESSION_CYCLE_SCHEMA = """\
+ALTER TABLE interview_sessions
+    ADD COLUMN expression_review TEXT NOT NULL DEFAULT '{}';
+"""
+
+_GRAPH_EVENTS_SCHEMA = """\
+CREATE TABLE IF NOT EXISTS knowledge_graph_events (
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_id TEXT NOT NULL REFERENCES sources(source_id) ON DELETE CASCADE,
+    target_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT '{}',
+    module_version TEXT NOT NULL DEFAULT '2.2',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_graph_events_source
+    ON knowledge_graph_events(source_id, event_id DESC);
+"""
+
+_PROGRAMMING_SCHEMA = """\
+CREATE TABLE IF NOT EXISTS coding_submissions (
+    submission_id TEXT PRIMARY KEY,
+    request_key TEXT NOT NULL UNIQUE,
+    problem_id TEXT NOT NULL,
+    problem_version INTEGER NOT NULL,
+    artifact_id TEXT NOT NULL UNIQUE REFERENCES artifacts(artifact_id) ON DELETE CASCADE,
+    status TEXT NOT NULL CHECK(status IN ('queued','running','completed','cancelled','failed')),
+    active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_coding_problem ON coding_submissions(problem_id, created_at);
+CREATE TABLE IF NOT EXISTS coding_events (
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    submission_id TEXT REFERENCES coding_submissions(submission_id) ON DELETE CASCADE,
+    action TEXT NOT NULL,
+    details TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+"""
+
+
+_INTERVIEW_REVIEW_SCHEMA = """\
+ALTER TABLE interview_turns ADD COLUMN visual_metrics TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE interview_turns ADD COLUMN content_analysis TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE interview_turns ADD COLUMN answer_key TEXT;
+ALTER TABLE interview_turns ADD COLUMN answer_digest TEXT;
+CREATE UNIQUE INDEX idx_interview_answer_key
+    ON interview_turns(interview_id, answer_key) WHERE answer_key IS NOT NULL;
+CREATE TABLE interview_review_state (
+    interview_id TEXT PRIMARY KEY REFERENCES interview_sessions(interview_id) ON DELETE CASCADE,
+    revision INTEGER NOT NULL DEFAULT 0,
+    artifact_id TEXT REFERENCES artifacts(artifact_id) ON DELETE SET NULL,
+    input_digest TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE interview_review_events (
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    interview_id TEXT,
+    action TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX idx_interview_review_events ON interview_review_events(interview_id, event_id DESC);
+"""
+
+_CAREER_SCHEMA = """\
+CREATE TABLE career_positions (
+    position_id TEXT PRIMARY KEY,
+    request_key TEXT NOT NULL UNIQUE,
+    payload TEXT NOT NULL,
+    revision INTEGER NOT NULL DEFAULT 1,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE career_trainings (
+    training_id TEXT PRIMARY KEY,
+    position_id TEXT NOT NULL REFERENCES career_positions(position_id) ON DELETE CASCADE,
+    request_key TEXT NOT NULL UNIQUE,
+    kind TEXT NOT NULL,
+    artifact_id TEXT NOT NULL REFERENCES artifacts(artifact_id) ON DELETE CASCADE,
+    interview_id TEXT REFERENCES interview_sessions(interview_id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE career_events (
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    position_id TEXT,
+    training_id TEXT,
+    action TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX idx_career_trainings ON career_trainings(position_id, created_at DESC);
+CREATE INDEX idx_career_events ON career_events(position_id, event_id DESC);
+"""
+
 _MIGRATIONS = (
     (1, "initial_execution_schema", _SCHEMA),
     (2, "knowledge_persistence", _KNOWLEDGE_SCHEMA),
@@ -414,6 +574,15 @@ _MIGRATIONS = (
     (13, "interview_fluency_metrics", _INTERVIEW_FLUENCY_SCHEMA),
     (14, "trusted_agent_memory_and_rights", _TRUSTED_AGENT_SCHEMA),
     (15, "interview_scoring_provenance", _INTERVIEW_SCORING_SCHEMA),
+    (16, "wrong_question_knowledge_and_diagnosis", _WRONG_DIAGNOSIS_SCHEMA),
+    (17, "digital_human_playback_metadata", _DIGITAL_HUMAN_SCHEMA),
+    (18, "personal_knowledge_graph_batches", _KNOWLEDGE_GRAPH_SCHEMA),
+    (19, "daily_coach_preferences", _DAILY_COACH_SCHEMA),
+    (20, "interview_expression_review", _EXPRESSION_CYCLE_SCHEMA),
+    (21, "knowledge_graph_operation_events", _GRAPH_EVENTS_SCHEMA),
+    (22, "isolated_programming_submissions", _PROGRAMMING_SCHEMA),
+    (23, "interview_observation_and_review", _INTERVIEW_REVIEW_SCHEMA),
+    (24, "career_training_center", _CAREER_SCHEMA),
 )
 
 
@@ -440,6 +609,63 @@ _INTERVIEW_DIFFICULTIES = {"入门", "标准", "压力面"}
 def _now_iso() -> str:
     """生成带时区的 UTC 时间。"""
     return datetime.now(tz=timezone.utc).isoformat(timespec="seconds")
+
+
+_ERROR_CAUSES = {
+    "unconfirmed",
+    "concept_gap",
+    "memory_gap",
+    "reasoning_break",
+    "expression_gap",
+    "option_confusion",
+    "careless",
+}
+
+
+def _knowledge_identity(
+    question: dict[str, Any],
+    *,
+    source_id: str | None,
+    artifact_id: str,
+) -> tuple[str, str]:
+    """从持久化题目生成资料范围内稳定的知识点标识。"""
+    label = str(
+        question.get("knowledge_point")
+        or question.get("subject")
+        or question.get("stem")
+        or question.get("question")
+        or "未标注知识点"
+    ).strip()[:120]
+    normalized = "".join(
+        character.lower()
+        for character in label
+        if character.isalnum() or character in {"+", "#"}
+    )
+    identity_scope = source_id or artifact_id
+    key = uuid.uuid5(
+        uuid.NAMESPACE_URL,
+        f"filemate:{identity_scope}:knowledge:{normalized or 'unlabeled'}",
+    ).hex
+    return key, label
+
+
+def _suggest_error_cause(
+    question: dict[str, Any], user_answer: str,
+) -> tuple[str, float]:
+    """用保守本地规则给出可被用户修正的错因建议。"""
+    answer = user_answer.strip().lower()
+    if not answer or answer in {"不知道", "不会", "不清楚", "忘了", "不确定"}:
+        return "concept_gap", 0.55
+    question_type = str(
+        question.get("question_type") or question.get("type") or ""
+    ).lower()
+    if question_type in {"choice", "选择题", "单选题", "多选题"}:
+        return "option_confusion", 0.45
+    if question_type in {"fill", "填空题"}:
+        return "memory_gap", 0.4
+    if question_type in {"short_answer", "简答题", "计算题", "论述题"}:
+        return "reasoning_break", 0.35
+    return "unconfirmed", 0.0
 
 
 class SQLiteStorage:
@@ -1096,6 +1322,13 @@ class SQLiteStorage:
             "study_plans": conn.execute(
                 "SELECT COUNT(*) FROM study_plans WHERE source_id=?", (source_id,)
             ).fetchone()[0],
+            "knowledge_graph_batches": conn.execute(
+                "SELECT COUNT(*) FROM knowledge_graph_batches WHERE source_id=?",
+                (source_id,),
+            ).fetchone()[0],
+            "knowledge_graph_events": conn.execute(
+                "SELECT COUNT(*) FROM knowledge_graph_events WHERE source_id=?", (source_id,),
+            ).fetchone()[0],
         }
         return {
             "source_id": source_id,
@@ -1145,6 +1378,13 @@ class SQLiteStorage:
         artifact_id = artifact_id or uuid.uuid4().hex
         now = _now_iso()
         with self._write_lock:
+            existing = self.get_artifact(artifact_id)
+            if existing and isinstance(existing.get("metadata"), dict) and existing["metadata"].get("read_only_snapshot"):
+                raise ValueError("历史题集是只读证据，不能修改")
+            if existing and existing["artifact_type"] == "questions" and (
+                artifact_type != "questions" or existing["content"] != content
+            ):
+                raise ValueError("题集正文请通过 update_artifact 修订以保留学习历史")
             self._conn().execute(
                 """INSERT INTO artifacts
                    (artifact_id, workspace_id, source_id, artifact_type,
@@ -1201,13 +1441,65 @@ class SQLiteStorage:
     ) -> dict[str, Any] | None:
         """更新用户可编辑的学习产物标题与内容。"""
         with self._write_lock:
-            cursor = self._conn().execute(
-                """UPDATE artifacts SET title=?, content=?, updated_at=?
-                   WHERE artifact_id=?""",
-                (title.strip(), self._dump_json(content), _now_iso(), artifact_id),
-            )
-            self._conn().commit()
-        return self.get_artifact(artifact_id) if cursor.rowcount else None
+            connection = self._conn()
+            try:
+                connection.execute("BEGIN IMMEDIATE")
+                artifact = self.get_artifact(artifact_id)
+                if artifact is None:
+                    connection.rollback()
+                    return None
+                metadata = artifact.get("metadata")
+                metadata = dict(metadata) if isinstance(metadata, dict) else {}
+                if metadata.get("read_only_snapshot"):
+                    raise ValueError("历史题集是只读证据，不能修改")
+                if artifact["artifact_type"] == "questions":
+                    # 历史库没有正文修订记录时，冻结原边界，避免标题更新时间改变证据归属。
+                    if "graph_attempt_cutoff" not in metadata and "question_evidence_since" not in metadata:
+                        if artifact["created_at"] == artifact["updated_at"]:
+                            metadata["graph_attempt_cutoff"] = 0
+                        else:
+                            metadata["question_evidence_since"] = artifact["updated_at"]
+                    if artifact["content"] != content:
+                        has_history = connection.execute(
+                            """SELECT EXISTS(SELECT 1 FROM quiz_attempts WHERE artifact_id=?)
+                               OR EXISTS(SELECT 1 FROM wrong_questions WHERE artifact_id=?)""",
+                            (artifact_id, artifact_id),
+                        ).fetchone()[0]
+                        if has_history:
+                            snapshot_id = uuid.uuid4().hex
+                            snapshot_metadata = metadata | {
+                                "read_only_snapshot": True,
+                                "question_revision_parent": artifact_id,
+                                "question_revision_saved_at": _now_iso(),
+                            }
+                            connection.execute(
+                                """INSERT INTO artifacts
+                                   (artifact_id, workspace_id, source_id, artifact_type, title,
+                                    content, metadata, created_at, updated_at)
+                                   VALUES (?, ?, ?, 'questions', ?, ?, ?, ?, ?)""",
+                                (snapshot_id, artifact["workspace_id"], artifact["source_id"],
+                                 f"[历史题集] {artifact['title']}", self._dump_json(artifact["content"]),
+                                 self._dump_json(snapshot_metadata), artifact["created_at"], artifact["updated_at"]),
+                            )
+                            for table in ("quiz_attempts", "wrong_questions"):
+                                connection.execute(
+                                    f"UPDATE {table} SET artifact_id=? WHERE artifact_id=?",
+                                    (snapshot_id, artifact_id),
+                                )
+                        metadata["graph_attempt_cutoff"] = 0
+                        metadata["question_revision"] = uuid.uuid4().hex
+                        metadata.pop("question_evidence_since", None)
+                connection.execute(
+                    """UPDATE artifacts SET title=?, content=?, metadata=?, updated_at=?
+                       WHERE artifact_id=?""",
+                    (title.strip(), self._dump_json(content), self._dump_json(metadata), _now_iso(), artifact_id),
+                )
+                result = self.get_artifact(artifact_id)
+                connection.commit()
+                return result
+            except BaseException:
+                connection.rollback()
+                raise
 
     def list_artifacts(
         self,
@@ -1418,6 +1710,32 @@ class SQLiteStorage:
         ).fetchall()
         return [self._decode_row(row, ("metadata",)) for row in rows]
 
+    def get_source_chunk(self, chunk_id: str) -> dict[str, Any] | None:
+        """按稳定 ID 读取单个资料分块。"""
+        row = self._conn().execute(
+            "SELECT * FROM document_chunks WHERE chunk_id=?",
+            (chunk_id,),
+        ).fetchone()
+        return self._decode_row(row, ("metadata",)) if row else None
+
+    def get_source_revision(self, source_id: str) -> str | None:
+        """返回资料正文与检索分块的稳定内容指纹。"""
+        source = self.get_source(source_id)
+        if source is None:
+            return None
+        import hashlib
+
+        digest = hashlib.sha256()
+        digest.update(str(source.get("raw_text") or "").encode("utf-8"))
+        for chunk in self.list_source_chunks(source_id):
+            digest.update(b"\x00")
+            digest.update(str(chunk["chunk_index"]).encode("utf-8"))
+            digest.update(b"\x00")
+            digest.update(str(chunk.get("page_number") or "").encode("utf-8"))
+            digest.update(b"\x00")
+            digest.update(str(chunk["content"]).encode("utf-8"))
+        return digest.hexdigest()
+
     def record_quiz_attempt(
         self,
         *,
@@ -1427,17 +1745,54 @@ class SQLiteStorage:
         is_correct: bool,
         score: float,
         feedback: str,
+        expected_question: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """记录一次作答，并同步更新错题掌握状态。"""
+        with self._write_lock:
+            connection = self._conn()
+            try:
+                connection.execute("BEGIN IMMEDIATE")
+                result = self._record_quiz_attempt(
+                    artifact_id=artifact_id, question_index=question_index,
+                    user_answer=user_answer, is_correct=is_correct, score=score,
+                    feedback=feedback, expected_question=expected_question,
+                )
+                connection.commit()
+                return result
+            except BaseException:
+                connection.rollback()
+                raise
+
+    def _record_quiz_attempt(
+        self, *, artifact_id: str, question_index: int, user_answer: str,
+        is_correct: bool, score: float, feedback: str,
+        expected_question: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """在写事务内核对题目快照并保存作答与错题。"""
         artifact = self.get_artifact(artifact_id)
         if artifact is None:
             raise ValueError(f"AI 产物不存在: {artifact_id}")
+        if artifact["artifact_type"] != "questions":
+            raise ValueError("该产物不是题目集")
         questions = artifact.get("content")
         if not isinstance(questions, list) or not 0 <= question_index < len(questions):
+            if expected_question is not None:
+                raise QuestionRevisionConflict("题目已更新，请刷新题集后重新作答")
             raise ValueError("题目序号无效")
         question = questions[question_index]
+        if expected_question is not None and question != expected_question:
+            raise QuestionRevisionConflict("题目已更新，请刷新题集后重新作答")
         attempt_id = uuid.uuid4().hex
         now = _now_iso()
+        question_dict = question if isinstance(question, dict) else {}
+        knowledge_key, knowledge_label = _knowledge_identity(
+            question_dict,
+            source_id=artifact.get("source_id"),
+            artifact_id=artifact_id,
+        )
+        error_cause, error_cause_confidence = _suggest_error_cause(
+            question_dict, user_answer,
+        )
         existing_wrong = self._conn().execute(
             """SELECT correct_streak, interval_days, ease_factor, review_count
                FROM wrong_questions WHERE artifact_id=? AND question_index=?""",
@@ -1498,23 +1853,37 @@ class SQLiteStorage:
                     ),
                 )
             else:
-                wrong_id = uuid.uuid5(
-                    uuid.NAMESPACE_URL,
-                    f"filemate:{artifact_id}:wrong:{question_index}",
-                ).hex
+                # 历史错题保留原 ID；新版本首次答错必须拥有新的记录 ID。
+                wrong_id = uuid.uuid4().hex
                 connection.execute(
                     """INSERT INTO wrong_questions
                        (wrong_id, artifact_id, source_id, question_index,
                         question, latest_answer, next_review_at,
-                        interval_days, ease_factor, review_count)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, 0, 2.3, 1)
+                        interval_days, ease_factor, review_count,
+                        knowledge_key, knowledge_label, error_cause,
+                        error_cause_source, error_cause_confidence, diagnosed_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, 0, 2.3, 1, ?, ?, ?, 'rule', ?, ?)
                        ON CONFLICT(artifact_id, question_index) DO UPDATE SET
                            latest_answer=excluded.latest_answer,
                            error_count=wrong_questions.error_count + 1,
                            correct_streak=0, mastered=0, interval_days=0,
                            ease_factor=MAX(1.3, wrong_questions.ease_factor - 0.2),
                            review_count=wrong_questions.review_count + 1,
-                           next_review_at=excluded.next_review_at, updated_at=?""",
+                           next_review_at=excluded.next_review_at,
+                           knowledge_key=CASE WHEN wrong_questions.knowledge_key=''
+                               THEN excluded.knowledge_key ELSE wrong_questions.knowledge_key END,
+                           knowledge_label=CASE WHEN wrong_questions.knowledge_label=''
+                               THEN excluded.knowledge_label ELSE wrong_questions.knowledge_label END,
+                           error_cause=CASE WHEN wrong_questions.error_cause_source='user'
+                               THEN wrong_questions.error_cause ELSE excluded.error_cause END,
+                           error_cause_source=CASE WHEN wrong_questions.error_cause_source='user'
+                               THEN 'user' ELSE 'rule' END,
+                           error_cause_confidence=CASE WHEN wrong_questions.error_cause_source='user'
+                               THEN wrong_questions.error_cause_confidence
+                               ELSE excluded.error_cause_confidence END,
+                           diagnosed_at=CASE WHEN wrong_questions.error_cause_source='user'
+                               THEN wrong_questions.diagnosed_at ELSE excluded.diagnosed_at END,
+                           updated_at=?""",
                     (
                         wrong_id,
                         artifact_id,
@@ -1523,10 +1892,14 @@ class SQLiteStorage:
                         self._dump_json(question),
                         user_answer,
                         now,
+                        knowledge_key,
+                        knowledge_label,
+                        error_cause,
+                        error_cause_confidence,
+                        now,
                         now,
                     ),
                 )
-            connection.commit()
         return {
             "attempt_id": attempt_id,
             "is_correct": is_correct,
@@ -1540,18 +1913,28 @@ class SQLiteStorage:
         *,
         mastered: bool | None = None,
         due_only: bool = False,
+        source_id: str | None = None,
         limit: int = 100,
     ) -> list[dict[str, Any]]:
         """列出待复习或已掌握错题。"""
         query = "SELECT * FROM wrong_questions"
         params: list[Any] = []
+        clauses: list[str] = []
         if mastered is not None:
-            query += " WHERE mastered=?"
+            clauses.append("mastered=?")
             params.append(int(mastered))
+        if source_id is not None:
+            clauses.append("source_id=?")
+            params.append(source_id)
+        if clauses:
+            query += " WHERE " + " AND ".join(clauses)
         query += " ORDER BY next_review_at, updated_at DESC LIMIT ?"
         params.append(max(1, min(limit, 1000)))
         rows = self._conn().execute(query, params).fetchall()
-        decoded = [self._decode_row(row, ("question",)) for row in rows]
+        decoded = [
+            self._enrich_wrong_question(self._decode_row(row, ("question",)))
+            for row in rows
+        ]
         if not due_only:
             return decoded
         now = datetime.now(tz=timezone.utc)
@@ -1567,6 +1950,99 @@ class SQLiteStorage:
                 due.append(item)
         return due
 
+    def get_wrong_question(self, wrong_id: str) -> dict[str, Any] | None:
+        """按记录 ID 读取一条带来源的错题。"""
+        row = self._conn().execute(
+            "SELECT * FROM wrong_questions WHERE wrong_id=?",
+            (wrong_id,),
+        ).fetchone()
+        return self._enrich_wrong_question(
+            self._decode_row(row, ("question",)) if row else None
+        )
+
+    @staticmethod
+    def _enrich_wrong_question(
+        wrong: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        """为旧错题补充只读知识点和未确认诊断默认值。"""
+        if wrong is None:
+            return None
+        if not wrong.get("knowledge_key") or not wrong.get("knowledge_label"):
+            question = wrong.get("question")
+            knowledge_key, knowledge_label = _knowledge_identity(
+                question if isinstance(question, dict) else {},
+                source_id=wrong.get("source_id"),
+                artifact_id=str(wrong["artifact_id"]),
+            )
+            wrong["knowledge_key"] = knowledge_key
+            wrong["knowledge_label"] = knowledge_label
+        wrong.setdefault("error_cause", "unconfirmed")
+        wrong.setdefault("error_cause_source", "unconfirmed")
+        wrong.setdefault("error_cause_confidence", 0.0)
+        wrong.setdefault("error_cause_note", "")
+        wrong.setdefault("diagnosed_at", None)
+        return wrong
+
+    def update_wrong_diagnosis(
+        self,
+        wrong_id: str,
+        *,
+        error_cause: str,
+        note: str = "",
+    ) -> dict[str, Any]:
+        """保存用户确认的错因，并保留同一知识点标识。"""
+        if error_cause not in _ERROR_CAUSES:
+            raise ValueError("错因类型无效")
+        wrong = self.get_wrong_question(wrong_id)
+        if wrong is None:
+            raise ValueError("错题不存在")
+        clean_note = note.strip()
+        if len(clean_note) > 300:
+            raise ValueError("错因备注不能超过 300 字")
+        now = _now_iso()
+        with self._write_lock:
+            self._conn().execute(
+                """UPDATE wrong_questions SET
+                   knowledge_key=?, knowledge_label=?, error_cause=?,
+                   error_cause_source='user', error_cause_confidence=1,
+                   error_cause_note=?, diagnosed_at=?, updated_at=?
+                   WHERE wrong_id=?""",
+                (
+                    wrong["knowledge_key"],
+                    wrong["knowledge_label"],
+                    error_cause,
+                    clean_note,
+                    now,
+                    now,
+                    wrong_id,
+                ),
+            )
+            self._conn().commit()
+        updated = self.get_wrong_question(wrong_id)
+        if updated is None:
+            raise ValueError("错题不存在")
+        return updated
+
+    def get_latest_wrong_attempt(self, wrong_id: str) -> dict[str, Any] | None:
+        """读取一条错题最近一次失败作答的标识和时间。"""
+        wrong = self.get_wrong_question(wrong_id)
+        if wrong is None:
+            return None
+        row = self._conn().execute(
+            """SELECT attempt_id, artifact_id, source_id, question_index, created_at
+               FROM quiz_attempts
+               WHERE artifact_id=? AND question_index=? AND is_correct=0
+               ORDER BY created_at DESC, rowid DESC LIMIT 1""",
+            (wrong["artifact_id"], wrong["question_index"]),
+        ).fetchone()
+        if row is None:
+            return None
+        attempt = dict(row)
+        created_at = str(attempt.get("created_at") or "")
+        if created_at and "+" not in created_at and not created_at.endswith("Z"):
+            attempt["created_at"] = f"{created_at}+00:00"
+        return attempt
+
     def create_interview(
         self,
         *,
@@ -1576,6 +2052,7 @@ class SQLiteStorage:
         questions: list[str],
         question_ids: list[str | None] | None = None,
         agent_run_id: str | None = None,
+        commit: bool = True,
     ) -> dict[str, Any]:
         """创建模拟面试。"""
         if question_ids is not None and len(question_ids) != len(questions):
@@ -1597,7 +2074,12 @@ class SQLiteStorage:
                     agent_run_id,
                 ),
             )
-            self._conn().commit()
+            self._conn().execute(
+                "INSERT INTO interview_review_events(interview_id,action,created_at) VALUES (?, 'created', ?)",
+                (interview_id, _now_iso()),
+            )
+            if commit:
+                self._conn().commit()
         return self.get_interview(interview_id)
 
     def get_interview(self, interview_id: str) -> dict[str, Any] | None:
@@ -1606,7 +2088,9 @@ class SQLiteStorage:
             "SELECT * FROM interview_sessions WHERE interview_id=?",
             (interview_id,),
         ).fetchone()
-        interview = self._decode_row(row, ("questions", "question_ids"))
+        interview = self._decode_row(
+            row, ("questions", "question_ids", "expression_review")
+        )
         if interview is None:
             return None
         question_ids = interview.get("question_ids")
@@ -1623,11 +2107,34 @@ class SQLiteStorage:
             for turn in turns
         ]
         for turn in interview["turns"]:
-            if turn["scoring_mode"] != "llm":
+            content_invalid = False
+            for key in ("visual_metrics", "content_analysis"):
+                try:
+                    decoded = json.loads(turn[key])
+                    if not isinstance(decoded, dict):
+                        raise TypeError("invalid analysis")
+                    if decoded:
+                        from filemate.interview_review.models import (
+                            VisualMetrics,
+                            validate_saved_analysis,
+                        )
+
+                        if key == "visual_metrics":
+                            decoded = VisualMetrics.model_validate(decoded).model_dump()
+                        else:
+                            decoded = validate_saved_analysis(decoded, turn["answer"])
+                    turn[key] = decoded
+                except (ValueError, TypeError):
+                    turn[key] = {}
+                    turn["analysis_data_error"] = True
+                    content_invalid = content_invalid or key == "content_analysis"
+            if content_invalid:
+                turn["feedback"] = "部分内容分析数据异常，内容质量待评估；原回答与有效采集证据保留。"
+            if turn["scoring_mode"] != "llm" or content_invalid:
                 turn["score"] = None
                 turn["dimensions"] = {
                     key: value for key, value in turn["dimensions"].items()
-                    if key == "流畅性" and turn["scoring_mode"] == "local_fallback"
+                    if key == "流畅性" and turn["scoring_mode"] == "local_fallback" and not content_invalid
                 }
         assessed = [t["score"] for t in interview["turns"] if t["score"] is not None]
         interview["assessed_turn_count"] = len(assessed)
@@ -1647,6 +2154,12 @@ class SQLiteStorage:
         fluency_metrics: dict[str, Any] | None = None,
         scoring_mode: str = "unknown",
         scoring_version: str = "v2",
+        next_question: str | None = None,
+        expression_review: dict[str, Any] | None = None,
+        visual_metrics: dict[str, Any] | None = None,
+        content_analysis: dict[str, Any] | None = None,
+        answer_key: str | None = None,
+        answer_digest: str | None = None,
     ) -> dict[str, Any]:
         """保存单轮面试评分并推进进度。"""
         if scoring_mode not in {"llm", "local_fallback", "unknown"}:
@@ -1655,6 +2168,15 @@ class SQLiteStorage:
             raise ValueError("模型评分不能为空")
         with self._write_lock:
             connection = self._conn()
+            if answer_key:
+                previous = connection.execute(
+                    "SELECT answer_digest FROM interview_turns WHERE interview_id=? AND answer_key=?",
+                    (interview_id, answer_key),
+                ).fetchone()
+                if previous:
+                    if previous["answer_digest"] != answer_digest:
+                        raise ValueError("重复请求键的回答内容不同")
+                    return self.get_interview(interview_id)
             interview = self.get_interview(interview_id)
             if interview is None:
                 raise ValueError("模拟面试不存在")
@@ -1664,6 +2186,13 @@ class SQLiteStorage:
                 raise ValueError("面试进度已更新，请刷新后继续")
             next_index = question_index + 1
             completed = next_index >= len(interview["questions"])
+            if next_question is not None and completed:
+                raise ValueError("面试已到最后一题")
+            if expression_review is not None and not completed:
+                raise ValueError("只能在最后一题保存表达回看")
+            questions = list(interview["questions"])
+            if next_question is not None:
+                questions[next_index] = next_question
             scores = [
                 float(turn["score"])
                 for turn in interview["turns"]
@@ -1675,25 +2204,41 @@ class SQLiteStorage:
             connection.execute(
                 """INSERT INTO interview_turns
                    (turn_id, interview_id, question_index, question, answer,
-                    score, dimensions, feedback, fluency_metrics, scoring_mode, scoring_version)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    score, dimensions, feedback, fluency_metrics, scoring_mode, scoring_version,
+                    visual_metrics, content_analysis, answer_key, answer_digest)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     turn_id, interview_id, question_index, question, answer,
                     score if scoring_mode == "llm" else 0, self._dump_json(dimensions), feedback,
                     self._dump_json(fluency_metrics or {}),
                     scoring_mode, scoring_version,
+                    self._dump_json(visual_metrics or {}),
+                    self._dump_json(content_analysis or {}), answer_key, answer_digest,
                 ),
             )
             connection.execute(
                 """UPDATE interview_sessions SET current_index=?, status=?,
-                   overall_score=?, updated_at=? WHERE interview_id=?""",
+                   overall_score=?, questions=?, expression_review=?,
+                   updated_at=? WHERE interview_id=?""",
                 (
                     next_index,
                     "completed" if completed else "active",
                     round(sum(scores) / len(scores), 2) if scores else 0,
+                    self._dump_json(questions),
+                    self._dump_json(expression_review or interview["expression_review"]),
                     _now_iso(),
                     interview_id,
                 ),
+            )
+            connection.execute(
+                "INSERT INTO interview_review_state (interview_id, revision) VALUES (?, 1) "
+                "ON CONFLICT(interview_id) DO UPDATE SET revision=revision+1, input_digest=''",
+                (interview_id,),
+            )
+            connection.execute(
+                "INSERT INTO interview_review_events (interview_id,action,detail,created_at) "
+                "VALUES (?, 'answer', ?, ?)",
+                (interview_id, self._dump_json({"question_index": question_index}), _now_iso()),
             )
             connection.commit()
         return self.get_interview(interview_id)
@@ -1946,6 +2491,47 @@ class SQLiteStorage:
             for row in rows
         ]
 
+    def get_daily_coach_preferences(self, study_date: str) -> dict[str, Any]:
+        """读取某日的时间预算与用户排序。"""
+        row = self._conn().execute(
+            "SELECT * FROM daily_coach_preferences WHERE study_date=?",
+            (study_date,),
+        ).fetchone()
+        if row is None:
+            return {
+                "study_date": study_date,
+                "available_minutes": 60,
+                "item_order": [],
+                "updated_at": None,
+            }
+        return self._decode_row(row, ("item_order",))
+
+    def set_daily_coach_preferences(
+        self,
+        study_date: str,
+        *,
+        available_minutes: int,
+        item_order: list[str],
+    ) -> dict[str, Any]:
+        """保存某日的时间预算与用户排序。"""
+        if not 10 <= available_minutes <= 240:
+            raise ValueError("每日可用时长须在 10 至 240 分钟之间")
+        if len(item_order) > 50 or len(set(item_order)) != len(item_order):
+            raise ValueError("任务顺序无效")
+        with self._write_lock:
+            self._conn().execute(
+                """INSERT INTO daily_coach_preferences
+                   (study_date, available_minutes, item_order, updated_at)
+                   VALUES (?, ?, ?, ?)
+                   ON CONFLICT(study_date) DO UPDATE SET
+                       available_minutes=excluded.available_minutes,
+                       item_order=excluded.item_order,
+                       updated_at=excluded.updated_at""",
+                (study_date, available_minutes, self._dump_json(item_order), _now_iso()),
+            )
+            self._conn().commit()
+        return self.get_daily_coach_preferences(study_date)
+
     def set_study_plan_day(
         self,
         plan_id: str,
@@ -1957,6 +2543,8 @@ class SQLiteStorage:
             plan = self.get_study_plan(plan_id)
             if plan is None:
                 raise ValueError("学习计划不存在")
+            if plan["status"] == "archived":
+                raise ValueError("学习计划已撤销，请先恢复后再更新进度")
             days = plan["plan_data"].get("daily_plan", [])
             if not 0 <= day_index < len(days):
                 raise ValueError("学习日序号无效")
@@ -2091,6 +2679,7 @@ class SQLiteStorage:
         goal: str,
         selected_agents: list[str],
         context_refs: dict[str, Any] | None = None,
+        commit: bool = True,
     ) -> dict[str, Any]:
         """创建一条可审计的 Agent 协作运行记录。"""
         if not task_type.strip() or not goal.strip():
@@ -2110,7 +2699,8 @@ class SQLiteStorage:
                     self._dump_json(context_refs or {}),
                 ),
             )
-            connection.commit()
+            if commit:
+                connection.commit()
         result = self.get_agent_run(run_id)
         if result is None:
             raise RuntimeError("Agent 运行记录创建失败")
@@ -2413,13 +3003,36 @@ class SQLiteStorage:
                 scoped(query, interview=key == "interview_count"), params
             ).fetchone()[0]) for key, query in scalar_queries.items()
         }
-        assessed_query = (
-            "SELECT AVG(t.score) AS score FROM interview_turns t "
-            "WHERE t.scoring_mode='llm' AND t.interview_id IN ("
-            + scoped("SELECT interview_id FROM interview_sessions", interview=True)
-            + ") GROUP BY t.interview_id"
-        )
-        assessed_scores = [float(row["score"]) for row in connection.execute(assessed_query, params)]
+        checked_interviews = []
+        unreadable_interviews = 0
+        for row in connection.execute(
+            scoped("SELECT interview_id FROM interview_sessions", interview=True), params
+        ):
+            try:
+                interview = self.get_interview(row["interview_id"])
+            except (ValueError, TypeError, AttributeError):
+                unreadable_interviews += 1
+                continue
+            if interview:
+                checked_interviews.append(interview)
+
+        def valid_score(value: Any) -> bool:
+            return (not isinstance(value, bool) and isinstance(value, (int, float))
+                    and math.isfinite(value) and 0 <= value <= 100)
+
+        for interview in checked_interviews:
+            for turn in interview["turns"]:
+                if not isinstance(turn["dimensions"], dict):
+                    turn["analysis_data_error"] = True
+                    turn["score"] = None
+                    turn["dimensions"] = {}
+            scores = [turn["score"] for turn in interview["turns"] if valid_score(turn["score"])]
+            interview["overall_score"] = round(sum(scores) / len(scores), 2) if scores else None
+
+        assessed_scores = [
+            interview["overall_score"] for interview in checked_interviews
+            if valid_score(interview["overall_score"])
+        ]
         result["assessed_interview_count"] = len(assessed_scores)
         result["average_interview_score"] = (
             round(sum(assessed_scores) / len(assessed_scores), 2) if assessed_scores else None
@@ -2436,8 +3049,10 @@ class SQLiteStorage:
                 completed_days = json.loads(row["completed_days"])
             except (TypeError, json.JSONDecodeError):
                 continue
-            total_study_days += len(plan_data.get("daily_plan", []))
-            completed_study_days += len(completed_days)
+            if (isinstance(plan_data, dict) and isinstance(plan_data.get("daily_plan"), list)
+                    and isinstance(completed_days, list)):
+                total_study_days += len(plan_data["daily_plan"])
+                completed_study_days += len(completed_days)
         result["total_study_days"] = total_study_days
         result["completed_study_days"] = completed_study_days
         result["study_completion_rate"] = round(
@@ -2448,20 +3063,15 @@ class SQLiteStorage:
 
         dimension_totals: dict[str, float] = {}
         dimension_counts: dict[str, int] = {}
-        rows = connection.execute(
-            "SELECT dimensions FROM interview_turns WHERE scoring_mode='llm' "
-            "AND interview_id IN ("
-            + scoped("SELECT interview_id FROM interview_sessions", interview=True) + ")",
-            params,
-        ).fetchall()
-        for row in rows:
-            try:
-                dimensions = json.loads(row["dimensions"])
-            except (TypeError, json.JSONDecodeError):
-                continue
-            for name, score in dimensions.items():
-                dimension_totals[name] = dimension_totals.get(name, 0.0) + float(score)
-                dimension_counts[name] = dimension_counts.get(name, 0) + 1
+        for interview in checked_interviews:
+            for turn in interview["turns"]:
+                if not valid_score(turn["score"]) or not isinstance(turn["dimensions"], dict):
+                    continue
+                for name, score in turn["dimensions"].items():
+                    if not valid_score(score):
+                        continue
+                    dimension_totals[name] = dimension_totals.get(name, 0.0) + float(score)
+                    dimension_counts[name] = dimension_counts.get(name, 0) + 1
         result["interview_dimensions"] = {
             name: round(total / dimension_counts[name], 2)
             for name, total in dimension_totals.items()
@@ -2473,10 +3083,28 @@ class SQLiteStorage:
         ).fetchall()
         fields = ("interview_id", "target_role", "scenario", "status", "current_index",
                   "overall_score", "created_at", "assessed_turn_count")
+        by_id = {item["interview_id"]: item for item in checked_interviews}
         result["recent_interviews"] = [
-            {key: interview[key] for key in fields}
-            for row in recent_rows if (interview := self.get_interview(row["interview_id"]))
+            {key: (interview[key] if key != "overall_score" or valid_score(interview[key]) else None)
+             for key in fields}
+            for row in recent_rows if (interview := by_id.get(row["interview_id"]))
         ]
+        from filemate.study.evidence_profile import build_evidence_profile
+
+        result["evidence_profile"] = build_evidence_profile(
+            attempts=[dict(row) for row in connection.execute(
+                scoped("SELECT attempt_id, artifact_id, source_id, question_index, is_correct, score, created_at FROM quiz_attempts"), params)],
+            wrongs=[dict(row) for row in connection.execute(
+                scoped("SELECT wrong_id, artifact_id, source_id, question_index, mastered, updated_at FROM wrong_questions"), params)],
+            plans=[dict(row) for row in connection.execute(
+                scoped("SELECT plan_id, status, plan_data, completed_days, updated_at FROM study_plans"), params)],
+            interviews=checked_interviews, source_id=source_id,
+        )
+        profile = result["evidence_profile"]
+        profile["unreadable_interview_sessions"] = unreadable_interviews
+        result["total_study_days"] = profile["total_study_days"]
+        result["completed_study_days"] = profile["completed_study_days"]
+        result["study_completion_rate"] = profile["metrics"]["plan"]["value"] or 0.0
         return result
 
     # ------------------------------------------------------------------
@@ -2762,3 +3390,374 @@ class SQLiteStorage:
                 if conn.in_transaction:
                     conn.rollback()
                 raise
+
+    def save_graph_batch(
+        self, source_id: str, source_revision: str, mode: str,
+        payload: dict[str, Any], error_code: str = "",
+    ) -> dict[str, Any]:
+        """保存不可变的图谱抽取草稿并校验资料版本。"""
+        if mode not in {"local", "llm"}:
+            raise ValueError("无效的图谱抽取模式")
+        batch_id = uuid.uuid4().hex
+        now = _now_iso()
+        with self._write_lock:
+            conn = self._conn()
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                current = self.get_source_revision(source_id)
+                if current is None or current != source_revision:
+                    raise ValueError("资料已删除或版本已变化，请重新抽取")
+                conn.execute(
+                    """INSERT INTO knowledge_graph_batches
+                       (batch_id, source_id, source_revision, mode, status, payload,
+                        error_code, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (batch_id, source_id, source_revision, mode,
+                     "failed" if error_code else "draft", self._dump_json(payload),
+                     error_code[:80], now, now),
+                )
+                self._append_graph_event(conn, source_id, batch_id,
+                                         "extract_failed" if error_code else "extract",
+                                         {"mode": mode, "error_code": error_code[:80]})
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+            result = self.get_graph_batch(batch_id)
+            if result is None:
+                raise RuntimeError("图谱草稿保存失败")
+            return result
+
+    def get_graph_batch(self, batch_id: str) -> dict[str, Any] | None:
+        """读取图谱批次及其资料版本是否失效。"""
+        row = self._conn().execute(
+            "SELECT * FROM knowledge_graph_batches WHERE batch_id=?", (batch_id,),
+        ).fetchone()
+        result = self._decode_graph_batch(row)
+        if result is not None:
+            result["stale"] = (
+                self.get_source_revision(result["source_id"]) != result["source_revision"]
+            )
+        return result
+
+    def list_graph_batches(self) -> list[dict[str, Any]]:
+        """读取所有图谱批次，避免截断后丢失已确认知识点。"""
+        rows = self._conn().execute(
+            "SELECT * FROM knowledge_graph_batches ORDER BY created_at DESC, rowid DESC",
+        ).fetchall()
+        revisions: dict[str, str | None] = {}
+        result = []
+        for row in rows:
+            batch = self._decode_graph_batch(row)
+            if batch is None:
+                continue
+            source_id = batch["source_id"]
+            if source_id not in revisions:
+                revisions[source_id] = self.get_source_revision(source_id)
+            batch["stale"] = revisions[source_id] != batch["source_revision"]
+            result.append(batch)
+        return result
+
+    def _decode_graph_batch(self, row: sqlite3.Row | None) -> dict[str, Any] | None:
+        """隔离损坏批次，不让无效持久化数据阻断整个学习空间。"""
+        batch = self._decode_row(row, ("payload",))
+        if batch is None:
+            return None
+        payload = batch["payload"]
+        valid = (isinstance(payload, dict) and isinstance(payload.get("nodes"), list)
+                 and isinstance(payload.get("edges"), list))
+        if valid:
+            valid = (all(isinstance(node, dict) and isinstance(node.get("id"), str)
+                         and isinstance(node.get("label"), str) for node in payload["nodes"])
+                     and all(isinstance(edge, dict) and all(isinstance(edge.get(key), str)
+                             for key in ("from", "to", "relation", "excerpt")) for edge in payload["edges"]))
+        batch["data_error"] = not valid
+        if not valid:
+            batch["payload"] = {"nodes": [], "edges": []}
+            batch["error_code"] = "InvalidStoredPayload"
+        return batch
+
+    def transition_graph_batch(self, batch_id: str, action: str) -> dict[str, Any]:
+        """原子确认、撤销或恢复图谱批次，重复操作幂等。"""
+        targets = {"confirm": "confirmed", "undo": "undone", "restore": "confirmed"}
+        allowed = {
+            "confirm": {"draft", "confirmed"},
+            "undo": {"draft", "confirmed", "undone"},
+            "restore": {"undone", "confirmed"},
+        }
+        if action not in targets:
+            raise ValueError("无效的图谱操作")
+        with self._write_lock:
+            conn = self._conn()
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                batch = self.get_graph_batch(batch_id)
+                if batch is None:
+                    raise KeyError(batch_id)
+                if batch["status"] not in allowed[action]:
+                    raise ValueError("当前图谱状态不支持此操作")
+                if action in {"confirm", "restore"} and batch["stale"]:
+                    raise ValueError("资料版本已变化，请重新抽取")
+                if action in {"confirm", "restore"} and batch["data_error"]:
+                    raise ValueError("图谱批次数据异常，请重新提取")
+                if action in {"confirm", "restore"}:
+                    incoming = {node["id"]: node["label"] for node in batch["payload"]["nodes"]}
+                    others = conn.execute(
+                        """SELECT payload FROM knowledge_graph_batches
+                           WHERE source_id=? AND batch_id<>? AND status='confirmed'""",
+                        (batch["source_id"], batch_id),
+                    ).fetchall()
+                    for other in others:
+                        for node in json.loads(other["payload"])["nodes"]:
+                            if node["id"] in incoming and incoming[node["id"]] != node["label"]:
+                                raise ValueError("知识点标识与已确认批次冲突，请撤销旧批次后重试")
+                if batch["status"] != targets[action]:
+                    conn.execute(
+                        "UPDATE knowledge_graph_batches SET status=?, updated_at=? WHERE batch_id=?",
+                        (targets[action], _now_iso(), batch_id),
+                    )
+                    self._append_graph_event(conn, batch["source_id"], batch_id, action,
+                                             {"from_status": batch["status"], "to_status": targets[action]})
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+            result = self.get_graph_batch(batch_id)
+            if result is None:
+                raise RuntimeError("图谱状态更新失败")
+            return result
+
+    def get_graph_learning_evidence(self, source_id: str) -> dict[str, Any]:
+        """完整读取资料的题目、作答与错题证据，不推断掌握程度。"""
+        with self._write_lock:
+            conn = self._conn()
+            artifacts = conn.execute(
+                """SELECT * FROM artifacts WHERE source_id=? AND artifact_type='questions'
+                   ORDER BY created_at, rowid""", (source_id,),
+            ).fetchall()
+            attempts = conn.execute(
+                "SELECT rowid AS evidence_sequence, * FROM quiz_attempts WHERE source_id=? ORDER BY created_at, rowid",
+                (source_id,),
+            ).fetchall()
+            wrong = conn.execute(
+                "SELECT * FROM wrong_questions WHERE source_id=? ORDER BY created_at, rowid",
+                (source_id,),
+            ).fetchall()
+            return {
+                "artifacts": [self._decode_row(row, ("content", "metadata")) for row in artifacts],
+                "attempts": [dict(row) for row in attempts],
+                "wrong_questions": [
+                    self._enrich_wrong_question(self._decode_row(row, ("question",)))
+                    for row in wrong
+                ],
+            }
+
+    def _append_graph_event(
+        self, conn: sqlite3.Connection, source_id: str, target_id: str,
+        action: str, detail: dict[str, Any],
+    ) -> None:
+        """在业务事务内记录变更元数据，不复制学习正文或供应商错误。"""
+        conn.execute(
+            """INSERT INTO knowledge_graph_events
+               (source_id, target_id, action, detail, created_at) VALUES (?, ?, ?, ?, ?)""",
+            (source_id, target_id, action, self._dump_json(detail), _now_iso()),
+        )
+
+    def list_graph_events(self, limit: int = 100) -> list[dict[str, Any]]:
+        """返回当前身份最近的图谱操作，资料删除时随来源清理。"""
+        rows = self._conn().execute(
+            "SELECT * FROM knowledge_graph_events ORDER BY event_id DESC LIMIT ?", (limit,),
+        ).fetchall()
+        return [self._decode_row(row, ("detail",)) for row in rows]
+
+    def save_graph_study_plan(
+        self, source_id: str, node_id: str, evidence_revision: str,
+        plan: dict[str, Any],
+    ) -> dict[str, str]:
+        """以知识点和证据版本为幂等键原子创建学习计划与产物。"""
+        key = f"filemate:graph-plan:{source_id}:{node_id}:{evidence_revision}"
+        artifact_id = uuid.uuid5(uuid.NAMESPACE_URL, key + ":artifact").hex
+        plan_id = uuid.uuid5(uuid.NAMESPACE_URL, key + ":plan").hex
+        result = {"plan_id": plan_id, "artifact_id": artifact_id}
+        title = str(plan.get("title", "知识点学习计划"))
+        content = self._dump_json(plan)
+        metadata = self._dump_json({
+            "origin": "knowledge_graph", "module_version": "2.2",
+            "node_id": node_id, "evidence_revision": evidence_revision,
+        })
+        with self._write_lock:
+            conn = self._conn()
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                if self.get_source(source_id) is None:
+                    raise ValueError("资料已删除")
+                existing = conn.execute(
+                    "SELECT plan_id FROM study_plans WHERE plan_id=?", (plan_id,),
+                ).fetchone()
+                if existing is not None:
+                    conn.commit()
+                    return result
+                conn.execute(
+                    """INSERT INTO artifacts
+                       (artifact_id, workspace_id, source_id, artifact_type, title, content, metadata)
+                       VALUES (?, 'local', ?, 'study_plan', ?, ?, ?)""",
+                    (artifact_id, source_id, title, content, metadata),
+                )
+                conn.execute(
+                    """INSERT INTO study_plans
+                       (plan_id, artifact_id, source_id, title, exam_date,
+                        daily_minutes, goal, plan_data)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (plan_id, artifact_id, source_id, title, str(plan.get("exam_date", "")),
+                     int(plan.get("daily_minutes", 30)), str(plan.get("goal", "")), content),
+                )
+                self._append_graph_event(conn, source_id, plan_id, "plan_create",
+                                         {"node_id": node_id, "evidence_revision": evidence_revision})
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return result
+
+    def _transition_graph_study_plan(self, plan_id: str, restore: bool) -> dict[str, Any]:
+        """只归档或恢复图谱创建的计划，保留任务完成记录。"""
+        with self._write_lock:
+            conn = self._conn()
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                plan = self.get_study_plan(plan_id)
+                if plan is None:
+                    raise KeyError(plan_id)
+                artifact = self.get_artifact(plan["artifact_id"])
+                if not artifact or artifact["metadata"].get("origin") != "knowledge_graph":
+                    raise ValueError("该计划不是由知识图谱创建")
+                status = "archived"
+                if restore:
+                    days = plan["plan_data"].get("daily_plan", [])
+                    status = (
+                        "completed" if days and len(plan["completed_days"]) == len(days)
+                        else "active"
+                    )
+                if plan["status"] != status:
+                    conn.execute(
+                        "UPDATE study_plans SET status=?, updated_at=? WHERE plan_id=?",
+                        (status, _now_iso(), plan_id),
+                    )
+                    self._append_graph_event(conn, plan["source_id"], plan_id,
+                                             "plan_restore" if restore else "plan_undo",
+                                             {"from_status": plan["status"], "to_status": status})
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+            result = self.get_study_plan(plan_id)
+            if result is None:
+                raise RuntimeError("学习计划状态更新失败")
+            return result
+
+    def undo_graph_study_plan(self, plan_id: str) -> dict[str, Any]:
+        """幂等撤销图谱学习计划，不删除学习证据。"""
+        return self._transition_graph_study_plan(plan_id, restore=False)
+
+    def list_graph_study_plans(self) -> list[dict[str, Any]]:
+        """列出当前身份由知识图谱生成的计划与归档状态。"""
+        rows = self._conn().execute(
+            """SELECT p.plan_id, p.source_id, p.title, p.status, p.updated_at, a.metadata
+               FROM study_plans p JOIN artifacts a ON a.artifact_id=p.artifact_id
+               ORDER BY p.updated_at DESC, p.rowid DESC"""
+        ).fetchall()
+        result = []
+        for row in rows:
+            metadata = json.loads(row["metadata"])
+            if metadata.get("origin") == "knowledge_graph":
+                result.append({key: row[key] for key in (
+                    "plan_id", "source_id", "title", "status", "updated_at",
+                )})
+        return result
+
+    def restore_graph_study_plan(self, plan_id: str) -> dict[str, Any]:
+        """恢复图谱学习计划的原有进度。"""
+        return self._transition_graph_study_plan(plan_id, restore=True)
+
+    def create_digital_human_playback(
+        self,
+        *,
+        text_length: int,
+        avatar_id: str,
+        voice_id: str,
+        provider: str,
+        context_id: str | None = None,
+        message_index: int | None = None,
+    ) -> dict[str, Any]:
+        """只保存播报元数据，不保存学习正文或音频。"""
+        playback_id = uuid.uuid4().hex
+        now = _now_iso()
+        with self._write_lock:
+            self._conn().execute(
+                """INSERT INTO digital_human_playbacks
+                   (playback_id, context_id, message_index, text_length,
+                    avatar_id, voice_id, provider, status, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, 'started', ?, ?)""",
+                (
+                    playback_id, context_id, message_index, text_length,
+                    avatar_id, voice_id, provider, now, now,
+                ),
+            )
+            self._conn().commit()
+        return self.get_digital_human_playback(playback_id)  # type: ignore[return-value]
+
+    def get_digital_human_playback(self, playback_id: str) -> dict[str, Any] | None:
+        """读取当前身份的未删除播报记录。"""
+        row = self._conn().execute(
+            """SELECT * FROM digital_human_playbacks
+               WHERE playback_id=? AND deleted_at IS NULL""",
+            (playback_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def list_digital_human_playbacks(self, limit: int = 30) -> list[dict[str, Any]]:
+        """按时间倒序列出当前身份的播报元数据。"""
+        rows = self._conn().execute(
+            """SELECT * FROM digital_human_playbacks
+               WHERE deleted_at IS NULL ORDER BY created_at DESC, rowid DESC LIMIT ?""",
+            (limit,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def finish_digital_human_playback(
+        self, playback_id: str, status: str, error_code: str = "",
+    ) -> dict[str, Any] | None:
+        """幂等地结束一次播报；终态不能被晚到的事件覆盖。"""
+        if status not in {"completed", "stopped", "failed"}:
+            raise ValueError("无效的播报终态")
+        with self._write_lock:
+            self._conn().execute(
+                """UPDATE digital_human_playbacks
+                   SET status=?, error_code=?, updated_at=?
+                   WHERE playback_id=? AND status='started' AND deleted_at IS NULL""",
+                (status, error_code[:80], _now_iso(), playback_id),
+            )
+            self._conn().commit()
+        return self.get_digital_human_playback(playback_id)
+
+    def delete_digital_human_playback(self, playback_id: str) -> bool:
+        """软删除一条播报记录，重复删除安全。"""
+        with self._write_lock:
+            updated = self._conn().execute(
+                """UPDATE digital_human_playbacks SET deleted_at=?, updated_at=?
+                   WHERE playback_id=? AND deleted_at IS NULL""",
+                (_now_iso(), _now_iso(), playback_id),
+            )
+            self._conn().commit()
+        return updated.rowcount == 1
+
+    def restore_digital_human_playback(self, playback_id: str) -> bool:
+        """撤销当前身份的一次记录软删除。"""
+        with self._write_lock:
+            updated = self._conn().execute(
+                """UPDATE digital_human_playbacks SET deleted_at=NULL, updated_at=?
+                   WHERE playback_id=? AND deleted_at IS NOT NULL""",
+                (_now_iso(), playback_id),
+            )
+            self._conn().commit()
+        return updated.rowcount == 1

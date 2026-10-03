@@ -6,7 +6,7 @@ COPY filemate/web/package.json filemate/web/package-lock.json ./
 RUN npm ci
 
 COPY filemate/web ./
-RUN npm run build
+RUN npm run build && npm run check:bundle
 
 FROM caddy:2-alpine
 

@@ -1,6 +1,6 @@
 <template>
   <div class="schedule-page">
-    <WorkflowSteps :current="4" />
+    <WorkflowSteps :current="3" />
     <section v-if="!currentFile && !loadError" class="schedule-entry-empty">
       <div class="empty-icon-wrap">
         <el-icon size="42"><Calendar /></el-icon>
@@ -56,11 +56,12 @@
           <el-divider />
 
           <div class="ics-actions">
-            <el-button type="primary" :loading="icsLoading" @click="downloadIcs">
+            <el-button type="primary" :loading="icsLoading" :disabled="!calendarReady" @click="downloadIcs">
               <el-icon><Download /></el-icon>
               {{ icsLoading ? '下载中…' : '下载 .ics 文件' }}
             </el-button>
           </div>
+          <p v-if="!calendarReady" class="calendar-not-ready">{{ currentFile?.status === 'confirmed' ? '本次归档未生成日程。' : '核对资料并确认归档后，可下载日程。' }}</p>
         </div>
       </el-card>
 
@@ -85,6 +86,7 @@ import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { Milestone } from '../types'
+import { sessionDates } from '../utils/session-dates'
 import { useFileStore } from '../stores/fileStore'
 import { getSession, getIcsContent, downloadIcs as downloadIcsApi } from '../services/api'
 import DataState from '../components/DataState.vue'
@@ -100,10 +102,11 @@ const milestones = ref<Milestone[]>([])
 const icsLoading = ref(false)
 const loadError = ref('')
 const currentFile = computed(() => fileStore.currentFile)
+const calendarReady = computed(() => !!currentFile.value?.execution?.ics_path && currentFile.value.execution.status === 'applied')
 
 watch(currentFile, (file) => {
   if (file?.milestones) {
-    milestones.value = file.milestones
+    milestones.value = sessionDates(file)
     nextTick(() => {
       initChart()
       updateChart()

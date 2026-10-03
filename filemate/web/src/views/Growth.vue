@@ -18,17 +18,19 @@
         <article><span>知识资料</span><strong>{{ data.source_count }}</strong><small>{{ data.artifact_count }} 个学习产物</small></article>
         <article><span>练习次数</span><strong>{{ data.quiz_attempt_count }}</strong><small>{{ data.mastered_wrong_count }} 道错题已掌握</small></article>
         <article><span>待复习错题</span><strong>{{ data.pending_wrong_count }}</strong><small>连续答对两次后移出</small></article>
-        <article><span>计划完成度</span><strong>{{ format(data.study_completion_rate) }}%</strong><small>{{ data.completed_study_days }}/{{ data.total_study_days }} 个学习日已完成</small></article>
-        <article class="accent"><span>面试参考均分</span><strong>{{ format(data.average_interview_score) }}</strong><small>{{ data.interview_count }} 场训练 · {{ data.assessed_interview_count }} 场有模型评估</small></article>
+        <article><span>计划完成度</span><strong>{{ data.total_study_days ? `${format(data.study_completion_rate)}%` : '待评测' }}</strong><small>{{ data.completed_study_days }}/{{ data.total_study_days }} 个有效学习日已完成</small></article>
+        <article class="accent"><span>面试模型参考分</span><strong>{{ data.evidence_profile?.metrics.interview.status === 'observed' ? format(data.evidence_profile.metrics.interview.value) : '待评测' }}</strong><small>{{ data.evidence_profile?.metrics.interview.sample_count || 0 }} 条有效模型回答 · {{ data.interview_count }} 场训练</small></article>
       </section>
       <section class="grid">
-        <article class="panel ability"><div class="panel-head"><div><p class="eyebrow">能力画像</p><h2>面试能力表现</h2></div><span>仅统计有模型评估的回答</span></div>
-          <div v-if="Object.keys(data.interview_dimensions).length" class="bars"><div v-for="(score,name) in data.interview_dimensions" :key="name"><label><span>{{ name }}</span><b>{{ format(score) }}</b></label><i><em :style="{width:`${score}%`}"></em></i></div></div>
-          <p v-else class="empty">暂无内容评估记录；本地练习仍会保存，不据此推断能力。</p>
+        <article class="panel ability"><div class="panel-head"><div><p class="eyebrow">评分记录</p><h2>面试维度参考</h2></div><span>每维度至少5条有效模型回答</span></div>
+          <div v-if="Object.keys(observedDimensions).length" class="bars"><div v-for="(metric,name) in observedDimensions" :key="name"><label><span>{{ name }} · {{ metric.sample_count }}条</span><b>{{ format(metric.value) }}</b></label><i><em :style="{width:`${metric.value}%`}"></em></i></div></div>
+          <p v-else class="empty">样本不足，待评测；原回答仍可回看，模型分数尚未经导师校准。</p>
         </article>
         <article class="panel loop"><h2>学习进度</h2><div class="loop-flow"><span>已存资料<b>{{ data.source_count }}</b></span><i>→</i><span>完成计划<b>{{ data.completed_study_days }}</b></span><i>→</i><span>掌握错题<b>{{ data.mastered_wrong_count }}</b></span></div><p>统计来自这台设备上保存的学习记录。</p></article>
       </section>
-      <section class="panel evidence"><div><p class="eyebrow">真实使用反馈</p><h2>匿名产品反馈</h2><p>只统计匿名哈希、相关/不相关选择和数值指标，不导出问题原文、资料名或身份信息。</p></div><div class="evidence-metrics"><span><b>{{ data.product_feedback.total }}</b>有效标注</span><span><b>{{ format(data.product_feedback.positive_rate) }}%</b>正向率</span><button type="button" :disabled="!data.product_feedback.total" @click="exportFeedback">导出匿名 CSV</button></div></section>
+      <LearningEvidencePanel v-if="data.evidence_profile" :profile="data.evidence_profile" />
+      <CareerGrowthPanel v-if="careerEnabled" />
+      <section class="panel evidence"><div><p class="eyebrow">使用反馈</p><h2>匿名产品反馈</h2><p>只统计匿名哈希、相关/不相关选择和数值指标，不导出问题原文、资料名或身份信息。</p></div><div class="evidence-metrics"><span><b>{{ data.product_feedback.total }}</b>有效标注</span><span><b>{{ data.product_feedback.total ? `${format(data.product_feedback.positive_rate)}%` : '待标注' }}</b>正向率</span><button type="button" :disabled="!data.product_feedback.total" @click="exportFeedback">导出匿名 CSV</button></div></section>
       <section class="panel recent"><div class="panel-head"><div><p class="eyebrow">训练记录</p><h2>最近模拟面试</h2></div></div>
         <div v-if="data.recent_interviews.length" class="table"><div v-for="item in data.recent_interviews" :key="item.interview_id" class="row"><div><RouterLink :to="{ path: '/interview', query: { interview: item.interview_id } }"><b>{{ item.target_role }} · {{ item.status === 'completed' ? '回看回答' : '继续练习' }}</b></RouterLink><small>{{ item.scenario }} · 已答 {{ item.current_index }} 题</small></div><span :class="item.status">{{ item.status === 'completed' ? '已完成' : '进行中' }}</span><strong>{{ format(item.overall_score) }}</strong></div></div>
         <p v-else class="empty">暂无模拟面试记录</p>
@@ -43,6 +45,8 @@ import { ElMessage } from 'element-plus'
 import { downloadAnonymousFeedback, getLearningAnalytics, type LearningAnalytics } from '../services/api'
 import CompanionCard from '../components/CompanionCard.vue'
 import DataState from '../components/DataState.vue'
+import CareerGrowthPanel from '../components/CareerGrowthPanel.vue'
+import LearningEvidencePanel from '../components/LearningEvidencePanel.vue'
 import {
   calculateCompanionGrowth,
   getRecentCompanionEvent,
@@ -50,6 +54,8 @@ import {
   type CompanionMood
 } from '../composables/useCompanion'
 const data = ref<LearningAnalytics | null>(null); const loading = ref(true); const error = ref('')
+const careerEnabled = import.meta.env.VITE_ENABLE_CAREER !== 'false'
+const observedDimensions = computed(() => Object.fromEntries(Object.entries(data.value?.evidence_profile?.dimensions || {}).filter(([, metric]) => metric.status === 'observed')))
 const recentEvent = ref<CompanionEvent | null>(getRecentCompanionEvent())
 const format = (value:number | null) => value == null ? '待评估' : Math.round(value)
 const load = async () => { loading.value=true; error.value=''; try{data.value=await getLearningAnalytics()}catch(e:any){error.value=e?.message||'加载失败';ElMessage.error(error.value)}finally{loading.value=false} }

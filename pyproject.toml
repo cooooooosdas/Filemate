@@ -24,6 +24,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "icalendar>=6.0",
     "keyring>=25.0",
+    "reportlab>=4.4,<5",
 ]
 
 [project.optional-dependencies]
@@ -46,6 +47,10 @@ py-modules = ["main", "server"]
 [tool.setuptools.packages.find]
 include = ["filemate*"]
 exclude = ["filemate.tests*"]
+
+[tool.setuptools.package-data]
+"filemate.understanding" = ["rules/*.json", "prompts/*.md"]
+"filemate.interview_review" = ["assets/*.ttf", "assets/*.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["filemate/tests"]

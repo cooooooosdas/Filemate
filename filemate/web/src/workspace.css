@@ -1,12 +1,13 @@
 /* Shared workspace presentation; business controls keep their own component styles. */
+/* 视觉升级保持代码/原文的专用排版，仅扩大公共入口与阅读说明。 */
 .content-scroll > :is(.today-page,.knowledge-page,.growth-page,.interview-page,.interview-bank-page,.goal-planner-page,.trust-page,.study-plan-page,.wrongbook-page,.import-page,.history-page,.classification-page,.naming-page,.schedule-page,.ai-tools-page) {
   width: 100%; max-width: 1280px; margin-inline: auto; padding: 8px 0 24px; min-width: 0;
 }
 .content-scroll :is(.page-head,.page-header,.growth-page > header,.today-page > .hero,.goal-hero,.trust-page > .hero) h1 {
-  margin: 0 0 10px; font-size: clamp(25px, 2.3vw, 30px); font-weight: 600; line-height: 1.45; letter-spacing: -.025em; color: var(--text-primary);
+  margin: 0 0 14px; font-size: clamp(36px, 3vw, 44px); font-weight: 650; line-height: 1.35; letter-spacing: -.035em; color: var(--text-primary);
 }
 .content-scroll :is(.page-head,.page-header,.growth-page > header,.today-page > .hero,.goal-hero,.trust-page > .hero) p {
-  font-size: 13px; line-height: 1.85; color: var(--text-secondary);
+  font-size: 18px; line-height: 1.75; color: var(--text-secondary);
 }
 .content-scroll :is(.goal-planner-page > .goal-hero,.trust-page > .hero) {
   display: block; min-height: 0; padding: 0 0 24px; border: 0; border-bottom: 1px solid var(--border-subtle); border-radius: 0; background: transparent; box-shadow: none; overflow: visible;
@@ -18,21 +19,21 @@
 .content-scroll :is(.goal-planner-page,.trust-page,.growth-page,.interview-page) :is(.panel,.create-panel,.evidence-panel,.gap-panel,.tasks-panel,.setup-card,.studio,.evaluation,.review-list) {
   background: var(--bg-surface); border-color: var(--border-subtle); border-radius: var(--radius-panel); box-shadow: none;
 }
-.content-scroll .goal-planner-page .section-heading h2 { font-size: 18px; font-weight: 600; }
-.content-scroll .goal-planner-page .section-heading p { font-size: 13px; }
+.content-scroll .goal-planner-page .section-heading h2 { font-size: 24px; font-weight: 600; }
+.content-scroll .goal-planner-page .section-heading p { font-size: 16px; }
 .content-scroll .goal-planner-page .section-heading > div > span { color: var(--text-muted); font-weight: 500; }
 .content-scroll :is(.today-page .summary,.today-page .empty,.interview-page .local-replay,.interview-page .fluency-timeline) { background: var(--bg-surface); border-color: var(--border-subtle); }
 .content-scroll .today-page .summary strong { font-weight: 500; color: var(--text-primary); }
 .content-scroll .growth-page .kpis { gap: 0; padding-block: 18px; border-block: 1px solid var(--border-subtle); }
 .content-scroll .growth-page .kpis article { padding: 6px 20px; border: 0; border-right: 1px solid var(--border-subtle); border-radius: 0; background: transparent; color: var(--text-primary); }
 .content-scroll .growth-page .kpis article:last-child { border-right: 0; }
-.content-scroll .growth-page .kpis article span,.content-scroll .growth-page .kpis article small { color: var(--text-secondary); font-size: 12px; }
-.content-scroll .growth-page .kpis strong { font-weight: 500; font-size: 28px; }
-.content-scroll .knowledge-page .source-grid { grid-template-columns: 1fr; gap: 0; }
-.content-scroll .knowledge-page .source-card { padding: 18px 0; border: 0; border-bottom: 1px solid var(--border-subtle); border-radius: 0; }
-.content-scroll .knowledge-page .source-card:last-child { border-bottom: 0; }
+.content-scroll .growth-page .kpis article span,.content-scroll .growth-page .kpis article small { color: var(--text-secondary); font-size: 15px; }
+.content-scroll .growth-page .kpis strong { font-weight: 500; font-size: 34px; }
 .content-scroll .knowledge-page .library { border-radius: var(--radius-panel); }
 .content-scroll .knowledge-page .search-panel { background: var(--bg-surface); }
+.content-scroll :is(.page-head,.page-header,.growth-page > header,.today-page > .hero) {
+  padding: 26px 28px; border: 1px solid var(--border-subtle); border-radius: 22px; background: var(--panel-tint);
+}
 .content-scroll :is(.goal-planner-page,.trust-page,.growth-page) .eyebrow { letter-spacing: .02em; font-weight: 500; color: var(--text-muted); }
 .content-scroll .goal-planner-page .progress span { background: var(--accent); }
 .content-scroll .goal-planner-page :is(.create-button,.toolbar-actions button) { background: var(--accent); border-radius: var(--radius-control); font-weight: 600; }
@@ -42,6 +43,7 @@
 .content-scroll :is(.page-head,.page-header,.growth-page > header,.today-page > .hero) :is(button,a) { min-height: 44px; }
 .content-scroll .knowledge-page :is(.source-actions button,.relevance button,.import-link) { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
 @media(max-width:700px) {
+  .content-scroll :is(.page-head,.page-header,.growth-page > header,.today-page > .hero) { padding: 24px 20px; }
   .content-scroll :is(.page-head,.page-header,.growth-page > header,.today-page > .hero) { gap: 16px; }
   .content-scroll :is(.goal-planner-page,.trust-page,.growth-page,.interview-page) :is(.panel,.create-panel,.evidence-panel,.gap-panel,.tasks-panel,.setup-card) { padding: 20px; }
   .content-scroll .growth-page .kpis { grid-template-columns: 1fr 1fr; gap: 18px 0; }

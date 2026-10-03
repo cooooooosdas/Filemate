@@ -15,9 +15,9 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{ current: 1 | 2 | 3 | 4 }>()
+defineProps<{ current: 1 | 2 | 3 }>()
 
-const steps = ['导入资料', '核对分类', '确认命名', '查看日程']
+const steps = ['导入资料', '分类与命名', '查看日程']
 </script>
 
 <style scoped>
@@ -31,7 +31,7 @@ const steps = ['导入资料', '核对分类', '确认命名', '查看日程']
 
 .workflow-steps ol {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
   margin: 0;
   padding: 0;
@@ -45,7 +45,7 @@ const steps = ['导入资料', '核对分类', '确认命名', '查看日程']
   gap: 9px;
   min-width: 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .workflow-steps li:not(:last-child)::after {
@@ -57,9 +57,9 @@ const steps = ['导入资料', '核对分类', '确认命名', '查看日程']
 }
 
 .workflow-steps li > span {
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
   display: grid;
   place-items: center;
   border: 1px solid var(--border-strong);
@@ -92,9 +92,12 @@ const steps = ['导入资料', '核对分类', '确认命名', '查看日程']
 
 @media (max-width: 640px) {
   .workflow-steps ol {
-    grid-template-columns: 1fr 1fr;
-    gap: 12px 16px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
   }
+
+  .workflow-steps li { flex-direction: column; text-align: center; font-size: 14px; }
+  .workflow-steps li > strong { white-space: normal; }
 
   .workflow-steps li::after {
     display: none;

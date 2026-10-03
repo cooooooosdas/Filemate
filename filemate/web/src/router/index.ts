@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { pageLoadFailure } from './load-errors'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -34,14 +35,14 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/classification',
     name: 'Classification',
-    component: () => import('../views/Classification.vue'),
-    meta: { title: '分类确认' }
+    component: () => import('../views/FileReview.vue'),
+    meta: { title: '资料审核' }
   },
   {
     path: '/naming',
     name: 'Naming',
-    component: () => import('../views/Naming.vue'),
-    meta: { title: '命名确认' }
+    component: () => import('../views/FileReview.vue'),
+    meta: { title: '资料审核' }
   },
   {
     path: '/schedule',
@@ -61,12 +62,30 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/LearningWorkspace.vue'),
     meta: { title: '学习工作区' }
   },
+  ...(import.meta.env.VITE_ENABLE_DIGITAL_HUMAN === 'false' ? [{
+    path: '/digital-human',
+    redirect: '/ai-tools',
+  }] : [{
+    path: '/digital-human',
+    name: 'DigitalHuman',
+    component: () => import('../views/DigitalHuman.vue'),
+    meta: { title: 'AI 导师讲解' }
+  }]),
   {
     path: '/study-plan',
     name: 'StudyPlan',
     component: () => import('../views/StudyPlan.vue'),
     meta: { title: '学习计划' }
   },
+  ...(import.meta.env.VITE_ENABLE_KNOWLEDGE_GRAPH === 'false' ? [{
+    path: '/knowledge-graph',
+    redirect: '/ai-tools',
+  }] : [{
+    path: '/knowledge-graph',
+    name: 'KnowledgeGraph',
+    component: () => import('../views/KnowledgeGraph.vue'),
+    meta: { title: '我的知识图谱' }
+  }]),
   {
     path: '/goals',
     name: 'GoalPlanner',
@@ -103,17 +122,34 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/Knowledge.vue'),
     meta: { title: '个人知识库' }
   },
+  ...(import.meta.env.VITE_ENABLE_PROGRAMMING === 'false' ? [{
+    path: '/programming', redirect: '/ai-tools',
+  }] : [{
+    path: '/programming', name: 'Programming',
+    component: () => import('../views/Programming.vue'),
+    meta: { title: '编程练习' },
+  }]),
   {
     path: '/trust',
     name: 'TrustCenter',
     component: () => import('../views/TrustCenter.vue'),
     meta: { title: '可信与隐私' }
-  }
+  },
+  ...(import.meta.env.VITE_ENABLE_CAREER === 'false' ? [{ path: '/career', redirect: '/ai-tools' }] : [{
+    path: '/career', name: 'Career', component: () => import('../views/Career.vue'), meta: { title: '求职训练中心' }
+  }])
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+router.onError((_error, to) => {
+  pageLoadFailure.value = { path: to.fullPath }
+})
+router.afterEach((_to, _from, failure) => {
+  if (!failure) pageLoadFailure.value = null
 })
 
 // 路由守卫 - 更新页面标题

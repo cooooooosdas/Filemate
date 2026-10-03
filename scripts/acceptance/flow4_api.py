@@ -145,7 +145,7 @@ report["steps"].append(
     }
 )
 
-out = Path(os.getcwd()) / "_working" / "flow4-acceptance.json"
+out = Path(os.getenv("FILEMATE_EVIDENCE_DIR", str(Path.cwd() / "_working"))) / "flow4-acceptance.json"
 out.parent.mkdir(parents=True, exist_ok=True)
 out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 print(json.dumps(report, ensure_ascii=False, indent=2))

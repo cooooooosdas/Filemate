@@ -3,41 +3,55 @@
 }
 
 {$FILEMATE_DOMAIN} {
-	encode zstd gzip
-
-	basic_auth {
-		{$FILEMATE_BASIC_USER} {$FILEMATE_BASIC_PASSWORD_HASH}
-	}
-
+	@assets path /assets/*
+	@vision_assets path /interview-vision/*
+	@uncached not path /assets/* /interview-vision/*
+	@oversized expression `{header.Content-Length} != "" && int({header.Content-Length}) > 33554432`
 	@api_docs path /docs* /openapi.json
-	handle @api_docs {
-		reverse_proxy api:8001
-	}
-
+	@api_only path /api/* /process /sessions /sessions/* /ai/* /settings /settings/* /knowledge/* /quiz/* /wrongbook/* /interview/* /interviews /interviews/* /analytics/* /review/* /study-plans /study-plans/* /evaluation/* /goals/* /trust/* /agents/*
 	@api {
-		path /api/* /process /sessions* /ai/* /knowledge* /quiz* /wrongbook* /interview* /interviews* /analytics* /review* /study-plans* /evaluation* /goals* /trust* /agents*
+		path /knowledge /wrongbook /interview /goals /trust
 		not header Accept text/html*
 	}
-	handle @api {
-		reverse_proxy api:8001
-	}
 
-	@assets path /assets/*
-	header @assets Cache-Control "public, max-age=31536000, immutable"
-
-	handle {
-		root * /srv
-		try_files {path} /index.html
-		file_server
-	}
-
-	header {
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
-		X-Content-Type-Options nosniff
-		X-Frame-Options DENY
-		Referrer-Policy strict-origin-when-cross-origin
-		Permissions-Policy "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()"
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
-		-Server
+	route {
+		header {
+			Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+			X-Content-Type-Options nosniff
+			X-Frame-Options DENY
+			Referrer-Policy strict-origin-when-cross-origin
+			Permissions-Policy "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()"
+			Strict-Transport-Security "max-age=31536000; includeSubDomains"
+			-Server
+		}
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		header @vision_assets Cache-Control "no-cache"
+		header @uncached Cache-Control "no-store"
+		encode zstd gzip
+		basic_auth {
+			{$FILEMATE_BASIC_USER} {$FILEMATE_BASIC_PASSWORD_HASH}
+		}
+		header @oversized Content-Type "application/json; charset=utf-8"
+		respond @oversized `{"success":false,"data":null,"error":"请求体不能超过32 MiB"}` 413
+		request_body {
+			max_size 32MiB
+		}
+		handle /internal/* {
+			respond 404
+		}
+		handle @api_docs {
+			reverse_proxy api:8001
+		}
+		handle @api_only {
+			reverse_proxy api:8001
+		}
+		handle @api {
+			reverse_proxy api:8001
+		}
+		handle {
+			root * /srv
+			try_files {path} /index.html
+			file_server
+		}
 	}
 }
