@@ -3635,10 +3635,15 @@ def analyze_interview_turn(interview_id: str, turn_id: str, request: InterviewAn
             evaluation = InterviewEvaluator(LLMClient(LLMConfig.from_env())).evaluate(
                 turn["question"], turn["answer"], interview["target_role"], turn.get("fluency_metrics"),
             )
-        except Exception:  # noqa: BLE001 - 模型不可用时保留原始面试证据
-            evaluation = {"scoring_mode": "local_fallback"}
+        except Exception as exc:  # noqa: BLE001 - 模型不可用时保留原始面试证据
+            from filemate.interview_review.content import analysis_failure
+
+            evaluation = {"scoring_mode": "local_fallback", "analysis_error": analysis_failure(exc)}
         if evaluation["scoring_mode"] != "llm":
-            raise HTTPException(status_code=502, detail="模型分析暂不可用或缺少有效证据；原回答、节奏与报告保留")
+            detail = evaluation.get("analysis_error", {}).get(
+                "message", "模型分析未完成，请重试这一题；原回答、节奏与报告保留",
+            )
+            raise HTTPException(status_code=502, detail=detail)
         updated = repo.apply_analysis(interview_id, turn_id, revision, evaluation)
         _attach_interview_source_context(updated)
         return ApiResponse(success=True, data=updated)

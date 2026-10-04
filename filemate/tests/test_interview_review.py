@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from filemate.execution.storage import _MIGRATIONS, SQLiteStorage
+from filemate.interview_review.content import evidence_catalog
 from filemate.interview_review.models import CONTENT_AREAS, VisualMetrics
 from filemate.interview_review.reports import build_report, report_markdown, report_pdf
 from filemate.interview_review.repository import ReviewRepository
@@ -110,6 +111,106 @@ def test_invalid_model_evidence_is_unassessed(mutation):
         payload["content_analysis"]["logic"]["evidence"] = ""
     result = InterviewEvaluator(FakeLLM(payload)).evaluate("介绍项目", ANSWER, "后端")
     assert result["score"] is None and result["scoring_mode"] == "local_fallback"
+
+
+def test_numbered_evidence_restores_multiline_original_and_survives_storage(storage):
+    multiline = "我们访谈了五位同学。\n我整理需求并验证了三份合成资料。"
+    payload = model_payload()
+    payload["dimension_evidence"] = dict.fromkeys(payload["dimensions"], "E1")
+    payload["keywords"] = ["合成资料"]
+    for area in payload["content_analysis"].values():
+        area["evidence"] = "E2"
+    result = InterviewEvaluator(FakeLLM(payload)).evaluate("介绍项目", multiline, "软件工程")
+    assert result["scoring_mode"] == "llm"
+    assert result["content_analysis"]["areas"]["logic"]["evidence"] == multiline.splitlines()[1]
+    interview_id = session(storage)["interview_id"]
+    saved = storage.save_interview_turn(
+        interview_id=interview_id, question_index=0, question="介绍项目", answer=multiline,
+        score=result["score"], dimensions=result["dimensions"], feedback=result["feedback"],
+        scoring_mode="llm", content_analysis=result["content_analysis"],
+    )
+    report = build_report(saved)
+    assert report["assessed"] == 1 and not report["turns"][0].get("data_error")
+    assert report["turns"][0]["content_analysis"] == result["content_analysis"]
+
+
+def test_long_and_fragmented_answers_keep_all_original_characters_in_reference_catalog():
+    for text in ["概念与条件" * 2400, "\n".join(f"第{i}条原句" for i in range(120))]:
+        catalog = evidence_catalog(text)
+        assert catalog and len(catalog) <= 80
+        assert all(0 < len(piece) <= 400 and piece in text for piece in catalog.values())
+        assert "".join(catalog.values()).replace("\n", "") == text.replace("\n", "")
+
+
+def test_invalid_model_output_gets_one_correction_with_shared_budget(monkeypatch):
+    from filemate.interview_review import content
+
+    elapsed = [0.0]
+    monkeypatch.setattr(content.time, "monotonic", lambda: elapsed[0])
+    calls = []
+
+    class Corrected:
+        def call(self, **kwargs):
+            calls.append(kwargs)
+            elapsed[0] += 42 if len(calls) == 1 else 2
+            return "not json" if len(calls) == 1 else json.dumps(model_payload(), ensure_ascii=False)
+
+    result = InterviewEvaluator(Corrected()).evaluate("介绍项目", ANSWER, "后端")
+    assert result["scoring_mode"] == "llm" and len(calls) == 2
+    assert calls[0]["response_format"] == {"type": "json_object"}
+    assert calls[1]["timeout"] == 3
+    assert calls[0]["retry"] == calls[1]["retry"] == 1
+
+
+@pytest.mark.parametrize("bad", ["", "[]", "{", {"unknown": "field"}])
+def test_persistent_invalid_response_stops_after_two_calls_and_does_not_invent_scores(bad):
+    calls = []
+
+    class Invalid:
+        def call(self, **kwargs):
+            calls.append(kwargs)
+            return json.dumps(bad) if isinstance(bad, dict) else bad
+
+    result = InterviewEvaluator(Invalid()).evaluate("介绍项目", ANSWER, "后端")
+    assert result["score"] is None and result["dimensions"] == {} and len(calls) == 2
+    assert result["analysis_error"]["code"] == "invalid_evidence"
+
+
+@pytest.mark.parametrize("failure,code", [
+    ("LLMAccessError", "access_denied"), ("LLMTimeoutError", "timeout"),
+    ("LLMRateLimitError", "rate_limit"), ("LLMConfigError", "configuration"),
+    ("LLMAPIError", "connection"),
+])
+def test_model_failure_classification_does_not_leak_provider_text(failure, code):
+    import filemate.llm_client.exceptions as errors
+
+    result = InterviewEvaluator(FakeLLM(getattr(errors, failure)("secret-token-and-answer"))).evaluate(
+        "介绍项目", ANSWER, "后端",
+    )
+    assert result["analysis_error"]["code"] == code
+    assert "secret-token-and-answer" not in json.dumps(result)
+
+
+def test_unknown_reference_and_whitespace_joined_quotes_remain_rejected():
+    for evidence in ["E999", "原回答中不存在的成果", "首先分析项目背景\n因为任务需要支持范围查询"]:
+        payload = model_payload()
+        payload["content_analysis"]["logic"]["evidence"] = evidence
+        result = InterviewEvaluator(FakeLLM(payload)).evaluate("介绍项目", ANSWER, "后端")
+        assert result["score"] is None and result["analysis_error"]["code"] == "invalid_evidence"
+
+
+def test_optional_unmatched_keywords_do_not_discard_verified_analysis():
+    payload = model_payload() | {"keywords": ["范围查询", "翻译或编造的关键词", 42, "范围查询"]}
+    result = InterviewEvaluator(FakeLLM(payload)).evaluate("介绍项目", ANSWER, "后端")
+    assert result["scoring_mode"] == "llm" and result["score"] == 80
+    assert result["content_analysis"]["keywords"] == ["范围查询"]
+
+
+def test_malformed_keywords_do_not_bypass_structure_validation():
+    result = InterviewEvaluator(FakeLLM(model_payload() | {"keywords": {"invented": "label"}})).evaluate(
+        "介绍项目", ANSWER, "后端",
+    )
+    assert result["score"] is None and result["analysis_error"]["code"] == "invalid_evidence"
 
 
 def test_report_no_fabricated_score_and_timebases_are_explicit(storage):
@@ -350,6 +451,8 @@ def test_api_model_failure_and_cancel_race_preserve_report(api, monkeypatch):
     failure = client.post(path, json={"external_consent": True})
     assert failure.status_code == 502 and "secret" not in failure.text
     assert client.get(f"/interviews/{id}/review").json()["data"]["report"] == original
+
+
     started, release = threading.Event(), threading.Event()
 
     class Blocking(FakeLLM):
@@ -367,6 +470,30 @@ def test_api_model_failure_and_cancel_race_preserve_report(api, monkeypatch):
         assert task.result().status_code == 409
     assert module._storage.get_interview(id)["assessed_turn_count"] == 0
     assert client.get(f"/interviews/{id}/review").json()["data"]["report"] == original
+
+
+@pytest.mark.parametrize("failure,phrase", [
+    ("LLMAccessError", "密钥、余额和调用权限"), ("LLMTimeoutError", "超时"),
+    ("LLMRateLimitError", "限流"), ("LLMConfigError", "模型尚未配置"),
+    ("LLMAPIError", "测试连接"),
+])
+def test_api_analysis_failure_is_actionable_and_preserves_existing_evidence(api, monkeypatch, failure, phrase):
+    import filemate.llm_client as llm
+    from filemate.llm_client import exceptions
+
+    client, _ = api
+    interview_id = create_api(client)
+    turn = client.post(f"/interviews/{interview_id}/answers", json={"answer": ANSWER}).json()["data"]["turns"][0]
+    original = client.post(f"/interviews/{interview_id}/review").json()["data"]
+    monkeypatch.delenv("FILEMATE_INTERVIEW_LOCAL_ONLY")
+    monkeypatch.setattr(llm.LLMConfig, "from_env", lambda: object())
+    monkeypatch.setattr(llm, "LLMClient", lambda _: FakeLLM(getattr(exceptions, failure)("private-secret")))
+    path = f"/interviews/{interview_id}/turns/{turn['turn_id']}/analyze"
+    response = client.post(path, json={"external_consent": True})
+    assert response.status_code == 502 and phrase in response.json()["error"]
+    assert "private-secret" not in response.text
+    assert client.get(f"/interviews/{interview_id}/review").json()["data"]["report"] == original
+    assert client.get(f"/interviews/{interview_id}").json()["data"]["turns"][0]["answer"] == ANSWER
 
 
 def test_feature_disable_leaves_original_practice_working(api, monkeypatch):
@@ -411,7 +538,8 @@ def test_api_valid_model_analysis_cached_and_keywords_verified(api, monkeypatch)
     assert response.json()["data"]["turns"][0]["content_analysis"]["keywords"] == ["范围查询", "有序索引"]
     assert module._storage.get_interview(id)["assessed_turn_count"] == 1
     payload = model_payload() | {"keywords": ["不存在的关键词"]}
-    assert InterviewEvaluator(FakeLLM(payload)).evaluate("介绍项目", ANSWER, "后端")["score"] is None
+    result = InterviewEvaluator(FakeLLM(payload)).evaluate("介绍项目", ANSWER, "后端")
+    assert result["scoring_mode"] == "llm" and result["content_analysis"]["keywords"] == []
 
 
 def test_expert_calibration_stays_pending_without_real_expert_samples(tmp_path):

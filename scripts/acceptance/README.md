@@ -1,5 +1,7 @@
 # FileMate 自动化验收脚本
 
+2026-10-04面试模型专项：`interview_analysis.mjs`覆盖8份原创合成回答（不会的短答、概念、口语、换行、英文、项目、长答及无标点），从真实页面提交到逐题分析、原句核对、报告持久化/刷新及PDF/JSON/Markdown下载；使用当前真实模型，不替换响应。还验证仅本轮合成失效密钥的明确错误、旧报告保留、重新分析恢复、跨访客拒绝、缓存幂等和预览确认清理。默认连接`https://filemate.asia`，需部署模型可用；本机可设置`FILEMATE_WEB_URL`/`FILEMATE_API_URL`。设置新的`FILEMATE_EVIDENCE_DIR`后执行`node scripts/acceptance/interview_analysis.mjs`，不读取用户密钥或真实面试。
+
 DEV-01资料入口专项：`workspace.mjs`追加Markdown和C++实际浏览器上传、原文/块引用/哈希复用/会话重载以及无自动模型调用检查，共25项（原23＋新增2）。Markdown中的HTML和脚本内容作为原文读取，源码不执行；后端另覆盖新增10种后缀、大小写、错误编码/空白、其他后缀拒绝及Python无执行副作用。新卡采用`_working/learning-text-inputs-20261003/`独立证据，不改写此前UI基线的23项历史结果。
 
 2026-10-03布局与图标收口新增`knowledge_layout.mjs`。在实际TLS预检追加`--layout-checks`，与`--visual-checks --review-checks --workspace-checks`组合使用；使用新的输出目录与对应最终编译包。检查知识库大字/无下拉、资料名筛选/范围/引用、反馈问题快照、真实学习链、迟到响应隔离、故障重试、弹窗键盘及编辑保护、JSON校验/保存/重载/下载/删除、四宽度布局及导航底板对齐、减弱动画、实际学习入口和许可证分发。场景资料与模型均为明确本地合成工程夹具，正常HTTP响应不替换，延迟/中断由浏览器显式注入；不使用真实用户资料或外部模型。启动、凭据隔离、端口冲突检查和进程清理沿用`gateway_preflight.py`。
