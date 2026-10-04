@@ -1,6 +1,6 @@
 # FileMate 当前交付资源索引
 
-2026-10-04最新入口：[alpha.4账号交付](ACCOUNT_AUTH_DELIVERY_2026-10-04.md)与[真实API复核](API_CONNECTIVITY_AUDIT_2026-10-04.md)，版本 `1.3.0-alpha.4` / schema v25。邮箱账号和恢复码已公网验收；Windows796后端/33前端、Linux805后端/33前端及构建通过；当前运行提交以 `/release.json` 核对。图谱引用已修复，Linux C++执行与真实研究仍待完成，实际模型回退记录保留。
+2026-10-04最新入口：[统一资料入口与Linux判题发布](UNIFIED_INTAKE_LINUX_RELEASE_2026-10-04.md)、[多分类一言](HOME_ENCOURAGEMENT_CATEGORIES_2026-10-04.md)、[入口设计](UNIFIED_MATERIAL_INTAKE_2026-10-04.md)及[Linux判题](LINUX_CPP_DELIVERY_2026-10-04.md)。线上 `1.3.0-alpha.4` / schema v25 / `270ee4f1`；Windows807、Linux817后端与35前端通过，公网账号、真实模型、真实上传和C++双重评测通过。当前运行提交以 `/release.json` 为准，真实研究与独立安装仍待完成。
 
 历史整合入口：[alpha.3发布、测试与备份](INTEGRATED_RELEASE_ALPHA3.md)及[首页诗词接口](HOME_POETRY_DELIVERY_2026-10-04.md)。下列alpha.1–alpha.3记录是对应快照的历史证据，不表示当前线上提交。
 
@@ -37,7 +37,7 @@
 
 ### V2.3 编程练习与评测
 
-[页面](../filemate/web/src/views/Programming.vue)、[Monaco](../filemate/web/src/components/CodeEditor.vue)、[评测与隔离](../filemate/programming/)、[测试](../filemate/tests/test_programming.py)、[原生49项](../scripts/acceptance/programming_native.py)、[浏览器闭环](../scripts/acceptance/programming.mjs)、[关闭检查](../scripts/acceptance/programming_disabled.mjs)、[阶段交付](V2_3_PROGRAMMING_DELIVERY.md)。8道原创题和C++17真实判题；Windows MSVC/LPAC现役，Linux网站缺隔离适配器。
+[页面](../filemate/web/src/views/Programming.vue)、[Monaco](../filemate/web/src/components/CodeEditor.vue)、[评测与隔离](../filemate/programming/)、[测试](../filemate/tests/test_programming.py)、[原生49项](../scripts/acceptance/programming_native.py)、[浏览器闭环](../scripts/acceptance/programming.mjs)、[关闭检查](../scripts/acceptance/programming_disabled.mjs)、[阶段交付](V2_3_PROGRAMMING_DELIVERY.md)。8道原创题和C++17真实判题；Windows MSVC/LPAC与Linux GCC/gVisor真实隔离Provider现役；[Linux部署与12组资源探针](LINUX_CPP_DELIVERY_2026-10-04.md)及[公网实际编译器/AI复盘](UNIFIED_INTAKE_LINUX_RELEASE_2026-10-04.md)分别核对。
 
 ### V2.4 面试增强与复盘
 

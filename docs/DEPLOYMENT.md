@@ -214,3 +214,7 @@ alpha.2 桌面壳将 C++ 工具链缓存设置为应用数据目录的 `cpp-tool
 - 页面在常用桌面分辨率下无横向溢出
 - 桌面安装包可在无开发环境的干净 Windows 机器一键安装运行
 - 网站与桌面端的功能矩阵逐项一致；实现差异有明确说明
+
+## 2026-10-04既有网站发布补充
+
+现役 `1.3.0-alpha.4` / schema v25 / `270ee4f1` 已在原systemd＋Nginx Proxy Manager拓扑部署。完整备份/恢复、包指纹、原子切换、公网实际模型与浏览器证据见[发布总记录](UNIFIED_INTAKE_LINUX_RELEASE_2026-10-04.md)。Linux判题通过独立root代理与受限Unix socket连接，GCC/gVisor/固定镜像/单并发，Web用户不持有Docker权限，安装与故障边界见[scripts/judge/README.md](../scripts/judge/README.md)。不把本次既有服务器验收推及尚未测试的Compose拓扑、桌面安装、长期容量或其他主机。
