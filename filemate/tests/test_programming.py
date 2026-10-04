@@ -285,6 +285,7 @@ def test_unexpected_adapter_failure_is_persisted_without_sensitive_message(repos
         def judge(self, *args):
             raise RuntimeError("private credential must not appear")
     monkeypatch.setattr(service, "WindowsCppJudge", Failing)
+    monkeypatch.setattr(service, "LinuxCppJudge", Failing)
     row = create(repository)
     with pytest.raises(SandboxUnavailable):
         service.execute(repository, row["submission_id"])
@@ -303,6 +304,7 @@ def test_live_cancel_race_and_duplicate_run_only_invoke_provider_once(repository
             assert release.wait(5)
             return {"verdict": "AC", "tests": [], "compile_log": "", "passed": 1, "total": 1, "score": 100}
     monkeypatch.setattr(service, "WindowsCppJudge", Paused)
+    monkeypatch.setattr(service, "LinuxCppJudge", Paused)
     row = create(repository)
     with ThreadPoolExecutor(max_workers=2) as pool:
         future = pool.submit(service.execute, repository, row["submission_id"])

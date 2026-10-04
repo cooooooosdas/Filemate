@@ -1180,11 +1180,12 @@ def programming_setup():
 
     _require_programming_enabled()
     try:
-        prepare_toolchain()
+        if os.name == "nt":
+            prepare_toolchain()
         result = status(force=True)
     except (SandboxUnavailable, OSError) as exc:
         logger.warning("编程环境准备失败 (%s)", type(exc).__name__)
-        raise HTTPException(status_code=503, detail="无法准备隔离环境，请检查 MSVC/SDK 与目录权限后重试") from exc
+        raise HTTPException(status_code=503, detail="无法准备隔离环境，请检查工具链或部署代理后重试") from exc
     repository = _coding_repository()
     with repository.storage._write_lock:
         repository._event(None, "environment_checked", {"ready": result["ready"]})

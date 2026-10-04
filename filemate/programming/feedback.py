@@ -16,8 +16,9 @@ def local_feedback(submission: dict[str, Any]) -> dict[str, Any]:
     for number, line in enumerate(code.splitlines(), 1):
         if re.search(r"\busing\s+namespace\s+std\s*;", line):
             issues.append({"line": number, "kind": "style", "message": "可使用 std:: 前缀减少命名冲突；这不影响判题分数。"})
-    for match in re.finditer(r"main\.cpp\((\d+)(?:,\d+)?\)\s*:\s*(?:fatal )?error[^\r\n]*", result.get("compile_log", "")):
-        number = int(match[1])
+    diagnostic = r"main\.cpp(?:\((\d+)(?:,\d+)?\)|:(\d+)(?::\d+)?)\s*:\s*(?:fatal )?error[^\r\n]*"
+    for match in re.finditer(diagnostic, result.get("compile_log", "")):
+        number = int(match[1] or match[2])
         if 1 <= number <= len(code.splitlines()):
             issues.append({"line": number, "kind": "compile", "message": match[0][:500]})
     failed = [{"index": t["index"], "name": t["name"], "verdict": t["verdict"],

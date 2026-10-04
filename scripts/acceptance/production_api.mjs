@@ -13,7 +13,8 @@ const page = await context.newPage()
 const checks = [], dependencies = [], errors = []
 page.on('pageerror', error => errors.push(String(error)))
 const headers = { Origin: base, 'X-FileMate-Action': 'account' }
-let source, interview, questionSet, graphDraft
+let source, interview, questionSet, graphDraft, cppReady = false
+const codingRecords = []
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 async function check(name, action) {
   const started = Date.now()
@@ -38,10 +39,44 @@ try {
     await check(`actual API ${path}`, async () => {
       const result = await api(path)
       if (path === '/api/programming/status' && !result.ready) dependencies.push({ feature: 'C++ execution', ready: false, provider: result.provider, reason: result.error })
+      if (path === '/api/programming/status') cppReady = result.ready
       if (result?.enabled === false) dependencies.push({ feature: path, ready: false, reason: 'Module disabled in deployed configuration' })
       assert.notEqual(result, undefined)
     })
     await delay(1000)
+  }
+  if (cppReady) {
+    const correct = '#include <iostream>\nint main(){\n int n; std::cin >> n;\n long long sum=0, value;\n while(n-- && std::cin >> value) sum+=value;\n std::cout << sum;\n}\n'
+    let failedSubmission
+    for (const [label, code, verdict] of [['correct', correct, 'AC'], ['incorrect', '#include <iostream>\nint main(){std::cout<<0;}\n', 'WA'], ['syntax', 'int main( {', 'CE'], ['time', 'int main(){while(true){}}', 'TLE']]) {
+      await check(`actual isolated C++ ${label} verdict and persistence`, async () => {
+        const request = { problem_id: 'array-sum', code, request_key: crypto.randomUUID(), language: 'cpp17' }
+        const row = await api('/api/programming/submissions', 'post', request)
+        codingRecords.push(row.submission_id)
+        assert.equal((await api('/api/programming/submissions', 'post', request)).submission_id, row.submission_id)
+        const result = await api(`/api/programming/submissions/${row.submission_id}/run`, 'post', {})
+        assert.equal(result.status, 'completed')
+        assert.equal(result.result.verdict, verdict)
+        assert.deepEqual((await api(`/api/programming/submissions/${row.submission_id}`)).result, result.result)
+        assert.equal((await other.request.get(base + `/api/programming/submissions/${row.submission_id}`)).status(), 404)
+        if (verdict === 'AC') assert.equal(result.result.score, 100)
+        if (verdict === 'WA') failedSubmission = result
+        return { verdict, provider: result.result.provider, persisted: true, duplicate_submission_reused: true, other_account_status: 404 }
+      })
+    }
+    if (failedSubmission) await check('actual AI code review respects consent and preserves compiler score', async () => {
+      const id = failedSubmission.submission_id
+      const denied = await context.request.post(base + `/api/programming/submissions/${id}/review`, { headers, data: { mode: 'llm', allow_external_model: false } })
+      assert.equal(denied.status(), 422)
+      const reviewed = await api(`/api/programming/submissions/${id}/review`, 'post', { mode: 'llm', allow_external_model: true })
+      assert.equal(reviewed.review.provider, 'external_model')
+      assert.equal(reviewed.review.reference_only, true)
+      assert.deepEqual(reviewed.result, failedSubmission.result)
+      const restored = await api(`/api/programming/submissions/${id}`)
+      assert.deepEqual(restored.review, reviewed.review)
+      assert.deepEqual(restored.result, failedSubmission.result)
+      return { provider: reviewed.review.provider, original_compiler_result_preserved: true, persisted: true }
+    })
   }
   await check('original synthetic Markdown imports and retrieves citation chunks', async () => {
     const text = '# 栈、队列与二分查找\n\n【原创合成工程资料】不代表真实学生学习效果。\n\n## 栈\n栈是一种后进先出的线性结构。后进先出简称LIFO；依次将1、2、3入栈，再连续出栈，顺序是3、2、1。\n\n## 队列\n队列是一种先进先出的线性结构。先进先出简称FIFO；元素在队尾加入，在队首取出。\n\n## 二分查找\n二分查找是在有序数组中定位目标的算法。每次比较中间值，并将候选区间减半，时间复杂度为O(log n)。数组访问前必须检查下标，测试应覆盖空数组、单元素、首尾目标及目标不存在。\n\n## 关系\n栈用于深度优先搜索。队列用于广度优先搜索。二分查找依赖数组有序。'
@@ -120,6 +155,11 @@ try {
     })
   }
 } finally {
+  for (const id of codingRecords) await check('own synthetic coding record withdrawn from statistics', async () => {
+    const result = await api(`/api/programming/submissions/${id}/undo`, 'post', {})
+    assert.equal(result.active, 0)
+    assert.equal((await api(`/api/programming/submissions/${id}/undo`, 'post', {})).active, 0)
+  })
   if (interview) await check('own synthetic interview deletion uses confirmation token', async () => {
     const preview = await api(`/interviews/${interview.interview_id}/delete-preview`)
     await api(`/interviews/${interview.interview_id}`, 'delete', { confirmed: true, confirmation_token: preview.confirmation_token })

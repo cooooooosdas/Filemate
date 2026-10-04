@@ -1,0 +1,27 @@
+[Unit]
+Description=FileMate restricted gVisor C++ judge broker
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+Group=filemate
+WorkingDirectory=/opt/filemate-judge/current
+EnvironmentFile=/etc/filemate-judge.env
+ExecStart=/usr/bin/python3.11 -m filemate.programming.linux_broker
+ExecStopPost=/usr/bin/python3.11 -m filemate.programming.linux_broker --cleanup
+RuntimeDirectory=filemate-judge
+RuntimeDirectoryMode=0750
+UMask=0077
+NoNewPrivileges=true
+RestrictAddressFamilies=AF_UNIX
+MemoryMax=128M
+TasksMax=64
+TimeoutStopSec=10
+KillMode=control-group
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -2,24 +2,34 @@
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 from typing import Any
 
 from .judge import WindowsCppJudge
+from .linux_judge import LinuxCppJudge
 from .repository import CodingRepository
 from .toolchain import discover_msvc, toolchain_root
 from .windows_sandbox import SandboxUnavailable, network_isolation_available
 
 _LOCK = threading.RLock()
 _HEALTH_LOCK = threading.Lock()
-_SLOTS = threading.BoundedSemaphore(2)
+_SLOTS = threading.BoundedSemaphore(2 if os.name == "nt" else 1)
 _RUNNING: dict[tuple[str, str], threading.Event] = {}
 _HEALTH: dict[str, tuple[float, bool]] = {}
 
 
 def status(*, force: bool = False) -> dict[str, Any]:
     """报告依赖与真实自检结果，不把工具链文件存在当作隔离成功。"""
+    if os.name != "nt":
+        try:
+            return LinuxCppJudge().health()
+        except SandboxUnavailable:
+            return {"ready": False, "installed": False, "provider": "Linux gVisor / GCC C++17",
+                    "error": "Linux 隔离评测服务未就绪，请联系部署管理员", "languages": ["cpp17"],
+                    "max_concurrent": 1, "compile_limit_seconds": 30, "runtime_processes": 1,
+                    "network": False, "network_isolation_ready": False, "setup_supported": False}
     root = toolchain_root()
     installed = False
     try:
@@ -56,7 +66,7 @@ def status(*, force: bool = False) -> dict[str, Any]:
     return {"ready": ready, "installed": installed, "provider": "Windows AppContainer + LPAC / MSVC C++17",
             "error": "" if ready else error, "languages": ["cpp17"], "max_concurrent": 2,
             "compile_limit_seconds": 30, "runtime_processes": 1, "network": False,
-            "network_isolation_ready": network_ready}
+            "network_isolation_ready": network_ready, "setup_supported": True}
 
 
 def execute(repository: CodingRepository, identifier: str) -> dict[str, Any]:
@@ -77,7 +87,7 @@ def execute(repository: CodingRepository, identifier: str) -> dict[str, Any]:
         submission, claimed = repository.start(identifier)
         if not claimed:
             return submission
-        result = WindowsCppJudge().judge(
+        result = (WindowsCppJudge() if os.name == "nt" else LinuxCppJudge()).judge(
             submission["code"], get_problem(submission["problem_id"]), cancel,
             lambda evidence: repository.update(identifier, payload={"result": evidence}),
         )

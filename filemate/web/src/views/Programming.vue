@@ -2,10 +2,10 @@
   <div class="coding-page">
     <header class="page-heading"><div><p class="eyebrow">写代码 · 跑测试 · 留下复盘</p><h1>编程练习</h1><p>从一道题开始，用真实编译与测试检查每一次进步。</p></div><button :disabled="!!busy || loading" @click="load">刷新记录</button></header>
     <section class="environment" aria-label="评测环境">
-      <div><strong>{{ environment?.ready ? '本地隔离评测已就绪' : '评测环境待准备' }}</strong><p>{{ environment?.ready ? 'C++17 · 单测试点 1 秒 / 256 MB · 禁止网络 · 单进程' : environment?.error || '正在核对本地环境…' }}</p></div>
-      <button v-if="environment && !environment.ready" :disabled="!!busy || !environment.installed" @click="setup">{{ busy === 'setup' ? '正在准备…' : '准备本地评测环境' }}</button>
+      <div><strong>{{ environment?.ready ? '隔离评测已就绪' : '评测环境待准备' }}</strong><p>{{ environment?.ready ? 'C++17 · 单测试点 1 秒 / 256 MB · 禁止网络 · 单进程' : environment?.error || '正在核对本地环境…' }}</p></div>
+      <button v-if="environment && !environment.ready && environment.setup_supported" :disabled="!!busy || !environment.installed" @click="setup">{{ busy === 'setup' ? '正在准备…' : '准备本地评测环境' }}</button>
     </section>
-    <p v-if="environment && !environment.ready && environment.installed" class="muted">首次准备会在应用专用目录复制本机 C++ 工具链，并执行隔离自检。</p>
+    <p v-if="environment && !environment.ready && environment.installed && environment.setup_supported" class="muted">首次准备会在应用专用目录复制本机 C++ 工具链，并执行隔离自检。</p>
     <div v-if="error" role="alert" class="message error">{{ error }}</div><p v-if="notice" role="status" class="message">{{ notice }}</p>
     <p v-if="loading" role="status">正在读取题目与提交记录…</p>
     <nav class="tabs" aria-label="编程工作台" role="tablist">
@@ -19,7 +19,7 @@
         <template v-if="problem"><div class="problem-title"><span>{{ problem.difficulty }} · {{ problem.test_count }} 个测试点</span><h2>{{ problem.title }}</h2></div><div class="tags"><span v-for="tag in problem.tags" :key="tag">{{ tag }}</span></div><p class="statement">{{ problem.statement }}</p><h3>输入输出示例</h3><div v-for="(example, i) in problem.examples" :key="i" class="example"><span>输入</span><pre>{{ example.input }}</pre><span>输出</span><pre>{{ example.output }}</pre></div><details><summary>查看解题提示</summary><p>{{ problem.hint }}</p></details><p class="attribution">{{ problem.attribution }}</p></template>
       </aside>
       <section class="panel code-panel" aria-label="C++ 编辑与提交">
-        <div class="panel-title"><h2>C++ 编辑器</h2><span>MSVC · 标准 C++17</span></div><p class="muted">使用标准头文件（如 &lt;iostream&gt;、&lt;vector&gt;）；不支持 GCC 专用 bits/stdc++.h。代码会作为提交产物保存在本地。</p>
+        <div class="panel-title"><h2>C++ 编辑器</h2><span>{{ environment?.provider?.includes('Linux') ? 'GCC' : 'MSVC' }} · 标准 C++17</span></div><p class="muted">使用标准头文件（如 &lt;iostream&gt;、&lt;vector&gt;），便于跨平台练习。代码与判题结果会保存在当前学习空间。</p>
         <CodeEditor v-model="code" :disabled="!!busy" />
         <div class="editor-actions"><button class="primary" :disabled="!problem || !code.trim() || !!busy || !environment?.ready" @click="submit">{{ busy === 'run' ? '正在编译评测…' : '提交并评测' }}</button><button v-if="current && ['queued', 'running'].includes(current.status)" :disabled="cancelling" @click="cancelRun">{{ cancelling ? '正在取消…' : '取消评测' }}</button><span class="muted">最多 100 KB，输出超过 64 KB 会终止该测试点。</span></div>
       </section>

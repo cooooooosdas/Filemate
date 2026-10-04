@@ -539,6 +539,7 @@ uv run python main.py --check --db _working/check.db
 | `FILEMATE_ENABLE_PROGRAMMING` | `1` | 设为 `0` 时关闭编程 API，保留提交数据与其他模块 |
 | `VITE_ENABLE_PROGRAMMING` | 开启 | 前端构建时设为 `false`，隐藏编程导航，旧 `/programming` 地址转到学习工作区 |
 | `FILEMATE_CPP_TOOLCHAIN_DIR` | 项目 `_working/cpp-toolchain` | 本机 MSVC/SDK 的专用只读副本；评测工作目录在其相邻 `cpp-runs` 中 |
+| `FILEMATE_JUDGE_SOCKET` | `/run/filemate-judge/judge.sock` | Linux独立gVisor代理客户端地址；代理部署配置不向Web暴露Docker权限 |
 
 未配置模型密钥时，Web、历史、持久化和部分本地功能仍可启动；需要模型的能力应返回明确配置提示，不能静默伪造结果。
 
@@ -552,11 +553,11 @@ uv run python main.py --check --db _working/check.db
 
 复盘报告作为 Artifact 持久化，可导出嵌入中文字体的 PDF、JSON 和 Markdown。清空分析保留原回答和语音节奏，删除整场须先预览影响并确认。视觉比例只是实际采样统计，不推断情绪、人格或录用结果；真实专家校准仍为“待评测”。匿名盲评模板和 Spearman 工具见 [V2.4 交付报告](docs/V2_4_INTERVIEW_REVIEW_DELIVERY.md)。
 
-编程模块当前支持 Windows x64 与本机已安装的 Visual Studio C++ 桌面开发组件/Windows SDK。页面中的“准备本地评测环境”复制工具链到应用目录并执行真实隔离自检，不安装系统组件。编译使用无网络能力的 AppContainer，运行使用 LPAC，均绑定 Job Object；Windows BFE/MpsSvc 服务不可用时拒绝执行。学生程序限制为单进程、256 MB、每点 1 秒、输出 64 KB；编译上限 30 秒/768 MB/8 进程。使用标准 C++17 头文件，不支持 GCC 专用 `bits/stdc++.h`。其他系统或环境未就绪时可查看题目/历史，评测入口关闭。
+编程模块当前支持 Windows x64 与本机已安装的 Visual Studio C++ 桌面开发组件/Windows SDK。页面中的“准备本地评测环境”复制工具链到应用目录并执行真实隔离自检，不安装系统组件。编译使用无网络能力的 AppContainer，运行使用 LPAC，均绑定 Job Object；Windows BFE/MpsSvc 服务不可用时拒绝执行。学生程序限制为单进程、256 MB、每点 1 秒、输出 64 KB；编译上限 30 秒/768 MB/8 进程。使用标准 C++17 头文件，不支持 GCC 专用 `bits/stdc++.h`。Linux现役网站新增独立gVisor/GCC适配器，受限Unix socket连接、真实隔离自检、逐测试点结果和取消清理；部署见[scripts/judge/README.md](scripts/judge/README.md)。macOS或环境未就绪时可查看题目/历史，评测入口关闭。
 
 代码复盘与正确性裁决分开。本地提示自动保存；外部模型需要用户确认发送题面、代码和测试结果，模型反馈须校验源代码行号与全部失败测试点编号。模型失败保留原判题和既有复盘。类别通过率、本周记录、每题平均提交次数均来自有效完成记录，取消、基础设施失败与撤销记录不进入统计。
 
-编程历史中损坏或无法对应固定题目版本的记录暂停操作、排除统计并保留原始字节；单条损坏的孤立运行记录不会阻断记录页。当前V2.3为本地工程验收，独立提交、网站部署和安装包更新仍待完成，具体证据与限制见 [V2.3报告](docs/V2_3_PROGRAMMING_DELIVERY.md)。
+编程历史中损坏或无法对应固定题目版本的记录暂停操作、排除统计并保留原始字节；单条损坏的孤立运行记录不会阻断记录页。V2.3历史报告记录首次本地工程验收；Linux网站适配验收新增于[本次交付](docs/LINUX_CPP_DELIVERY_2026-10-04.md)，独立安装包更新仍待完成，具体证据与限制见 [V2.3报告](docs/V2_3_PROGRAMMING_DELIVERY.md)。
 
 桌面端或本机 Web 启动后，也可点击右上角“设置”，直接填写自己的 DeepSeek API 密钥。密钥由当前系统用户的安全凭据库保存，不进入浏览器存储、SQLite、日志或 Git；保存后立即生效。本机安全凭据优先于 `LLM_API_KEY`，删除后自动回退到环境变量。为避免公共服务器上的用户互相覆盖密钥，该界面只允许回环地址访问，公网部署仍使用服务器环境变量。
 

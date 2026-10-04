@@ -21,7 +21,7 @@ export interface CodingSubmission {
   review: CodingFeedback | null; local_feedback: CodingFeedback | null
 }
 export interface ProgrammingStatus {
-  ready: boolean; installed: boolean; provider: string; error: string; languages: string[]; network: boolean
+  ready: boolean; installed: boolean; setup_supported?: boolean; provider: string; error: string; languages: string[]; network: boolean
 }
 export interface CodingOverview {
   submissions: CodingSubmission[]; evidence_scope: string

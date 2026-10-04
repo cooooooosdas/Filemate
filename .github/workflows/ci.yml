@@ -54,6 +54,7 @@ jobs:
           filemate/tests/test_backup.py
           filemate/tests/test_career_planning.py
           filemate/tests/test_programming.py
+          filemate/tests/test_linux_judge.py
           filemate/tests/test_interview_review.py
           filemate/study
           filemate/programming

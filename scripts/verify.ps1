@@ -37,6 +37,7 @@ try {
         filemate/tests/test_beta_tools.py `
         filemate/tests/test_backup.py `
         filemate/tests/test_programming.py `
+        filemate/tests/test_linux_judge.py `
         filemate/tests/test_file_ops.py `
         filemate/tests/test_archiver.py `
         filemate/tests/test_confirmation_executor.py `

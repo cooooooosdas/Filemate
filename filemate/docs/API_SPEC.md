@@ -611,13 +611,13 @@ V2.2 本次加固新增 SQLite v21 `knowledge_graph_events`，与业务变更在
 
 | 方法 | 路径 | 合同 |
 |---|---|---|
-| GET | `/api/programming/status` | `ready`、`installed`、`provider`、支持语言和网络隔离服务状态；真实编译/身份探针通过才为ready，自检缓存10分钟，网络服务每次核对 |
-| POST | `/api/programming/setup` | 复制本机已安装MSVC/SDK到专用目录并强制自检；不安装系统组件，失败503 |
+| GET | `/api/programming/status` | `ready`、`installed`、`provider`、支持语言和网络隔离服务状态；真实编译/身份探针通过才为ready，自检缓存10分钟；`max_concurrent`为Windows 2/Linux 1，`setup_supported`标识是否支持页面准备，Windows网络服务每次核对 |
+| POST | `/api/programming/setup` | Windows复制本机已安装MSVC/SDK到专用目录并强制自检；Linux只查询已部署代理状态，不安装系统组件，`setup_supported=false`，代理缺失返回未就绪 |
 | GET | `/api/programming/problems` | 8道原创题的版本、题面、示例、分类、提示和资源限制；当前仅 `cpp17` |
 | GET | `/api/programming/overview` | 最近100条完整提交/操作日志及全部有效完成记录的 `profile`，`evidence_scope=all_active_completed_submissions` |
 | POST | `/api/programming/submissions` | `{problem_id,code,request_key,language:'cpp17'}`；非空代码至多100000 UTF-8字节；请求键16–80个ASCII字母/数字/下划线/短横线；相同键和代码幂等，不同内容409 |
 | GET | `/api/programming/submissions/{id}` | 原代码、Artifact ID、状态、逐点结果、本地提示、复盘和笔记；跨身份或缺失记录404 |
-| POST | `/api/programming/submissions/{id}/run` | 原子认领queued记录并真实编译运行；并行上限2，容量不足409且保持queued；重复认领不重复执行 |
+| POST | `/api/programming/submissions/{id}/run` | 原子认领queued记录并真实编译运行；Windows并行上限2，Linux上限1，容量不足409且保持queued；重复认领不重复执行 |
 | POST | `/api/programming/submissions/{id}/cancel` | queued/running→cancelled并终止对应Job；取消不可被迟到结果覆盖，重复操作幂等 |
 | POST | `/api/programming/submissions/{id}/undo`、`/restore` | 仅改变已结束提交的统计资格，原始记录保留；运行中409，重复操作幂等 |
 | POST | `/api/programming/submissions/{id}/review` | `{mode:'local'|'llm',allow_external_model:false}`；需有效completed记录；未确认外发422；模型异常502且保留旧复盘；已有相同复盘方式幂等返回 |
@@ -627,7 +627,9 @@ SQLite v22只追加两个表，旧迁移不变。提交复用现役Artifact，�
 
 `result` 包含 `verdict`、`passed`、`total`、`score`、`compile_log`、`compile_ms`、`provider`、`tests`。CE无运行测试点；编译后逐点返回编号/名称、AC/WA/TLE/RE、输入预览与SHA-256、期望/实际输出、stderr、耗时、Job峰值内存、退出码及限制触发原因。输入预览最多4096字符，实际输出上限64KB字节。允许行末空白与末尾空行，不忽略中间空格、前导空格或大小写。分数严格为通过点数/总点数×100，总判定取首个失败测试点，全部通过为AC。CANCELLED与基础设施SYSTEM_ERROR不作为学习正确率样本。
 
-Windows x64适配层要求MSVC/SDK。编译使用无网络能力的AppContainer，运行使用LPAC；恢复挂起进程前建立Job限制。编译30秒/768MB/8进程，运行每点1秒/256MB/1进程，CPU与墙钟均受限。只继承stdin/stdout/stderr三个句柄及必要标准路径变量。工具链副本只读，每点独立目录/身份，不修改宿主安装目录权限。BFE/MpsSvc未运行或隔离属性失败则禁止执行，不退回普通宿主进程。I/O写入观察阈值16MB，每20ms核对并终止洪泛，可能在观察间隔内超出，不是磁盘硬配额。支持标准C++17头文件；GCC扩展头、Linux/macOS及Docker适配未交付。
+Windows x64适配层要求MSVC/SDK。编译使用无网络能力的AppContainer，运行使用LPAC；恢复挂起进程前建立Job限制。编译30秒/768MB/8进程，运行每点1秒/256MB/1进程，CPU与墙钟均受限。只继承stdin/stdout/stderr三个句柄及必要标准路径变量。工具链副本只读，每点独立目录/身份，不修改宿主安装目录权限。BFE/MpsSvc未运行或隔离属性失败则禁止执行，不退回普通宿主进程。I/O写入观察阈值16MB，每20ms核对并终止洪泛，可能在观察间隔内超出，不是磁盘硬配额。支持标准C++17头文件；Windows不支持GCC扩展头；macOS执行暂不支持。
+
+Linux适配层使用独立受限Unix socket代理，Web进程不持有Docker权限。代理要求固定摘要镜像与gVisor `filemate-runsc`，不退回原生Docker/宿主进程；请求仅含内置题目ID和代码，不接受路径、命令或自定义资源。每点独立容器，仅挂载二进制，根文件系统只读、移除能力、禁止提权/网络；受信任运行器限制学生单进程和线程，容器内计时排除启动开销，默认1秒/256MB。编译30秒/384MB/单CPU，临时文件总量64MB；运行文件系统16MB，单文件8MB，输出合计64KB。取消或断连删除容器，异常清理失败关闭代理。部署合同与固定版本见 `scripts/judge/README.md`。
 
 编译诊断优先按UTF-8解码；未安装英语MSVC语言包时可回退Windows系统ANSI编码，避免中文CE日志乱码。学生程序输出不使用该回退，仍按UTF-8处理；日志捕获上限、隔离和判题规则不变。
 

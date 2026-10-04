@@ -28,7 +28,9 @@ try {
   await check('actual TLS gateway renders production Home and protects fresh learning data', async () => {
     await page.goto(base + '/')
     await page.locator('.overview').waitFor()
-    assert.match(await page.locator('.empty-files').innerText(), /把第一份资料/)
+    assert.equal(await page.locator('.empty-files a').getAttribute('href'), '/knowledge')
+    assert.equal(await page.locator('.hero-start').getAttribute('href'), '/ai-tools')
+    assert.equal(await page.locator('.global-import').getAttribute('href'), '/import?intent=study')
     assert.equal(await page.evaluate(() => window.isSecureContext), true)
     const response = await context.request.get(base + '/api/health', { headers: { Accept: 'text/html' } })
     assert.equal(response.status(), 200)
