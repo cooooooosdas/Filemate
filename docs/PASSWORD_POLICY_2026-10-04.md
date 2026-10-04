@@ -6,4 +6,10 @@
 
 源码：`filemate/accounts.py`、`filemate/web/src/auth/password.ts`、`filemate/web/src/views/Auth.vue`；公共合同见[API规范](../filemate/docs/API_SPEC.md)。账号集成测试覆盖9字符注册/登录/恢复、8字符及缺字母/数字拒绝、128字符上限、常见密码拒绝和旧密码登录兼容。前端测试覆盖混合规则、可选符号及Unicode计数，真实浏览器账号脚本使用随机9字符密码验证注册和重设流程。
 
-此报告先固定候选规则；对应提交、当前全量检查、部署和公网结果在发布后补充，不沿用上轮结果。
+2026-10-04已推送主分支并上线，运行提交 `8b7add5c8bd01ea573b13cf883dd799a83746a12`，前后端同包，UI标识 `UI-2026.10.04-password-9`。Windows全量823通过、20跳过、5 deselected；账号专项25通过；前端38通过，类型检查、构建与体积门禁通过。Linux CI 833通过、18跳过、5 deselected，[主分支CI](https://github.com/cooooooosdas/Filemate/actions/runs/37193011988)成功。
+
+公网真实接口5组、浏览器账号14组全部通过，注册/登录/恢复码页在375/768/1024/1440宽度的16次无障碍检查通过。实际测试9字符混合密码注册、异设备登录、重设为9字符含可选符号密码，拒绝8字符/纯字母/纯数字，确认失败重设不消耗恢复码；旧会话撤销、原资料恢复及恢复码单次使用仍通过。只创建合成账号和原创合成资料，清理仅涉及本次合成资料；账号登记保留，不代表真实学生效果或邮箱归属验证。
+
+证据位于本工作树 `_working/password-policy/`：`verify-v2.log`、`accounts-v3.log`、`live-api/summary.json`、`live-browser/summary.json`及16张截图。上线前135个数据库及151个文件完整备份、新目录恢复演练通过，备份为 `/var/backups/filemate/alpha4-8b7add5c-20261004T094312Z`。已有用户资料及schema v25保留，C++隔离服务维持上轮已验收版本。代码回滚必须兼容当前账号及schema，不以旧备份覆盖上线后的新写入。
+
+后端包SHA256：`1ccd81371989fc3ae5bf78e23334b47a471fb65595ecbe114af04df66939cf35`；网页包SHA256：`0db148418dea5dba8211a41b10e0a9fa0c8e27304a9bdb09668d69414d8669f1`。

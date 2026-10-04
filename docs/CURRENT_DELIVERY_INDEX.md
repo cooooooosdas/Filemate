@@ -1,8 +1,8 @@
 # FileMate 当前交付资源索引
 
-新增当前密码规则卡：[至少9字符、字母与数字混合](PASSWORD_POLICY_2026-10-04.md)，注册与重设同步，旧密码继续登录；对应发布与测试以该卡最新记录为准。
+2026-10-04密码规则已上线，运行提交 `8b7add5c`：[至少9字符、字母与数字混合](PASSWORD_POLICY_2026-10-04.md)，注册与重设同步，旧密码继续登录；对应发布与测试以该卡最新记录为准。
 
-2026-10-04最新入口：[统一资料入口与Linux判题发布](UNIFIED_INTAKE_LINUX_RELEASE_2026-10-04.md)、[多分类一言](HOME_ENCOURAGEMENT_CATEGORIES_2026-10-04.md)、[入口设计](UNIFIED_MATERIAL_INTAKE_2026-10-04.md)及[Linux判题](LINUX_CPP_DELIVERY_2026-10-04.md)。线上 `1.3.0-alpha.4` / schema v25 / `270ee4f1`；Windows807、Linux817后端与35前端通过，公网账号、真实模型、真实上传和C++双重评测通过。当前运行提交以 `/release.json` 为准，真实研究与独立安装仍待完成。
+2026-10-04上一轮整合入口：[统一资料入口与Linux判题发布](UNIFIED_INTAKE_LINUX_RELEASE_2026-10-04.md)、[多分类一言](HOME_ENCOURAGEMENT_CATEGORIES_2026-10-04.md)、[入口设计](UNIFIED_MATERIAL_INTAKE_2026-10-04.md)及[Linux判题](LINUX_CPP_DELIVERY_2026-10-04.md)。线上 `1.3.0-alpha.4` / schema v25 / `270ee4f1`；Windows807、Linux817后端与35前端通过，公网账号、真实模型、真实上传和C++双重评测通过。当前运行提交以 `/release.json` 为准，真实研究与独立安装仍待完成。
 
 历史整合入口：[alpha.3发布、测试与备份](INTEGRATED_RELEASE_ALPHA3.md)及[首页诗词接口](HOME_POETRY_DELIVERY_2026-10-04.md)。下列alpha.1–alpha.3记录是对应快照的历史证据，不表示当前线上提交。
 
