@@ -1,12 +1,13 @@
 import axios from 'axios'
 import type { AccountState, AccountUser, RegisterAccount } from '../types/account'
+import { HITOKOTO_URL } from '../home/encouragement'
 
-export async function getPoetryQuote(): Promise<unknown> {
-  const response = await fetch('https://v1.hitokoto.cn/?c=i&encode=json&min_length=8&max_length=22', {
+export async function getEncouragementQuote(): Promise<unknown> {
+  const response = await fetch(HITOKOTO_URL, {
     credentials: 'omit', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(2500),
     headers: { Accept: 'application/json' },
   })
-  if (!response.ok) throw new Error('诗词接口暂时不可用')
+  if (!response.ok) throw new Error('一言接口暂时不可用')
   return response.json()
 }
 import type { CareerComparison, CareerEvent, CareerOverview, CareerPosition, CareerRecord, CareerTraining, CareerPlanPreview, CareerLearningPlan } from '../types/career'

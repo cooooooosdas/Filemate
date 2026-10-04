@@ -5,4 +5,5 @@ export interface Encouragement {
   author: string | null
   url: string
   provider: 'hitokoto' | 'classic'
+  category: 'a' | 'b' | 'd' | 'i' | 'k'
 }

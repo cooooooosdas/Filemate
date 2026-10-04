@@ -1,37 +1,42 @@
 import type { Encouragement } from '../types/encouragement'
 
+export const HITOKOTO_URL = 'https://v1.hitokoto.cn/?c=a&c=b&c=d&c=i&c=k&encode=json&min_length=8&max_length=48'
+export const QUOTE_CATEGORIES = { a: '动画', b: '漫画', d: '文学', i: '诗词', k: '哲思' } as const
+
 export const CLASSIC_FALLBACKS: readonly Encouragement[] = [
   { id: 'classic-wang-yue', text: '会当凌绝顶，一览众山小。', source: '望岳', author: '杜甫',
-    url: 'https://www.gushiwen.cn/mingju_960.aspx', provider: 'classic' },
+    url: 'https://www.gushiwen.cn/mingju_960.aspx', provider: 'classic', category: 'i' },
   { id: 'classic-du-shu', text: '纸上得来终觉浅，绝知此事要躬行。', source: '冬夜读书示子聿', author: '陆游',
-    url: 'https://m.ccdi.gov.cn/content/7d/c6/23245.html', provider: 'classic' },
+    url: 'https://m.ccdi.gov.cn/content/7d/c6/23245.html', provider: 'classic', category: 'i' },
 ]
 type QuoteStorage = Pick<Storage, 'getItem' | 'setItem'>
-const CACHE_KEY = 'filemate.home.poetry-cache.v1'
+const CACHE_KEY = 'filemate.home.encouragement-cache.v2'
+const LEGACY_CACHE_KEY = 'filemate.home.poetry-cache.v1'
 const LAST_QUOTE_KEY = 'filemate.home.last-encouragement'
 const UUID = /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i
 
 export function parseHitokotoQuote(value: unknown): Encouragement | null {
   if (!value || typeof value !== 'object') return null
   const data = value as Record<string, unknown>
-  if (data.type !== 'i' || typeof data.uuid !== 'string' || !UUID.test(data.uuid) || typeof data.hitokoto !== 'string') return null
+  if (typeof data.type !== 'string' || !Object.hasOwn(QUOTE_CATEGORIES, data.type) || typeof data.uuid !== 'string' || !UUID.test(data.uuid) || typeof data.hitokoto !== 'string') return null
   const text = data.hitokoto.trim()
-  if ([...text].length < 8 || [...text].length > 22 || /[<>\r\n\u0000-\u001f]/u.test(text)) return null
+  if ([...text].length < 8 || [...text].length > 48 || /[<>\r\n\u0000-\u001f]/u.test(text)) return null
   const field = (name: string, limit: number): string | null => {
     const value = data[name]
     return typeof value === 'string' && value.trim().length <= limit && value.trim() ? value.trim() : null
   }
   return { id: data.uuid, text, source: field('from', 80), author: field('from_who', 40),
-    url: 'https://hitokoto.cn/?uuid=' + data.uuid, provider: 'hitokoto' }
+    url: 'https://hitokoto.cn/?uuid=' + data.uuid, provider: 'hitokoto', category: data.type as Encouragement['category'] }
 }
 
 function readCache(storage?: QuoteStorage): Encouragement[] {
   try {
-    const data: unknown = JSON.parse(storage?.getItem(CACHE_KEY) ?? '[]')
+    const current = storage?.getItem(CACHE_KEY)
+    const data: unknown = JSON.parse(current ?? storage?.getItem(LEGACY_CACHE_KEY) ?? '[]')
     if (!Array.isArray(data)) return []
     return data.slice(-24).flatMap(item => {
       if (!item || typeof item !== 'object') return []
-      const quote = parseHitokotoQuote({ type: 'i', uuid: item.id, hitokoto: item.text, from: item.source, from_who: item.author })
+      const quote = parseHitokotoQuote({ type: current ? item.category : 'i', uuid: item.id, hitokoto: item.text, from: item.source, from_who: item.author })
       return quote ? [quote] : []
     })
   } catch { return [] }
@@ -52,11 +57,11 @@ export function createEncouragementPicker(options: {
   return () => chosen ??= (async () => {
     let storage: QuoteStorage | undefined
     let previous: string | null = null
-    try { storage = options.storage?.(); previous = storage?.getItem(LAST_QUOTE_KEY) ?? null } catch { /* 禁用存储不影响诗词阅读。 */ }
+    try { storage = options.storage?.(); previous = storage?.getItem(LAST_QUOTE_KEY) ?? null } catch { /* 禁用存储不影响一言阅读。 */ }
     const cache = readCache(storage)
     const previousText = [...cache, ...CLASSIC_FALLBACKS].find(quote => quote.id === previous)?.text
     let remote: Encouragement | null = null
-    try { remote = parseHitokotoQuote(await options.load()) } catch { /* 网络失败时使用已有诗词，不阻塞学习入口。 */ }
+    try { remote = parseHitokotoQuote(await options.load()) } catch { /* 网络失败时使用已有一言，不阻塞学习入口。 */ }
     if (remote) {
       const deduped = cache.filter(quote => quote.id !== remote!.id && quote.text !== remote!.text)
       cache.splice(0, cache.length, ...deduped.slice(-23), remote)

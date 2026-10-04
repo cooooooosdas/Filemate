@@ -1,18 +1,18 @@
 <template>
-  <aside class="hero-encouragement" aria-label="诗词一言" :data-encouragement="quote?.id" :data-provider="quote?.provider" :aria-busy="!quote">
-    <span class="encouragement-label">一言 · 诗词</span>
+  <aside class="hero-encouragement" aria-label="今日一言" :data-encouragement="quote?.id" :data-provider="quote?.provider" :data-category="quote?.category" :aria-busy="!quote">
+    <span class="encouragement-label">一言<span v-if="quote"> · {{ QUOTE_CATEGORIES[quote.category] }}</span></span>
     <template v-if="quote">
       <p class="encouragement-words"><span v-for="(line, index) in lines" :key="index" class="verse-line">{{ line }}</span></p>
       <a class="encouragement-source" :href="quote.url" target="_blank" rel="noopener noreferrer" :title="attribution" :aria-label="`${attribution}，在新标签页查看出处`"><cite>{{ attribution }}</cite><span aria-hidden="true">↗</span></a>
     </template>
-    <div v-else class="encouragement-loading" role="status" aria-label="正在读取诗词"><span /><span /></div>
+    <div v-else class="encouragement-loading" role="status" aria-label="正在读取一言"><span /><span /></div>
   </aside>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, shallowRef } from 'vue'
 import { getVisitEncouragement } from '../home/visitEncouragement'
-import { splitQuote } from '../home/encouragement'
+import { splitQuote, QUOTE_CATEGORIES } from '../home/encouragement'
 import type { Encouragement } from '../types/encouragement'
 const quote = shallowRef<Encouragement | null>(null)
 const lines = computed(() => quote.value ? splitQuote(quote.value.text) : [])
@@ -20,7 +20,7 @@ const attribution = computed(() => {
   const current = quote.value
   if (!current) return ''
   const source = current.source ? (current.source.startsWith('《') ? current.source : `《${current.source}》`) : ''
-  return [current.author, source].filter(Boolean).join(' · ') || '一言诗词'
+  return [current.author, source].filter(Boolean).join(' · ') || '一言语句'
 })
 let mounted = true
 onMounted(async () => { const selected = await getVisitEncouragement(); if (mounted) quote.value = selected })

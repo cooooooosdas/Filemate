@@ -13,7 +13,8 @@ const context = await browser.newContext({viewport:{width:1440,height:1100},igno
   httpCredentials:{username:process.env.FILEMATE_ACCEPTANCE_BASIC_USER,password:process.env.FILEMATE_ACCEPTANCE_BASIC_PASSWORD}})
 const page = await context.newPage()
 const checks=[], errors=[], external=[], poetryChecks=[]
-await page.route('https://v1.hitokoto.cn/?c=i&encode=json&min_length=8&max_length=22', async route=>{
+const quoteURL = 'https://v1.hitokoto.cn/?c=a&c=b&c=d&c=i&c=k&encode=json&min_length=8&max_length=48'
+await page.route(quoteURL, async route=>{
   await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
     uuid:'11111111-1111-4111-8111-111111111111',hitokoto:'会当凌绝顶，一览众山小。',type:'i',from:'望岳',from_who:'杜甫'
   })})
@@ -21,7 +22,7 @@ await page.route('https://v1.hitokoto.cn/?c=i&encode=json&min_length=8&max_lengt
 page.on('pageerror',error=>errors.push(String(error)))
 page.on('request',request=>{
   if(['127.0.0.1','localhost'].includes(new URL(request.url()).hostname))return
-  if(request.url()==='https://v1.hitokoto.cn/?c=i&encode=json&min_length=8&max_length=22') {
+  if(request.url()===quoteURL) {
     poetryChecks.push(Promise.race([request.allHeaders(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Poetry headers could not be observed within 5 seconds')),5000))]).then(headers=>({
       method:request.method(), type:request.resourceType(), body:request.postData()!==null,
       privateHeaders:['cookie','authorization','referer'].some(name=>Boolean(headers[name]))
