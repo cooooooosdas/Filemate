@@ -409,8 +409,38 @@ app.add_middleware(
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Accept", "Content-Type", "X-FileMate-Shutdown-Token", "X-FileMate-Action"],
+    allow_headers=["Accept", "Content-Type", "X-FileMate-Shutdown-Token", "X-FileMate-Action", "X-FileMate-LLM-Key"],
 )
+
+
+@app.middleware("http")
+async def isolate_model_credentials(request: Request, call_next):
+    """浏览器密钥只用于显式模型请求，不进入共享配置。"""
+    from filemate.llm_client.request_credentials import (
+        is_model_request,
+        model_request_key,
+        validate_api_key,
+    )
+
+    value = request.headers.get("X-FileMate-LLM-Key")
+    if value is None:
+        return await call_next(request)
+    if (
+        not is_model_request(request.method, request.url.path)
+        or request.headers.get("origin") not in CORS_ORIGINS
+        or request.headers.get("X-FileMate-Action") != "model"
+    ):
+        return JSONResponse(status_code=403, content={
+            "success": False, "data": None, "error": "密钥仅允许用于受信页面的模型请求",
+        })
+    try:
+        value = validate_api_key(value)
+    except ValueError as exc:
+        return JSONResponse(status_code=422, content={
+            "success": False, "data": None, "error": str(exc),
+        })
+    with model_request_key(value):
+        return await call_next(request)
 
 
 @app.middleware("http")
@@ -749,7 +779,7 @@ def _require_local_settings_access(request: Request) -> None:
     bind_host = os.getenv("FILEMATE_HOST", "127.0.0.1").strip().lower()
     if client_host not in {"127.0.0.1", "::1", "localhost"}:
         raise HTTPException(status_code=403, detail="模型密钥只能在本机应用中配置")
-    if bind_host not in {"127.0.0.1", "::1", "localhost"}:
+    if IS_PRODUCTION or IDENTITY_MODE != "local" or bind_host not in {"127.0.0.1", "::1", "localhost"}:
         raise HTTPException(status_code=403, detail="公网服务禁止通过界面修改模型密钥")
 
 
@@ -763,6 +793,46 @@ def _llm_settings_status() -> dict[str, Any]:
         "source": source,
         "secure_storage_available": secure_store_available(),
     }
+
+
+@app.get("/api/llm/status", response_model=ApiResponse)
+def public_llm_status():
+    """读取模型可用性与当前数据空间标识，不读取或返回浏览器密钥。"""
+    import hashlib
+
+    context = _tenant_context.get()
+    scope = context[0] if context else "local"
+    status = _llm_settings_status()
+    return ApiResponse(success=True, data={
+        **status, "credential_scope": hashlib.sha256(scope.encode()).hexdigest(),
+    })
+
+
+@app.post("/api/llm/test", response_model=ApiResponse)
+def test_llm_connection(request: Request):
+    """主动发起小额模型请求，验证鉴权与实际响应。"""
+    import time
+
+    from filemate.llm_client import LLMClient, LLMConfig
+    from filemate.llm_client.exceptions import LLMError
+
+    if request.headers.get("origin") not in CORS_ORIGINS or request.headers.get("X-FileMate-Action") != "model":
+        raise HTTPException(status_code=403, detail="请从应用设置主动测试模型连接")
+    started = time.monotonic()
+    try:
+        config = LLMConfig.from_env()
+        reply = LLMClient(config).call(
+            messages=[{"role": "user", "content": "只回复OK"}],
+            max_tokens=16, timeout=20, retry=1,
+        )
+        if not isinstance(reply, str) or not reply.strip():
+            raise HTTPException(status_code=502, detail="模型返回空内容，请稍后重试")
+    except LLMError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return ApiResponse(success=True, data={
+        "verified": True, "provider": "DeepSeek", "model": config.model,
+        "latency_ms": round((time.monotonic() - started) * 1000),
+    })
 
 # =============== Routes ===============
 

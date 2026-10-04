@@ -1236,6 +1236,95 @@ def test_remote_client_cannot_manage_llm_secret(
     assert response.json()["error"] == "模型密钥只能在本机应用中配置"
 
 
+def test_browser_model_key_never_saved_and_access_error_does_not_log_out(server_module, monkeypatch):
+    from filemate.llm_client import LLMClient
+    from filemate.llm_client.config import LLMConfig
+    from filemate.llm_client.exceptions import LLMAccessError
+
+    module, storage = server_module
+    seen = []
+
+    def call(self, **kwargs):
+        seen.append(self.config.api_key)
+        if self.config.api_key == "sk-invalid-synthetic":
+            raise LLMAccessError("LLM API 访问被拒绝（401），密钥无效或已失效")
+        return "OK"
+
+    monkeypatch.setattr(LLMClient, "call", call)
+    monkeypatch.setattr(module, "set_stored_api_key", lambda value: pytest.fail("不得写入系统共享凭据"))
+    headers = {"Origin": "http://localhost:5173", "X-FileMate-Action": "model", "X-FileMate-LLM-Key": "sk-valid-synthetic"}
+    with TestClient(module.app) as client:
+        status = client.get("/api/llm/status")
+        assert status.status_code == 200 and len(status.json()["data"]["credential_scope"]) == 64
+        good = client.post("/api/llm/test", headers=headers, json={})
+        bad = client.post("/api/llm/test", headers=headers | {"X-FileMate-LLM-Key": "sk-invalid-synthetic"}, json={})
+        assert good.status_code == 200 and good.json()["data"]["verified"] is True
+        assert bad.status_code == 502 and "401" in bad.json()["error"]
+        assert client.get("/api/health").status_code == 200
+    assert seen == ["sk-valid-synthetic", "sk-invalid-synthetic"]
+    assert LLMConfig.from_env().api_key not in seen
+    assert "sk-valid" not in good.text + status.text
+    assert storage.list_agent_runs() == []
+
+
+def test_browser_model_key_rejects_wrong_origin_action_route_and_format(server_module):
+    module, _ = server_module
+    headers = {"Origin": "http://localhost:5173", "X-FileMate-Action": "model", "X-FileMate-LLM-Key": "sk-valid-synthetic"}
+    with TestClient(module.app) as client:
+        for path, extra in [
+            ("/api/llm/test", {"Origin": "https://attacker.example"}),
+            ("/api/llm/test", {"X-FileMate-Action": "account"}),
+            ("/api/auth/login", {}),
+        ]:
+            assert client.post(path, headers=headers | extra, json={}).status_code == 403
+        assert client.post("/api/llm/test", headers=headers | {"X-FileMate-LLM-Key": "sk bad"}, json={}).status_code == 422
+        assert client.post("/api/llm/test", json={}).status_code == 403
+
+
+def test_production_proxy_cannot_modify_system_credential(server_module, monkeypatch):
+    module, _ = server_module
+    monkeypatch.setattr(module, "IS_PRODUCTION", True)
+    monkeypatch.setenv("FILEMATE_HOST", "127.0.0.1")
+    monkeypatch.setattr(module, "set_stored_api_key", lambda value: pytest.fail("不得修改共享密钥"))
+    with TestClient(module.app, client=("127.0.0.1", 51000)) as client:
+        assert client.put("/settings/llm", json={"api_key": "sk-synthetic-only"}).status_code == 403
+
+
+def test_concurrent_model_requests_keep_each_key_in_its_thread(server_module, monkeypatch):
+    import asyncio
+    import threading
+
+    import httpx
+
+    from filemate.llm_client import LLMClient
+
+    module, _ = server_module
+    barrier = threading.Barrier(2)
+    seen = []
+
+    def call(self, **kwargs):
+        from filemate.llm_client.request_credentials import REQUEST_API_KEY
+
+        before = REQUEST_API_KEY.get()
+        barrier.wait(timeout=10)
+        assert REQUEST_API_KEY.get() == before == self.config.api_key
+        seen.append(before)
+        return "OK"
+
+    monkeypatch.setattr(LLMClient, "call", call)
+
+    async def exercise():
+        transport = httpx.ASGITransport(app=module.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            responses = await asyncio.gather(*[
+                client.post("/api/llm/test", headers={"Origin": "http://localhost:5173", "X-FileMate-Action": "model", "X-FileMate-LLM-Key": key}, json={})
+                for key in ["sk-alpha-synthetic", "sk-beta-synthetic"]
+            ])
+            assert all(response.status_code == 200 for response in responses)
+    asyncio.run(exercise())
+    assert set(seen) == {"sk-alpha-synthetic", "sk-beta-synthetic"}
+
+
 def test_root_rejects_state_changing_methods(
     server_module: tuple[ModuleType, SQLiteStorage],
 ) -> None:

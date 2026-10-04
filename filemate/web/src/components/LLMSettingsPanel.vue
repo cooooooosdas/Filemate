@@ -31,25 +31,24 @@
       />
     </label>
 
-    <p class="privacy-note">
-      密钥不会写入浏览器、数据库或日志，只保存在当前 Windows 用户的系统凭据库；仅在你主动使用在线模型功能时发送给 DeepSeek 官方接口。
-    </p>
+    <p class="privacy-note">{{ privacyNote }}</p>
 
     <div class="model-actions">
       <el-button
         type="primary"
         :loading="saving"
-        :disabled="!backendConnected || !canSave || !apiKey.trim()"
+        :disabled="!backendConnected || !canSave || !apiKey.trim() || testing"
         @click="saveCredential"
       >
-        保存本机密钥
+        {{ browserMode ? '保存并测试' : '保存本机密钥' }}
       </el-button>
       <el-button
-        :disabled="!backendConnected || saving || status?.source !== 'secure_store'"
+        :disabled="!backendConnected || saving || testing || !['secure_store', 'browser_store'].includes(status?.source || '')"
         @click="removeCredential"
       >
         移除本机密钥
       </el-button>
+      <el-button :loading="testing" :disabled="!backendConnected || saving || !status?.configured" @click="testConnection">测试连接</el-button>
       <el-button text :loading="loading" :disabled="!backendConnected" @click="loadStatus">
         刷新状态
       </el-button>
@@ -67,25 +66,34 @@ import {
   getLLMSettings,
   removeLLMApiKey,
   saveLLMApiKey,
+  testLLMConnection,
+  usesBrowserLLMVault,
   type LLMSettingsStatus
 } from '../services/api'
 
-const props = defineProps<{ backendConnected: boolean | null }>()
+const props = defineProps<{ backendConnected: boolean | null; active: boolean }>()
 
 const status = ref<LLMSettingsStatus | null>(null)
 const apiKey = ref('')
 const loading = ref(false)
 const saving = ref(false)
+const testing = ref(false)
+const verified = ref(false)
+const browserMode = usesBrowserLLMVault()
+const privacyNote = browserMode
+  ? '密钥按账号隔离，加密保存在当前浏览器本机，不会同步到其他设备。仅在主动使用 AI 时，经本站 HTTPS 转发至 DeepSeek 官方接口，不写入服务器数据库或日志。游客密钥仅用于当前游客空间。'
+  : '密钥保存在当前系统用户的安全凭据库，不写入浏览器或数据库；仅在主动使用 AI 时发送给 DeepSeek 官方接口。'
 const errorMessage = ref('')
 
-const canSave = computed(() => status.value?.secure_storage_available !== false)
+const canSave = computed(() => Boolean(status.value?.secure_storage_available))
 const statusClass = computed(() => status.value?.configured ? 'ready' : 'pending')
 const statusLabel = computed(() => {
   if (loading.value) return '正在读取'
-  return status.value?.configured ? '已配置' : '待配置'
+  return verified.value ? '连接正常' : status.value?.configured ? '已配置 · 待测试' : '待配置'
 })
 const storageLabel = computed(() => {
   if (status.value?.source === 'secure_store') return 'Windows 安全凭据库'
+  if (status.value?.source === 'browser_store') return '当前浏览器 · 本机加密'
   if (status.value?.source === 'environment') return '部署环境变量'
   if (status.value && !status.value.secure_storage_available) return '当前系统不可用'
   return '尚未保存'
@@ -112,7 +120,8 @@ async function saveCredential(): Promise<void> {
   try {
     status.value = await saveLLMApiKey(value)
     apiKey.value = ''
-    ElMessage.success('DeepSeek 密钥已安全保存并立即生效')
+    verified.value = status.value.verified === true
+    ElMessage.success(verified.value ? 'DeepSeek 连接正常，密钥已在本机加密保存' : 'DeepSeek 密钥已安全保存，请测试连接')
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '模型密钥保存失败'
   } finally {
@@ -123,7 +132,7 @@ async function saveCredential(): Promise<void> {
 async function removeCredential(): Promise<void> {
   try {
     await ElMessageBox.confirm(
-      '移除后，需要在线模型的功能将暂停，其他本地功能不受影响。',
+      '仅移除当前账号在本机保存的密钥。网站若已配置模型服务，将恢复使用网站配置。',
       '移除本机密钥',
       { confirmButtonText: '确认移除', cancelButtonText: '取消', type: 'warning' }
     )
@@ -134,6 +143,7 @@ async function removeCredential(): Promise<void> {
   errorMessage.value = ''
   try {
     status.value = await removeLLMApiKey()
+    verified.value = false
     apiKey.value = ''
     ElMessage.success('本机密钥已移除')
   } catch (error) {
@@ -143,9 +153,25 @@ async function removeCredential(): Promise<void> {
   }
 }
 
+async function testConnection(): Promise<void> {
+  testing.value = true
+  verified.value = false
+  errorMessage.value = ''
+  try {
+    const result = await testLLMConnection()
+    verified.value = result.verified
+    ElMessage.success(`DeepSeek 连接正常，响应耗时 ${(result.latency_ms / 1000).toFixed(1)} 秒`)
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '模型连接测试失败'
+  } finally { testing.value = false }
+}
+
 watch(
-  () => props.backendConnected,
-  connected => { if (connected) void loadStatus() },
+  () => [props.backendConnected, props.active],
+  ([connected, active]) => {
+    if (connected && active) { verified.value = false; void loadStatus() }
+    if (!active) { apiKey.value = ''; errorMessage.value = '' }
+  },
   { immediate: true }
 )
 </script>
@@ -154,7 +180,7 @@ watch(
 .model-settings {
   margin-top: 18px;
   padding: 18px;
-  background: #f3f8f4;
+  background: var(--surface-raised, #f0f5ff);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-panel);
 }
@@ -168,7 +194,7 @@ watch(
 
 .eyebrow {
   color: var(--accent);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -182,7 +208,7 @@ h3 {
 .privacy-note {
   margin: 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.65;
 }
 
@@ -249,7 +275,7 @@ h3 {
   display: grid;
   gap: 8px;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 650;
 }
 

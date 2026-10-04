@@ -6,6 +6,7 @@ import json
 import logging
 import time
 from typing import Any
+from urllib.parse import urlsplit
 
 from .config import LLMConfig
 from .exceptions import (
@@ -58,7 +59,13 @@ class LLMClient:
                 )
 
         if name == "deepseek":
-            if "api.deepseek.com" not in (config.base_url or "").lower():
+            parsed = urlsplit(config.base_url)
+            if (
+                parsed.scheme != "https" or parsed.hostname != "api.deepseek.com"
+                or parsed.netloc.lower() not in {"api.deepseek.com", "api.deepseek.com:443"}
+                or parsed.path.rstrip("/") not in {"", "/v1"}
+                or parsed.query or parsed.fragment
+            ):
                 raise LLMConfigError(
                     "DeepSeek 必须使用官方 LLM_BASE_URL=https://api.deepseek.com"
                 )

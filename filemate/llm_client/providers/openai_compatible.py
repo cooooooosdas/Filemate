@@ -68,11 +68,11 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         logger.debug("LLM API 调用: %s | messages=%d 条", url, len(messages))
 
         try:
-            resp = requests.post(url, json=payload, headers=headers, timeout=timeout)
+            resp = requests.post(url, json=payload, headers=headers, timeout=timeout, allow_redirects=False)
         except requests.Timeout as exc:
             raise LLMTimeoutError(f"LLM API 调用超时（{timeout}s）") from exc
         except requests.ConnectionError as exc:
-            raise LLMAPIError(f"LLM API 连接失败: {exc}") from exc
+            raise LLMAPIError("模型连接失败，请检查网络后重试") from exc
 
         if resp.status_code == 429:
             retry_after = resp.headers.get("Retry-After", "5")
@@ -80,19 +80,23 @@ class OpenAICompatibleProvider(BaseLLMProvider):
 
         if resp.status_code in {401, 402, 403}:
             raise LLMAccessError(
-                f"LLM API 访问被拒绝（{resp.status_code}），请检查密钥、余额和账号权限: "
-                f"{resp.text[:300]}"
+                f"LLM API 访问被拒绝（{resp.status_code}），请检查密钥、余额和账号权限。"
+                + {401: "密钥无效或已失效。", 402: "账户余额不足。", 403: "账户没有调用权限。"}[resp.status_code]
             )
 
         if resp.status_code != 200:
             raise LLMAPIError(
-                f"LLM API 返回 {resp.status_code}: {resp.text[:500]}"
+                f"模型服务返回 {resp.status_code}，"
+                + ("请检查模型名称和官方接口地址。" if resp.status_code == 404 else "请稍后重试或检查服务配置。")
             )
 
-        body = resp.json()
+        try:
+            body = resp.json()
+        except ValueError as exc:
+            raise LLMAPIError("模型服务返回了无效响应，请稍后重试") from exc
         try:
             text = body["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as exc:
-            raise LLMAPIError(f"LLM API 响应格式异常: {body}") from exc
+            raise LLMAPIError("模型服务响应格式异常，请稍后重试") from exc
 
         return text

@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type { AccountState, AccountUser, RegisterAccount } from '../types/account'
 import { HITOKOTO_URL } from '../home/encouragement'
+import { browserVaultAvailable, getBrowserApiKey, hasBrowserApiKey, isModelRequest, removeBrowserApiKey, saveBrowserApiKey, validateApiKey } from './llm-vault'
 
 export async function getEncouragementQuote(): Promise<unknown> {
   const response = await fetch(HITOKOTO_URL, {
@@ -108,7 +109,17 @@ export async function checkHealth(): Promise<boolean> {
 
 // 请求拦截器
 api.interceptors.request.use(
-  config => {
+  async config => {
+    if (usesBrowserLLMVault() && isModelRequest(config.method, config.url)) {
+      const destination = new URL(config.url!, new URL(config.baseURL || '/', window.location.origin))
+      if (destination.origin !== window.location.origin) throw new Error('浏览器密钥只能用于当前 FileMate 网站')
+      if (!config.headers.has('X-FileMate-LLM-Key') && browserVaultAvailable()) {
+        const status = await publicLLMStatus()
+        const key = await getBrowserApiKey(status.credential_scope!)
+        if (key) config.headers.set('X-FileMate-LLM-Key', key)
+      }
+      if (config.headers.has('X-FileMate-LLM-Key')) config.headers.set('X-FileMate-Action', 'model')
+    }
     if (import.meta.env.DEV) {
       console.debug(`[API] ${config.method?.toUpperCase()} ${config.url}`)
     }
@@ -816,7 +827,7 @@ export interface InterviewTurn {
   analysis_data_error?: boolean
 }
 
-export type LLMKeySource = 'secure_store' | 'environment' | 'none'
+export type LLMKeySource = 'secure_store' | 'browser_store' | 'environment' | 'none'
 
 export interface LLMSettingsStatus {
   provider: 'DeepSeek'
@@ -825,15 +836,41 @@ export interface LLMSettingsStatus {
   source: LLMKeySource
   secure_storage_available: boolean
   removed?: boolean
+  credential_scope?: string
+  verified?: boolean
+}
+
+export function usesBrowserLLMVault(): boolean {
+  return !isLoopbackHost(window.location.hostname) && !('__TAURI_INTERNALS__' in window)
+}
+
+async function publicLLMStatus(): Promise<LLMSettingsStatus> {
+  const response = await api.get<any, ApiResponse<LLMSettingsStatus>>('/api/llm/status', { timeout: 15000 })
+  if (!response.success || !response.data || !/^[a-f0-9]{64}$/.test(response.data.credential_scope || '')) throw new Error(response.error || '模型状态读取失败')
+  return response.data
 }
 
 export async function getLLMSettings(): Promise<LLMSettingsStatus> {
+  if (usesBrowserLLMVault()) {
+    const status = await publicLLMStatus()
+    const available = browserVaultAvailable()
+    const saved = available && await hasBrowserApiKey(status.credential_scope!)
+    return { ...status, configured: saved || status.configured, source: saved ? 'browser_store' : status.source, secure_storage_available: available }
+  }
   const response = await api.get<any, ApiResponse<LLMSettingsStatus>>('/settings/llm')
   if (response.success && response.data) return response.data
   throw new Error(response.error || '模型设置读取失败')
 }
 
 export async function saveLLMApiKey(apiKey: string): Promise<LLMSettingsStatus> {
+  if (usesBrowserLLMVault()) {
+    const key = validateApiKey(apiKey)
+    if (!browserVaultAvailable()) throw new Error('当前浏览器不支持安全保存，请使用 HTTPS 和正常浏览窗口')
+    const status = await publicLLMStatus()
+    await api.post('/api/llm/test', {}, { timeout: 30000, headers: { 'X-FileMate-LLM-Key': key, 'X-FileMate-Action': 'model' } })
+    await saveBrowserApiKey(status.credential_scope!, key)
+    return { ...status, source: 'browser_store', configured: true, secure_storage_available: true, verified: true }
+  }
   const response = await api.put<any, ApiResponse<LLMSettingsStatus>>('/settings/llm', {
     api_key: apiKey
   })
@@ -842,9 +879,20 @@ export async function saveLLMApiKey(apiKey: string): Promise<LLMSettingsStatus> 
 }
 
 export async function removeLLMApiKey(): Promise<LLMSettingsStatus> {
+  if (usesBrowserLLMVault()) {
+    const status = await publicLLMStatus()
+    await removeBrowserApiKey(status.credential_scope!)
+    return { ...await getLLMSettings(), removed: true }
+  }
   const response = await api.delete<any, ApiResponse<LLMSettingsStatus>>('/settings/llm')
   if (response.success && response.data) return response.data
   throw new Error(response.error || '模型密钥移除失败')
+}
+
+export async function testLLMConnection(): Promise<{ verified: boolean; latency_ms: number }> {
+  const response = await api.post<any, ApiResponse<{ verified: boolean; latency_ms: number }>>('/api/llm/test', {}, { timeout: 30000, headers: { 'X-FileMate-Action': 'model' } })
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '模型连接测试失败')
 }
 
 export interface InterviewFluencyMetrics {

@@ -19,6 +19,20 @@ NEW_PASSWORD = secrets.token_urlsafe(24) + "b8"
 HEADERS = {"X-FileMate-Action": "account"}
 
 
+def test_browser_credential_scope_is_private_and_stable_across_login(account_server):
+    with TestClient(account_server.app) as alice, TestClient(account_server.app) as bob:
+        guest = alice.get("/api/llm/status").json()["data"]["credential_scope"]
+        assert register(alice, keep_guest_data=False).status_code == 200
+        own = alice.get("/api/llm/status").json()["data"]["credential_scope"]
+        assert own != guest
+        assert register(bob, email="other@example.invalid").status_code == 200
+        assert bob.get("/api/llm/status").json()["data"]["credential_scope"] != own
+        alice.post("/api/auth/logout", headers=HEADERS, json={})
+        assert alice.get("/api/llm/status").json()["data"]["credential_scope"] != own
+        assert login(alice).status_code == 200
+        assert alice.get("/api/llm/status").json()["data"]["credential_scope"] == own
+
+
 @pytest.fixture
 def account_server(tmp_path, monkeypatch):
     monkeypatch.setenv("FILEMATE_ENV", "development")

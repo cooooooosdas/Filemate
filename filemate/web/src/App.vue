@@ -186,7 +186,7 @@
           </el-tag>
         </div>
       </div>
-      <LLMSettingsPanel :backend-connected="backendConnected" />
+      <LLMSettingsPanel :backend-connected="backendConnected" :active="showSettings" />
       <template #footer>
         <el-button @click="showSettings = false">关闭</el-button>
       </template>
