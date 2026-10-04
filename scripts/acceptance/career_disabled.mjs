@@ -14,7 +14,7 @@ const page = await context.newPage(), errors = [], results = []
 page.on('pageerror', error => errors.push(String(error)))
 try {
   await page.goto(base + '/ai-tools')
-  await page.getByRole('heading', { name: '学习工作区', exact: true }).waitFor()
+  await page.locator('.learning-workspace').getByRole('heading', { level: 1 }).waitFor()
   const position = { company: '合成企业', title: '训练岗位', region: '本地', industry: '软件',
     employment: '用户自定义', source: '合成回归', source_url: '', source_kind: 'user_import',
     collected_at: '2026-01-01T00:00:00Z', published_at: '', description: '岗位要求：理解数据结构与算法。',
@@ -41,7 +41,7 @@ try {
   }
   await page.goto(base + '/career')
   await page.waitForURL('**/ai-tools')
-  await page.getByRole('heading', { name: '学习工作区', exact: true }).waitFor()
+  await page.locator('.learning-workspace').getByRole('heading', { level: 1 }).waitFor()
   results.push({ name: 'old URL redirects and career navigation hidden', passed: await page.getByRole('link', { name: '求职训练中心', exact: true }).count() === 0 })
   const created = await context.request.post(api + '/interviews', { data: { target_role: '合成关闭回归', allow_external_analysis: false } })
   const id = (await created.json()).data.interview_id

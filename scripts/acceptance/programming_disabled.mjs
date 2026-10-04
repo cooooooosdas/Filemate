@@ -17,7 +17,7 @@ async function check(name, action) { try { await action(); results.push({ name, 
 try {
   await check('disabled module removes navigation and old URL returns workspace', async () => {
     await page.goto(base + '/programming')
-    await page.getByRole('heading', { name: '学习工作区', exact: true }).waitFor()
+    await page.locator('.learning-workspace').getByRole('heading', { level: 1 }).waitFor()
     assert.equal(await page.locator('a[href="/programming"]').count(), 0)
     assert.equal(new URL(page.url()).pathname, '/ai-tools')
   })

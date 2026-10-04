@@ -111,7 +111,7 @@ try {
     await page.getByLabel('选择题目', { exact: true }).waitFor({ timeout: 60000 })
     await page.waitForFunction(() => document.querySelector('[aria-label="选择题目"]')?.value === 'lower-bound', null, { timeout: 60000 })
     assert.equal(await page.getByLabel('选择题目', { exact: true }).inputValue(), 'lower-bound')
-    await page.getByText('本地隔离评测已就绪', { exact: true }).waitFor({ timeout: 60000 })
+    await page.getByText('隔离评测已就绪', { exact: true }).waitFor({ timeout: 60000 })
     await page.waitForFunction(() => !document.querySelector('.editor-loading'), null, { timeout: 60000 })
     const solutions = JSON.parse(fs.readFileSync(path.join(root, 'scripts/acceptance/fixtures/cpp_solutions.json'), 'utf8'))
     await page.locator('.monaco-editor .view-lines').click()
@@ -127,7 +127,7 @@ try {
     const evidence = await data(`/api/career/positions/${pid}/evidence`)
     assert.equal(evidence.skills.find(s => s.label === '算法').coding_ac_count, 1)
     await page.getByRole('link', { name: `AC · 提交 ${codingId.slice(0, 8)}`, exact: true }).first().click()
-    await page.getByText('本地隔离评测已就绪', { exact: true }).waitFor({ timeout: 60000 })
+    await page.getByText('隔离评测已就绪', { exact: true }).waitFor({ timeout: 60000 })
     assert.match(await page.locator('.result-panel').innerText(), /AC/)
     await open(written.training_id)
     return { submission_id: codingId, verdict: 'AC', tests: submission.result.tests.length }

@@ -13,7 +13,7 @@ const errors = []
 const results = []
 page.on('pageerror', error => errors.push(String(error)))
 try {
-  for (const [route, title] of [['/', /^今天，/], ['/knowledge-graph', '学习工作区'], ['/wrongbook', '错题复盘'], ['/digital-human', /^让学习，有声可循/]]) {
+  for (const [route, title] of [['/', /^今天，/], ['/knowledge-graph', /^把知识，\s*读明白。$/], ['/wrongbook', '错题复盘'], ['/digital-human', /^让学习，有声可循/]]) {
     await page.goto(web + route)
     await page.getByRole('heading', { name: title, exact: true }).waitFor()
     assert.equal(await page.getByRole('link', { name: '我的知识图谱', exact: true }).count(), 0)

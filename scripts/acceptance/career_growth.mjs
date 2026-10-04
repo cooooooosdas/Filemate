@@ -32,7 +32,8 @@ try {
     assert.equal((await read('/api/career/overview')).counts.positions, 0)
     assert.match(await panel().innerText(), /作答表现待评测/)
     assert.match(await panel().innerText(), /尚无记录/)
-    assert.equal(await panel().locator('dd').first().innerText(), '0')
+    assert.equal((await panel().locator('dd').first().innerText()).split('\n')[0], '0')
+    assert.equal(await panel().locator('dd').first().locator('small').innerText(), '其中 0 个可继续训练')
   })
   await check('saved quiz and real local interview appear with exact counts', 'real_api_fixture_ui', async () => {
     const catalog = await read('/api/career/catalog')

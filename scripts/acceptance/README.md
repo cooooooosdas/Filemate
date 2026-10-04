@@ -23,10 +23,12 @@ DEV-01资料入口专项：`workspace.mjs`追加Markdown和C++实际浏览器上
 运行 `scripts/verify.ps1 -IsolateFrontend` 后，将日志中生成的前端副本路径传入：
 
 ```powershell
-uv run python scripts/acceptance/integrated_browser.py --web-root _working/verify-web-实际ID --out _working/新总验收目录
 uv run python scripts/acceptance/programming_native.py --out _working/新总验收目录/native
+uv run python scripts/acceptance/integrated_browser.py --web-root _working/verify-web-实际ID --out _working/新总验收目录/browser
 uv run python scripts/acceptance/website_health.py --base https://filemate.asia --output _working/新总验收目录/website.json
 ```
+
+Windows整合浏览器验收中的编程与岗位算法练习需要已准备并通过真实自检的MSVC隔离工具链；先执行上方native验收，再运行集成浏览器，避免把未准备的环境当作网站功能失败。公网Linux的真实GCC/gVisor链路另按`linux_judge.py`与`production_api.mjs`验证，不使用Windows结果替代。
 
 `integrated_browser.py` 默认顺序执行17组验收，每组创建全新SQLite与上传/归档目录，启动并停止自己持有的API/Vite进程。默认8028/5198已占用时直接拒绝；可用 `--api-port`、`--web-port` 修改。支持 `--cases` 定向复跑，输出目录必须尚未存在，不覆盖失败现场。真实TTS与编译需要Windows现有设备/工具链；视觉合成夹具沿用下文固定SHA256文件。
 

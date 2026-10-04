@@ -30,7 +30,7 @@ async function open() {
   await page.getByRole('heading', { name: '编程练习', exact: true }).waitFor({ timeout: 60000 })
   await page.getByRole('textbox', { name: 'C++代码', exact: true }).waitFor({ timeout: 60000 })
   await page.waitForFunction(() => !document.querySelector('.editor-loading'), null, { timeout: 60000 })
-  await page.getByText('本地隔离评测已就绪', { exact: true }).waitFor({ timeout: 60000 })
+  await page.getByText('隔离评测已就绪', { exact: true }).waitFor({ timeout: 60000 })
 }
 async function setCode(code) { await page.locator('.monaco-editor .view-lines').click(); await page.keyboard.press('Control+A'); await page.keyboard.insertText(code) }
 async function submit(code, expected) {
@@ -199,7 +199,7 @@ try {
       await page.screenshot({ path: path.join(out, `programming-${width}.png`), fullPage: true })
     }
     await page.goto(base + '/ai-tools')
-    await page.getByRole('heading', { name: '学习工作区', exact: true }).waitFor()
+    await page.locator('.learning-workspace').getByRole('heading', { level: 1 }).waitFor()
     await open()
     assert.equal(await page.locator('.monaco-editor').count(), 1)
     assert.deepEqual(errors, [])
