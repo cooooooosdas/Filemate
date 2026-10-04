@@ -21,13 +21,24 @@ const cases = [
   ['长回答', '求职面试', '软件工程', '先检查空输入、重复项和最大值，再对照结果修正错误。'.repeat(70)],
   ['无标点口语', '求职面试', '软件工程', '嗯那个我先看看需求问同学哪里不好用然后改了页面再找三个人试一下最后他们说找资料方便了'],
 ]
-const browser = await chromium.launch({ channel: process.env.FILEMATE_BROWSER_CHANNEL || 'msedge', headless: true })
+const direct = process.env.FILEMATE_BROWSER_DIRECT === '1'
+const intervalMs = Number(process.env.FILEMATE_INTERVIEW_INTERVAL_MS || 20000)
+assert.ok(Number.isFinite(intervalMs) && intervalMs >= 20000, '公开网站复测每例至少间隔20秒，保留生产限流')
+const browser = await chromium.launch({ channel: process.env.FILEMATE_BROWSER_CHANNEL || 'msedge', headless: true,
+  args: direct ? ['--no-proxy-server'] : [] })
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, acceptDownloads: true })
 const stranger = await browser.newContext()
 const page = await context.newPage()
 page.setDefaultTimeout(20000)
 const errors = [], results = [], owned = new Set()
+let fixtureId = null
+const network = [], startedRequests = new WeakMap()
 page.on('pageerror', error => errors.push(String(error)))
+page.on('request', request => startedRequests.set(request, performance.now()))
+page.on('response', response => network.push({ path: new URL(response.url()).pathname, status: response.status(),
+  elapsed_ms: Math.round(performance.now() - (startedRequests.get(response.request()) || performance.now())) }))
+page.on('requestfailed', request => network.push({ path: new URL(request.url()).pathname,
+  failure: request.failure()?.errorText, elapsed_ms: Math.round(performance.now() - (startedRequests.get(request) || performance.now())) }))
 const button = name => page.getByRole('button', { name, exact: true })
 async function request(route, method = 'get', data) {
   const response = await context.request[method](api + route, data ? { data } : {})
@@ -37,17 +48,20 @@ async function request(route, method = 'get', data) {
 async function check(name, action) {
   console.log('RUN', name)
   try { results.push({ name, passed: true, evidence: await action() }); console.log('PASS', name) }
-  catch (error) { results.push({ name, passed: false, error: String(error) }); console.log('FAIL', name, String(error)); await page.screenshot({ path: path.join(out, `failure-${results.length}.png`), fullPage: true }) }
+  catch (error) { results.push({ name, passed: false, fixture_id: fixtureId, error: String(error) }); console.log('FAIL', name, String(error)); await page.screenshot({ path: path.join(out, `failure-${results.length}.png`), fullPage: true }) }
   fs.writeFileSync(path.join(out, 'results.json'), JSON.stringify(results, null, 2))
 }
 try {
-  await page.goto(base + '/interview')
+  // 先串行初始化本轮游客，避免测试写入与首屏无 Cookie 的并发请求竞争。
+  await request('/api/auth/me')
   for (const [name, scenario, targetRole, answer] of cases) {
+    fixtureId = null
     await check(name + '：真实页面分析、原句及持久报告', async () => {
       const created = await request('/interviews', 'post', { target_role: targetRole, scenario, allow_external_analysis: false })
       const id = created.interview_id
+      fixtureId = id
       owned.add(id)
-      await page.goto(base + '/interview?interview=' + id)
+      await page.goto(base + '/interview?interview=' + id, { waitUntil: 'domcontentloaded', timeout: 45000 })
       await page.getByRole('textbox', { name: '当前训练回答', exact: true }).fill(answer)
       const answered = page.waitForResponse(r => r.url() === api + `/interviews/${id}/answers` && r.request().method() === 'POST')
       await button('提交并进入下一题').click()
@@ -76,7 +90,7 @@ try {
       const analyzed = page.waitForResponse(r => r.url() === api + analyzePath && r.request().method() === 'POST', { timeout: 65000 })
       await button('分析这一题的内容').click()
       const response = await analyzed
-      assert.equal(response.status(), 200, JSON.stringify(await response.json()))
+      assert.equal(response.status(), 200, 'POST ' + analyzePath)
       const updated = (await response.json()).data
       assert.equal(updated.turns[0].answer, answer)
       assert.equal(updated.turns[0].scoring_mode, 'llm')
@@ -96,7 +110,7 @@ try {
       assert.equal(report.turns[0].answer, answer)
       assert.deepEqual((await request(analyzePath, 'post', { external_consent: true })).turns[0].content_analysis, content)
       assert.equal((await stranger.request.get(api + `/interviews/${id}`)).status(), 404)
-      await page.reload()
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 })
       await button('更新本地复盘报告').waitFor()
       assert.equal((await request(`/interviews/${id}/review`)).report.assessed, 1)
       if (name === '换行回答') {
@@ -112,7 +126,9 @@ try {
       return { interview_id: id, actual_model: true, verified_dimensions: 4, verified_areas: 6,
         answer_length: answer.length, persisted: true, cached_repeat: true, other_guest_denied: true }
     })
+    await page.waitForTimeout(intervalMs)
   }
+  fixtureId = null
   await check('清理仅本轮合成面试，预览确认后删除', async () => {
     for (const id of [...owned]) {
       const preview = await request(`/interviews/${id}/delete-preview`)
@@ -130,6 +146,8 @@ try {
   }
   await browser.close()
   fs.writeFileSync(path.join(out, 'summary.json'), JSON.stringify({ passed: results.every(item => item.passed) && !errors.length,
-    results, errors, sample_kind: 'synthetic_original_answers', transport: 'actual production model; invalid own fixture header only, no response mocks' }, null, 2))
+    results, errors, network, browser_direct: direct, interval_ms: intervalMs,
+    guest_initialized_before_fixture_writes: true, sample_kind: 'synthetic_original_answers',
+    transport: 'actual production model; invalid own fixture header only, no response mocks' }, null, 2))
 }
 if (results.some(item => !item.passed) || errors.length) process.exitCode = 1
