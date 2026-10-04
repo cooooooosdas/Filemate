@@ -10,7 +10,7 @@
         <h2>导入资料后，重要日期会自动排成日程</h2>
         <p>FileMate 会从资料中提取截止日期与关键事项；所有结果都可先核对，再下载为日历文件。</p>
       </div>
-      <el-button type="primary" @click="$router.push('/import')">
+      <el-button type="primary" @click="$router.push('/import?intent=archive')">
         <el-icon><Upload /></el-icon>
         导入资料
       </el-button>
@@ -32,9 +32,9 @@
           </div>
           <h4>暂无日程安排</h4>
           <p>上传文件后，系统将自动提取其中的日期和里程碑信息</p>
-          <el-button type="primary" @click="$router.push('/import')">
+          <el-button type="primary" @click="$router.push('/history')">
             <el-icon><Upload /></el-icon>
-            前往导入
+            查看处理记录
           </el-button>
         </div>
 

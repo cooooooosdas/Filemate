@@ -7,7 +7,7 @@
       <el-icon class="empty-icon"><Edit /></el-icon>
       <strong>还没有待确认的命名</strong>
       <span>从导入资料开始，核对分类后会进入命名确认。</span>
-      <el-button type="primary" @click="router.push('/import')">去导入资料</el-button>
+      <el-button type="primary" @click="router.push('/import?intent=archive')">去导入资料</el-button>
     </DataState>
 
     <template v-else>

@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard">
     <header class="welcome">
-      <div class="welcome-copy"><div class="welcome-meta"><span>{{ greeting }}，学习者</span><time>{{ todayLabel }}</time></div><h1>今天，<br />让知识<span class="title-dot">成形。</span></h1><p>读懂一份资料，走向你的下一步。</p><router-link class="solid-link hero-start" to="/import"><el-icon><Plus /></el-icon>导入新资料<el-icon><ArrowRight /></el-icon></router-link></div>
+      <div class="welcome-copy"><div class="welcome-meta"><span>{{ greeting }}，学习者</span><time>{{ todayLabel }}</time></div><h1>今天，<br />让知识<span class="title-dot">成形。</span></h1><p>读懂一份资料，走向你的下一步。</p><router-link class="solid-link hero-start" to="/ai-tools"><el-icon><Reading /></el-icon>开始学习<el-icon><ArrowRight /></el-icon></router-link></div>
       <HeroEncouragement />
       <KnowledgeBackdrop />
     </header>
@@ -32,7 +32,7 @@
               <router-link to="/history"><span>待确认归档</span><strong :class="{ amber: metrics.pending > 0 }">{{ metrics.pending }}<small>份</small></strong><el-icon><ArrowRight /></el-icon></router-link>
               <div><span>已归档</span><strong>{{ metrics.confirmed }}<small>份</small></strong></div>
             </section>
-            <div v-if="!recentFiles.length" class="empty-files"><el-icon><DocumentAdd /></el-icon><h3>把第一份资料放进来</h3><p>支持 PDF、Word、PPT 和 TXT 文件。</p><router-link to="/import">导入资料<el-icon><ArrowRight /></el-icon></router-link></div>
+            <div v-if="!recentFiles.length" class="empty-files"><el-icon><DocumentAdd /></el-icon><h3>学习资料，都在你的空间</h3><p>阅读、笔记与练习从个人知识库继续。</p><router-link to="/knowledge">查看我的资料<el-icon><ArrowRight /></el-icon></router-link></div>
             <div v-else class="file-list">
               <div class="file-list-head"><span>文件</span><span>状态</span></div>
               <router-link v-for="file in recentFiles" :key="file.session_id" class="file-row" to="/history" :aria-label="`在处理记录中查看 ${getFileName(file.source_path)}`">
@@ -65,7 +65,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { ArrowRight, Calendar, Cpu, DocumentAdd, FolderChecked, Loading, Lock, Microphone, Plus, Reading, Share, Tickets, Aim, VideoPlay } from '../icons'
+import { ArrowRight, Calendar, Cpu, DocumentAdd, FolderChecked, Loading, Lock, Microphone, Reading, Share, Tickets, Aim, VideoPlay } from '../icons'
 import KnowledgeBackdrop from '../components/KnowledgeBackdrop.vue'
 import HeroEncouragement from '../components/HeroEncouragement.vue'
 import { getHistory, getTodayReview, type TodayReview } from '../services/api'
@@ -111,10 +111,10 @@ const focusAction = computed(() => {
   }
   return {
     icon: metrics.value.pending ? FolderChecked : DocumentAdd,
-    title: metrics.value.pending ? `${metrics.value.pending} 份资料等你确认` : '让第一份资料，找到自己的位置',
-    description: metrics.value.pending ? '检查分类和文件名，确认后放到合适的位置。' : '课件、笔记和作业，整理好就是学习的起点。',
-    action: metrics.value.pending ? '去确认' : '选择文件',
-    route: metrics.value.pending ? '/history' : '/import'
+    title: metrics.value.pending ? `${metrics.value.pending} 份资料等你确认` : '带着问题，读懂一份资料',
+    description: metrics.value.pending ? '检查分类和文件名，确认后放到合适的位置。' : '打开已有课件，把讲解、笔记和练习留在同一处。',
+    action: metrics.value.pending ? '去确认' : '打开学习工作区',
+    route: metrics.value.pending ? '/history' : '/ai-tools'
   }
 })
 const recentFiles = computed(() => history.value.slice(0, 6))

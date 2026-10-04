@@ -16,7 +16,7 @@
         <el-icon class="history-empty-icon"><Document /></el-icon>
         <strong>还没有处理记录</strong>
         <span>导入并确认第一份资料后，执行与撤销记录会显示在这里。</span>
-        <el-button type="primary" @click="router.push('/import')">导入第一份资料</el-button>
+        <el-button type="primary" @click="router.push('/import?intent=archive')">导入第一份资料</el-button>
       </DataState>
 
       <div v-else class="history-table">

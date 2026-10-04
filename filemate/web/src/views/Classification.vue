@@ -8,7 +8,7 @@
         <el-icon><Collection /></el-icon>
         <strong>还没有可审核的资料</strong>
         <span>先导入一份课程资料，系统会在这里展示分类依据。</span>
-        <el-button type="primary" @click="router.push('/import')">去导入资料</el-button>
+        <el-button type="primary" @click="router.push('/import?intent=archive')">去导入资料</el-button>
       </DataState>
     </div>
 

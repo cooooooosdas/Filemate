@@ -45,9 +45,9 @@ try {
     assert.equal(await button('提取并预览').isDisabled(), true)
   })
   await check('real licensed material import parse extract confirm', 'real_material_ui_api', async () => {
-    await page.goto(base + '/ai-tools')
+    await page.goto(base + '/import?intent=study')
     const uploaded = page.waitForResponse(response => response.url().endsWith('/knowledge/import') && response.request().method() === 'POST')
-    await page.getByLabel('上传学习资料').setInputFiles(path.join(root, 'scripts/acceptance/fixtures/hello_algo_heap_excerpt.txt'))
+    await page.locator('#primary-file-upload').setInputFiles(path.join(root, 'scripts/acceptance/fixtures/hello_algo_heap_excerpt.txt'))
     const response = await uploaded
     assert.equal(response.status(), 200)
     sourceId = (await response.json()).data.source_id

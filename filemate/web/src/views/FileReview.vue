@@ -14,7 +14,7 @@
     <DataState v-else-if="!currentFile" empty>
       <strong>选一份资料，开始核对</strong>
       <span>从导入结果或处理记录打开，分类与命名在这里一起确认。</span>
-      <el-button type="primary" @click="router.push('/import')">导入资料</el-button>
+      <el-button type="primary" @click="router.push('/import?intent=archive')">导入资料</el-button>
     </DataState>
 
     <template v-else>

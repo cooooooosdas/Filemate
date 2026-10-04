@@ -7,8 +7,6 @@
     <div class="desk" :data-pane="activePane">
       <aside class="source-pane" aria-label="学习资料与会话">
         <div class="pane-heading"><h2>我的资料</h2><span>{{ sources.length }}</span></div>
-        <button class="import-button" :disabled="busy" @click="fileInput?.click()"><el-icon><Plus /></el-icon>{{ importing ? '正在解析资料…' : '添加资料' }}</button>
-        <input ref="fileInput" class="file-input" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.markdown,.c,.cpp,.h,.hpp,.py,.java,.js,.ts" aria-label="上传学习资料" @change="importFile" />
         <label class="source-search"><el-icon><Search /></el-icon><input v-model="search" placeholder="查找资料" aria-label="查找学习资料" /></label>
         <p v-if="loadingSources" class="quiet" role="status">读取资料中…</p>
         <div v-else class="source-list"><button v-for="item in filteredSources" :key="item.source_id" :class="{ selected: source?.source_id === item.source_id }" :aria-pressed="source?.source_id === item.source_id" :disabled="busy" @click="navigateSource(item.source_id)"><el-icon><Document /></el-icon><span>{{ item.original_name }}<small>{{ item.text_length?.toLocaleString() || '—' }} 字</small></span></button><p v-if="!filteredSources.length" class="quiet">{{ search ? '没有匹配的资料' : '先添加一份课件或笔记。' }}</p></div>
@@ -19,7 +17,7 @@
       <section class="conversation-pane" aria-label="资料对话">
         <header class="conversation-heading"><div><small>{{ source ? '正在学习' : '从一份资料开始' }}</small><h2>{{ source?.original_name || '今天，想弄懂什么？' }}</h2></div><span v-if="context" class="saved-indicator">会话可恢复</span></header>
         <div v-if="loading" class="blank-state" role="status"><el-icon><Reading /></el-icon><h3>正在打开资料与学习记录…</h3></div>
-        <div v-else-if="!source" class="blank-state"><el-icon><Reading /></el-icon><h3>把课件放进来，让学习接着发生。</h3><p>添加资料后即可读原文。需要讲解时再开启模型，也可以打开已有笔记和练习。</p><button class="primary" :disabled="busy" @click="fileInput?.click()">添加第一份资料</button><small>课件、Markdown、代码笔记 · 最大 25 MB</small></div>
+        <div v-else-if="!source" class="blank-state"><el-icon><Reading /></el-icon><h3>把课件放进来，让学习接着发生。</h3><p>添加资料后即可读原文。需要讲解时再开启模型，也可以打开已有笔记和练习。</p><router-link class="primary" to="/import?intent=study">添加第一份资料 <el-icon><ArrowRight /></el-icon></router-link><small>课件、Markdown、代码笔记 · 最大 25 MB</small></div>
         <template v-else>
           <div ref="messageScroll" class="conversation-scroll" aria-live="polite">
             <div v-if="!context?.chat_history.length" class="conversation-intro"><span class="intro-line"></span><h3>不急着得到答案，<br />先找到你想理解的那一点。</h3><p>读原文、记笔记，或把卡住的概念交给我。回答会附上可核对的资料片段。</p><div class="starter-prompts"><button v-for="prompt in prompts" :key="prompt" @click="questionText = prompt; composer?.focus()">{{ prompt }}<el-icon><ArrowRight /></el-icon></button></div></div>
@@ -67,7 +65,7 @@ import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vu
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowRight, ChatDotRound, Collection, Document, FolderOpened, Microphone, Notebook, Plus, Promotion, Reading, Search, Tickets } from '@element-plus/icons-vue'
 import LearningArtifact from '../components/LearningArtifact.vue'
-import { askAI, createSourceContext, generateSourceArtifact, getAIContext, getKnowledgeArtifacts, getKnowledgeSources, getLearningSource, importLearningSource, listAIContexts, type AICitation, type AIContextDetail, type AISessionSummary, type KnowledgeArtifact, type KnowledgeSource, type KnowledgeSourceDetail, type WorkspaceArtifactKind } from '../services/api'
+import { askAI, createSourceContext, generateSourceArtifact, getAIContext, getKnowledgeArtifacts, getKnowledgeSources, getLearningSource, listAIContexts, type AICitation, type AIContextDetail, type AISessionSummary, type KnowledgeArtifact, type KnowledgeSource, type KnowledgeSourceDetail, type WorkspaceArtifactKind } from '../services/api'
 
 const route = useRoute(); const router = useRouter()
 const digitalHumanEnabled = import.meta.env.VITE_ENABLE_DIGITAL_HUMAN !== 'false'
@@ -76,10 +74,10 @@ const sessions = ref<AISessionSummary[]>([]); const context = ref<AIContextDetai
 const artifacts = ref<KnowledgeArtifact[]>([]); const activeArtifactId = ref('')
 const activeArtifact = computed(() => artifacts.value.find(item => item.artifact_id === activeArtifactId.value))
 const search = ref(''); const filteredSources = computed(() => sources.value.filter(item => item.original_name.toLocaleLowerCase().includes(search.value.toLocaleLowerCase())))
-const loadingSources = ref(false); const loading = ref(false); const importing = ref(false); const sending = ref(false); const generating = ref(false)
-const busy = computed(() => loading.value || importing.value || sending.value || generating.value)
+const loadingSources = ref(false); const loading = ref(false); const sending = ref(false); const generating = ref(false)
+const busy = computed(() => loading.value || sending.value || generating.value)
 const error = ref(''); const actionError = ref(''); const generationError = ref(''); const authorized = ref(false)
-const fileInput = ref<HTMLInputElement>(); const composer = ref<HTMLTextAreaElement>(); const messageScroll = ref<HTMLDivElement>()
+const composer = ref<HTMLTextAreaElement>(); const messageScroll = ref<HTMLDivElement>()
 const sourceReader = ref<HTMLDivElement>()
 const questionText = ref(''); const resourceTab = ref<'artifacts' | 'source'>('artifacts'); const citation = ref<AICitation | null>(null)
 const activePane = ref('chat'); const panes = [{ id: 'sources', label: '资料' }, { id: 'chat', label: '对话' }, { id: 'resources', label: '学习内容' }]
@@ -178,16 +176,6 @@ async function openRoute() {
   finally { if (token === epoch) loading.value = false }
 }
 async function reload() { if (!await allowLeaving()) return; try { error.value = ''; await loadSources(); await openRoute() } catch (cause) { error.value = message(cause) } }
-async function importFile(event: Event) {
-  const input = event.target as HTMLInputElement; const file = input.files?.[0]; input.value = ''
-  if (!file || busy.value) return
-  if (file.size > 25 * 1024 * 1024) { error.value = '文件不能超过 25 MB'; return }
-  if (!await allowLeaving()) return
-  importing.value = true; error.value = ''
-  try { const imported = await importLearningSource(file); await loadSources(); await navigateSource(imported.source_id, undefined, true) }
-  catch (cause) { error.value = message(cause) }
-  finally { importing.value = false }
-}
 async function newSession() {
   if (!source.value || busy.value) return
   if (!await allowLeaving()) return
@@ -254,7 +242,7 @@ onUnmounted(() => { epoch++; window.removeEventListener('filemate:before-refresh
 .learning-workspace button:focus-visible, .learning-workspace input:focus-visible, .learning-workspace textarea:focus-visible, .learning-workspace a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .mobile-panes button { min-width: 130px; font-size: 18px; min-height: 54px; }
 .mobile-panes button[aria-pressed=true] { background: var(--accent); color: white; border-color: var(--accent); font-weight: 750; }
-.learning-workspace .primary { background: var(--accent); color: white; border-color: var(--accent); display: inline-flex; align-items: center; justify-content: center; gap: 12px; }
+.learning-workspace .primary { text-decoration:none; background: var(--accent); color: white; border-color: var(--accent); display: inline-flex; align-items: center; justify-content: center; gap: 12px; }
 .model-consent { display: flex; align-items: flex-start; gap: 12px; font-size: 17px; line-height: 1.7; padding: 14px 18px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 12px; color: var(--text-secondary); margin: 0 0 20px; cursor: pointer; }
 .model-consent input { width: 19px; height: 19px; flex: 0 0 auto; accent-color: var(--accent); margin: 4px 0 0; }
 .desk { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); border: 1px solid var(--border-subtle); border-radius: 22px; overflow: hidden; background: var(--bg-reading); min-height: 740px; height: clamp(740px, calc(100dvh - 285px), 1050px); }
@@ -326,7 +314,7 @@ onUnmounted(() => { epoch++; window.removeEventListener('filemate:before-refresh
 .generation-kinds button[aria-pressed=true] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 750; }
 .task-purpose { font-size: 17px; color: var(--text-secondary); line-height: 1.8; margin: 18px 0; }
 .generation-submit { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 18px; }
-.generation-submit .primary { min-height: 52px; }
+.generation-submit .primary { text-decoration:none; min-height: 52px; }
 .generation-count { display: flex; gap: 12px; padding: 0; margin: 0; border: 0; min-width: 0; }
 .generation-count legend { font-size: 15px; color: var(--text-secondary); margin-bottom: 8px; }
 .generation-count label { display: flex; align-items: center; gap: 8px; font-size: 17px; min-height: 44px; cursor: pointer; }
@@ -369,7 +357,7 @@ onUnmounted(() => { epoch++; window.removeEventListener('filemate:before-refresh
   .source-pane, .conversation-heading, .conversation-scroll, .artifact-workbench, .source-reader, .composer-area { padding: 22px 18px; }
   .source-list, .session-list { grid-template-columns: 1fr; } .conversation-intro h3 { font-size: 27px; }
   .generation-kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); } .resource-tabs { padding: 14px 18px 0; }
-  .generation-submit .primary { width: 100%; } .resource-empty, .blank-state { padding: 26px 20px; }
+  .generation-submit .primary { text-decoration:none; width: 100%; } .resource-empty, .blank-state { padding: 26px 20px; }
   .mode-switch { gap: 6px; } .mode-switch button { font-size: 15px; padding: 8px 10px; }
 }
 @media (prefers-reduced-motion: reduce) { .desk > * { animation: none; } }

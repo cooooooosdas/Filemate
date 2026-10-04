@@ -46,7 +46,8 @@ async function openSession(sessionId, route = '/classification') {
 async function upload(index) {
   const name = `合成课件-${index}.txt`
   const content = Buffer.from(`原创工程夹具，非真实学生资料。\n课程：操作系统\n课件：进程和线程\n作业截止日期：2026-12-31\n${index}\n`, 'utf8')
-  await page.goto(base + '/import')
+  await page.goto(base + '/import?intent=archive')
+  await page.locator('.archive-consent input').check()
   await page.locator('#primary-file-upload').setInputFiles({ name, mimeType: 'text/plain', buffer: content })
   await page.getByRole('button', { name: '核对并归档', exact: true }).waitFor()
   await page.getByRole('button', { name: '核对并归档', exact: true }).click()

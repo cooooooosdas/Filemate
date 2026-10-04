@@ -66,19 +66,29 @@ async function select(item) {
   await page.locator('.artifact-picker button').filter({ has: page.getByText(item.title, { exact: true }) }).click()
   await page.waitForFunction(id => new URL(location.href).searchParams.get('artifact') === id, item.artifact_id)
 }
+async function importSource(file) {
+  if (new URL(page.url()).pathname !== '/import') {
+    await page.locator('.global-import').click()
+    await page.waitForURL('**/import?intent=study')
+  }
+  await page.locator('#primary-file-upload').setInputFiles(file)
+  await page.getByRole('link', { name: '开始学习', exact: false }).click()
+  await page.locator('.model-consent').waitFor()
+  await page.waitForFunction(() => Boolean(new URL(location.href).searchParams.get('ctx')))
+}
 const original = '原创合成资料，仅用于工程回归，非真实学生资料。\n数据结构：栈与队列\n栈遵循后进先出（LIFO）。push 入栈，pop 出栈。\n队列遵循先进先出（FIFO）。enqueue 入队，dequeue 出队。\n'
 let sourceId, ctxId, notes, cards, questions, summary, secondSource
 try {
   await check('empty workspace has one large entry and no console dropdowns', async () => {
     await page.goto(base + '/ai-tools')
-    await page.getByRole('button', { name: '添加第一份资料', exact: true }).waitFor()
+    await page.getByRole('link', { name: '添加第一份资料', exact: false }).waitFor()
     assert.equal(await page.locator('.learning-workspace select, .learning-workspace .el-select').count(), 0)
     assert.equal(await page.locator('.mobile-panes button').count(), 3)
     assert.equal((await model('/stats')).calls.length, 0)
     await page.screenshot({ path: path.join(out, 'workspace-empty.png'), fullPage: true })
   })
   await check('browser import creates real Source and Context without model calls', async () => {
-    await page.locator('.file-input').setInputFiles({ name: '工程合成-栈与队列.txt', mimeType: 'text/plain', buffer: Buffer.from(original) })
+    await importSource({ name: '工程合成-栈与队列.txt', mimeType: 'text/plain', buffer: Buffer.from(original) })
     await page.locator('.model-consent').waitFor()
     await page.waitForFunction(() => Boolean(new URL(location.href).searchParams.get('ctx')))
     sourceId = new URL(page.url()).searchParams.get('source'); ctxId = new URL(page.url()).searchParams.get('ctx')
@@ -243,14 +253,16 @@ try {
   await check('import and source change cancellation preserve the draft without creating a new Source', async () => {
     await page.locator('.composer textarea').fill('不要丢掉这个问题')
     const before = (await api('/knowledge/sources')).length
-    await page.locator('.file-input').setInputFiles({ name: '工程合成-第二份.txt', mimeType: 'text/plain', buffer: Buffer.from(original) })
+    await page.locator('.global-import').click()
     await page.getByRole('button', { name: '继续编辑', exact: true }).click()
     await page.getByRole('dialog', { name: '切换学习内容？', exact: true }).waitFor({ state: 'hidden' })
     assert.equal((await api('/knowledge/sources')).length, before)
     assert.equal(await page.locator('.composer textarea').inputValue(), '不要丢掉这个问题')
-    await page.locator('.file-input').setInputFiles({ name: '工程合成-第二份.txt', mimeType: 'text/plain', buffer: Buffer.from(original + '另一份原创工程资料。') })
+    await page.locator('.global-import').click()
     await page.getByRole('button', { name: '舍弃问题并切换', exact: true }).click()
     await page.getByRole('dialog', { name: '切换学习内容？', exact: true }).waitFor({ state: 'hidden' })
+    await page.waitForURL('**/import?intent=study')
+    await importSource({ name: '工程合成-第二份.txt', mimeType: 'text/plain', buffer: Buffer.from(original + '另一份原创工程资料。') })
     await page.waitForFunction(id => new URL(location.href).searchParams.get('source') !== id, sourceId)
     secondSource = new URL(page.url()).searchParams.get('source')
     assert.equal((await api(`/knowledge/sources/${secondSource}/artifacts`)).length, 0)
@@ -316,8 +328,9 @@ try {
     await page.goto(base+'/ai-tools')
     const beforeCalls=(await model('/stats')).calls.length
     const markdown='# 工程合成：栈\n\n```cpp\npush(value); // 入栈\n```\n栈遵循后进先出。\n<script>window.__learningScriptExecuted=true</script>'
-    assert.ok((await page.locator('.file-input').getAttribute('accept')).includes('.md'))
-    await page.locator('.file-input').setInputFiles({name:'原创代码笔记.md',mimeType:'text/markdown',buffer:Buffer.from(markdown)})
+    await page.locator('.global-import').click(); await page.waitForURL('**/import?intent=study')
+    assert.ok((await page.locator('#primary-file-upload').getAttribute('accept')).includes('.md'))
+    await importSource({name:'原创代码笔记.md',mimeType:'text/markdown',buffer:Buffer.from(markdown)})
     await page.locator('.composer textarea:not(:disabled)').waitFor()
     const id=new URL(page.url()).searchParams.get('source')
     assert.ok(id)
@@ -335,7 +348,7 @@ try {
     await page.goto(base+'/ai-tools')
     const beforeCalls=(await model('/stats')).calls.length
     const code='// 原创工程合成源码，只作为学习资料\n#include <iostream>\nint main() { std::cout << "栈遵循后进先出"; }\n'
-    await page.locator('.file-input').setInputFiles({name:'学习栈.cpp',mimeType:'text/plain',buffer:Buffer.from(code)})
+    await importSource({name:'学习栈.cpp',mimeType:'text/plain',buffer:Buffer.from(code)})
     await page.locator('.composer textarea:not(:disabled)').waitFor()
     const id=new URL(page.url()).searchParams.get('source'),ctx=new URL(page.url()).searchParams.get('ctx')
     assert.ok(id && ctx)

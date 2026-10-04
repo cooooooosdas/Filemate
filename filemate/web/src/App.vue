@@ -103,7 +103,7 @@
         </div>
 
         <div class="topbar-actions">
-          <router-link class="global-import desktop-only" to="/import"><el-icon><DocumentAdd /></el-icon>导入资料</router-link>
+          <router-link class="global-import" to="/import?intent=study" aria-label="添加资料"><el-icon><DocumentAdd /></el-icon><span>添加资料</span></router-link>
           <button v-if="accountState?.user" class="account-entry" type="button" aria-label="查看我的账号" @click="showAccount = true"><el-icon><User /></el-icon><span>{{ accountState.user.display_name }}</span></button>
           <router-link v-else class="account-entry" to="/login" aria-label="登录 FileMate"><el-icon><User /></el-icon><span>登录</span></router-link>
           <button class="finder-trigger" aria-label="查找功能" @click="showFinder = true"><el-icon><Search /></el-icon><span>查找功能</span><kbd>Ctrl K</kbd></button>
@@ -142,7 +142,7 @@
         <TaskNavigation v-if="contextLinks.length" :items="contextLinks" />
         <router-view v-slot="{ Component }">
           <transition name="page-fade" mode="out-in">
-            <component :is="Component" :key="`${$route.path === '/ai-tools' ? $route.path : $route.fullPath}-${refreshToken}`" />
+            <component :is="Component" :key="`${['/ai-tools', '/import'].includes($route.path) ? $route.path : $route.fullPath}-${refreshToken}`" />
           </transition>
         </router-view>
         <footer class="site-footer" aria-label="网站备案与使用说明">
@@ -308,8 +308,9 @@ const navigationGroups = computed(() => [
 ])
 const contextLinks = computed(() => {
   let paths: string[] = []
-  if (['/import', '/classification', '/naming', '/schedule', '/history'].includes(route.path)) paths = ['/import', '/classification', '/schedule', '/history']
-  else if (['/ai-tools', '/knowledge', '/knowledge-graph', '/digital-human'].includes(route.path)) paths = ['/ai-tools', '/knowledge', '/knowledge-graph', '/digital-human', '/import']
+  if (route.path === '/import' && route.query.intent !== 'archive') paths = ['/ai-tools', '/knowledge']
+  else if (['/import', '/classification', '/naming', '/schedule', '/history'].includes(route.path)) paths = ['/classification', '/schedule', '/history']
+  else if (['/ai-tools', '/knowledge', '/knowledge-graph', '/digital-human'].includes(route.path)) paths = ['/ai-tools', '/knowledge', '/knowledge-graph', '/digital-human']
   else if (['/today', '/study-plan', '/wrongbook', '/goals'].includes(route.path)) paths = ['/today', '/study-plan', '/wrongbook', '/goals']
   else if (['/interview', '/interview-bank', '/career'].includes(route.path)) paths = ['/interview', '/interview-bank', '/career']
   const tools = menuGroups.flatMap(group => group.items)
@@ -1066,6 +1067,7 @@ function isAuthPath(path: string): boolean {
 .nav-item .el-icon { transition:transform var(--motion-fast); }
 .topbar-actions svg,.nav-item svg,.finder-results svg { stroke-width:1.8; }
 @media(prefers-reduced-motion:reduce) { .nav-item .el-icon { transition:none; } .nav-item:hover:not(.router-link-active) .el-icon { transform:none; } }
-@media(max-width:1100px) { .global-import { display:none; } }
+@media(max-width:1100px) { .avatar { display:none; } }
+@media(max-width:560px) { .global-import { width:44px; padding:0; margin-right:0; flex-shrink:0; }.global-import span { display:none; }.topbar-actions>.icon-button { display:none; }.topbar-title { min-width:0; }.page-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } }
 @media(max-width:560px) { .page-title { font-size:16px; }.nav-item { font-size:18px; } }
 </style>
