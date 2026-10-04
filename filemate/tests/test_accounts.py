@@ -11,11 +11,11 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 from fastapi.testclient import TestClient
 
-from filemate.accounts import AccountError, AccountStore
+from filemate.accounts import AccountError, AccountStore, validate_password
 from filemate.execution.storage import SQLiteStorage
 
-PASSWORD = secrets.token_urlsafe(24)
-NEW_PASSWORD = secrets.token_urlsafe(24)
+PASSWORD = secrets.token_urlsafe(24) + "a7"
+NEW_PASSWORD = secrets.token_urlsafe(24) + "b8"
 HEADERS = {"X-FileMate-Action": "account"}
 
 
@@ -52,6 +52,53 @@ def login(client, email="synthetic@example.invalid", password=PASSWORD, **kwargs
     return client.post(
         "/api/auth/login", headers=HEADERS, json={"email": email, "password": password, **kwargs}
     )
+
+
+@pytest.mark.parametrize("password", ["Abcd12345", "abcd12345", "ABCD12345", "Abcd1234!", "中文ab12345", "Ab1" + "x" * 125])
+def test_new_password_accepts_nine_characters_and_optional_symbols(password):
+    validate_password(password)
+
+
+@pytest.mark.parametrize("password", ["Abcd1234", "123456789", "abcdefghi", "abcdefg!@", "中文密码测试123", "a1" + "x" * 127, "aaaaaaa11", "password123456789"])
+def test_new_password_rejects_short_unmixed_and_common_values(password):
+    with pytest.raises(AccountError):
+        validate_password(password)
+
+
+def test_nine_character_registration_login_and_recovery(account_server):
+    password = secrets.token_hex(3) + "ab7"
+    replacement = secrets.token_hex(3) + "cd8"
+    with TestClient(account_server.app) as client:
+        for invalid in ["a1" * 4, "abcdefghi", "123456789"]:
+            assert register(client, password=invalid).status_code == 400
+        registered = register(client, password=password)
+        assert registered.status_code == 200
+        code = registered.json()["data"]["recovery_code"]
+        client.post("/api/auth/logout", headers=HEADERS, json={})
+        assert login(client, password=password).status_code == 200
+        for invalid in ["a1" * 4, "abcdefghi", "123456789"]:
+            response = client.post("/api/auth/recover", headers=HEADERS, json={
+                "email": "synthetic@example.invalid", "recovery_code": code, "password": invalid,
+            })
+            assert response.status_code == 400
+            assert client.get("/api/auth/me").json()["data"]["user"]["email"] == "synthetic@example.invalid"
+        recovered = client.post("/api/auth/recover", headers=HEADERS, json={
+            "email": "synthetic@example.invalid", "recovery_code": code, "password": replacement,
+        })
+        assert recovered.status_code == 200
+        assert recovered.json()["data"]["recovery_code"] != code
+        assert login(client, password=password).status_code == 401
+        assert login(client, password=replacement).status_code == 200
+
+
+def test_existing_password_without_digits_still_logs_in(account_server, monkeypatch):
+    legacy = "legacy phrase only"
+    with TestClient(account_server.app) as client:
+        with monkeypatch.context() as previous_policy:
+            previous_policy.setattr("filemate.accounts.validate_password", lambda _: None)
+            assert register(client, password=legacy).status_code == 200
+        client.post("/api/auth/logout", headers=HEADERS, json={})
+        assert login(client, password=legacy).status_code == 200
 
 
 def test_register_claims_guest_without_leaving_cookie_backdoor(account_server):

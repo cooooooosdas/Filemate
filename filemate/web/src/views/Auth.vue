@@ -56,7 +56,7 @@
               </div>
               <div class="field-group">
                 <div class="field-label-row"><label for="password">{{ isRecover ? '新密码' : '密码' }}</label><router-link v-if="!isRegister && !isRecover" class="text-button" to="/recover">忘记密码？</router-link></div>
-                <div class="field-control"><el-icon><Key /></el-icon><input id="password" :aria-invalid="invalidField === 'password'" :aria-describedby="invalidField === 'password' ? 'auth-error' : undefined" v-model="password" :type="showPassword ? 'text' : 'password'" :autocomplete="isRegister || isRecover ? 'new-password' : 'current-password'" maxlength="128" :placeholder="isRegister || isRecover ? '15–128 个字符，支持中文长口令' : '请输入密码'" /><button type="button" class="reveal-button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" @click="showPassword = !showPassword"><el-icon><View v-if="!showPassword" /><Hide v-else /></el-icon></button></div>
+                <div class="field-control"><el-icon><Key /></el-icon><input id="password" :aria-invalid="invalidField === 'password'" :aria-describedby="invalidField === 'password' ? 'auth-error' : undefined" v-model="password" :type="showPassword ? 'text' : 'password'" :autocomplete="isRegister || isRecover ? 'new-password' : 'current-password'" maxlength="128" :placeholder="isRegister || isRecover ? '至少 9 位，包含字母和数字' : '请输入密码'" /><button type="button" class="reveal-button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" @click="showPassword = !showPassword"><el-icon><View v-if="!showPassword" /><Hide v-else /></el-icon></button></div>
               </div>
               <div v-if="isRegister || isRecover" class="field-group">
                 <label for="confirm-password">确认密码</label>
@@ -87,6 +87,7 @@ import { ElMessage } from 'element-plus'
 import { DocumentAdd, Hide, Key, Lock, Message, Notebook, Reading, Right, User, View } from '../icons'
 import Logo from '../components/Logo.vue'
 import { getAccountState, loginAccount, logoutAccount, recoverAccount, registerAccount } from '../services/api'
+import { newPasswordError } from '../auth/password'
 
 const route = useRoute()
 const isRegister = computed(() => route.name === 'Register')
@@ -121,7 +122,8 @@ async function handleSubmit(): Promise<void> {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account.value)) return showError('请输入有效的邮箱地址', 'account')
   if (!password.value) return showError('请输入密码', 'password')
   if (isRegister.value || isRecover.value) {
-    if ([...password.value].length < 15 || [...password.value].length > 128) return showError('密码需为 15–128 个字符，可使用中文长口令', 'password')
+    const passwordError = newPasswordError(password.value)
+    if (passwordError) return showError(passwordError, 'password')
     if (password.value !== confirmPassword.value) return showError('两次输入的密码不一致', 'confirm-password')
   }
   if (isRegister.value && displayName.value.length < 2) return showError('请输入至少 2 个字的昵称', 'display-name')

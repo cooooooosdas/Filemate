@@ -15,8 +15,8 @@ const other = await browser.newContext()
 const guest = await browser.newContext()
 const page = await context.newPage(), device = await other.newPage()
 const email = `synthetic-auth-${crypto.randomUUID()}@example.invalid`
-const password = crypto.randomBytes(24).toString('base64url')
-const newPassword = crypto.randomBytes(24).toString('base64url')
+const password = crypto.randomBytes(3).toString('hex') + 'ab7'
+const newPassword = crypto.randomBytes(3).toString('hex') + 'cd8'
 const checks = [], errors = []
 const headers = { Origin: base, 'X-FileMate-Action': 'account' }
 let sourceId, oldCode, newCode
@@ -55,6 +55,24 @@ try {
   })
   await page.goto(base + '/register')
   await layoutAndAxe('register')
+  await check('registration rejects short or unmixed passwords before a request', async () => {
+    await page.locator('#display-name').fill('合成账号验收')
+    await page.locator('#account').fill(email)
+    assert.equal(await page.locator('#password').getAttribute('placeholder'), '至少 9 位，包含字母和数字')
+    let sent = 0
+    const count = request => { if (new URL(request.url()).pathname === '/api/auth/register') sent++ }
+    page.on('request', count)
+    try {
+      for (const [value, hint] of [['Abcd1234', '9–128'], ['123456789', '字母和数字'], ['abcdefghi', '字母和数字']]) {
+        await page.locator('#password').fill(value)
+        await page.locator('#confirm-password').fill(value)
+        await page.getByRole('button', { name: '创建账号', exact: true }).click()
+        await page.getByRole('alert').filter({ hasText: hint }).waitFor()
+        assert.equal(await page.locator('#password').getAttribute('aria-invalid'), 'true')
+      }
+      assert.equal(sent, 0)
+    } finally { page.off('request', count) }
+  })
   await check('real registration form issues session and one-time recovery code', async () => {
     await page.locator('#display-name').fill('合成账号验收')
     await page.locator('#account').fill(email)
@@ -106,6 +124,15 @@ try {
   })
   await page.goto(base + '/recover')
   await layoutAndAxe('recover')
+  await check('recovery rejects an unmixed new password without rotating the recovery code', async () => {
+    await page.locator('#account').fill(email)
+    await page.locator('#recovery-code').fill(oldCode)
+    await page.locator('#password').fill('123456789')
+    await page.locator('#confirm-password').fill('123456789')
+    await page.getByRole('button', { name: '重设密码', exact: true }).click()
+    await page.getByRole('alert').filter({ hasText: '字母和数字' }).waitFor()
+    assert.equal(await page.locator('#saved-recovery-code').count(), 0)
+  })
   await check('recovery form resets password, rotates code and invalidates both old devices', async () => {
     await page.locator('#account').fill(email)
     await page.locator('#recovery-code').fill(oldCode)

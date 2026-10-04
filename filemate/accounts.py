@@ -38,9 +38,11 @@ def normalize_email(value: str) -> str:
 
 
 def validate_password(value: str) -> None:
-    """允许长口令和中文，拒绝过短或明显重复的密码。"""
-    if not 15 <= len(value) <= 128:
-        raise AccountError("密码需为 15–128 个字符，可使用一句容易记住的话")
+    """新密码至少九字符并混合字母和数字，保留常见密码检查。"""
+    if not 9 <= len(value) <= 128:
+        raise AccountError("密码需为 9–128 个字符")
+    if not re.search(r"[A-Za-z]", value) or not re.search(r"[0-9]", value):
+        raise AccountError("密码需同时包含字母和数字，符号可选")
     if len(set(value)) < 4 or value.casefold() in {
         "password123456789",
         "123456789012345",

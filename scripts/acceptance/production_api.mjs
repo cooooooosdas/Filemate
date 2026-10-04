@@ -31,7 +31,7 @@ async function api(path, method = 'get', data) {
 try {
   await check('synthetic account logs in using actual production session', async () => {
     const email = `synthetic-api-${crypto.randomUUID()}@example.invalid`
-    await api('/api/auth/register', 'post', { email, display_name: '合成接口验收', password: crypto.randomBytes(24).toString('base64url'), keep_guest_data: false, remember: false })
+    await api('/api/auth/register', 'post', { email, display_name: '合成接口验收', password: crypto.randomBytes(24).toString('base64url') + 'a7', keep_guest_data: false, remember: false })
     assert.equal((await api('/api/auth/me')).user.email, email)
     assert.equal((await api('/api/health')).version, process.env.FILEMATE_EXPECTED_VERSION || '1.3.0-alpha.4')
   })
