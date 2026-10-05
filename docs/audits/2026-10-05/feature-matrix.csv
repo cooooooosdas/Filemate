@@ -1,0 +1,19 @@
+﻿module,actual_function,page_and_entry,backend,database,verification,status
+01 FileMate,导入、分类/命名审核、预览确认、归档、撤销；资料永久删除缺少后端确认/操作审计,`/import`、`/classification`、`/naming`、`/history`，统一入口,`/process`、`/sessions/*`、`/knowledge/*`,sessions/processed_files/execution_records/operation_log/sources,门禁、browser_smoke、production UI、账户链及删除探针,**FAIL**：AUD-01
+02 Learning Dashboard,今日队列、进度、实际记录及证据说明；没有数据时显示空态/待评测,`/`、`/today`、`/growth`,analytics/review/goals/study-plans/daily-coach相关接口,从作答、计划、面试、判题表聚合,evidence_profile、career_growth、production UI,**CONDITIONAL PASS**：统计可用，不等于学习效果验证
+03 Digital Human,2D呈现和浏览器Web Speech；播报元数据可保存/撤销/恢复,`/digital-human`，工作台讲解入口,`/api/digital-human/playbacks*`,digital_human_playbacks,原生50/500字符语音事件，暂停/重播；设备故障夹具,**CONDITIONAL PASS**：无外部数字人服务实现，设备/语音质量有限覆盖
+04 Knowledge Graph,原文支撑的本地/LLM草稿、确认、图谱、节点计划；大图全部 force/layout与DOM处理,`/knowledge-graph`及工作台导航,`/api/knowledge-graph*`,knowledge_graph_batches/events + Source/Artifact/Attempt投影,knowledge_graph、disabled、真实模型、100/1000/10000,**FAIL**：AUD-03
+05 User Profile,邮箱/昵称/会话；学习画像是只读证据聚合，没有统一履历/项目/教育资料编辑模块,账户/成长/证据面板，**没有独立完整画像页**,auth/me + analytics/evidence_profile,accounts/account_sessions；画像由现有学习表派生,accounts单元、同一账户链、evidence_profile,**CONDITIONAL PASS**：基础账户/学习证据可用，完整用户画像未实现
+06 Skill Tree,未实现独立技能层级、解锁/路径/技能证据投影,**无页面、无入口**,**无合同/路由**,**无对应存储或完整投影**,源码/路由/schema反查,**FAIL**：不能把知识图谱或标签统计称为技能树
+07 Error Knowledge Base,课程错题、诊断、纠错记录及编程错误视图；课程错题只取最新100，API最多200,`/wrongbook`，编程页面错误区,`/wrongbook*`、`/quiz/attempts`、programming overview,wrong_questions/quiz_attempts/coding_submissions,错题单元、账户链、100/1000/10000容量,**FAIL**：AUD-02
+08 Spaced Repetition,到期队列、正确连续次数及下次复习时间是真实作答规则；不是经实验证实的记忆模型,`/today`、`/wrongbook`、计划入口,`/review/today`、quiz/diagnosis接口,wrong_questions.review_count/next_review_at等,门禁、同一账户错答→两次复习,**PASS**：现役规则范围；大量错题入口受AUD-02牵连
+09 Learning Goals,目标反推、任务完成、证据变化重排及持久化,`/goals`、工作台学习路径,`/goals/reverse-plan`、list/tasks/replan,reverse_goal_plan Artifact、agent_runs/steps/memories,goal_planner、server_persistence、账户链,**PASS**：现役目标任务范围
+10 AI Learning Agent,按需角色选择、来源引用、任务/记忆记录、目标/每日队列；角色目录不代表六个常驻Agent同时运行,`/ai-tools`、`/trust`、今日/目标页,AI工具/聊天、trust/agents、目标接口,Sources/Artifacts/Contexts及agent_*,可信路由/隔离/记忆单元、学习浏览器链,**CONDITIONAL PASS**：引导式助手可用；没有完整自主调度和全局Action预算
+11 Programming OJ,C++17、8道原创题、逐点编译器裁决；内存超限归入RE而非独立MLE,`/programming`,programming problems/submissions/run/status/state,coding_submissions/coding_events,原生49项、公网Linux AC、programming/disabled,**CONDITIONAL PASS**：5种裁决实测；MLE独立状态、代码永久删除缺失
+12 AI Programming Coach,本地规则及LLM原代码复盘、失败测试点/行号校验、笔记；AI不覆盖编译器判题,`/programming`内集成入口,submissions/review、notes、overview,提交载荷/事件；复盘持久化,反馈单元、浏览器、公网真实模型,**CONDITIONAL PASS**：静态复杂度和建议尚无专家质量实验
+13 AI Interview,场景题、回答/追问、原句评分引用、视觉摘要、本地回退、报告JSON/MD/PDF、预览确认删除,`/interview`、`/interview-bank`,interviews/answers/analyze/review/export/delete,interview_sessions/turns/questions/review_state/events及Artifacts,interview_ai/review、vision生产构建、真实模型、账户链,**CONDITIONAL PASS**：评分未校准；不是完整六类岗位面试/完整物理设备覆盖
+14 Job Center,3个来源快照岗位、2家公司；用户导入/修订、原创基础笔试、训练快照/导出,`/career`,career catalog/positions/trainings/export,career_positions/trainings/events + Artifact,career系列浏览器、单元、账户笔试链,**CONDITIONAL PASS**：小型训练目录，不是实时招聘聚合或企业官方题库
+15 Company / Job Matching,词表关联岗位原句、图谱练习、编程/面试证据，保存快照并提示人工核对,`/career`岗位证据/差距/计划,positions/evidence/plan-preview/plans,career训练/计划Artifact + 原记录,career_growth/planning及生产构建、账户链,**CONDITIONAL PASS**：无录用概率/适配率；关联不等于验证能力
+16 AI Resume,未实现履历编辑、真实项目证据编排、模板/文件导出,**无页面、无入口**,**无简历路由**,**无对应存储**,名称/路由/schema反查；账户流程BLOCKED,**FAIL**：AUD-05
+17 Growth Report,真实统计、证据公式、编程周汇总及求职历史可读；完整周期报告生成/导出缺失,`/growth`存在；**完整报告入口缺失**,analytics/programming/career overview；**无完整报告API**,由现有学习表聚合，无完整报告产物,evidence_profile/career_growth，账户统计通过、报告BLOCKED,**FAIL**：完整报告要求；现役统计页可用
+18 Semester Mode,未实现学期、课程编排、周次/考试日程统筹,**无页面、无入口**,**无学期合同/路由**,**无对应存储**,路由/schema/源码反查,**FAIL**

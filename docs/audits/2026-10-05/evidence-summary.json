@@ -1,0 +1,862 @@
+{
+  "title": "FINAL PRODUCT AUDIT REPORT",
+  "audit_date": "2026-10-05",
+  "overall_status": "FAIL",
+  "baseline_commit": "69747c49289587eac1f1c6b270f3740e1318b3a4",
+  "runtime_commit": "92bb1313307763c5827edea96899ea49baa06d54",
+  "source_sha256": {
+    "server.py": "191e80729939d94c9264e749983bbf39c7371d85307cf7742dc7bf0dba2374aa",
+    "filemate/execution/storage.py": "8a2aadaf6b662de4f760d332eedfba44319bbf2cd15ea1dca0c0450b41ccd608",
+    "filemate/web/src/router/index.ts": "661e0ef76b31dbef4a932473524e35310e13a711b0b87c40c6b7f5ac312beedc"
+  },
+  "confirmed_issues": {
+    "P0": 0,
+    "P1": [
+      "AUD-01",
+      "AUD-02",
+      "AUD-03",
+      "AUD-04",
+      "AUD-05",
+      "AUD-06",
+      "AUD-07"
+    ],
+    "P2": [
+      "AUD-08",
+      "AUD-09",
+      "AUD-10",
+      "AUD-11",
+      "AUD-12",
+      "AUD-13",
+      "AUD-14",
+      "AUD-15",
+      "AUD-16"
+    ]
+  },
+  "counts": {
+    "backend_passed": 861,
+    "backend_skipped": 20,
+    "backend_deselected": 5,
+    "frontend_passed": 40,
+    "browser_cases_final_passed": 19,
+    "production_route_width_checks": 41,
+    "synthetic_long_content_width_checks": 8,
+    "windows_native_judge_checks": 49,
+    "independent_backup_checks": 19,
+    "same_account_passed_steps": 34,
+    "same_account_blocked_steps": 4,
+    "valid_common_document_format_probes": 3,
+    "read_only_databases_checked_latest": 185
+  },
+  "release_recommended": false,
+  "full_requested_user_flow_passed": false,
+  "new_business_features_added": false,
+  "initial_browser_results": [
+    {
+      "name": "browser_smoke",
+      "passed": true
+    },
+    {
+      "name": "digital_human",
+      "passed": true
+    },
+    {
+      "name": "knowledge_graph",
+      "passed": true
+    },
+    {
+      "name": "programming",
+      "passed": true
+    },
+    {
+      "name": "interview_review",
+      "passed": true
+    },
+    {
+      "name": "career",
+      "passed": true
+    },
+    {
+      "name": "career_state",
+      "passed": true
+    },
+    {
+      "name": "career_growth",
+      "passed": true
+    },
+    {
+      "name": "career_planning",
+      "passed": true
+    },
+    {
+      "name": "career_production",
+      "passed": true
+    },
+    {
+      "name": "career_planning_production",
+      "passed": true
+    },
+    {
+      "name": "interview_vision_production",
+      "passed": true
+    },
+    {
+      "name": "digital_human_disabled",
+      "passed": true
+    },
+    {
+      "name": "knowledge_graph_disabled",
+      "passed": true
+    },
+    {
+      "name": "programming_disabled",
+      "passed": true
+    },
+    {
+      "name": "interview_review_disabled",
+      "passed": true
+    },
+    {
+      "name": "career_disabled",
+      "passed": true
+    },
+    {
+      "name": "evidence_profile",
+      "passed": false
+    },
+    {
+      "name": "frontend_production",
+      "passed": true
+    }
+  ],
+  "final_browser_results": [
+    {
+      "name": "browser_smoke",
+      "passed": true
+    },
+    {
+      "name": "digital_human",
+      "passed": true
+    },
+    {
+      "name": "knowledge_graph",
+      "passed": true
+    },
+    {
+      "name": "programming",
+      "passed": true
+    },
+    {
+      "name": "interview_review",
+      "passed": true
+    },
+    {
+      "name": "career",
+      "passed": true
+    },
+    {
+      "name": "career_state",
+      "passed": true
+    },
+    {
+      "name": "career_growth",
+      "passed": true
+    },
+    {
+      "name": "career_planning",
+      "passed": true
+    },
+    {
+      "name": "career_production",
+      "passed": true
+    },
+    {
+      "name": "career_planning_production",
+      "passed": true
+    },
+    {
+      "name": "interview_vision_production",
+      "passed": true
+    },
+    {
+      "name": "digital_human_disabled",
+      "passed": true
+    },
+    {
+      "name": "knowledge_graph_disabled",
+      "passed": true
+    },
+    {
+      "name": "programming_disabled",
+      "passed": true
+    },
+    {
+      "name": "interview_review_disabled",
+      "passed": true
+    },
+    {
+      "name": "career_disabled",
+      "passed": true
+    },
+    {
+      "name": "evidence_profile",
+      "passed": true
+    },
+    {
+      "name": "frontend_production",
+      "passed": true
+    }
+  ],
+  "model_checks": [
+    {
+      "name": "真实DeepSeek生成并保存summary",
+      "passed": true,
+      "elapsed_seconds": 1.03,
+      "kind": "real_DeepSeek"
+    },
+    {
+      "name": "真实DeepSeek生成并保存questions",
+      "passed": true,
+      "elapsed_seconds": 1.25,
+      "kind": "real_DeepSeek"
+    },
+    {
+      "name": "真实DeepSeek知识图谱草稿及原文校验",
+      "passed": true,
+      "elapsed_seconds": 1.17,
+      "kind": "real_DeepSeek"
+    },
+    {
+      "name": "真实DeepSeek资料问答",
+      "passed": true,
+      "elapsed_seconds": 0.02,
+      "kind": "local_insufficient_evidence_branch"
+    },
+    {
+      "name": "实际部署Linux隔离编译器AC",
+      "passed": true,
+      "elapsed_seconds": 8.82,
+      "kind": "real_linux_compiler"
+    },
+    {
+      "name": "真实DeepSeek编程教练原文证据复盘",
+      "passed": true,
+      "elapsed_seconds": 1.01,
+      "kind": "real_DeepSeek"
+    },
+    {
+      "name": "真实DeepSeek面试评分引用与报告",
+      "passed": true,
+      "elapsed_seconds": 2.35,
+      "kind": "real_DeepSeek"
+    }
+  ],
+  "chat_branch_retest": {
+    "checks": [
+      {
+        "kind": "local_insufficient_evidence_branch",
+        "passed": true,
+        "http_status": 200,
+        "answerable": false,
+        "citation_count": 0,
+        "elapsed_seconds": 0.01
+      },
+      {
+        "kind": "real_llm_with_saved_citations",
+        "passed": true,
+        "http_status": 200,
+        "answerable": true,
+        "citation_count": 1,
+        "elapsed_seconds": 0.61
+      }
+    ],
+    "passed": true,
+    "sample_kind": "original_synthetic_production_chat_model_and_local_branches",
+    "own_synthetic_source_removed": true
+  },
+  "capacity": [
+    {
+      "nodes_requested": 100,
+      "wrong_questions_seeded": 100,
+      "seed_seconds": 0.092,
+      "api_samples": [
+        {
+          "elapsed_ms": 33.24,
+          "bytes": 162435,
+          "nodes": 100,
+          "edges": 98,
+          "observed_nodes": 100
+        },
+        {
+          "elapsed_ms": 32.05,
+          "bytes": 162435,
+          "nodes": 100,
+          "edges": 98,
+          "observed_nodes": 100
+        },
+        {
+          "elapsed_ms": 31.25,
+          "bytes": 162435,
+          "nodes": 100,
+          "edges": 98,
+          "observed_nodes": 100
+        }
+      ],
+      "wrongbook": {
+        "elapsed_ms": 10.48,
+        "default_returned": 100,
+        "max_returned": 100,
+        "unknown_offset_ignored": true,
+        "full_user_dataset_reachable_from_page": true
+      },
+      "browser_exit_code": 0,
+      "browser": {
+        "size": 100,
+        "sample_kind": "synthetic_actual_api_no_response_mocks",
+        "errors": [],
+        "checks": [],
+        "graph_ready_ms": 786,
+        "list_switch_ms": 146,
+        "list_dom_nodes": 100,
+        "search_ms": 29,
+        "metrics": [
+          {
+            "name": "Nodes",
+            "value": 6174
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0
+          },
+          {
+            "name": "TaskDuration",
+            "value": 1.8e-05
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 18006296
+          }
+        ],
+        "long_tasks": {
+          "count": 4,
+          "maximum_ms": 230
+        },
+        "wrongbook_rendered": 100,
+        "passed": true
+      }
+    },
+    {
+      "nodes_requested": 1000,
+      "wrong_questions_seeded": 1000,
+      "seed_seconds": 0.796,
+      "api_samples": [
+        {
+          "elapsed_ms": 387.45,
+          "bytes": 1617829,
+          "nodes": 1000,
+          "edges": 987,
+          "observed_nodes": 1000
+        },
+        {
+          "elapsed_ms": 384.64,
+          "bytes": 1617829,
+          "nodes": 1000,
+          "edges": 987,
+          "observed_nodes": 1000
+        },
+        {
+          "elapsed_ms": 400.78,
+          "bytes": 1617829,
+          "nodes": 1000,
+          "edges": 987,
+          "observed_nodes": 1000
+        }
+      ],
+      "wrongbook": {
+        "elapsed_ms": 12.9,
+        "default_returned": 100,
+        "max_returned": 200,
+        "unknown_offset_ignored": true,
+        "full_user_dataset_reachable_from_page": false
+      },
+      "browser_exit_code": 0,
+      "browser": {
+        "size": 1000,
+        "sample_kind": "synthetic_actual_api_no_response_mocks",
+        "errors": [],
+        "checks": [],
+        "graph_ready_ms": 10841,
+        "list_switch_ms": 3896,
+        "list_dom_nodes": 1000,
+        "search_ms": 62,
+        "metrics": [
+          {
+            "name": "Nodes",
+            "value": 55017
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0
+          },
+          {
+            "name": "TaskDuration",
+            "value": 2.1e-05
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 65770180
+          }
+        ],
+        "long_tasks": {
+          "count": 4,
+          "maximum_ms": 6495
+        },
+        "wrongbook_rendered": 100,
+        "passed": true
+      }
+    },
+    {
+      "nodes_requested": 10000,
+      "wrong_questions_seeded": 10000,
+      "seed_seconds": 6.887,
+      "api_samples": [
+        {
+          "elapsed_ms": 11152.97,
+          "bytes": 16145904,
+          "nodes": 10000,
+          "edges": 9875,
+          "observed_nodes": 10000
+        },
+        {
+          "elapsed_ms": 11896.27,
+          "bytes": 16145904,
+          "nodes": 10000,
+          "edges": 9875,
+          "observed_nodes": 10000
+        },
+        {
+          "elapsed_ms": 15059.71,
+          "bytes": 16145904,
+          "nodes": 10000,
+          "edges": 9875,
+          "observed_nodes": 10000
+        }
+      ],
+      "wrongbook": {
+        "elapsed_ms": 13.86,
+        "default_returned": 100,
+        "max_returned": 200,
+        "unknown_offset_ignored": true,
+        "full_user_dataset_reachable_from_page": false
+      },
+      "browser_exit_code": 1,
+      "browser": {
+        "size": 10000,
+        "sample_kind": "synthetic_actual_api_no_response_mocks",
+        "errors": [],
+        "checks": [],
+        "passed": false,
+        "error": "TimeoutError: locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('10000 个知识点').first() to be visible\u001b[22m\n"
+      }
+    }
+  ],
+  "database_metadata": {
+    "versions": [
+      15,
+      24,
+      25
+    ],
+    "foreign_key_violations": 0,
+    "new_schema_tables": 36,
+    "code_schema_version": 25,
+    "legacy_migration": {
+      "from": 8,
+      "to": 25,
+      "old_session_preserved": true,
+      "repeat_migration_idempotent": true,
+      "quick_check": "ok",
+      "foreign_key_check": [],
+      "downgrade_test": "No inverse migrations; separate snapshot restore test required."
+    }
+  },
+  "same_account_steps": [
+    {
+      "name": "注册：9位混合密码",
+      "status": "PASS"
+    },
+    {
+      "name": "重新登录同一账户",
+      "status": "PASS"
+    },
+    {
+      "name": "上传课程资料并真实解析",
+      "status": "PASS"
+    },
+    {
+      "name": "保存资料上下文",
+      "status": "PASS"
+    },
+    {
+      "name": "本地生成有原文依据的图谱草稿",
+      "status": "PASS"
+    },
+    {
+      "name": "用户确认图谱草稿",
+      "status": "PASS"
+    },
+    {
+      "name": "读取持久化知识图谱",
+      "status": "PASS"
+    },
+    {
+      "name": "设置目标并生成逆向任务",
+      "status": "PASS"
+    },
+    {
+      "name": "预览确认后生成学习计划",
+      "status": "PASS"
+    },
+    {
+      "name": "完成计划中的一天",
+      "status": "PASS"
+    },
+    {
+      "name": "完成目标任务",
+      "status": "PASS"
+    },
+    {
+      "name": "同一账户真实C++编译器判题",
+      "status": "PASS"
+    },
+    {
+      "name": "编程错误持久化",
+      "status": "PASS"
+    },
+    {
+      "name": "合同夹具生成练习并真实持久化（不代表外部模型成功）",
+      "status": "PASS"
+    },
+    {
+      "name": "错答课程题进入错题库",
+      "status": "PASS"
+    },
+    {
+      "name": "错题复习接口",
+      "status": "PASS"
+    },
+    {
+      "name": "再次复习作答写入间隔状态",
+      "status": "PASS"
+    },
+    {
+      "name": "数字人API播放生命周期（真实语音另见浏览器组）",
+      "status": "PASS"
+    },
+    {
+      "name": "来源绑定的模拟面试",
+      "status": "PASS"
+    },
+    {
+      "name": "保存面试回答",
+      "status": "PASS"
+    },
+    {
+      "name": "生成有回答依据的本地面试报告",
+      "status": "PASS"
+    },
+    {
+      "name": "面试报告三格式导出",
+      "status": "PASS"
+    },
+    {
+      "name": "选择并保存目标岗位",
+      "status": "PASS"
+    },
+    {
+      "name": "读取岗位匹配证据",
+      "status": "PASS"
+    },
+    {
+      "name": "创建原创练习式企业笔试（非企业真题）",
+      "status": "PASS"
+    },
+    {
+      "name": "完成并批改笔试",
+      "status": "PASS"
+    },
+    {
+      "name": "读取真实记录支持的成长统计",
+      "status": "PASS"
+    },
+    {
+      "name": "生成AI简历",
+      "status": "BLOCKED",
+      "reason": "源码、路由及schema均未实现简历功能"
+    },
+    {
+      "name": "生成完整成长报告",
+      "status": "BLOCKED",
+      "reason": "已有成长统计页面，缺少完整报告生成及报告导出接口"
+    },
+    {
+      "name": "个人全部数据整包导出",
+      "status": "BLOCKED",
+      "reason": "现有接口只提供特定报告/反馈导出，没有个人全量导出"
+    },
+    {
+      "name": "用户自助备份恢复",
+      "status": "BLOCKED",
+      "reason": "恢复目前需要管理员CLI停写与操作，不是用户网页流程"
+    },
+    {
+      "name": "管理员完整账户数据库及附件快照",
+      "status": "PASS"
+    },
+    {
+      "name": "校验完整快照",
+      "status": "PASS"
+    },
+    {
+      "name": "删除本账户部分合成数据（缺少后端确认的探针）",
+      "status": "PASS"
+    },
+    {
+      "name": "恢复至新目录并校验",
+      "status": "PASS"
+    },
+    {
+      "name": "快照恢复后原账户会话仍可读取资料",
+      "status": "PASS"
+    },
+    {
+      "name": "退出并用原密码重新登录恢复后的账户",
+      "status": "PASS"
+    },
+    {
+      "name": "恢复后图谱、代码判题、面试及求职数据仍可读取",
+      "status": "PASS"
+    }
+  ],
+  "fault_and_defect_probes": [
+    {
+      "name": "异身份资料隔离",
+      "passed": true,
+      "http_status": 404
+    },
+    {
+      "name": "不可信网页Origin禁止删除",
+      "passed": true,
+      "http_status": 403
+    },
+    {
+      "name": "模型超时隔离且原数据保留",
+      "passed": true,
+      "http_status": 502
+    },
+    {
+      "name": "无答案选择题应拒绝但实际持久化",
+      "defect_confirmed": true,
+      "http_status": 200
+    },
+    {
+      "name": "损坏文件拒绝且健康接口正常",
+      "passed": true,
+      "http_status": 422
+    },
+    {
+      "name": "数据库故障隔离并返回通用500",
+      "passed": true,
+      "http_status": 500,
+      "note": "health仅测进程存活，并非数据库就绪"
+    },
+    {
+      "name": "资料可无确认DELETE且没有持久化operation记录",
+      "defect_confirmed": true,
+      "http_status": 200,
+      "operation_rows_added": 0
+    }
+  ],
+  "model_contract_probes": [
+    {
+      "name": "供应商替换：真实本地HTTP适配器往返",
+      "passed": true,
+      "external_llm": false
+    },
+    {
+      "name": "真实usage被替换为0",
+      "defect_confirmed": true
+    },
+    {
+      "name": "通用schema仅写入Prompt，无对象类型或schema验证",
+      "defect_confirmed": true
+    },
+    {
+      "name": "结构解析错误包含模型原文片段",
+      "defect_confirmed": true,
+      "exception_type": "LLMAPIError"
+    },
+    {
+      "name": "无效鉴权不重试且不会返回服务原始body",
+      "passed": true,
+      "exception_type": "LLMAccessError"
+    }
+  ],
+  "common_document_parser_probes": {
+    "sample_kind": "original_micro_docx_pptx_pdf_actual_import_api_and_parser",
+    "passed": true,
+    "checks": [
+      {
+        "format": ".docx",
+        "bytes": 36860,
+        "http_status": 200,
+        "characters": 64,
+        "passed": true
+      },
+      {
+        "format": ".pptx",
+        "bytes": 28334,
+        "http_status": 200,
+        "characters": 70,
+        "passed": true
+      },
+      {
+        "format": ".pdf",
+        "bytes": 1437,
+        "http_status": 200,
+        "characters": 105,
+        "passed": true
+      }
+    ],
+    "limitations": "不覆盖扫描件OCR、复杂公式、全部Office排版、PDF字体/语言或压缩炸弹。"
+  },
+  "cleanup_boundary": [
+    {
+      "resource": "own_synthetic_interview",
+      "deleted": true
+    },
+    {
+      "resource": "own_synthetic_source_and_derived_artifacts",
+      "deleted": true
+    },
+    {
+      "resource": "own_synthetic_code_submission",
+      "archived": true,
+      "retained": true,
+      "reason": "现役编程模块缺少永久删除接口；明确合成回归记录保留，不修改数据库规避产品能力缺口"
+    }
+  ],
+  "limitations": [
+    "Synthetic engineering data only; no real student learning or hiring effect claim.",
+    "Initial live chat HTTP200 was a local refusal; corrected real model branch is separately checked.",
+    "Same-account API/storage/compiler chain plus separate browser/voice tests is not uninterrupted complete browser E2E.",
+    "Source and interview synthetic production data were removed; synthetic code was archived and remains due to no permanent-delete API.",
+    "Capacity probes ran on isolated Windows databases, not production load.",
+    "No production rollback, database failure, OOM attack, or full fresh Linux exploit suite.",
+    "Evidence-profile timing wait fix and audit harness correction retained their initial failure evidence."
+  ],
+  "raw_evidence_files": [
+    {
+      "path": "_working/product-audit-20261005/verify.log",
+      "sha256": "8cd08bf821eaabcbc40db28f0ba8ed787ab7fa65798d726cf6be9ee399e3bec2",
+      "bytes": 20722
+    },
+    {
+      "path": "_working/product-audit-20261005/modules/summary.json",
+      "sha256": "ffcdde324249f48d4f353105e06eef6e0640636846d9e4b84c55a37ff1a3cf34",
+      "bytes": 4069
+    },
+    {
+      "path": "_working/product-audit-20261005/evidence-retest/summary.json",
+      "sha256": "de236128fbd7b42ae3ba02f0fdc01c15bd8c2028948c4797947e7b8a48fec106",
+      "bytes": 260
+    },
+    {
+      "path": "_working/product-audit-20261005/public-pages/summary.json",
+      "sha256": "198137fc3a71a02099b330db8a4c80b80f6faca0cc248d0d3d17886188f2d1c9",
+      "bytes": 15188
+    },
+    {
+      "path": "_working/product-audit-20261005/ui-edges-v3/summary.json",
+      "sha256": "7f40120be2a84bb88370c3e45720c6e201f6586d34b684cbe6a0b98c6d08b1ff",
+      "bytes": 1228
+    },
+    {
+      "path": "_working/product-audit-20261005/ui-edges-v3/filename-api.json",
+      "sha256": "4ff255929fae945a3bc7c8c91896d0211702e5fa6feb66af440b09563674b3a9",
+      "bytes": 130
+    },
+    {
+      "path": "_working/product-audit-20261005/native/summary.json",
+      "sha256": "511e53043d4a11cd0970715c709d268740128dc21bd78433b5908da699f374d5",
+      "bytes": 339392
+    },
+    {
+      "path": "_working/product-audit-20261005/live-models.json",
+      "sha256": "33135c5c594e44362dd06b1acdebba2c77a6f9ae7f0bd3b02bc3622ae65e0def",
+      "bytes": 1576
+    },
+    {
+      "path": "_working/product-audit-20261005/chat-live.json",
+      "sha256": "dac82ce8d2615e8c942e621f69f03c8b5f09807c1d40787be871ec53e6a780ad",
+      "bytes": 441
+    },
+    {
+      "path": "_working/product-audit-20261005/account-flow-v3/summary.json",
+      "sha256": "dbce43e758fcc0412b0727080b844c7335b01432e37e766de56194274abcd8d8",
+      "bytes": 5188
+    },
+    {
+      "path": "_working/product-audit-20261005/backup/summary.json",
+      "sha256": "51c00d3a6e3aa9c1651a92bfcb43fb5aff84bd749786ce3239e2f027a3a38a09",
+      "bytes": 1822
+    },
+    {
+      "path": "_working/product-audit-20261005/static-audit.json",
+      "sha256": "cceb65d8f2b8e031aeadbc94c265b0fffb02a38c87af5be0b5e4903f237f60a8",
+      "bytes": 142000
+    },
+    {
+      "path": "_working/product-audit-20261005/reliability.json",
+      "sha256": "be215ce6f760e1971341df62cd946e420c316aeb73b01a7f04d86ab85f40992f",
+      "bytes": 735
+    },
+    {
+      "path": "_working/product-audit-20261005/performance/summary.json",
+      "sha256": "295eb8dfc77772ec4cc6fc63677a73681b6f09f162b067f8d9435410532038bc",
+      "bytes": 5149
+    },
+    {
+      "path": "_working/product-audit-20261005/graph-diagnostic.json",
+      "sha256": "052cfd5d9379918f5268c1b9ddc509366be73fab4892a0a25ee4931b8cd9373e",
+      "bytes": 1019
+    },
+    {
+      "path": "_working/product-audit-20261005/server-probe.json",
+      "sha256": "e1a5ed9646e266649799a00763baa201d636608e3c9c458c3c6b9abe81cfe46f",
+      "bytes": 853
+    },
+    {
+      "path": "_working/product-audit-20261005/db-metadata.json",
+      "sha256": "33319386cd1ae70075109fecb6bbd6a9cbc8485ec6e6ac3b8ff789a400d52576",
+      "bytes": 967
+    },
+    {
+      "path": "_working/product-audit-20261005/bounded-production.json",
+      "sha256": "8cb691d91f614de1421f5c74c145f761ea6e0239d13da34f23f4e3807a0310cc",
+      "bytes": 2103
+    },
+    {
+      "path": "_working/product-audit-20261005/parser-files/summary.json",
+      "sha256": "c2e8a12e4e8bded6489cafc86a937030abd15b9754d65ef67079dd29975f8e3a",
+      "bytes": 650
+    }
+  ],
+  "private_content_policy": "No credentials, account rows, user files, database backups or media copied into this committed summary."
+}
