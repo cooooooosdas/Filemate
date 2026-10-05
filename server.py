@@ -55,8 +55,10 @@ from filemate.llm_client.credential_store import (
     set_stored_api_key,
 )
 from filemate.perception.parsers import PLAIN_TEXT_SUFFIXES
+from filemate.portfolio.growth import GrowthRepository, ReportRequest
 from filemate.portfolio.resume import Profile as ResumeProfile
 from filemate.portfolio.resume import ResumeRepository, ResumeRequest
+from filemate.study.semester import ConfirmSemester, SemesterConfig, SemesterRepository, TaskUpdate
 from filemate.understanding.interview_bank_seed import SEED_QUESTIONS
 
 # 加载 .env 文件
@@ -1834,7 +1836,7 @@ def update_knowledge_artifact(
             raise HTTPException(status_code=422, detail=f"题集校验失败：{exc}") from exc
     if existing and isinstance(existing.get("metadata"), dict) and existing["metadata"].get("origin") == "career_plan":
         raise HTTPException(status_code=409, detail="岗位学习计划保留确认时的证据，请更新进度或重新预览新计划")
-    if existing and existing["artifact_type"] in {"coding_submission", "interview_report", "career_training", "skill_tree", "resume_profile", "resume"}:
+    if existing and existing["artifact_type"] in {"coding_submission", "interview_report", "career_training", "skill_tree", "resume_profile", "resume", "semester", "semester_history", "growth_report"}:
         raise HTTPException(status_code=409, detail="评测报告不能直接修改，请在对应工作台更新原始记录或复盘笔记")
     try:
         artifact = _storage.update_artifact(
@@ -2984,6 +2986,89 @@ def wrongbook_page(mastered: bool | None = Query(False), limit: int = Query(50, 
 def learning_analytics():
     """返回学习闭环与模拟面试的本地统计。"""
     return ApiResponse(success=True, data=_storage.get_learning_analytics())
+
+
+def _growth_repository():
+    if os.getenv('FILEMATE_ENABLE_GROWTH_REPORT', '1').lower() in {'0', 'false', 'off'}:
+        raise HTTPException(status_code=503, detail='成长报告已关闭，原学习记录保留')
+    return GrowthRepository(_storage)
+
+
+@app.post('/api/growth/reports', response_model=ApiResponse)
+def generate_growth_report(request: ReportRequest):
+    return ApiResponse(success=True, data=_growth_repository().generate(request))
+
+
+@app.get('/api/growth/reports', response_model=ApiResponse)
+def list_growth_reports():
+    return ApiResponse(success=True, data=_growth_repository().list())
+
+
+def _get_growth_report(identifier: str):
+    try:
+        return _growth_repository().get(identifier)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail='成长报告不存在') from exc
+    except (ValueError, TypeError, IndexError) as exc:
+        raise HTTPException(status_code=409, detail='成长报告数据异常，原内容保留') from exc
+
+
+@app.get('/api/growth/reports/{identifier}', response_model=ApiResponse)
+def get_growth_report(identifier: str):
+    return ApiResponse(success=True, data=GrowthRepository.projection(_get_growth_report(identifier)))
+
+
+@app.get('/api/growth/reports/{identifier}/evidence', response_model=ApiResponse)
+def growth_report_evidence(identifier: str, offset: int = Query(0, ge=0, le=1000000), limit: int = Query(20, ge=1, le=100)):
+    records = _get_growth_report(identifier)['records']
+    return ApiResponse(success=True, data={'items': records[offset:offset + limit], 'total': len(records), 'offset': offset, 'limit': limit})
+
+
+@app.get('/api/growth/reports/{identifier}/export')
+def export_growth_report(identifier: str, format: Literal['json', 'markdown'] = 'markdown'):
+    result = _get_growth_report(identifier)
+    content = result['markdown'] if format == 'markdown' else json.dumps(result, ensure_ascii=False, indent=2)
+    return Response(content, media_type='text/markdown' if format == 'markdown' else 'application/json', headers={'Content-Disposition': 'attachment; filename="growth-report.' + ('md' if format == 'markdown' else 'json') + '"', 'Cache-Control': 'no-store'})
+
+
+def _semester_repository():
+    if os.getenv('FILEMATE_ENABLE_SEMESTER', '1').lower() in {'0', 'false', 'off'}:
+        raise HTTPException(status_code=503, detail='学期模式已关闭，原课程与进度保留')
+    return SemesterRepository(_storage)
+
+
+@app.get('/api/semester', response_model=ApiResponse)
+def get_semester():
+    try:
+        return ApiResponse(success=True, data=_semester_repository().read())
+    except (ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=409, detail='学期数据异常，原内容保留') from exc
+
+
+@app.post('/api/semester/preview', response_model=ApiResponse)
+def preview_semester(request: SemesterConfig):
+    try:
+        return ApiResponse(success=True, data=_semester_repository().preview(request))
+    except (ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=409, detail='课程、资料或学期版本无效，请刷新后检查配置') from exc
+
+
+@app.post('/api/semester/confirm', response_model=ApiResponse)
+def confirm_semester(request: ConfirmSemester):
+    try:
+        return ApiResponse(success=True, data=_semester_repository().confirm(request))
+    except (ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=409, detail='预览已变化或失效，请重新预览；原课程与进度保留') from exc
+
+
+@app.patch('/api/semester/tasks/{identifier}', response_model=ApiResponse)
+def update_semester_task(identifier: str, request: TaskUpdate):
+    try:
+        return ApiResponse(success=True, data=_semester_repository().update(identifier, request))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail='学期任务不存在') from exc
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=409, detail='学期任务版本或数据无效，请刷新') from exc
 
 
 def _resume_repository():

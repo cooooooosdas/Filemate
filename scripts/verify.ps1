@@ -47,6 +47,8 @@ try {
         filemate/study `
         filemate/portfolio `
         filemate/tests/test_p1_resume.py `
+        filemate/tests/test_p1_growth_report.py `
+        filemate/tests/test_p1_semester.py `
         filemate/programming `
         filemate/interview_review `
         filemate/career `

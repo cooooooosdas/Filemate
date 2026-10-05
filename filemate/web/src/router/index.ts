@@ -124,6 +124,7 @@ const routes: RouteRecordRaw[] = [
     path: '/skills', name: 'SkillTree', component: () => import('../views/SkillTree.vue'), meta: { title: '技能树' }
   }]),
   ...(import.meta.env.VITE_ENABLE_RESUME === 'false' ? [{ path: '/resume', redirect: '/career' }] : [{ path: '/resume', name: 'Resume', component: () => import('../views/Resume.vue'), meta: { title: '我的简历' } }]),
+  ...(import.meta.env.VITE_ENABLE_SEMESTER === 'false' ? [{ path: '/semester', redirect: '/study-plan' }] : [{ path: '/semester', name: 'Semester', component: () => import('../views/Semester.vue'), meta: { title: '学期模式' } }]),
   {
     path: '/knowledge',
     name: 'Knowledge',

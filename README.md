@@ -758,3 +758,7 @@ powershell -ExecutionPolicy Bypass -File scripts/verify.ps1
 ### AUD-05b 简历事实
 
 “我的简历”支持履历与项目事实编辑、可选关联有效编程作品、直接排版或经同意的AI选材排序、保存历史快照和Markdown/JSON导出。模型不能添加经历、成绩或学历；姓名/联系方式字段不发送，项目自由文本由用户去敏。功能可用 FILEMATE_ENABLE_RESUME=0 / VITE_ENABLE_RESUME=false 关闭。
+
+### AUD-05c/d 学期与报告
+
+学期模式支持课程、每周目标、任务日、考试日期与资料关联；预览确认后创建任务，完成状态持久保存，重新编排保留历史。成长数据页可按北京时间选择期间生成成长报告、逐页回读依据并导出全量Markdown/JSON。无样本显示待评测，旧计划只展示当前状态，不伪造完成日期。两个模块可分别用FILEMATE_ENABLE_SEMESTER / FILEMATE_ENABLE_GROWTH_REPORT关闭，前端对应VITE开关隐藏入口。连续复练已限制365天间隔，避免日期溢出。

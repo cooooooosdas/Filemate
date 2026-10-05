@@ -75,6 +75,15 @@ export const generateResume = async (revision: number, mode: 'local' | 'llm', co
 export const getResumes = async () => (await api.get<unknown, ApiResponse<import('../types/portfolio').SavedDocument[]>>('/api/resume')).data!
 export const getResume = async (id: string) => (await api.get<unknown, ApiResponse<import('../types/portfolio').ResumeDocument>>(`/api/resume/${encodeURIComponent(id)}`)).data!
 export const exportResume = async (id: string, format: 'markdown' | 'json') => api.get(`/api/resume/${encodeURIComponent(id)}/export`, { params: { format }, responseType: 'blob' })
+export const getSemester = async () => (await api.get<unknown, ApiResponse<import('../types/portfolio').SemesterState | null>>('/api/semester')).data ?? null
+export const previewSemester = async (config: import('../types/portfolio').SemesterConfig) => (await api.post<unknown, ApiResponse<import('../types/portfolio').SemesterPreview>>('/api/semester/preview', config)).data!
+export const confirmSemester = async (config: import('../types/portfolio').SemesterConfig, token: string) => api.post('/api/semester/confirm', { config, confirmed: true, confirmation_token: token })
+export const updateSemesterTask = async (id: string, revision: number, completed: boolean) => (await api.patch<unknown, ApiResponse<import('../types/portfolio').SemesterState>>(`/api/semester/tasks/${encodeURIComponent(id)}`, { revision, completed })).data!
+export const getGrowthReports = async () => (await api.get<unknown, ApiResponse<import('../types/portfolio').SavedDocument[]>>('/api/growth/reports')).data!
+export const generateGrowthReport = async (start: string, end: string) => (await api.post<unknown, ApiResponse<import('../types/portfolio').GrowthReport>>('/api/growth/reports', { start_date: start, end_date: end, time_zone: 'Asia/Shanghai' })).data!
+export const getGrowthReport = async (id: string) => (await api.get<unknown, ApiResponse<import('../types/portfolio').GrowthReport>>(`/api/growth/reports/${encodeURIComponent(id)}`)).data!
+export const getGrowthEvidence = async (id: string, offset: number) => (await api.get<unknown, ApiResponse<{ items: import('../types/portfolio').GrowthRecord[]; total: number }>>(`/api/growth/reports/${encodeURIComponent(id)}/evidence`, { params: { offset, limit: 20 } })).data!
+export const exportGrowthReport = async (id: string, format: 'markdown' | 'json') => api.get(`/api/growth/reports/${encodeURIComponent(id)}/export`, { params: { format }, responseType: 'blob' })
 
 export async function getSkillTree(): Promise<import('../types/skills').SkillTree> {
   const response = await api.get<unknown, ApiResponse<import('../types/skills').SkillTree>>('/api/skills/tree')

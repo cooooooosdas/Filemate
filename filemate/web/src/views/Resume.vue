@@ -32,7 +32,7 @@
       </form>
       <section class="portfolio-panel">
         <h2>生成与回看</h2><p v-if="dirty">有未保存的修改，请先保存个人事实。</p><p v-else>已保存版本 {{ profile.revision || '暂无' }}。直接排版不会调用模型。</p>
-        <label>生成方式<select v-model="mode"><option value="local">直接排版全部事实</option><option value="llm">AI 按目标岗位选材排序</option></select></label>
+        <label>生成方式<select v-model="mode" aria-label="生成方式"><option value="local">直接排版全部事实</option><option value="llm">AI 按目标岗位选材排序</option></select></label>
         <label v-if="mode === 'llm'" class="consent"><input v-model="consent" type="checkbox">同意将教育、技能、项目事实及目标岗位发送给已配置模型；姓名和联系方式字段不发送，项目描述请自行去除敏感信息。</label>
         <button class="primary" type="button" :disabled="busy || dirty || !profile.revision || (mode === 'llm' && !consent)" @click="generate">生成简历</button>
         <div v-if="document" class="resume-preview"><p>{{ document.mode === 'llm' ? 'AI 选材' : '直接排版' }} · 事实版本 {{ document.profile_revision }}</p><pre>{{ document.markdown }}</pre><p class="notice">{{ document.fact_policy }}关联判题记录为生成时快照。</p><div class="actions"><button type="button" @click="download('markdown')">导出 Markdown</button><button type="button" @click="download('json')">导出 JSON</button></div></div>

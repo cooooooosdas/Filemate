@@ -288,6 +288,7 @@ const menuGroups = [
       ...(import.meta.env.VITE_ENABLE_DIGITAL_HUMAN === 'false' ? [] : [{ path: '/digital-human', title: 'AI 导师讲解', icon: VideoPlay }]),
       ...(import.meta.env.VITE_ENABLE_PROGRAMMING === 'false' ? [] : [{ path: '/programming', title: '编程练习', icon: Cpu }]),
       { path: '/study-plan', title: '学习计划', icon: Reading },
+      ...(import.meta.env.VITE_ENABLE_SEMESTER === 'false' ? [] : [{ path: '/semester', title: '学期模式', icon: Calendar }]),
       { path: '/goals', title: '目标反推', icon: Aim },
       { path: '/wrongbook', title: '错题复盘', icon: Tickets },
       { path: '/interview', title: '模拟面试', icon: Microphone },
@@ -313,7 +314,7 @@ const contextLinks = computed(() => {
   if (route.path === '/import' && route.query.intent !== 'archive') paths = ['/ai-tools', '/knowledge']
   else if (['/import', '/classification', '/naming', '/schedule', '/history'].includes(route.path)) paths = ['/classification', '/schedule', '/history']
   else if (['/ai-tools', '/knowledge', '/knowledge-graph', '/digital-human'].includes(route.path)) paths = ['/ai-tools', '/knowledge', '/knowledge-graph', '/digital-human']
-  else if (['/today', '/study-plan', '/wrongbook', '/goals'].includes(route.path)) paths = ['/today', '/study-plan', '/wrongbook', '/goals']
+  else if (['/today', '/study-plan', '/wrongbook', '/goals', '/semester'].includes(route.path)) paths = ['/today', '/study-plan', '/semester', '/wrongbook', '/goals']
   else if (['/interview', '/interview-bank', '/career', '/resume'].includes(route.path)) paths = ['/interview', '/career', '/resume']
   const tools = menuGroups.flatMap(group => group.items)
   return paths.flatMap(path => tools.filter(item => item.path === path))

@@ -30,6 +30,7 @@
       </section>
       <LearningEvidencePanel v-if="data.evidence_profile" :profile="data.evidence_profile" />
       <CareerGrowthPanel v-if="careerEnabled" />
+      <GrowthReportPanel v-if="growthReportEnabled" />
       <section class="panel evidence"><div><p class="eyebrow">使用反馈</p><h2>匿名产品反馈</h2><p>只统计匿名哈希、相关/不相关选择和数值指标，不导出问题原文、资料名或身份信息。</p></div><div class="evidence-metrics"><span><b>{{ data.product_feedback.total }}</b>有效标注</span><span><b>{{ data.product_feedback.total ? `${format(data.product_feedback.positive_rate)}%` : '待标注' }}</b>正向率</span><button type="button" :disabled="!data.product_feedback.total" @click="exportFeedback">导出匿名 CSV</button></div></section>
       <section class="panel recent"><div class="panel-head"><div><p class="eyebrow">训练记录</p><h2>最近模拟面试</h2></div></div>
         <div v-if="data.recent_interviews.length" class="table"><div v-for="item in data.recent_interviews" :key="item.interview_id" class="row"><div><RouterLink :to="{ path: '/interview', query: { interview: item.interview_id } }"><b>{{ item.target_role }} · {{ item.status === 'completed' ? '回看回答' : '继续练习' }}</b></RouterLink><small>{{ item.scenario }} · 已答 {{ item.current_index }} 题</small></div><span :class="item.status">{{ item.status === 'completed' ? '已完成' : '进行中' }}</span><strong>{{ format(item.overall_score) }}</strong></div></div>
@@ -46,6 +47,7 @@ import { downloadAnonymousFeedback, getLearningAnalytics, type LearningAnalytics
 import CompanionCard from '../components/CompanionCard.vue'
 import DataState from '../components/DataState.vue'
 import CareerGrowthPanel from '../components/CareerGrowthPanel.vue'
+import GrowthReportPanel from '../components/GrowthReportPanel.vue'
 import LearningEvidencePanel from '../components/LearningEvidencePanel.vue'
 import {
   calculateCompanionGrowth,
@@ -55,6 +57,7 @@ import {
 } from '../composables/useCompanion'
 const data = ref<LearningAnalytics | null>(null); const loading = ref(true); const error = ref('')
 const careerEnabled = import.meta.env.VITE_ENABLE_CAREER !== 'false'
+const growthReportEnabled = import.meta.env.VITE_ENABLE_GROWTH_REPORT !== 'false'
 const observedDimensions = computed(() => Object.fromEntries(Object.entries(data.value?.evidence_profile?.dimensions || {}).filter(([, metric]) => metric.status === 'observed')))
 const recentEvent = ref<CompanionEvent | null>(getRecentCompanionEvent())
 const format = (value:number | null) => value == null ? '待评估' : Math.round(value)

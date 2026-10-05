@@ -1929,19 +1929,25 @@ class SQLiteStorage:
                 ),
             )
             if is_correct:
-                current_interval = int(existing_wrong["interval_days"]) if existing_wrong else 0
-                current_ease = float(existing_wrong["ease_factor"]) if existing_wrong else 2.5
+                try:
+                    current_interval = max(0, min(365, int(existing_wrong["interval_days"]))) if existing_wrong else 0
+                    current_ease = float(existing_wrong["ease_factor"]) if existing_wrong else 2.5
+                    if not math.isfinite(current_ease):
+                        current_ease = 2.5
+                except (ValueError, TypeError, OverflowError):
+                    current_interval, current_ease = 0, 2.5
+                current_ease = max(1.3, min(3.0, current_ease))
                 quality = 5 if score >= 0.95 else 4 if score >= 0.85 else 3
-                ease = max(
+                ease = min(3.0, max(
                     1.3,
                     current_ease
                     + 0.1
                     - (5 - quality) * (0.08 + (5 - quality) * 0.02),
-                )
+                ))
                 interval_days = (
                     1
                     if current_interval <= 0
-                    else max(3, round(current_interval * ease))
+                    else min(365, max(3, round(current_interval * ease)))
                 )
                 next_review_at = (
                     datetime.now(tz=timezone.utc) + timedelta(days=interval_days)

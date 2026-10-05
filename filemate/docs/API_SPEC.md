@@ -829,3 +829,17 @@ GET /api/resume/profile 返回当前私有空间的事实或 null；PUT 接受 s
 POST /api/resume/generate：profile_revision、mode=local|llm、allow_external_model。local 不调用模型；llm 必须显式同意，发送教育/技能/项目及目标岗位，姓名/联系方式字段不发送（自由文本须自行去敏）。模型仅返回合法且唯一的事实ID，不能增加正文。结构错误/资料版本变化409，模型故障502；旧事实/简历保留。45秒模型超时、最多一次调用尝试；复用可替换LLM适配器与单请求凭据。
 
 GET /api/resume 列最近30份；GET /api/resume/{id} 返回不可由通用Artifact编辑器修改的快照；GET /api/resume/{id}/export?format=markdown|json 导出事实快照。关联判题仅证明生成时该次结果，教育/技能/经历属于用户声明，不能作为专业能力或岗位录用认证。缺失404、损坏409，不覆盖损坏内容。FILEMATE_ENABLE_RESUME=0 返回503，VITE_ENABLE_RESUME=false隐藏入口，数据保留。
+
+## 学期模式（AUD-05c）
+
+GET /api/semester 返回当前课程/任务或null。POST /api/semester/preview 接受schema_version=1、revision、title、start_date/end_date（最多366天）、courses（1–20门，标识唯一；目标、每周10–600分钟、weekday=0–6；可关联自己资料及学期内考试日期）。预览不创建学期；返回周数、任务数、原完成数量、确认token。POST /api/semester/confirm 接受config、confirmed=true、confirmation_token；token绑定提出配置、现有进度和资料存在状态，过期/变更409；重复确认不重复创建。替换前把旧课程和进度存为semester_history，当前任务重新开始。PATCH /api/semester/tasks/{id} 接受revision、completed，修订冲突409；完成时保存实际时间，不推断成绩。类型/日期/数量错误422；自己的任务缺失404；损坏数据409保留。FILEMATE_ENABLE_SEMESTER=0独立503，VITE_ENABLE_SEMESTER=false隐藏入口。
+
+## 成长报告（AUD-05d）
+
+POST /api/growth/reports 接受start_date、end_date、time_zone=Asia/Shanghai（UTC+8日期边界，最多366天，不能选未来）。在一致只读快照中汇总有效题目对应的客观作答、当前有效编译器完成事件、实际面试回答和学期任务完成时间。坏题/修订前不适用证据/已撤销编程结果不进入统计；面试分数要求有效模型分析引用，不计本地回退。每类记录保留ID、时间、回读入口，5条只是摘要展示门槛。旧学习计划没有逐日完成时间，仅报告生成时的完成快照，不把更新时间当作实际完成时间。无记录为待评测，不造提升幅度、时长、准确率、能力或岗位评价。
+
+GET /api/growth/reports 返回最近30份；GET /api/growth/reports/{id} 返回持久历史快照及前20条依据；GET /{id}/evidence?offset=0&limit=20 完整分页（limit≤100）；GET /{id}/export?format=markdown|json 包含全部依据。历史报告是当时快照，后续删除不重写过去统计；彻底隐私删除应一并移除有关报告。损坏409、跨空间/缺失404，通用Artifact编辑器禁止修改这些报告。FILEMATE_ENABLE_GROWTH_REPORT=0独立503、VITE_ENABLE_GROWTH_REPORT=false隐藏组件。
+
+### 连续复练日期边界修复
+
+重复正确复练的间隔上限365天，ease_factor限制1.3–3.0，旧异常数值安全归一。此前无上限指数增长会导致日期溢出500；50次连续正确作答回归已覆盖。该间隔是平台复练规则，不是记忆效果实验结论。
