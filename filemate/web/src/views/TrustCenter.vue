@@ -21,6 +21,7 @@
         </article>
       </section>
       <PersonalDataPanel v-if="personalDataEnabled" @restored="load" />
+      <AccountPrivacyPanel />
 
       <section class="workspace-grid">
         <article class="panel trace-panel">
@@ -101,6 +102,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import DataState from '../components/DataState.vue'
 import PersonalDataPanel from '../components/PersonalDataPanel.vue'
+import AccountPrivacyPanel from '../components/AccountPrivacyPanel.vue'
 const personalDataEnabled = import.meta.env.VITE_ENABLE_PERSONAL_DATA !== 'false'
 import {
   deleteAgentMemory,

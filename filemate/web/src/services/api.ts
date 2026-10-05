@@ -88,6 +88,7 @@ export interface PersonalRestorePreview { backup_id: string; confirmation_token:
 export const exportPersonalData = async (format: 'backup' | 'json') => api.get('/api/privacy/export', { params: { format }, responseType: 'blob', timeout: 120000 })
 export const previewPersonalRestore = async (file: File) => { const body = new FormData(); body.append('file', file); return (await api.post<unknown, ApiResponse<PersonalRestorePreview>>('/api/privacy/restore-preview', body, { timeout: 120000, headers: { 'Content-Type': 'multipart/form-data' } })).data! }
 export const restorePersonalData = async (preview: PersonalRestorePreview) => (await api.post<unknown, ApiResponse<{ restored: boolean; cleanup_pending?: boolean }>>('/api/privacy/restore', { backup_id: preview.backup_id, confirmation_token: preview.confirmation_token, confirmed: true }, { timeout: 120000 })).data!
+export const cancelPersonalRestore = async (preview: PersonalRestorePreview) => (await api.delete<unknown, ApiResponse<{ cancelled: boolean; cleanup_pending: boolean }>>('/api/privacy/restore-preview', { data: { backup_id: preview.backup_id, confirmation_token: preview.confirmation_token } })).data!
 
 export async function getSkillTree(): Promise<import('../types/skills').SkillTree> {
   const response = await api.get<unknown, ApiResponse<import('../types/skills').SkillTree>>('/api/skills/tree')
@@ -188,6 +189,17 @@ api.interceptors.response.use(
 )
 
 const accountOptions = { timeout: 20000, headers: { 'X-FileMate-Action': 'account' } }
+export interface AccountDeletePreview { confirmation_token: string; counts: Record<string, number>; notice: string }
+export const previewAccountDelete = async () => (await api.get<unknown, ApiResponse<AccountDeletePreview>>('/api/auth/delete-preview')).data!
+export async function deleteMyAccount(preview: AccountDeletePreview, password: string): Promise<{ deleted: boolean; cleanup_pending: boolean; browser_cleanup_pending: boolean }> {
+  const scope = (await publicLLMStatus()).credential_scope!
+  const result = (await api.post<unknown, ApiResponse<{ deleted: boolean; cleanup_pending: boolean }>>('/api/auth/delete', { confirmed: true, confirmation_token: preview.confirmation_token, password }, { ...accountOptions, timeout: 120000 })).data!
+  let browser_cleanup_pending = false
+  if (result.deleted && browserVaultAvailable()) {
+    try { await removeBrowserApiKey(scope) } catch { browser_cleanup_pending = true }
+  }
+  return { ...result, browser_cleanup_pending }
+}
 export async function getAccountState(): Promise<AccountState> {
   return (await api.get<any, ApiResponse<AccountState>>('/api/auth/me', { timeout: 10000 })).data!
 }

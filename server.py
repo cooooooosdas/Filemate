@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import csv
 import hashlib
@@ -17,6 +18,7 @@ import sqlite3
 import threading
 import uuid
 from collections import OrderedDict
+from contextlib import asynccontextmanager, suppress
 from contextvars import ContextVar
 from datetime import date, datetime
 from pathlib import Path
@@ -56,6 +58,8 @@ from filemate.llm_client.credential_store import (
     set_stored_api_key,
 )
 from filemate.operations.personal_backup import MAX_BACKUP_BYTES, PersonalBackup
+from filemate.operations.retention import RetentionMaintenance
+from filemate.operations.workspace_privacy import WorkspaceDeletion, deletion_snapshot
 from filemate.perception.parsers import PLAIN_TEXT_SUFFIXES
 from filemate.portfolio.growth import GrowthRepository, ReportRequest
 from filemate.portfolio.resume import Profile as ResumeProfile
@@ -343,6 +347,11 @@ _local_storage = SQLiteStorage(DATABASE_PATH)
 _local_storage.init_schema()
 _local_storage.ensure_interview_questions(SEED_QUESTIONS)
 _accounts = AccountStore(DATABASE_PATH) if IDENTITY_MODE == "anonymous" else None
+_workspace_deletion = WorkspaceDeletion(DATA_DIR, _identity_secret) if _accounts else None
+if _workspace_deletion:
+    _workspace_deletion.recover(_accounts)
+    _accounts.denied_workspace = _workspace_deletion.blocked
+_retention = RetentionMaintenance(_workspace_deletion, _accounts, int(os.getenv('FILEMATE_GUEST_RETENTION_DAYS', '90'))) if _workspace_deletion else None
 _storage: SQLiteStorage | _StorageRouter = _StorageRouter(_local_storage)
 
 # =============== Models ===============
@@ -407,12 +416,43 @@ class DigitalHumanPlaybackFinishRequest(BaseModel):
 
 # =============== App ===============
 
+def _maintain_private_data():
+    with _tenant_storage_lock:
+        if _retention:
+            result = _retention.run(_tenant_storages, _active_tenants, _exclusive_tenants, _tenant_storage)
+            result['pending'] += _workspace_deletion.retry_cleanup()
+        elif not _active_tenants.get('local', 0) and 'local' not in _exclusive_tenants:
+            result = PersonalBackup(_local_storage, 'local', UPLOAD_ROOT, ARCHIVE_DIR).cleanup()
+        else:
+            return
+    if any(result.values()):
+        logger.info('隐私维护计数: %s', result)
+
+
+@asynccontextmanager
+async def _lifespan(application: FastAPI):
+    async def maintain():
+        while True:
+            try:
+                await run_in_threadpool(_maintain_private_data)
+            except (ValueError, OSError, sqlite3.Error) as exc:
+                logger.error('隐私维护未完成 (%s)', type(exc).__name__)
+            await asyncio.sleep(60)
+    task = asyncio.create_task(maintain())
+    try:
+        yield
+    finally:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
 app = FastAPI(
     title="FileMate API",
     version=__version__,
     docs_url=None if IS_PRODUCTION else "/docs",
     redoc_url=None if IS_PRODUCTION else "/redoc",
     openapi_url=None if IS_PRODUCTION else "/openapi.json",
+    lifespan=_lifespan,
 )
 
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
@@ -496,7 +536,7 @@ async def isolate_anonymous_workspace(request: Request, call_next):
     request.state.session_expired = bool(session_token and not account)
     if request.state.session_expired and request.url.path not in {
         "/api/auth/me", "/api/auth/login", "/api/auth/register", "/api/auth/logout",
-        "/api/auth/recover", "/api/health", "/health",
+        "/api/auth/recover", "/api/auth/delete", "/api/health", "/health",
     } and request.method != "OPTIONS":
         return JSONResponse(status_code=401, content={
             "success": False, "data": None, "error": "登录已过期，请重新登录或退出后以游客继续",
@@ -504,7 +544,7 @@ async def isolate_anonymous_workspace(request: Request, call_next):
     identity_id = _verify_identity_cookie(
         request.cookies.get(IDENTITY_COOKIE_NAME)
     )
-    if identity_id and await run_in_threadpool(_accounts.workspace_claimed, identity_id):
+    if identity_id and (await run_in_threadpool(_accounts.workspace_claimed, identity_id) or await run_in_threadpool(_workspace_deletion.blocked, identity_id)):
         identity_id = None
     should_issue_cookie = identity_id is None
     if identity_id is None:
@@ -518,6 +558,8 @@ async def isolate_anonymous_workspace(request: Request, call_next):
         if identity_id in _exclusive_tenants:
             return JSONResponse(status_code=409, content={'success': False, 'error': '个人数据维护中，请稍后重试'})
         _active_tenants[identity_id] = _active_tenants.get(identity_id, 0) + 1
+        if not account:
+            _retention.touch(identity_id)
     token = _tenant_context.set(context)
     try:
         response = await call_next(request)
@@ -561,6 +603,12 @@ class AccountRecoverRequest(BaseModel):
     email: str = Field(max_length=254)
     recovery_code: SecretStr = Field(max_length=64)
     password: SecretStr = Field(max_length=128)
+
+
+class AccountDeleteRequest(BaseModel):
+    confirmed: Literal[True]
+    confirmation_token: str = Field(pattern=r'^[0-9a-f]{64}$')
+    password: SecretStr = Field(min_length=1, max_length=128)
 
 
 def _account_service(request: Request) -> AccountStore:
@@ -621,6 +669,71 @@ def account_logout(request: Request) -> JSONResponse:
     service.logout(request.cookies.get(ACCOUNT_COOKIE_NAME))
     response = _account_response({"user": None})
     response.delete_cookie(ACCOUNT_COOKIE_NAME, httponly=True, secure=IS_PRODUCTION, samesite="lax", path="/")
+    return response
+
+
+@app.get('/api/auth/delete-preview', response_model=ApiResponse)
+def preview_account_delete(request: Request):
+    from filemate.execution import data_actions
+
+    account = getattr(request.state, 'account', None)
+    if not account or not _workspace_deletion:
+        raise HTTPException(401, '请登录要注销的账号')
+    revision, counts = deletion_snapshot(_storage, [_current_upload_root(), _current_archive_dir()])
+    with _storage._write_lock, _storage._conn() as conn:
+        token = data_actions.issue(conn, 'account_delete', account['workspace_id'], revision)
+    return ApiResponse(success=True, data={'confirmation_token': token, 'counts': counts,
+        'notice': '注销将删除账号、全部登录会话、此空间的学习记录、上传/归档文件和服务内备份副本。已下载备份及第三方模型留存不由此操作清除。'})
+
+
+@app.post('/api/auth/delete')
+def delete_account(request: Request, payload: AccountDeleteRequest):
+    from filemate.execution import data_actions
+
+    service = _account_service(request)
+    token = payload.confirmation_token
+    receipt = _workspace_deletion.receipt(token)
+    if receipt is None:
+        account = getattr(request.state, 'account', None)
+        if not account:
+            raise HTTPException(401, '请登录要注销的账号')
+        owner = _current_identity_id()
+        with _tenant_storage_lock:
+            if _active_tenants.get(owner, 0) > 1 or owner in _exclusive_tenants:
+                raise HTTPException(409, '请结束任务并关闭其他操作窗口后再注销')
+            _exclusive_tenants.add(owner)
+        try:
+            revision, counts = deletion_snapshot(_storage, [_current_upload_root(), _current_archive_dir()])
+            data_actions.check(_storage._conn(), 'account_delete', owner, token, revision)
+            if _storage._conn().execute("SELECT 1 FROM coding_submissions WHERE status IN ('queued','running') LIMIT 1").fetchone() or _storage._conn().execute("SELECT 1 FROM sessions WHERE status='processing' LIMIT 1").fetchone():
+                raise HTTPException(409, '后台任务执行中，请完成或取消后重新预览注销')
+
+            def stage(workspace: str):
+                if workspace != owner:
+                    raise ValueError('账号空间已变化')
+                with _tenant_storage_lock:
+                    storage = _tenant_storages.pop(owner, None)
+                    if storage:
+                        storage.close()
+                _workspace_deletion.stage(owner, token, account['user']['account_id'], counts)
+
+            service.delete_account(account['user']['account_id'], payload.password.get_secret_value(), stage, lambda: _workspace_deletion.rollback(token))
+            receipt = _workspace_deletion.finish(token)
+            for key in list(_sessions):
+                if key[0] == owner:
+                    _sessions.pop(key, None)
+        except AccountError:
+            raise
+        except sqlite3.Error as exc:
+            raise HTTPException(503, '账号删除事务失败，账号与资料已回滚，请重试') from exc
+        except (ValueError, OSError) as exc:
+            raise HTTPException(409, '注销未完成，请重新登录并预览；阶段记录将在服务重启时恢复') from exc
+        finally:
+            with _tenant_storage_lock:
+                _exclusive_tenants.discard(owner)
+    response = _account_response(receipt)
+    response.delete_cookie(ACCOUNT_COOKIE_NAME, path='/', httponly=True, secure=IS_PRODUCTION, samesite='lax')
+    response.delete_cookie(IDENTITY_COOKIE_NAME, path='/', httponly=True, secure=IS_PRODUCTION, samesite='lax')
     return response
 
 
@@ -3058,6 +3171,26 @@ def export_personal_data(format: Literal['backup', 'json'] = 'backup'):
         raise HTTPException(status_code=409, detail='个人导出未完成，请检查文件权限、托管目录边界或自助容量；未生成残缺备份') from exc
     finally:
         _personal_data_slots.release()
+
+
+@app.get('/api/privacy/retention', response_model=ApiResponse)
+def personal_retention_policy():
+    return ApiResponse(success=True, data={'guest_inactive_days': _retention.days if _retention else None,
+        'registered_accounts_expire': False, 'restore_preview_minutes': 15, 'maintenance_interval_seconds': 60,
+        'notice': '匿名学习空间持续未使用达到保留期后清理；注册账号不按此期限清理。恢复预览取消或到期后清理服务内副本；已下载备份与第三方留存需自行管理。'})
+
+
+class RestoreCancelRequest(BaseModel):
+    backup_id: str = Field(pattern=r'^[0-9a-f]{64}$')
+    confirmation_token: str = Field(pattern=r'^[0-9a-f]{64}$')
+
+
+@app.delete('/api/privacy/restore-preview', response_model=ApiResponse)
+def cancel_personal_restore(request: RestoreCancelRequest):
+    try:
+        return ApiResponse(success=True, data=_personal_backup().cancel_preview(request.backup_id, request.confirmation_token))
+    except (ValueError, OSError) as exc:
+        raise HTTPException(409, '恢复预览取消未完成，请重试') from exc
 
 
 @app.post('/api/privacy/restore-preview', response_model=ApiResponse)

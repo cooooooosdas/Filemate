@@ -73,6 +73,8 @@ def _database_path(relative: str) -> bool:
 def _managed_path(relative: str, directory: bool) -> bool:
     """限定现役网站数据卷布局。"""
     parts = _relative(relative).parts
+    if parts[0] in {'privacy-tombstones', 'privacy-activity'}:
+        return (directory and len(parts) == 1) or (not directory and len(parts) == 2 and bool(re.fullmatch(r'[0-9a-f]{64}\.json', parts[1])))
     if parts[0] in {"inbox", "archive"}:
         return directory or len(parts) > 1
     if parts[0] == "users":
@@ -93,6 +95,7 @@ def _managed_path(relative: str, directory: bool) -> bool:
                 "filemate.db-wal",
                 "filemate.db-shm",
                 "filemate.db-journal",
+                "filemate.backup-secret",
             }
         )
     return (
@@ -105,6 +108,7 @@ def _managed_path(relative: str, directory: bool) -> bool:
             "filemate.db-shm",
             "filemate.db-journal",
             "identity.secret",
+            "filemate.backup-secret",
         }
     )
 
@@ -114,6 +118,12 @@ def _walk(root: Path) -> tuple[list[str], list[str]]:
     _check_node(root)
     directories, files = [], []
     for current, folders, names in os.walk(root, followlinks=False):
+        relative_parent = Path(current).relative_to(root).as_posix()
+        for folder in tuple(folders):
+            # 临时预览/已提交删除的暂存副本不得进入可恢复业务快照。
+            if (folder == '_working' and (relative_parent == '.' or re.fullmatch(r'users/u_[0-9a-f]{32}', relative_parent))) or re.fullmatch(r'\.personal-rollback-[0-9a-f]{32}', folder):
+                _check_node(Path(current) / folder)
+                folders.remove(folder)
         for name in sorted(folders + names):
             item = Path(current) / name
             _check_node(item)
@@ -459,6 +469,32 @@ def verify_backup(backup: Path) -> dict[str, Any]:
     return {"manifest": manifest, "confirmation": _digest(manifest), "passed": True}
 
 
+def _current_erasure_ledger(original: Path, manifest: dict[str, Any]) -> list[dict[str, str]]:
+    """保留备份之后发生的删除，业务恢复不得撤销用户注销。"""
+    folder = original / 'privacy-tombstones'
+    if not folder.exists():
+        return []
+    from filemate.operations.workspace_privacy import WorkspaceDeletion
+    _check_node(folder)
+    secret, _origin = _identity(original)
+    if secret is None:
+        raise ValueError('当前删除账本缺少签名配置，拒绝恢复')
+    identity = next((entry for entry in manifest['entries'] if entry['path'] == 'identity.secret'), None)
+    if identity and _file_digest(original / 'identity.secret') != identity['sha256']:
+        raise ValueError('身份密钥已经轮换，请先完成签名迁移再恢复旧备份')
+    ledger = WorkspaceDeletion(original, secret)
+    records = []
+    for path in sorted(folder.glob('*.json')):
+        if not re.fullmatch(r'[0-9a-f]{64}\.json', path.name):
+            raise ValueError('当前删除账本文件名异常')
+        record = ledger._read(path)
+        if record.get('state') == 'pending':
+            raise ValueError('请先恢复中断的注销操作再进行管理员恢复')
+        if record.get('state') == 'erased':
+            records.append({'path': path.name, 'sha256': _file_digest(path)})
+    return records
+
+
 def plan_restore(backup: Path, target: Path) -> dict[str, Any]:
     """预览恢复到新目录，不修改现役数据或路径引用。"""
     report = verify_backup(backup)
@@ -473,6 +509,7 @@ def plan_restore(backup: Path, target: Path) -> dict[str, Any]:
         "logical_source_root": report["manifest"]["source_root"],
         "file_count": len(report["manifest"]["entries"]),
         "path_policy": "preserve references; activate only at original logical mount path",
+        "preserved_erasure_ledger": _current_erasure_ledger(original, report['manifest']),
     }
     result["confirmation"] = _digest(result)
     return result
@@ -503,12 +540,25 @@ def restore_backup(backup: Path, target: Path, confirmation: str) -> dict[str, A
                 raise ValueError("恢复数据库校验失败，保留未启用的新目录")
     if verify_backup(backup)["confirmation"] != plan["backup_confirmation"]:
         raise ValueError("恢复期间快照变化，不能启用恢复目录")
+    current_ledger = _current_erasure_ledger(Path(plan['logical_source_root']), manifest)
+    if current_ledger != plan['preserved_erasure_ledger']:
+        raise ValueError('恢复期间删除账本变化，新目录不可启用')
+    for entry in current_ledger:
+        source = Path(plan['logical_source_root']) / 'privacy-tombstones' / entry['path']
+        output = destination / 'privacy-tombstones' / entry['path']
+        output.parent.mkdir(mode=0o700, exist_ok=True)
+        if output.exists():
+            _check_node(output); output.unlink()
+        _copy(source, output)
+        if _file_digest(output) != entry['sha256']:
+            raise ValueError('当前删除账本复制失败，新目录不可启用')
     return {
         "passed": True,
         "target": str(destination),
         "file_count": plan["file_count"],
         "activated": False,
         "path_policy": plan["path_policy"],
+        'preserved_erasure_count': len(current_ledger),
     }
 
 

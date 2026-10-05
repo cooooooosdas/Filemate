@@ -6,8 +6,10 @@ import hashlib
 import hmac
 import io
 import json
+import re
 import secrets
 import shutil
+import time
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -63,6 +65,93 @@ class PersonalBackup:
         if len(key) != 32:
             raise ValueError('个人备份签名配置无效')
         return key
+
+    def _remember_cleanup(self, path: Path, boundary: Path, token: str) -> None:
+        """只记录本次生成的清理目标，以签名防止替换为任意文件夹。"""
+        location = self.cache / 'cleanup.json'
+        records = self._cleanup_records()
+        records.append({'path': str(path), 'boundary': str(boundary), 'token_hash': data_actions.digest(token)})
+        body = _json(records)
+        self.cache.mkdir(parents=True, exist_ok=True)
+        _check_node(self.cache)
+        temporary = self.cache / 'cleanup.writing'
+        if temporary.exists():
+            _check_node(temporary)
+        temporary.write_bytes(_json({'records': records, 'signature': hmac.new(self._key(), body, hashlib.sha256).hexdigest()}))
+        temporary.chmod(0o600); temporary.replace(location)
+
+    def _cleanup_records(self) -> list[dict[str, str]]:
+        location = self.cache / 'cleanup.json'
+        if not location.exists():
+            return []
+        _check_node(location)
+        if location.stat().st_size > 1024 * 1024:
+            raise ValueError('清理记录容量异常')
+        wrapper = json.loads(location.read_bytes())
+        records = wrapper['records']
+        if not hmac.compare_digest(wrapper['signature'], hmac.new(self._key(), _json(records), hashlib.sha256).hexdigest()):
+            raise ValueError('清理记录签名异常')
+        return records
+
+    def cleanup(self, now: int | None = None) -> dict[str, int]:
+        """清除无有效确认的恢复副本及成功事务的受验证遗留目录。"""
+        now = int(time.time()) if now is None else now
+        result = {'files_removed': 0, 'directories_removed': 0, 'pending': 0}
+        if not self.cache.exists():
+            return result
+        _check_node(self.cache)
+        with self.storage._write_lock, self.storage._conn() as conn:
+            for path in self.cache.glob('*.zip'):
+                if not re.fullmatch(r'[0-9a-f]{64}\.zip', path.name):
+                    continue
+                _check_node(path)
+                active = conn.execute("SELECT 1 FROM data_action_previews WHERE action='personal_restore' AND resource_id=? AND result IS NULL AND expires_at>=?", (path.stem, now)).fetchone()
+                if not active:
+                    try:
+                        path.unlink(); result['files_removed'] += 1
+                    except OSError:
+                        result['pending'] += 1
+            retained = []; tokens = set()
+            for item in self._cleanup_records():
+                path, boundary = Path(item['path']), Path(item['boundary'])
+                allowed = (boundary.resolve() == self.cache.resolve() and re.fullmatch(r'stage-[0-9a-f]{32}', path.name)) or (any(boundary.resolve() == root.parent for root in self.roots.values()) and re.fullmatch(r'\.personal-rollback-[0-9a-f]{32}', path.name))
+                if not allowed or path.parent.resolve() != boundary.resolve():
+                    raise ValueError('遗留目录不属于受验证的个人恢复操作')
+                tokens.add(item['token_hash'])
+                try:
+                    if path.exists():
+                        _remove_tree(path, boundary); result['directories_removed'] += 1
+                except OSError:
+                    retained.append(item); result['pending'] += 1
+            location = self.cache / 'cleanup.json'
+            if location.exists():
+                # 先持久化尚未清除的目录，再更新幂等回执。
+                body = _json(retained)
+                location.write_bytes(_json({'records': retained, 'signature': hmac.new(self._key(), body, hashlib.sha256).hexdigest()}))
+                location.chmod(0o600)
+            for token in tokens:
+                if any(item['token_hash'] == token for item in retained):
+                    continue
+                row = conn.execute('SELECT result FROM data_action_previews WHERE token_hash=?', (token,)).fetchone()
+                if row and row[0]:
+                    receipt = json.loads(row[0]); receipt['cleanup_pending'] = False
+                    conn.execute('UPDATE data_action_previews SET result=? WHERE token_hash=?', (json.dumps(receipt, ensure_ascii=False), token))
+            for row in conn.execute("SELECT token_hash,resource_id,result FROM data_action_previews WHERE action='personal_restore' AND result IS NOT NULL").fetchall():
+                receipt = json.loads(row['result'])
+                if receipt.get('cleanup_pending') and not (self.cache / (row['resource_id'] + '.zip')).exists() and not any(item['token_hash'] == row['token_hash'] for item in retained):
+                    receipt['cleanup_pending'] = False
+                    conn.execute('UPDATE data_action_previews SET result=? WHERE token_hash=?', (json.dumps(receipt, ensure_ascii=False), row['token_hash']))
+            conn.execute('DELETE FROM data_action_previews WHERE result IS NULL AND expires_at<?', (now,))
+        return result
+
+    def cancel_preview(self, identifier: str, token: str) -> dict[str, bool]:
+        with self.storage._write_lock, self.storage._conn() as conn:
+            row = conn.execute('SELECT action,resource_id FROM data_action_previews WHERE token_hash=?', (data_actions.digest(token),)).fetchone()
+            if row is None or row['action'] != 'personal_restore' or row['resource_id'] != identifier:
+                raise ValueError('恢复预览不存在')
+            conn.execute('UPDATE data_action_previews SET expires_at=0 WHERE token_hash=? AND result IS NULL', (data_actions.digest(token),))
+        result = self.cleanup()
+        return {'cancelled': True, 'cleanup_pending': result['pending'] > 0}
 
     def _tables(self) -> dict[str, list[str]]:
         conn = self.storage._conn()
@@ -274,7 +363,7 @@ class PersonalBackup:
                 conn.execute("DELETE FROM data_action_previews WHERE action!='personal_restore'")
                 if conn.execute('PRAGMA foreign_key_check').fetchone():
                     raise ValueError('恢复的数据关系不完整，当前数据保留')
-                receipt = {'restored': True, 'file_count': len(files), 'counts': {name: len(rows) for name, rows in content['tables'].items()}}
+                receipt = {'restored': True, 'cleanup_pending': False, 'file_count': len(files), 'counts': {name: len(rows) for name, rows in content['tables'].items()}}
                 data_actions.finish(conn, 'personal_restore', identifier, token, receipt)
                 conn.commit()
             except Exception:
@@ -291,14 +380,19 @@ class PersonalBackup:
                         _remove_tree(staging, self.cache)
                     except OSError:
                         cleanup_pending = True
+                        self._remember_cleanup(staging, self.cache, token)
         # 仅清理本次创建并验证过归属的目录；不留下隐含的用户资料副本。
         for _root, rollback in moved:
             try:
                 _remove_tree(rollback, _root.parent)
             except OSError:
                 cleanup_pending = True
+                self._remember_cleanup(rollback, _root.parent, token)
         try:
             cache_file.unlink()
         except OSError:
             cleanup_pending = True
-        return {**receipt, 'cleanup_pending': cleanup_pending}
+        receipt['cleanup_pending'] = cleanup_pending
+        with self.storage._conn() as conn:
+            conn.execute('UPDATE data_action_previews SET result=? WHERE token_hash=?', (json.dumps(receipt, ensure_ascii=False), data_actions.digest(token)))
+        return receipt

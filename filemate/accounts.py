@@ -10,7 +10,7 @@ import sqlite3
 import threading
 import time
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -84,6 +84,7 @@ class AccountStore:
     def __init__(self, db_path: Path) -> None:
         self.db_path = db_path
         self._dummy_hash = _password_hash(secrets.token_urlsafe(32))
+        self.denied_workspace: Callable[[str], bool] = lambda _workspace: False
 
     @contextmanager
     def _connection(self) -> Iterator[sqlite3.Connection]:
@@ -135,7 +136,7 @@ class AccountStore:
                 "JOIN accounts a USING(account_id) WHERE token_hash=? AND expires_at>?",
                 (_digest(token), int(time.time())),
             ).fetchone()
-            if row is None:
+            if row is None or self.denied_workspace(row['workspace_id']):
                 return None
             return {
                 "user": self._public(row),
@@ -167,6 +168,8 @@ class AccountStore:
         self, email: str, password: str, display_name: str, workspace_id: str, remember: bool
     ) -> tuple[dict[str, str], str, str]:
         email = normalize_email(email)
+        if self.denied_workspace(workspace_id):
+            raise AccountError('原学习空间已删除，请重新打开注册页', 409)
         validate_password(password)
         display_name = display_name.strip()
         if not 2 <= len(display_name) <= 30 or any(ord(ch) < 32 for ch in display_name):
@@ -205,14 +208,14 @@ class AccountStore:
         with self._connection() as db:
             row = db.execute("SELECT * FROM accounts WHERE email=?", (email,)).fetchone()
         valid = _verify_password(password, row["password_hash"] if row else self._dummy_hash)
-        if not row or not valid:
+        if not row or not valid or self.denied_workspace(row['workspace_id']):
             raise AccountError("邮箱或密码不正确", 401)
         with self._connection() as db:
             db.execute("BEGIN IMMEDIATE")
             current = db.execute(
                 "SELECT * FROM accounts WHERE account_id=?", (row["account_id"],)
             ).fetchone()
-            if current["password_hash"] != row["password_hash"]:
+            if current is None or current["password_hash"] != row["password_hash"]:
                 raise AccountError("密码已更新，请重新登录", 401)
             return self._public(current), self._new_session(db, row["account_id"], remember)
 
@@ -253,3 +256,34 @@ class AccountStore:
                 raise AccountError("恢复码已使用，请使用最新恢复码", 401)
             db.execute("DELETE FROM account_sessions WHERE account_id=?", (row[0],))
         return new_code
+
+    def delete_account(self, account_id: str, password: str,
+                       stage_files: Callable[[str], None], rollback_files: Callable[[], None]) -> None:
+        """重新验证密码，文件暂存成功后在同一事务撤销全部登录并删除账号。"""
+        with self._connection() as db:
+            row = db.execute('SELECT * FROM accounts WHERE account_id=?', (account_id,)).fetchone()
+        if not row:
+            raise AccountError('账号不存在或已注销', 401)
+        self._rate_limit(row['email'], 'delete')
+        if not 1 <= len(password) <= 128 or not _verify_password(password, row['password_hash']):
+            raise AccountError('密码不正确，账号与资料保留', 401)
+        staged = False
+        committed = False
+        try:
+            with self._connection() as db:
+                db.execute('BEGIN IMMEDIATE')
+                current = db.execute('SELECT * FROM accounts WHERE account_id=?', (account_id,)).fetchone()
+                if current is None or current['password_hash'] != row['password_hash'] or current['workspace_id'] != row['workspace_id']:
+                    raise AccountError('账号凭据已更新，请重新登录后预览注销', 409)
+                staged = True
+                stage_files(current['workspace_id'])
+                db.execute('DELETE FROM account_sessions WHERE account_id=?', (account_id,))
+                db.execute('DELETE FROM accounts WHERE account_id=?', (account_id,))
+                for action in ('register', 'login', 'recover', 'delete'):
+                    db.execute('DELETE FROM account_attempts WHERE attempt_key=?', (_digest(action + ':' + row['email']),))
+                db.commit()
+                committed = True
+        except Exception:
+            if staged and not committed:
+                rollback_files()
+            raise
