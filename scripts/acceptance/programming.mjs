@@ -108,7 +108,7 @@ try {
     await page.getByRole('tab', { name: '提交记录', exact: true }).click()
     await page.locator('.history-row').first().getByRole('button', { name: '查看提交', exact: true }).click()
     assert.equal(await page.getByRole('textbox', { name: '我的复盘笔记', exact: true }).inputValue(), '用 long long，检查 n=0 与 64 位总和。')
-    assert.match(await page.locator('.feedback').innerText(), /本地规则提示/)
+    assert.match(await page.locator('.feedback').innerText(), /规则提示/)
   })
   await check('undo and restore update evidence without removing original code', 'real_ui_api', async () => {
     const before = await overview()

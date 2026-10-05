@@ -2,6 +2,8 @@
 """图谱聚合复杂度、只读快照和有界 API 的回归。"""
 
 import sqlite3
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import Mock
 
@@ -69,3 +71,29 @@ def test_graph_page_and_lazy_details_preserve_complete_data(server_module):
         assert client.get("/api/knowledge-graph?limit=201").status_code == 422
         assert client.get("/api/knowledge-graph/nodes/missing").status_code == 404
     assert len(build_graph(store)["nodes"]) == 60
+
+
+def test_graph_aggregation_is_bounded_per_workspace_without_blocking_writes(server_module, monkeypatch):
+    module, store = server_module
+    seed(store)
+    import filemate.study.knowledge_graph as implementation
+    original = implementation.build_graph
+    lock = threading.Lock()
+    active = peak = 0
+    def observed(snapshot):
+        nonlocal active, peak
+        with lock:
+            active += 1
+            peak = max(peak, active)
+        try:
+            with ThreadPoolExecutor(max_workers=1) as writer:
+                writer.submit(store.save_source, original_name='concurrent synthetic', source_path='owned').result(timeout=2)
+            time.sleep(0.02)
+            return original(snapshot)
+        finally:
+            with lock:
+                active -= 1
+    monkeypatch.setattr(implementation, 'build_graph', observed)
+    with TestClient(module.app) as client, ThreadPoolExecutor(max_workers=4) as readers:
+        statuses = list(readers.map(lambda _: client.get('/api/knowledge-graph').status_code, range(4)))
+    assert statuses == [200] * 4 and peak == 1

@@ -709,6 +709,7 @@ class SQLiteStorage:
         self.db_path = Path(db_path)
         self._local = threading.local()
         self._write_lock = threading.RLock()
+        self._graph_lock = threading.RLock()
         self._connections: set[sqlite3.Connection] = set()
 
     # ------------------------------------------------------------------
@@ -741,6 +742,12 @@ class SQLiteStorage:
                 conn.close()
             self._connections.clear()
             self._local.conn = None
+
+    @contextmanager
+    def graph_snapshot(self) -> Iterator[SQLiteStorage]:
+        """限制同空间CPU密集聚合并发，避免SQLite行转换争用GIL。"""
+        with self._graph_lock, self.read_snapshot() as snapshot:
+            yield snapshot
 
     @contextmanager
     def read_snapshot(self) -> Iterator[SQLiteStorage]:

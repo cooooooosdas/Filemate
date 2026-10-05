@@ -558,10 +558,17 @@ async def isolate_anonymous_workspace(request: Request, call_next):
         if identity_id in _exclusive_tenants:
             return JSONResponse(status_code=409, content={'success': False, 'error': '个人数据维护中，请稍后重试'})
         _active_tenants[identity_id] = _active_tenants.get(identity_id, 0) + 1
-        if not account:
-            _retention.touch(identity_id)
     token = _tenant_context.set(context)
     try:
+        if not account:
+            try:
+                with _tenant_storage_lock:
+                    _retention.touch(identity_id)
+            except (OSError, ValueError):
+                logger.warning("匿名活动记录暂不可写，请求未进入业务处理")
+                return JSONResponse(status_code=503, content={
+                    'success': False, 'data': None, 'error': '学习空间维护记录暂不可用，请稍后重试',
+                })
         response = await call_next(request)
     finally:
         _tenant_context.reset(token)
@@ -1550,7 +1557,7 @@ def knowledge_graph(limit: int = Query(200, ge=1, le=200), offset: int = Query(0
     from filemate.study.knowledge_graph import build_graph
 
     _require_graph_enabled()
-    with _storage.read_snapshot() as snapshot:
+    with _storage.graph_snapshot() as snapshot:
         return ApiResponse(success=True, data=graph_page(build_graph(snapshot), limit=limit,
                            offset=offset, q=q, batch_offset=batch_offset))
 
@@ -1560,7 +1567,7 @@ def graph_node_detail(node_id: str):
     from filemate.study.knowledge_graph import build_graph
 
     _require_graph_enabled()
-    with _storage.read_snapshot() as snapshot:
+    with _storage.graph_snapshot() as snapshot:
         node = next((item for item in build_graph(snapshot)["nodes"] if item["id"] == node_id), None)
     if node is None:
         raise HTTPException(status_code=404, detail="知识点不存在或来源已变化")

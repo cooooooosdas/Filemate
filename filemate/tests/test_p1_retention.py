@@ -81,3 +81,19 @@ def test_retention_grace_registered_and_active_protection(account_server):
         assert guest.get('/knowledge/sources').json()['data'] == []
         assert module._verify_identity_cookie(guest.cookies.get(module.IDENTITY_COOKIE_NAME)) != guest_owner
         assert account.get('/api/auth/me').json()['data']['user']
+
+
+def test_activity_write_failure_is_recoverable_and_releases_active_request(account_server, monkeypatch):
+    module = account_server
+    with TestClient(module.app) as client:
+        assert client.get('/knowledge/sources').status_code == 200
+        original = module._retention.touch
+        def fail_touch(*args):
+            raise OSError('injected metadata write failure')
+        monkeypatch.setattr(module._retention, 'touch', fail_touch)
+        response = client.post('/knowledge/import', files={'file': ('owned.txt', b'Synthetic lesson')})
+        assert response.status_code == 503
+        assert not module._active_tenants
+        monkeypatch.setattr(module._retention, 'touch', original)
+        assert client.get('/knowledge/sources').json()['data'] == []
+        assert client.post('/knowledge/import', files={'file': ('owned.txt', b'Synthetic lesson')}).status_code == 200

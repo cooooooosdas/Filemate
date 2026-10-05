@@ -480,7 +480,7 @@ def _current_erasure_ledger(original: Path, manifest: dict[str, Any]) -> list[di
     if secret is None:
         raise ValueError('当前删除账本缺少签名配置，拒绝恢复')
     identity = next((entry for entry in manifest['entries'] if entry['path'] == 'identity.secret'), None)
-    if identity and _file_digest(original / 'identity.secret') != identity['sha256']:
+    if identity and hashlib.sha256(secret).hexdigest() != identity['sha256']:
         raise ValueError('身份密钥已经轮换，请先完成签名迁移再恢复旧备份')
     ledger = WorkspaceDeletion(original, secret)
     records = []

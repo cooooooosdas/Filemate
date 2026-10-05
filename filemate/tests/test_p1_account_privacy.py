@@ -149,11 +149,15 @@ def test_erasure_cleanup_failure_reports_pending_and_retry(account_server, monke
         assert not module._workspace_deletion.receipt(p['confirmation_token'])['cleanup_pending']
 
 
-def test_admin_restore_preserves_newer_erasure_and_personal_signing_key(account_server, tmp_path):
+@pytest.mark.parametrize('environment_identity', [False, True])
+def test_admin_restore_preserves_newer_erasure_and_personal_signing_key(account_server, tmp_path, monkeypatch, environment_identity):
     module = account_server
     from filemate.accounts import AccountStore
     from filemate.operations import backup
     from filemate.operations.workspace_privacy import WorkspaceDeletion
+    if environment_identity:
+        monkeypatch.setenv('FILEMATE_IDENTITY_SECRET', module._identity_secret.decode())
+        (module.DATA_DIR / 'identity.secret').unlink(missing_ok=True)
     with TestClient(module.app) as client:
         register(client)
         client.post('/knowledge/import', files={'file': ('owned.txt', b'Synthetic owned lesson')})
