@@ -69,6 +69,22 @@ const api = axios.create({
   }
 })
 
+export async function getSkillTree(): Promise<import('../types/skills').SkillTree> {
+  const response = await api.get<unknown, ApiResponse<import('../types/skills').SkillTree>>('/api/skills/tree')
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '技能树加载失败')
+}
+export async function getSkillTargets(q = ''): Promise<import('../types/skills').SkillTarget[]> {
+  const response = await api.get<unknown, ApiResponse<import('../types/skills').SkillTarget[]>>('/api/skills/targets', { params: { q } })
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '验收资料加载失败')
+}
+export async function saveSkillTree(tree: { schema_version: 1; revision: number; skills: import('../types/skills').Skill[] }): Promise<import('../types/skills').SkillTree> {
+  const response = await api.put<unknown, ApiResponse<import('../types/skills').SkillTree>>('/api/skills/tree', tree)
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '技能树保存失败')
+}
+
 export async function getProgrammingProblems(): Promise<CodingProblem[]> {
   return (await api.get<any, ApiResponse<CodingProblem[]>>('/api/programming/problems', { timeout: 15000 })).data!
 }

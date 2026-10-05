@@ -1832,7 +1832,7 @@ def update_knowledge_artifact(
             raise HTTPException(status_code=422, detail=f"题集校验失败：{exc}") from exc
     if existing and isinstance(existing.get("metadata"), dict) and existing["metadata"].get("origin") == "career_plan":
         raise HTTPException(status_code=409, detail="岗位学习计划保留确认时的证据，请更新进度或重新预览新计划")
-    if existing and existing["artifact_type"] in {"coding_submission", "interview_report", "career_training"}:
+    if existing and existing["artifact_type"] in {"coding_submission", "interview_report", "career_training", "skill_tree"}:
         raise HTTPException(status_code=409, detail="评测报告不能直接修改，请在对应工作台更新原始记录或复盘笔记")
     try:
         artifact = _storage.update_artifact(
@@ -2982,6 +2982,81 @@ def wrongbook_page(mastered: bool | None = Query(False), limit: int = Query(50, 
 def learning_analytics():
     """返回学习闭环与模拟面试的本地统计。"""
     return ApiResponse(success=True, data=_storage.get_learning_analytics())
+
+
+def _skills_repository():
+    from filemate.study.skills import SkillTreeRepository
+
+    if os.getenv("FILEMATE_ENABLE_SKILL_TREE", "1").lower() in {"0", "false", "off"}:
+        raise HTTPException(status_code=503, detail="技能树已关闭，原学习数据保留")
+    return SkillTreeRepository(_storage)
+
+
+@app.get("/api/skills/tree", response_model=ApiResponse)
+def get_skill_tree():
+    try:
+        return ApiResponse(success=True, data=_skills_repository().view())
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail="技能树数据异常，原数据保留，请导出检查或恢复备份") from exc
+
+
+@app.put("/api/skills/tree", response_model=ApiResponse)
+def save_skill_tree(request: dict[str, Any]):
+    from pydantic import ValidationError
+
+    from filemate.study.skills import SkillTree
+
+    try:
+        tree = SkillTree.model_validate(request)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail="技能配置格式或数量不符合要求") from exc
+    try:
+        return ApiResponse(success=True, data=_skills_repository().save(tree))
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get("/api/skills/targets", response_model=ApiResponse)
+def skill_targets(q: str = Query("", max_length=160)):
+    _skills_repository()
+    from filemate.study.question_validation import validate_question
+
+    targets = []
+    pattern = "%" + q.strip().lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+    rows = _storage._conn().execute(
+        "SELECT artifact_id,content,title FROM artifacts WHERE artifact_type='questions' AND (lower(content) LIKE ? ESCAPE '\\' OR lower(title) LIKE ? ESCAPE '\\') ORDER BY created_at DESC,rowid DESC",
+        (pattern, pattern),
+    )
+    for artifact in rows:
+        try:
+            questions = json.loads(artifact["content"])
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(questions, list):
+            continue
+        for index, question in enumerate(questions):
+            try:
+                normalized = validate_question(question, legacy=True)
+            except (ValueError, TypeError):
+                continue
+            if q.strip() and q.strip().casefold() not in (normalized["stem"] + " " + artifact["title"]).casefold():
+                continue
+            targets.append({"kind": "quiz", "target_id": artifact["artifact_id"], "question_index": index,
+                            "label": normalized["stem"][:160]})
+            if len(targets) >= 500:
+                break
+        if len(targets) >= 500:
+            break
+    coding_rows = _storage._conn().execute("SELECT submission_id FROM coding_submissions WHERE lower(problem_id) LIKE ? ESCAPE '\\' OR submission_id LIKE ? ESCAPE '\\' ORDER BY created_at DESC,rowid DESC LIMIT 100", (pattern, pattern))
+    for row in coding_rows:
+        submission = _coding_repository().get(row["submission_id"])
+        if submission["active"] and not submission["data_error"]:
+            targets.append({"kind": "coding", "target_id": submission["submission_id"],
+                            "label": "编程 · " + submission["problem_id"], "question_index": None})
+    for interview in _storage._conn().execute("SELECT interview_id,target_role FROM interview_sessions WHERE lower(target_role) LIKE ? ESCAPE '\\' OR interview_id LIKE ? ESCAPE '\\' ORDER BY created_at DESC,rowid DESC LIMIT 50", (pattern, pattern)):
+        targets.append({"kind": "interview", "target_id": interview["interview_id"],
+                        "label": "面试 · " + interview["target_role"], "question_index": None})
+    return ApiResponse(success=True, data=targets)
 
 
 @app.patch("/wrongbook/{wrong_id}/diagnosis", response_model=ApiResponse)

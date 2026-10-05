@@ -813,3 +813,11 @@ SQLite v24 **追加** `career_positions`、`career_trainings` 和 `career_events
 模型输出整批验证：1至请求上限（最多10），题干/答案为非空文本，题型为choice/fill/short_answer，选择题2至8个不同选项且参考答案对应实际选项；非选择题不携带选项。错误题型、超额、重复题干和任何坏题均导致生成502，不保存Source派生产物。缺少解析可以保留为空，不补造答案或选项；仅基于已有选项规范化标号。没有校验失败后的无限重试。
 
 历史题目仅兼容既有字段名/缺省非客观题型；完整性失败时产物返回metadata.question_data_error=true，原内容保留，判题422且不增加作答/错题记录，也不计入图谱掌握度。题集内容编辑验证1至1000题且不可重复；无效编辑422，不覆盖原内容；标题单独编辑不改变历史证据。
+
+### 技能树（AUD-05a）
+
+独立入口 `/skills`；`GET /api/skills/tree`、`PUT /api/skills/tree`。配置以schema_version=1的skill_tree Artifact持久化，最多200个目标，每个20项验收条件。PUT传递上次读取的revision，修订冲突409；多余字段/格式422；重复标识、循环/缺失先修、重复或其他空间的验收记录409。通用产物编辑接口不得绕过专用合同修改技能树。
+
+criteria关联quiz题集与question_index、coding提交或interview会话，required_successes=1..20（单个coding提交仅1）。统计仅为实际正确作答、有效活动AC或实际面试回答；修改题目、撤销提交、删除证据会重新计算。states为pending_assessment/in_progress/prerequisites_pending/conditions_met，不冒充专业能力分数。
+
+`GET /api/skills/targets?q=...` 在当前空间全量题集里按题干/标题查询，最多展示500课程目标、100编程记录、50面试记录；默认展示近期候选，输入更具体的词可找到旧题。没有外部AI调用。后端FILEMATE_ENABLE_SKILL_TREE=0拒绝模块503，前端VITE_ENABLE_SKILL_TREE=false隐藏入口并重定向；停用不删除数据。

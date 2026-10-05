@@ -294,6 +294,7 @@ const menuGroups = [
       { path: '/interview-bank', title: '题库管理', icon: Notebook },
       ...(import.meta.env.VITE_ENABLE_CAREER === 'false' ? [] : [{ path: '/career', title: '求职训练中心', icon: Aim }]),
       { path: '/growth', title: '成长数据', icon: DataAnalysis },
+      ...(import.meta.env.VITE_ENABLE_SKILL_TREE === 'false' ? [] : [{ path: '/skills', title: '技能树', icon: Share }]),
       { path: '/trust', title: '可信与隐私', icon: Lock }
     ]
   }
@@ -304,7 +305,7 @@ const navigationGroups = computed(() => [
   { label: '今天', items: menuGroups[0]!.items.filter(item => ['/', '/today'].includes(item.path)) },
   { label: '读懂资料', items: menuGroups.flatMap(group => group.items).filter(item => ['/ai-tools', '/knowledge'].includes(item.path)) },
   { label: '练习与表达', items: menuGroups.flatMap(group => group.items).filter(item => ['/programming', '/interview', '/career'].includes(item.path)) },
-  { label: '我的记录', items: menuGroups.flatMap(group => group.items).filter(item => ['/growth', '/trust'].includes(item.path)) },
+  { label: '我的记录', items: menuGroups.flatMap(group => group.items).filter(item => ['/growth', '/skills', '/trust'].includes(item.path)) },
 ])
 const contextLinks = computed(() => {
   let paths: string[] = []
