@@ -2053,6 +2053,33 @@ class SQLiteStorage:
             self._decode_row(row, ("question",)) if row else None
         )
 
+    def wrong_question_page(self, *, mastered: bool | None = False, limit: int = 50,
+                            offset: int = 0, q: str = "", source_id: str | None = None,
+                            error_cause: str | None = None, due_only: bool = False) -> dict[str, Any]:
+        """在全量记录中筛选再分页，稳定排序避免同时间记录丢失。"""
+        clauses: list[str] = []
+        params: list[Any] = []
+        for field, value in (("mastered", int(mastered) if mastered is not None else None),
+                             ("source_id", source_id), ("error_cause", error_cause)):
+            if value is not None:
+                clauses.append(f"w.{field}=?")
+                params.append(value)
+        if q.strip():
+            clauses.append("(lower(w.question) LIKE ? ESCAPE '\\' OR lower(w.knowledge_label) LIKE ? ESCAPE '\\' OR lower(s.original_name) LIKE ? ESCAPE '\\')")
+            pattern = "%" + q.strip().lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            params.extend([pattern] * 3)
+        if due_only:
+            clauses.append("(julianday(w.next_review_at) IS NULL OR julianday(w.next_review_at)<=julianday('now'))")
+        where = " WHERE " + " AND ".join(clauses) if clauses else ""
+        base = " FROM wrong_questions w LEFT JOIN sources s ON s.source_id=w.source_id" + where
+        conn = self._conn()
+        total = conn.execute("SELECT COUNT(*)" + base, params).fetchone()[0]
+        rows = conn.execute("SELECT w.*, s.original_name AS source_name" + base +
+                            " ORDER BY w.next_review_at, w.updated_at DESC, w.wrong_id LIMIT ? OFFSET ?",
+                            [*params, limit, offset]).fetchall()
+        return {"items": [self._enrich_wrong_question(self._decode_row(row, ("question",))) for row in rows],
+                "total": total, "offset": offset, "limit": limit, "has_more": offset + len(rows) < total}
+
     @staticmethod
     def _enrich_wrong_question(
         wrong: dict[str, Any] | None,

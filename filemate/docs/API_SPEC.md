@@ -793,3 +793,9 @@ SQLite v24 **追加** `career_positions`、`career_trainings` 和 `career_events
 | 2026-10-02 | B2 | 岗位实际证据到确认学习计划、进度回看与撤销恢复，扩展岗位删除预览 | Codex |
 | 2026-10-02 | B2 | `learning-analytics.evidence_profile`四类只读统计、样本/时间/依据/原记录、异常和本地回退排除；无新schema | Codex |
 | 2026-10-03 | DEV-01 | 学习资料本地导入增加UTF-8 Markdown/代码文本；沿用原文引用/哈希复用/会话，无执行、无模型调用；分类上传格式不变 | Codex |
+
+### 错题全量分页（AUD-02）
+
+`GET /wrongbook/page` 返回 `{items,total,limit,offset,has_more}`。`limit=1..200`（默认50）；稳定排序为到期时间、更新时间降序、wrong_id。支持 `mastered`、`q`（最多160字，题干/知识点/资料名，通配符按字面匹配）、`source_id`、`error_cause`、`due_only`。筛选作用于整个当前身份数据库，先筛选再分页；数据变化后总数会更新，翻页期间不提供冻结快照。旧 `GET /wrongbook` 保留数组合同，增加 offset/q/source_id。
+
+正式错题页每页30条，搜索后回到首页，筛选无结果与真实空数据分别展示。索引复用 idx_wrong_next_review / idx_wrong_mastered。

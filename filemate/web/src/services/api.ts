@@ -789,6 +789,13 @@ export async function getWrongbook(mastered: boolean = false): Promise<WrongQues
   throw new Error(response.error || '获取错题本失败')
 }
 
+export interface WrongbookPage { items: WrongQuestion[]; total: number; offset: number; limit: number; has_more: boolean }
+export async function getWrongbookPage(params: { mastered: boolean; offset: number; q: string; due_only: boolean }): Promise<WrongbookPage> {
+  const response = await api.get<unknown, ApiResponse<WrongbookPage>>('/wrongbook/page', { params: { ...params, limit: 30 } })
+  if (response.success && response.data) return { ...response.data, items: response.data.items.map(item => ({ ...item, question: normalizeAIQuestion(item.question) })) }
+  throw new Error(response.error || '获取错题本失败')
+}
+
 export async function updateWrongDiagnosis(
   wrongId: string,
   errorCause: WrongErrorCause,

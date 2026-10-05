@@ -2917,12 +2917,27 @@ def submit_quiz_attempt(request: QuizAttemptRequest):
 def list_wrongbook(
     mastered: bool | None = Query(False),
     limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0, le=1000000),
+    q: str = Query("", max_length=160),
+    source_id: str | None = Query(None, max_length=80),
 ):
     """读取错题本。"""
     return ApiResponse(
         success=True,
-        data=_storage.list_wrong_questions(mastered=mastered, limit=limit),
+        data=_storage.wrong_question_page(mastered=mastered, limit=limit, offset=offset,
+                                          q=q, source_id=source_id)["items"],
     )
+
+
+@app.get("/wrongbook/page", response_model=ApiResponse)
+def wrongbook_page(mastered: bool | None = Query(False), limit: int = Query(50, ge=1, le=200),
+                  offset: int = Query(0, ge=0, le=1000000), q: str = Query("", max_length=160),
+                  source_id: str | None = Query(None, max_length=80), due_only: bool = False,
+                  error_cause: str | None = Query(None, pattern="^(unconfirmed|concept_gap|memory_gap|reasoning_break|expression_gap|option_confusion|careless)$")):
+    return ApiResponse(success=True, data=_storage.wrong_question_page(
+        mastered=mastered, limit=limit, offset=offset, q=q, source_id=source_id,
+        error_cause=error_cause, due_only=due_only,
+    ))
 
 
 @app.get("/analytics/overview", response_model=ApiResponse)
