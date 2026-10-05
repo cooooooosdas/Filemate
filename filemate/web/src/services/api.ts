@@ -661,10 +661,22 @@ export interface WrongQuestion {
   updated_at: string
 }
 
-export async function getKnowledgeGraph(): Promise<KnowledgeGraphData> {
-  const response = await api.get<unknown, ApiResponse<KnowledgeGraphData>>('/api/knowledge-graph', { timeout: 15000 })
+export async function getKnowledgeGraph(params: { offset?: number; q?: string; batch_offset?: number } = {}): Promise<KnowledgeGraphData> {
+  const response = await api.get<unknown, ApiResponse<KnowledgeGraphData>>('/api/knowledge-graph', { timeout: 15000, params })
   if (response.success && response.data) return response.data
   throw new Error(response.error || '知识图谱加载失败')
+}
+
+export async function getGraphNodeDetail(id: string): Promise<import('../types/knowledgeGraph').GraphNode> {
+  const response = await api.get<unknown, ApiResponse<import('../types/knowledgeGraph').GraphNode>>(`/api/knowledge-graph/nodes/${encodeURIComponent(id)}`)
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '知识点证据读取失败')
+}
+
+export async function getGraphBatchDetail(id: string): Promise<GraphBatch> {
+  const response = await api.get<unknown, ApiResponse<GraphBatch>>(`/api/knowledge-graph/batches/${encodeURIComponent(id)}`)
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '批次证据读取失败')
 }
 
 export async function createGraphDraft(sourceId: string, mode: 'local' | 'llm', allowExternalModel: boolean): Promise<GraphBatch> {

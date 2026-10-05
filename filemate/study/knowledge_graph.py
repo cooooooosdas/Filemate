@@ -265,6 +265,12 @@ def learning_profile(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -
     by_id = {node["id"]: node for node in nodes}
     weaknesses = []
     statuses: dict[str, int] = {}
+    incoming: dict[str, list[tuple[str, dict[str, Any]]]] = {}
+    for edge in edges:
+        if edge["relation"] == "prerequisite":
+            incoming.setdefault(edge["to"], []).append((edge["from"], edge))
+        elif edge["relation"] == "depends_on":
+            incoming.setdefault(edge["from"], []).append((edge["to"], edge))
     for node in nodes:
         metrics = node["metrics"]
         statuses[metrics["status"]] = statuses.get(metrics["status"], 0) + 1
@@ -278,9 +284,7 @@ def learning_profile(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -
         if not reasons:
             continue
         prerequisites = []
-        for edge in edges:
-            key = (edge["from"] if edge["relation"] == "prerequisite" and edge["to"] == node["id"]
-                   else edge["to"] if edge["relation"] == "depends_on" and edge["from"] == node["id"] else None)
+        for key, edge in incoming.get(node["id"], []):
             if key in by_id and by_id[key]["metrics"]["status"] not in {"基本掌握", "熟练"}:
                 prerequisites.append({"node_id": key, "label": by_id[key]["label"],
                                       "relation": edge["relation"], "excerpt": edge["excerpt"]})
@@ -317,38 +321,58 @@ def build_graph(storage: Any) -> dict[str, Any]:
             nodes.setdefault(node["id"], dict(node))
         for edge in batch["payload"]["edges"]:
             edges.setdefault((edge["from"], edge["to"], edge["relation"]), edge)
-    evidence = {sid: storage.get_graph_learning_evidence(sid)
-                for sid in {n["source_id"] for n in nodes.values()}}
-    for node in nodes.values():
-        sid = node["source_id"]
+    questions_by_node: dict[str, list[dict[str, Any]]] = {}
+    attempts_by_node: dict[str, list[dict[str, Any]]] = {}
+    wrong_by_node: dict[str, list[str]] = {}
+    artifacts_by_pair: dict[tuple[str, int], dict[str, Any]] = {}
+    source_names = {}
+    excluded_by_node: dict[str, int] = {}
+    for sid in {n["source_id"] for n in nodes.values()}:
         source = storage.get_source(sid)
-        node["source_name"] = source["original_name"] if source else "资料已删除"
-        questions = []
-        pairs = set()
+        source_names[sid] = source["original_name"] if source else "资料已删除"
+        evidence = storage.get_graph_learning_evidence(sid)
+        pair_nodes: dict[tuple[str, int], str] = {}
         current_questions = {}
-        artifacts_by_id = {}
-        for artifact in evidence[sid]["artifacts"]:
+        for artifact in evidence["artifacts"]:
             if not isinstance(artifact["content"], list):
                 continue
             for index, question in enumerate(artifact["content"]):
                 if not isinstance(question, dict):
                     continue
                 key, _ = _knowledge_identity(question, source_id=sid, artifact_id=artifact["artifact_id"])
-                if key == node["id"]:
-                    pairs.add((artifact["artifact_id"], index))
-                    current_questions[(artifact["artifact_id"], index)] = question
-                    artifacts_by_id[artifact["artifact_id"]] = artifact
-                    questions.append({"artifact_id": artifact["artifact_id"], "question_index": index,
-                                      "read_only_snapshot": bool(artifact.get("metadata", {}).get("read_only_snapshot")),
-                                      "question": str(question.get("question") or question.get("stem") or "题目")})
-        attempts = [a for a in evidence[sid]["attempts"] if (a["artifact_id"], a["question_index"]) in pairs]
-        current_attempts = [a for a in attempts if _after_question_revision(a, artifacts_by_id[a["artifact_id"]])]
-        node["metrics"] = mastery_metrics(current_attempts)
-        node["metrics"]["excluded_sample_count"] += len(attempts) - len(current_attempts)
-        node["questions"] = questions
-        node["wrong_ids"] = [w["wrong_id"] for w in evidence[sid]["wrong_questions"]
-                             if (w["artifact_id"], w["question_index"]) in pairs and not w["mastered"]
-                             and w["question"] == current_questions[(w["artifact_id"], w["question_index"])]]
+                if key not in nodes:
+                    continue
+                pair = (artifact["artifact_id"], index)
+                pair_nodes[pair] = key
+                current_questions[pair] = question
+                artifacts_by_pair[pair] = artifact
+                questions_by_node.setdefault(key, []).append({
+                    "artifact_id": artifact["artifact_id"], "question_index": index,
+                    "read_only_snapshot": bool(artifact.get("metadata", {}).get("read_only_snapshot")),
+                    "question": str(question.get("question") or question.get("stem") or "题目"),
+                })
+        for attempt in evidence["attempts"]:
+            pair = (attempt["artifact_id"], attempt["question_index"])
+            key = pair_nodes.get(pair)
+            if key is None:
+                continue
+            if _after_question_revision(attempt, artifacts_by_pair[pair]):
+                attempts_by_node.setdefault(key, []).append(attempt)
+            else:
+                excluded_by_node[key] = excluded_by_node.get(key, 0) + 1
+        for wrong in evidence["wrong_questions"]:
+            pair = (wrong["artifact_id"], wrong["question_index"])
+            key = pair_nodes.get(pair)
+            if key is not None and not wrong["mastered"] and wrong["question"] == current_questions[pair]:
+                wrong_by_node.setdefault(key, []).append(wrong["wrong_id"])
+    now = datetime.now(timezone.utc)
+    for node in nodes.values():
+        key = node["id"]
+        node["source_name"] = source_names[node["source_id"]]
+        node["metrics"] = mastery_metrics(attempts_by_node.get(key, []), now=now)
+        node["metrics"]["excluded_sample_count"] += excluded_by_node.get(key, 0)
+        node["questions"] = questions_by_node.get(key, [])
+        node["wrong_ids"] = wrong_by_node.get(key, [])
         node["metrics"]["pending_wrong_count"] = len(node["wrong_ids"])
     node_list, edge_list = list(nodes.values()), list(edges.values())
     return {"nodes": node_list, "edges": edge_list, "batches": batches,

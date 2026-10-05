@@ -11,6 +11,8 @@ import math
 import sqlite3
 import threading
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -739,6 +741,23 @@ class SQLiteStorage:
                 conn.close()
             self._connections.clear()
             self._local.conn = None
+
+    @contextmanager
+    def read_snapshot(self) -> Iterator[SQLiteStorage]:
+        """以独立只读事务聚合大图谱，不占用当前工作区写锁。"""
+        snapshot = SQLiteStorage(self.db_path)
+        conn = sqlite3.connect(self.db_path.resolve().as_uri() + "?mode=ro", uri=True,
+                               check_same_thread=False, timeout=10)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA query_only=ON")
+        conn.execute("BEGIN")
+        snapshot._local.conn = conn
+        snapshot._connections.add(conn)
+        try:
+            yield snapshot
+        finally:
+            conn.rollback()
+            snapshot.close()
 
     # ------------------------------------------------------------------
     # Schema

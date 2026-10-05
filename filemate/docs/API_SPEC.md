@@ -799,3 +799,11 @@ SQLite v24 **追加** `career_positions`、`career_trainings` 和 `career_events
 `GET /wrongbook/page` 返回 `{items,total,limit,offset,has_more}`。`limit=1..200`（默认50）；稳定排序为到期时间、更新时间降序、wrong_id。支持 `mastered`、`q`（最多160字，题干/知识点/资料名，通配符按字面匹配）、`source_id`、`error_cause`、`due_only`。筛选作用于整个当前身份数据库，先筛选再分页；数据变化后总数会更新，翻页期间不提供冻结快照。旧 `GET /wrongbook` 保留数组合同，增加 offset/q/source_id。
 
 正式错题页每页30条，搜索后回到首页，筛选无结果与真实空数据分别展示。索引复用 idx_wrong_next_review / idx_wrong_mastered。
+
+### 大图谱有界读取（AUD-03）
+
+`GET /api/knowledge-graph` 默认/最多200节点；offset/q（最多160字）筛选完整图谱。返回 pagination.total/offset/limit/has_more/batch_total/batch_offset 和 edge_total；profile 的统计始终来自全量实际证据，weaknesses 只展示前20条，weakness_total 保留总数。edges 仅为当前页内部关系，不能当全图边数。
+
+批次列表每页20条，使用 batch_offset；payload_loaded=false 时不含完整节点/关系，`GET /api/knowledge-graph/batches/{id}` 按需加载核对原文。`GET /api/knowledge-graph/nodes/{id}` 可从复习提醒或链接读取页外知识点证据；不存在/其他身份404。新调用方必须按分页与按需详情合同读取，不能把摘要里的空 payload 当成空批次。
+
+聚合使用独立SQLite只读一致性快照；不会占用工作区全局写锁。客户端每图最多100节点，大图采用圆形布局；列表分页、全量搜索和批次详情保留访问能力。未增加缓存，因此新作答、资料编辑、撤销和删除会在刷新后立即体现。

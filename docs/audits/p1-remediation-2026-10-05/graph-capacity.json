@@ -1,0 +1,122 @@
+{
+  "sample_kind": "synthetic_actual_api_no_capacity_response_mocks",
+  "results": [
+    {
+      "size": 100,
+      "api_samples": [
+        {
+          "ms": 12.65,
+          "bytes": 98597,
+          "returned_nodes": 100
+        },
+        {
+          "ms": 6.79,
+          "bytes": 98597,
+          "returned_nodes": 100
+        },
+        {
+          "ms": 6.64,
+          "bytes": 98597,
+          "returned_nodes": 100
+        }
+      ],
+      "concurrent_ms": [
+        40.56,
+        35.91,
+        41.11,
+        26.77
+      ],
+      "reachable_nodes": 100,
+      "browser": {
+        "size": 100,
+        "errors": [],
+        "sample_kind": "synthetic_actual_api",
+        "passed": true,
+        "graph_ready_ms": 377,
+        "long_tasks": {
+          "maximum_ms": 69,
+          "count": 1
+        }
+      },
+      "passed": true
+    },
+    {
+      "size": 1000,
+      "api_samples": [
+        {
+          "ms": 33.57,
+          "bytes": 198785,
+          "returned_nodes": 200
+        },
+        {
+          "ms": 28.17,
+          "bytes": 198785,
+          "returned_nodes": 200
+        },
+        {
+          "ms": 28.99,
+          "bytes": 198785,
+          "returned_nodes": 200
+        }
+      ],
+      "concurrent_ms": [
+        358.86,
+        340.56,
+        358.74,
+        367.84
+      ],
+      "reachable_nodes": 1000,
+      "browser": {
+        "size": 1000,
+        "errors": [],
+        "sample_kind": "synthetic_actual_api",
+        "passed": true,
+        "graph_ready_ms": 419,
+        "long_tasks": {
+          "maximum_ms": 64,
+          "count": 1
+        }
+      },
+      "passed": true
+    },
+    {
+      "size": 10000,
+      "api_samples": [
+        {
+          "ms": 551.03,
+          "bytes": 220261,
+          "returned_nodes": 200
+        },
+        {
+          "ms": 543.94,
+          "bytes": 220261,
+          "returned_nodes": 200
+        },
+        {
+          "ms": 533.82,
+          "bytes": 220261,
+          "returned_nodes": 200
+        }
+      ],
+      "concurrent_ms": [
+        2344.47,
+        2453.23,
+        2667.83,
+        2672.55
+      ],
+      "reachable_nodes": 10000,
+      "browser": {
+        "size": 10000,
+        "errors": [],
+        "sample_kind": "synthetic_actual_api",
+        "passed": true,
+        "graph_ready_ms": 1044,
+        "long_tasks": {
+          "maximum_ms": 54,
+          "count": 1
+        }
+      },
+      "passed": true
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process'
 import { chromium } from 'playwright'
 
 const root = process.cwd()
+const graphUrl = /\/api\/knowledge-graph(?:\?.*)?$/
 const base = process.env.FILEMATE_WEB_URL || 'http://127.0.0.1:5173'
 const out = path.resolve(process.env.FILEMATE_EVIDENCE_DIR || '_working/v2-2-20261001')
 const db = path.resolve(process.env.FILEMATE_ACCEPTANCE_DB || '_working/v2-2-20261001/acceptance.db')
@@ -60,7 +61,9 @@ try {
     let data = await graphData()
     batchId = data.batches[0].batch_id
     assert.equal(data.nodes.length, 0)
-    assert.ok(data.batches[0].payload.edges.length >= 2)
+    assert.ok(data.batches[0].edge_count >= 2)
+    const batchDetail = (await (await context.request.get(`${base}/api/knowledge-graph/batches/${batchId}`)).json()).data
+    assert.ok(batchDetail.payload.edges.length >= 2)
     await button('确认加入图谱').click()
     await waitText('.map-panel', '3 个知识点')
     data = await graphData()
@@ -154,6 +157,7 @@ try {
     await button('清除搜索').click()
     await button('列表').click()
     await page.getByLabel('查找知识点或资料').fill('完全二叉树')
+    await page.waitForFunction(() => document.querySelectorAll('.node-list button').length === 1)
     assert.equal(await page.locator('.node-list button').count(), 1)
     await page.locator('.node-list button').click()
     assert.match(await page.locator('.evidence-panel').innerText(), /完全二叉树/)
@@ -161,11 +165,11 @@ try {
   })
   await check('network interruption keeps graph and retries real API', 'MOCK_network_fault_real_api', async () => {
     await open()
-    await page.route('**/api/knowledge-graph', route => route.abort('failed'))
+    await page.route(graphUrl, route => route.abort('failed'))
     await button('刷新证据').click()
     await page.locator('.message.error').waitFor()
     assert.match(await page.locator('.map-panel').innerText(), /3 个知识点/)
-    await page.unroute('**/api/knowledge-graph')
+    await page.unroute(graphUrl)
     await button('重新加载').click()
     await page.waitForFunction(() => !document.querySelector('.message.error') && !document.querySelector('.loading'))
     assert.equal((await graphData()).nodes.length, 3)

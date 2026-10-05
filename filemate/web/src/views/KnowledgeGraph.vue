@@ -30,7 +30,7 @@
         <div><dt>尚待评测的知识点</dt><dd>{{ data.profile.unassessed_node_count }} 个</dd></div>
       </dl>
       <div class="profile-body">
-        <h3>当前复习关注点 · {{ data.profile.weaknesses.length }}</h3>
+        <h3>当前复习关注点 · 展示 {{ data.profile.weaknesses.length }} / {{ data.profile.weakness_total ?? data.profile.weaknesses.length }}</h3>
         <p v-if="!data.profile.attempt_count" class="hint">还没有有效作答记录。完成关联练习后，这里会展示有依据的复习关注点。</p>
         <p v-else-if="!data.profile.weaknesses.length" class="hint">当前记录未触发复习提醒。继续练习验证；这不代表所有知识点均已掌握。</p>
         <ul v-else class="weakness-list">
@@ -47,18 +47,20 @@
 
     <div class="graph-layout">
       <section class="map-panel" aria-labelledby="map-title" :aria-busy="loading">
-        <div class="panel-heading"><div><h2 id="map-title">知识地图</h2><p>{{ data.nodes.length }} 个知识点 · {{ data.edges.length }} 条已确认关系</p></div><span class="privacy-label">当前学习空间</span></div>
+        <div class="panel-heading"><div><h2 id="map-title">知识地图</h2><p>{{ data.profile.node_count }} 个知识点 · {{ data.edge_total ?? data.edges.length }} 条已确认关系</p></div><span class="privacy-label">当前学习空间</span></div>
         <div class="map-tools">
-          <label class="search"><el-icon><Search /></el-icon><input v-model="search" type="search" placeholder="查找知识点或资料" aria-label="查找知识点或资料" /></label>
-          <div class="view-switch" aria-label="显示方式"><button :aria-pressed="view === 'graph'" @click="view = 'graph'">图谱</button><button :aria-pressed="view === 'list'" @click="view = 'list'">列表</button></div>
+          <label class="search"><el-icon><Search /></el-icon><input v-model="search" maxlength="160" @keyup.enter="offset = 0; load()" type="search" placeholder="查找知识点或资料" aria-label="查找知识点或资料" /></label>
+          <button :disabled="loading" @click="offset = 0; load()">搜索全部</button><div class="view-switch" aria-label="显示方式"><button :aria-pressed="view === 'graph'" @click="view = 'graph'">图谱</button><button :aria-pressed="view === 'list'" @click="view = 'list'">列表</button></div>
         </div>
-        <div v-if="!data.nodes.length && !loading" class="empty"><el-icon><Share /></el-icon><h3>知识地图，从你的资料长出来</h3><p>选择上方资料，提取并确认第一组知识点。尚无练习记录的知识点会显示“待评测”。</p></div>
-        <div v-else-if="!filteredNodes.length && !loading" class="empty"><h3>没有找到匹配的知识点</h3><button @click="search = ''">清除搜索</button></div>
+        <div v-if="!data.profile.node_count && !loading" class="empty"><el-icon><Share /></el-icon><h3>知识地图，从你的资料长出来</h3><p>选择上方资料，提取并确认第一组知识点。尚无练习记录的知识点会显示“待评测”。</p></div>
+        <div v-else-if="!filteredNodes.length && !loading" class="empty"><h3>没有找到匹配的知识点</h3><button @click="search = ''; offset = 0; load()">清除搜索</button></div>
         <div v-show="view === 'graph' && filteredNodes.length" class="chart-wrap">
           <div ref="chartElement" class="chart" role="img" aria-label="可缩放和拖动的知识关系图；请使用列表视图以键盘查看每个知识点" />
           <div class="chart-controls"><button aria-label="放大图谱" @click="zoom(1.25)"><el-icon><Plus /></el-icon></button><button aria-label="缩小图谱" @click="zoom(0.8)"><el-icon><Minus /></el-icon></button><button @click="resetChart">重置视图</button></div>
           <p class="map-caption">滚轮缩放 · 拖动节点 · 点击查看证据。箭头方向对应下方关系说明。</p>
         </div>
+        <nav v-if="data.pagination?.total" class="map-tools" aria-label="知识点分页"><span>第 {{ Math.floor(offset / 200) + 1 }} / {{ Math.ceil(data.pagination.total / 200) }} 页 · 匹配 {{ data.pagination.total }} 个</span><button :disabled="loading || offset === 0" @click="offset -= 200; load()">上一页</button><button :disabled="loading || !data.pagination.has_more" @click="offset += 200; load()">下一页</button></nav>
+        <p v-if="filteredNodes.length > 100" class="hint">当前地图展示本页前100个节点；列表显示本页全部，搜索与翻页可访问全部知识点。</p>
         <ul v-if="view === 'list' && filteredNodes.length" class="node-list" aria-label="知识点列表">
           <li v-for="node in filteredNodes" :key="node.id"><button :aria-pressed="selectedId === node.id" @click="selectNode(node.id)"><span><strong>{{ node.label }}</strong><small>{{ node.source_name || sourceName(node.source_id) }}</small></span><span class="status" :class="statusClass(node)">{{ node.metrics.status }}</span></button></li>
         </ul>
@@ -85,13 +87,14 @@
       <div class="panel-heading"><div><h2 id="history-title">提取草稿与历史</h2><p>确认后才进入知识地图；撤销只移除这一批图谱内容，保留原资料与练习。</p></div></div>
       <p v-if="!data.batches.length" class="hint">还没有提取记录。</p>
       <details v-for="batch in data.batches" :key="batch.batch_id" :open="batch.batch_id === expandedBatch" class="batch">
-        <summary><span><strong>{{ sourceName(batch.source_id) }}</strong><small>{{ batch.mode === 'llm' ? '模型辅助' : '本地规则' }} · {{ formatDate(batch.created_at) }}</small></span><span class="status">{{ batchStatus[batch.status] }}{{ batch.stale ? ' · 来源已变更' : '' }}</span></summary>
-        <div class="batch-content"><p v-if="batch.stale" class="warning">资料内容已变化，请重新提取；旧草稿不能直接确认或恢复。</p><p v-if="batch.error_code" class="error" role="alert">{{ batch.data_error ? '此批数据异常，已暂停进入图谱，请重新提取。' : '提取未成功。请重新选择资料提取，原有图谱已保留。' }}</p>
+        <summary @click.prevent="toggleBatch(batch)"><span><strong>{{ sourceName(batch.source_id) }}</strong><small>{{ batch.mode === 'llm' ? '模型辅助' : '本地规则' }} · {{ formatDate(batch.created_at) }}</small></span><span class="status">{{ batchStatus[batch.status] }}{{ batch.stale ? ' · 来源已变更' : '' }}</span></summary>
+        <div v-if="batch.batch_id === expandedBatch && batch.payload_loaded !== false" class="batch-content"><p v-if="batch.stale" class="warning">资料内容已变化，请重新提取；旧草稿不能直接确认或恢复。</p><p v-if="batch.error_code" class="error" role="alert">{{ batch.data_error ? '此批数据异常，已暂停进入图谱，请重新提取。' : '提取未成功。请重新选择资料提取，原有图谱已保留。' }}</p>
           <h3>知识点预览 · {{ batch.payload.nodes.length }}</h3><ul class="draft-nodes"><li v-for="node in batch.payload.nodes" :key="node.id"><strong>{{ node.label }}</strong><blockquote>{{ node.excerpt }}</blockquote><small v-if="node.page_number">第 {{ node.page_number }} 页</small></li></ul>
           <h3>关系预览 · {{ batch.payload.edges.length }}</h3><ul class="draft-edges"><li v-for="(edge, index) in batch.payload.edges" :key="index"><p>{{ draftLabel(batch, edge.from) }} → {{ draftLabel(batch, edge.to) }} <strong>{{ relationLabel(edge.relation) }}</strong></p><q>{{ edge.excerpt }}</q></li></ul><p v-if="!batch.payload.edges.length" class="hint">没有提取到有原文依据的关系。</p>
           <div class="batch-actions"><button v-if="batch.status === 'draft'" class="primary" :disabled="!!busy || batch.stale || batch.data_error || !batch.payload.nodes.length" @click="updateBatch(batch, 'confirm')">确认加入图谱</button><button v-if="batch.status === 'confirmed' || batch.status === 'draft'" :disabled="!!busy" @click="updateBatch(batch, 'undo')">{{ batch.status === 'draft' ? '撤销草稿' : '撤销此批图谱' }}</button><button v-if="batch.status === 'undone'" :disabled="!!busy || batch.stale || batch.data_error" @click="updateBatch(batch, 'restore')">恢复此批图谱</button><span v-if="busy === batch.batch_id" role="status">正在保存…</span></div>
         </div>
       </details>
+      <nav v-if="data.pagination && data.pagination.batch_total > 20" class="map-tools" aria-label="图谱历史分页"><span>{{ batchOffset + 1 }}—{{ Math.min(batchOffset + 20, data.pagination.batch_total) }} / {{ data.pagination.batch_total }} 批</span><button :disabled="loading || batchOffset === 0" @click="batchOffset -= 20; expandedBatch = ''; load()">上一批记录</button><button :disabled="loading || batchOffset + 20 >= data.pagination.batch_total" @click="batchOffset += 20; expandedBatch = ''; load()">下一批记录</button></nav>
       <div v-if="data.plans.length" class="plan-history">
         <h3>已确认的学习路径</h3>
         <div v-for="saved in data.plans" :key="saved.plan_id" class="plan-history-row">
@@ -115,7 +118,7 @@ import { init, use, type EChartsType } from 'echarts/core'
 import { GraphChart } from 'echarts/charts'
 import { TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
-import { changeGraphBatch, changeGraphPlan, confirmGraphPlan, createGraphDraft, getKnowledgeGraph, getKnowledgeSources, previewGraphPlan, type KnowledgeSource } from '../services/api'
+import { getGraphNodeDetail, getGraphBatchDetail, changeGraphBatch, changeGraphPlan, confirmGraphPlan, createGraphDraft, getKnowledgeGraph, getKnowledgeSources, previewGraphPlan, type KnowledgeSource } from '../services/api'
 import type { GraphBatch, GraphNode, GraphPlanPreview, GraphPlanResult, KnowledgeGraphData } from '../types/knowledgeGraph'
 
 use([GraphChart, TooltipComponent, CanvasRenderer])
@@ -124,23 +127,24 @@ const data = shallowRef<KnowledgeGraphData>({ nodes: [], edges: [], batches: [],
 const sources = shallowRef<KnowledgeSource[]>([])
 const sourceId = ref(''), mode = ref<'local' | 'llm'>('local'), externalConsent = ref(false)
 const loading = ref(false), busy = ref(''), error = ref(''), notice = ref('')
+const offset = ref(0), batchOffset = ref(0), selectedDetail = shallowRef<GraphNode | null>(null)
 const search = ref(''), view = ref<'graph' | 'list'>('graph'), selectedId = ref(''), expandedBatch = ref('')
 const planPreview = shallowRef<GraphPlanPreview | null>(null), createdPlan = shallowRef<GraphPlanResult | null>(null), planUndone = ref(false)
 const chartElement = ref<HTMLDivElement | null>(null)
 let chart: EChartsType | undefined, resizeObserver: ResizeObserver | undefined, disposed = false
 let loadGeneration = 0
 const batchStatus = { draft: '待确认', confirmed: '已确认', undone: '已撤销', failed: '提取失败' }
-const selectedNode = computed(() => data.value.nodes.find(node => node.id === selectedId.value))
-const filteredNodes = computed(() => {
-  const query = search.value.trim().toLocaleLowerCase()
-  return data.value.nodes.filter(node => !query || `${node.label} ${node.source_name || sourceName(node.source_id)}`.toLocaleLowerCase().includes(query))
-})
+const nodesById = computed(() => new Map(data.value.nodes.map(node => [node.id, node])))
+const sourceNames = computed(() => new Map(sources.value.map(source => [source.source_id, source.original_name])))
+const selectedNode = computed(() => nodesById.value.get(selectedId.value) || (selectedDetail.value?.id === selectedId.value ? selectedDetail.value : undefined))
+const filteredNodes = computed(() => data.value.nodes)
+const chartNodes = computed(() => filteredNodes.value.slice(0, 100))
 const filteredEdges = computed(() => {
   const ids = new Set(filteredNodes.value.map(node => node.id))
   return data.value.edges.filter(edge => ids.has(edge.from) && ids.has(edge.to))
 })
-function sourceName(id: string): string { return sources.value.find(source => source.source_id === id)?.original_name || '原资料不可用' }
-function nodeLabel(id: string): string { return data.value.nodes.find(node => node.id === id)?.label || id }
+function sourceName(id: string): string { return sourceNames.value.get(id) || '原资料不可用' }
+function nodeLabel(id: string): string { return nodesById.value.get(id)?.label || id }
 function draftLabel(batch: GraphBatch, id: string): string { return batch.payload.nodes.find(node => node.id === id)?.label || id }
 function relationLabel(relation: string): string { return data.value.relations[relation] || relation }
 function formatDate(value: string | null): string { return value ? new Date(value).toLocaleString('zh-CN') : '暂无记录' }
@@ -148,7 +152,26 @@ function percent(value: number | null): string { return value === null ? '待评
 function statusClass(node: GraphNode): string { return node.wrong_ids.length || ['高频错误', '长期遗忘风险'].includes(node.metrics.status) ? 'needs-review' : node.metrics.sample_count > 0 ? 'has-evidence' : '' }
 function eventLabel(action: string): string { return ({ extract: '生成提取草稿', extract_failed: '提取失败', confirm: '确认加入图谱', undo: '撤销图谱批次', restore: '恢复图谱批次', plan_create: '创建学习计划', plan_undo: '撤销学习计划', plan_restore: '恢复学习计划' } as Record<string, string>)[action] || action }
 function message(cause: unknown): string { return cause instanceof Error ? cause.message : '请求失败，请重试' }
-function selectNode(id: string): void { selectedId.value = id; planPreview.value = null }
+let detailGeneration = 0
+async function selectNode(id: string): Promise<void> {
+  const current = ++detailGeneration
+  selectedId.value = id; selectedDetail.value = null; planPreview.value = null
+  if (nodesById.value.has(id)) return
+  try { const node = await getGraphNodeDetail(id); if (!disposed && current === detailGeneration) selectedDetail.value = node }
+  catch (cause) { if (!disposed && current === detailGeneration) error.value = message(cause) }
+}
+async function toggleBatch(batch: GraphBatch): Promise<void> {
+  if (expandedBatch.value === batch.batch_id) { expandedBatch.value = ''; return }
+  expandedBatch.value = batch.batch_id
+  await loadBatchDetail(batch)
+}
+async function loadBatchDetail(batch: GraphBatch): Promise<void> {
+  if (batch.payload_loaded !== false) return
+  try {
+    const detail = await getGraphBatchDetail(batch.batch_id)
+    if (!disposed) data.value = { ...data.value, batches: data.value.batches.map(item => item.batch_id === detail.batch_id ? detail : item) }
+  } catch (cause) { if (!disposed) error.value = message(cause) }
+}
 function recommendation(node: GraphNode): string {
   if (node.wrong_ids.length > 0) return `有 ${node.wrong_ids.length} 道待复习错题，建议先回到原文核对概念，再完成错题复练。`
   if (!node.metrics.sample_count) return '尚无作答证据。先阅读资料、完成关联练习，再判断需要补强的知识点。'
@@ -160,13 +183,14 @@ async function load(): Promise<void> {
   planPreview.value = null
   loading.value = true; error.value = ''
   try {
-    const results = await Promise.allSettled([getKnowledgeGraph(), getKnowledgeSources(200)])
+    const results = await Promise.allSettled([getKnowledgeGraph({ offset: offset.value, q: search.value, batch_offset: batchOffset.value }), getKnowledgeSources(200)])
     if (disposed || generation !== loadGeneration) return
     const [graph, sourceList] = results
     if (graph.status === 'fulfilled') {
       data.value = graph.value
-      if (!selectedId.value && typeof route.query.node === 'string' && data.value.nodes.some(node => node.id === route.query.node)) selectedId.value = route.query.node
-      if (!data.value.nodes.some(node => node.id === selectedId.value)) selectedId.value = ''
+      if (!selectedId.value && typeof route.query.node === 'string') void selectNode(route.query.node)
+      const opened = data.value.batches.find(batch => batch.batch_id === expandedBatch.value)
+      if (opened) await loadBatchDetail(opened)
     }
     if (sourceList.status === 'fulfilled') sources.value = sourceList.value
     const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
@@ -186,7 +210,7 @@ async function extract(): Promise<void> {
   finally { busy.value = '' }
 }
 async function refreshAfterFailure(): Promise<void> {
-  try { const latest = await getKnowledgeGraph(); if (!disposed) data.value = latest } catch { /* 保留原始错误与可重试草稿。 */ }
+  try { const latest = await getKnowledgeGraph({ offset: offset.value, q: search.value, batch_offset: batchOffset.value }); if (!disposed) data.value = latest } catch { /* 保留原始错误与可重试草稿。 */ }
 }
 async function updateBatch(batch: GraphBatch, action: 'confirm' | 'undo' | 'restore'): Promise<void> {
   if (busy.value) return
@@ -253,15 +277,15 @@ function renderChart(): void {
     animation: !reducedMotion,
     tooltip: { renderMode: 'richText', confine: true },
     series: [{
-      type: 'graph', layout: 'force', roam: true, draggable: true, scaleLimit: { min: 0.3, max: 3 },
+      type: 'graph', layout: chartNodes.value.length > 60 ? 'circular' : 'force', roam: true, draggable: true, scaleLimit: { min: 0.3, max: 3 },
       force: { repulsion: 240, edgeLength: [100, 150], gravity: 0.06, layoutAnimation: !reducedMotion },
       edgeSymbol: ['none', 'arrow'], edgeSymbolSize: 7,
-      label: { show: true, position: 'bottom', fontSize: 12, color: '#183229', width: 100, overflow: 'truncate' },
-      edgeLabel: { show: true, fontSize: 10, color: '#4D655B', formatter: '{c}' },
+      label: { show: true, position: 'bottom', fontSize: 14, color: '#193767', width: 100, overflow: 'truncate' },
+      edgeLabel: { show: chartNodes.value.length <= 30, fontSize: 13, color: '#526581', formatter: '{c}' },
       lineStyle: { color: '#6D8077', curveness: 0.08, opacity: 0.7 },
       emphasis: { focus: 'adjacency', lineStyle: { width: 3 } },
-      data: filteredNodes.value.map(node => ({ id: node.id, name: node.label, value: `${node.metrics.status} · ${node.metrics.confidence}`, symbolSize: selectedId.value === node.id ? 34 : 26, itemStyle: { color: statusClass(node) === 'needs-review' ? '#9A651D' : node.metrics.sample_count ? '#2F7D55' : '#6D8077', borderColor: '#FFFFFF', borderWidth: 3 } })),
-      links: filteredEdges.value.map(edge => ({ source: edge.from, target: edge.to, value: relationLabel(edge.relation) }))
+      data: chartNodes.value.map(node => ({ id: node.id, name: node.label, value: `${node.metrics.status} · ${node.metrics.confidence}`, symbolSize: selectedId.value === node.id ? 34 : 26, itemStyle: { color: statusClass(node) === 'needs-review' ? '#9A651D' : node.metrics.sample_count ? '#245DDB' : '#6B8AC1', borderColor: '#FFFFFF', borderWidth: 3 } })),
+      links: filteredEdges.value.filter(edge => chartNodes.value.some(node => node.id === edge.from) && chartNodes.value.some(node => node.id === edge.to)).map(edge => ({ source: edge.from, target: edge.to, value: relationLabel(edge.relation) }))
     }]
   }, { notMerge: true })
   chart.resize()
@@ -273,11 +297,13 @@ function zoom(factor: number): void {
   chart.setOption({ series: [{ zoom: Math.min(3, Math.max(0.3, current * factor)) }] })
 }
 function resetChart(): void { renderChart() }
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+watch(search, () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { offset.value = 0; void load() }, 300) })
 watch([filteredNodes, view], async () => { await nextTick(); renderChart() })
 watch(mode, () => { externalConsent.value = false })
 watch(sourceId, () => { externalConsent.value = false })
 onMounted(load)
-onUnmounted(() => { disposed = true; resizeObserver?.disconnect(); chart?.dispose() })
+onUnmounted(() => { disposed = true; loadGeneration++; detailGeneration++; clearTimeout(searchTimer); resizeObserver?.disconnect(); chart?.dispose() })
 </script>
 
 <style scoped>

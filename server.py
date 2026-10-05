@@ -1412,12 +1412,36 @@ def _require_graph_enabled() -> None:
 
 
 @app.get("/api/knowledge-graph", response_model=ApiResponse)
-def knowledge_graph():
+def knowledge_graph(limit: int = Query(200, ge=1, le=200), offset: int = Query(0, ge=0, le=1000000),
+                    q: str = Query("", max_length=160), batch_offset: int = Query(0, ge=0, le=1000000)):
+    from filemate.study.graph_projection import graph_page
     from filemate.study.knowledge_graph import build_graph
 
     _require_graph_enabled()
-    with _storage._write_lock:
-        return ApiResponse(success=True, data=build_graph(_storage))
+    with _storage.read_snapshot() as snapshot:
+        return ApiResponse(success=True, data=graph_page(build_graph(snapshot), limit=limit,
+                           offset=offset, q=q, batch_offset=batch_offset))
+
+
+@app.get("/api/knowledge-graph/nodes/{node_id}", response_model=ApiResponse)
+def graph_node_detail(node_id: str):
+    from filemate.study.knowledge_graph import build_graph
+
+    _require_graph_enabled()
+    with _storage.read_snapshot() as snapshot:
+        node = next((item for item in build_graph(snapshot)["nodes"] if item["id"] == node_id), None)
+    if node is None:
+        raise HTTPException(status_code=404, detail="知识点不存在或来源已变化")
+    return ApiResponse(success=True, data=node)
+
+
+@app.get("/api/knowledge-graph/batches/{batch_id}", response_model=ApiResponse)
+def graph_batch_detail(batch_id: str):
+    _require_graph_enabled()
+    batch = _storage.get_graph_batch(batch_id)
+    if batch is None:
+        raise HTTPException(status_code=404, detail="图谱批次不存在")
+    return ApiResponse(success=True, data={**batch, "payload_loaded": True})
 
 
 @app.post("/api/knowledge-graph/drafts", response_model=ApiResponse)

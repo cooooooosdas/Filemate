@@ -28,6 +28,9 @@ export interface GraphNode extends GraphNodeDraft {
 
 export interface GraphEdge { from: string; to: string; relation: string; excerpt: string }
 export interface GraphBatch {
+  payload_loaded?: boolean
+  node_count?: number
+  edge_count?: number
   batch_id: string
   source_id: string
   status: 'draft' | 'confirmed' | 'undone' | 'failed'
@@ -40,6 +43,8 @@ export interface GraphBatch {
   payload: { nodes: GraphNodeDraft[]; edges: GraphEdge[] }
 }
 export interface KnowledgeGraphData {
+  pagination?: { total: number; offset: number; limit: number; has_more: boolean; batch_total: number; batch_offset: number }
+  edge_total?: number
   nodes: GraphNode[]
   edges: GraphEdge[]
   batches: GraphBatch[]
@@ -55,6 +60,7 @@ export interface KnowledgeGraphData {
     excluded_sample_count: number
     study_time: null
     status_counts: Record<string, number>
+    weakness_total?: number
     weaknesses: {
       node_id: string; label: string; source_id: string; reasons: string[]
       prerequisites: { node_id: string; label: string; relation: string; excerpt: string }[]
