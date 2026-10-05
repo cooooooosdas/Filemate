@@ -1,0 +1,169 @@
+{
+  "full_default_checks": {
+    "commit": "2d8695d",
+    "backend_passed": 929,
+    "backend_skipped": 20,
+    "backend_deselected": 5,
+    "frontend_passed": 40,
+    "ruff_types_build_bundle": "PASS"
+  },
+  "last_fix_targeted": {
+    "commit": "19d9a33",
+    "passed": 88
+  },
+  "integrated_initial": {
+    "cases": [
+      {
+        "name": "browser_smoke",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 41.47,
+        "evidence": "_working\\p1-final-20261006\\integrated\\browser_smoke"
+      },
+      {
+        "name": "digital_human",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 165.78,
+        "evidence": "_working\\p1-final-20261006\\integrated\\digital_human"
+      },
+      {
+        "name": "knowledge_graph",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 22.59,
+        "evidence": "_working\\p1-final-20261006\\integrated\\knowledge_graph"
+      },
+      {
+        "name": "evidence_profile",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 9.98,
+        "evidence": "_working\\p1-final-20261006\\integrated\\evidence_profile"
+      },
+      {
+        "name": "programming",
+        "passed": false,
+        "exit_code": 1,
+        "elapsed_seconds": 25.55,
+        "evidence": "_working\\p1-final-20261006\\integrated\\programming"
+      },
+      {
+        "name": "interview_review",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 29.0,
+        "evidence": "_working\\p1-final-20261006\\integrated\\interview_review"
+      },
+      {
+        "name": "career",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 31.56,
+        "evidence": "_working\\p1-final-20261006\\integrated\\career"
+      },
+      {
+        "name": "career_state",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 10.5,
+        "evidence": "_working\\p1-final-20261006\\integrated\\career_state"
+      },
+      {
+        "name": "career_growth",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 6.88,
+        "evidence": "_working\\p1-final-20261006\\integrated\\career_growth"
+      },
+      {
+        "name": "career_planning",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 19.47,
+        "evidence": "_working\\p1-final-20261006\\integrated\\career_planning"
+      },
+      {
+        "name": "career_production",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 10.67,
+        "evidence": "_working\\p1-final-20261006\\integrated\\career_production"
+      },
+      {
+        "name": "career_planning_production",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 18.49,
+        "evidence": "_working\\p1-final-20261006\\integrated\\career_planning_production"
+      },
+      {
+        "name": "interview_vision_production",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 6.58,
+        "evidence": "_working\\p1-final-20261006\\integrated\\interview_vision_production"
+      },
+      {
+        "name": "digital_human_disabled",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 3.44,
+        "evidence": "_working\\p1-final-20261006\\integrated\\digital_human_disabled"
+      },
+      {
+        "name": "knowledge_graph_disabled",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 3.78,
+        "evidence": "_working\\p1-final-20261006\\integrated\\knowledge_graph_disabled"
+      },
+      {
+        "name": "programming_disabled",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 3.3,
+        "evidence": "_working\\p1-final-20261006\\integrated\\programming_disabled"
+      },
+      {
+        "name": "interview_review_disabled",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 3.58,
+        "evidence": "_working\\p1-final-20261006\\integrated\\interview_review_disabled"
+      },
+      {
+        "name": "career_disabled",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 4.11,
+        "evidence": "_working\\p1-final-20261006\\integrated\\career_disabled"
+      },
+      {
+        "name": "frontend_production",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 9.42,
+        "evidence": "_working\\p1-final-20261006\\integrated\\frontend_production"
+      }
+    ],
+    "passed": false
+  },
+  "integrated_programming_rerun": {
+    "cases": [
+      {
+        "name": "programming",
+        "passed": true,
+        "exit_code": 0,
+        "elapsed_seconds": 25.5,
+        "evidence": "_working\\p1-final-20261006\\integrated-programming-v2\\programming"
+      }
+    ],
+    "passed": true
+  },
+  "final_case_count": 19,
+  "native_windows_cases": 49,
+  "sample_kind": "original_synthetic_engineering_regression",
+  "real_student_count": 0,
+  "production_deployment": "pending_separate_release_receipt"
+}

@@ -1,0 +1,205 @@
+{
+  "final_capacity": [
+    {
+      "size": 100,
+      "api_samples": [
+        {
+          "ms": 9.3,
+          "bytes": 98597,
+          "returned_nodes": 100
+        },
+        {
+          "ms": 5.69,
+          "bytes": 98597,
+          "returned_nodes": 100
+        },
+        {
+          "ms": 6.62,
+          "bytes": 98597,
+          "returned_nodes": 100
+        }
+      ],
+      "concurrent_ms": [
+        20.77,
+        38.45,
+        36.28,
+        37.49
+      ],
+      "reachable_nodes": 100,
+      "browser": {
+        "size": 100,
+        "errors": [],
+        "sample_kind": "synthetic_actual_api",
+        "passed": true,
+        "graph_ready_ms": 394,
+        "long_tasks": {
+          "maximum_ms": 77,
+          "count": 1
+        }
+      },
+      "passed": true
+    },
+    {
+      "size": 1000,
+      "api_samples": [
+        {
+          "ms": 39.48,
+          "bytes": 198785,
+          "returned_nodes": 200
+        },
+        {
+          "ms": 33.95,
+          "bytes": 198785,
+          "returned_nodes": 200
+        },
+        {
+          "ms": 36.91,
+          "bytes": 198785,
+          "returned_nodes": 200
+        }
+      ],
+      "concurrent_ms": [
+        418.64,
+        439.06,
+        437.92,
+        437.44
+      ],
+      "reachable_nodes": 1000,
+      "browser": {
+        "size": 1000,
+        "errors": [],
+        "sample_kind": "synthetic_actual_api",
+        "passed": true,
+        "graph_ready_ms": 1018,
+        "long_tasks": {
+          "maximum_ms": 58,
+          "count": 1
+        }
+      },
+      "passed": true
+    },
+    {
+      "size": 10000,
+      "api_samples": [
+        {
+          "ms": 1134.58,
+          "bytes": 220261,
+          "returned_nodes": 200
+        },
+        {
+          "ms": 970.25,
+          "bytes": 220261,
+          "returned_nodes": 200
+        },
+        {
+          "ms": 865.15,
+          "bytes": 220261,
+          "returned_nodes": 200
+        }
+      ],
+      "timing_scope": "persistent_HTTP_clients_excludes_client_TLS_context_construction",
+      "concurrent_ms": [
+        878.45,
+        1917.83,
+        2735.9,
+        3631.63
+      ],
+      "reachable_nodes": 10000,
+      "browser": {
+        "size": 10000,
+        "errors": [],
+        "sample_kind": "synthetic_actual_api",
+        "passed": true,
+        "graph_ready_ms": 1765,
+        "long_tasks": {
+          "maximum_ms": 94,
+          "count": 3
+        }
+      },
+      "passed": true
+    }
+  ],
+  "failed_initial_10000": {
+    "size": 10000,
+    "api_samples": [
+      {
+        "ms": 571.07,
+        "bytes": 220261,
+        "returned_nodes": 200
+      },
+      {
+        "ms": 576.21,
+        "bytes": 220261,
+        "returned_nodes": 200
+      },
+      {
+        "ms": 572.38,
+        "bytes": 220261,
+        "returned_nodes": 200
+      }
+    ],
+    "concurrent_ms": [
+      8304.25,
+      9534.59,
+      8913.76,
+      10160.85
+    ]
+  },
+  "failed_isolated_10000": [
+    {
+      "size": 10000,
+      "api_samples": [
+        {
+          "ms": 531.36,
+          "bytes": 220261,
+          "returned_nodes": 200
+        },
+        {
+          "ms": 545.27,
+          "bytes": 220261,
+          "returned_nodes": 200
+        },
+        {
+          "ms": 542.13,
+          "bytes": 220261,
+          "returned_nodes": 200
+        }
+      ],
+      "concurrent_ms": [
+        8309.85,
+        6932.21,
+        8887.65,
+        7689.74
+      ]
+    }
+  ],
+  "failed_gated_cold_client_10000": [
+    {
+      "size": 10000,
+      "api_samples": [
+        {
+          "ms": 535.36,
+          "bytes": 220261,
+          "returned_nodes": 200
+        },
+        {
+          "ms": 607.86,
+          "bytes": 220261,
+          "returned_nodes": 200
+        },
+        {
+          "ms": 610.88,
+          "bytes": 220261,
+          "returned_nodes": 200
+        }
+      ],
+      "concurrent_ms": [
+        7480.55,
+        14369.17,
+        11057.4,
+        3673.16
+      ]
+    }
+  ],
+  "notice": "冷客户端原结果保留；最终并发计时使用提前创建的4个独立HTTP客户端，排除客户端TLS上下文初始化，不放宽5秒请求门禁。"
+}

@@ -1,0 +1,128 @@
+{
+  "sample_kind": "original_synthetic_single_registered_account_actual_UI_API_SQLite_native_compiler_real_DeepSeek",
+  "passed": false,
+  "checks": [
+    {
+      "name": "01 注册与保存恢复码",
+      "status": "PASS",
+      "elapsed_ms": 2361
+    },
+    {
+      "name": "02 退出与原密码重新登录",
+      "status": "PASS",
+      "elapsed_ms": 2073
+    },
+    {
+      "name": "03 上传课程并读取真实解析正文",
+      "status": "PASS",
+      "elapsed_ms": 401
+    },
+    {
+      "name": "04 图谱预览确认与画像真实证据",
+      "status": "PASS",
+      "elapsed_ms": 784
+    },
+    {
+      "name": "05 设置目标与学习Agent任务",
+      "status": "PASS",
+      "elapsed_ms": 540
+    },
+    {
+      "name": "06 生成学习计划并完成实际任务",
+      "status": "PASS",
+      "elapsed_ms": 1508
+    },
+    {
+      "name": "07 真实模型生成可判题练习",
+      "status": "PASS",
+      "elapsed_ms": 3429
+    },
+    {
+      "name": "08 编程题真实编译产生错题及AC",
+      "status": "PASS",
+      "elapsed_ms": 6832
+    },
+    {
+      "name": "09 AI编程教练真实模型复盘",
+      "status": "PASS",
+      "elapsed_ms": 2095
+    },
+    {
+      "name": "10 课程错题与间隔复练",
+      "status": "PASS",
+      "elapsed_ms": 521
+    },
+    {
+      "name": "11 真实检索问答与引用",
+      "status": "PASS",
+      "elapsed_ms": 2433
+    },
+    {
+      "name": "真实TTS设备分支",
+      "status": "CONDITIONAL",
+      "device_status": "started"
+    },
+    {
+      "name": "12 数字人讲解与浏览器真实语音尝试",
+      "status": "PASS",
+      "elapsed_ms": 33707
+    },
+    {
+      "name": "13 面试回答持久化",
+      "status": "PASS",
+      "elapsed_ms": 1124
+    },
+    {
+      "name": "14 真实模型面试分析与有原句依据的报告",
+      "status": "PASS",
+      "elapsed_ms": 3959
+    },
+    {
+      "name": "15 保存目标岗位与企业匹配证据",
+      "status": "PASS",
+      "elapsed_ms": 302
+    },
+    {
+      "name": "16 企业模拟笔试与真实批改",
+      "status": "PASS",
+      "elapsed_ms": 1086
+    },
+    {
+      "name": "17 个人事实与真实AI简历选材",
+      "status": "PASS",
+      "elapsed_ms": 2104
+    },
+    {
+      "name": "18 技能树使用同一账户真实判题证据",
+      "status": "PASS",
+      "elapsed_ms": 481
+    },
+    {
+      "name": "19 学期模式与实际完成时间",
+      "status": "PASS",
+      "elapsed_ms": 965
+    },
+    {
+      "name": "20 成长报告包含实际作答判题面试和学期依据",
+      "status": "PASS",
+      "elapsed_ms": 594
+    },
+    {
+      "name": "21 全部个人数据导出及部分资料确认删除",
+      "status": "PASS",
+      "elapsed_ms": 831
+    },
+    {
+      "name": "22 网页自助恢复后历史资料及全部关键记录可读",
+      "status": "PASS",
+      "elapsed_ms": 995
+    }
+  ],
+  "errors": [],
+  "limitations": [
+    "此Edge自动化环境真实TTS未完成；已验证明确失败/停止和文字保留，不能作为可听语音验收。"
+  ],
+  "real_student_data": false,
+  "external_model": true,
+  "critical_text_data_flow_passed": true
+}

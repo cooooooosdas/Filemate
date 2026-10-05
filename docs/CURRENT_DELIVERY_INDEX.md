@@ -1,5 +1,7 @@
 # FileMate 当前交付资源索引
 
+2026-10-06：[七项P1修复与复验](FINAL_PRODUCT_AUDIT_REMEDIATION_2026-10-06.md)。原7项已修复，22步真实模型/编译器/数据链通过；929后端、40前端基础门禁及最后88项定向回归通过，最终19组浏览器与49项原生判题通过。总体CONDITIONAL PASS：实际设备语音尚待验收，真实研究未采集，更新现役alpha不等于18模块完整正式验收。发布版本以站点release.json及最终发布回执为准。
+
 2026-10-05正式发布评估：[FINAL PRODUCT AUDIT REPORT](FINAL_PRODUCT_AUDIT_REPORT_2026-10-05.md)。**总体FAIL，P0未发现、确认7项P1；不建议按18模块完整产品正式发布。** 已有功能的工程门禁和有限公网实测通过，完整同账户流程仍有4项BLOCKED、10000节点图谱和全量错题访问失败。附18模块矩阵、故障/隐私/回滚边界、数据来源、证据摘要及修复次序；本次仅审计，未新增业务功能或部署业务补丁。此发布建议优先于下方历史专项的范围内PASS。
 
 2026-10-05最新面试专项：[内容分析修复与正式发布](INTERVIEW_ANALYSIS_FIX_2026-10-04.md)，运行提交`92bb1313`。处理原句重写、换行与可选关键词误拒，保留严格评分引用核对；Windows861后端、Linux CI 871后端、40前端、4组相关模块、16次候选真实模型、正式网站8类回答及清理共9组、3份请求独立密钥真实调用通过。失败的浏览器初轮及最终完整复测分别保留，资料仅为原创合成内容。
@@ -22,7 +24,7 @@
 
 ## 权威合同与运行
 
-- [README](../README.md)：现役入口、技术栈、环境变量与schema v25。
+- [README](../README.md)：现役入口、技术栈、环境变量与schema v26；旧库按访问迁移。
 - [项目规则](../AGENTS.md)、[分阶段任务合同](AGENT_DEVELOPMENT_EXECUTION_PLAN.md)、[设计系统](../design-system/filemate/MASTER.md)。任务合同中的旧v9基线属于2026-08-27历史，当前版本以migration为准。
 - [公共API合同](../filemate/docs/API_SPEC.md)、[FastAPI入口](../server.py)、[迁移与存储](../filemate/execution/storage.py)、[前端API调用](../filemate/web/src/services/api.ts)。
 - [开发启动](../scripts/dev.ps1)、[全项目门禁](../scripts/verify.ps1)、[持续集成](../.github/workflows/ci.yml)、[网站/桌面部署边界](DEPLOYMENT.md)。
