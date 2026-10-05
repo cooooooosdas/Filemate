@@ -12,7 +12,7 @@
       </div>
     </header>
 
-    <div v-if="loading" class="state" aria-live="polite">正在读取本地可信记录…</div>
+    <div v-if="loading" class="state" aria-live="polite">正在读取可信记录…</div>
     <DataState v-else-if="error" :error="error" @retry="load" />
     <template v-else-if="data">
       <section class="guarantee-strip" aria-label="数据边界">
@@ -21,6 +21,7 @@
         </article>
       </section>
       <PersonalDataPanel v-if="personalDataEnabled" @restored="load" />
+      <PrivacyBoundaryNotice />
       <AccountPrivacyPanel />
 
       <section class="workspace-grid">
@@ -103,6 +104,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import DataState from '../components/DataState.vue'
 import PersonalDataPanel from '../components/PersonalDataPanel.vue'
 import AccountPrivacyPanel from '../components/AccountPrivacyPanel.vue'
+import PrivacyBoundaryNotice from '../components/PrivacyBoundaryNotice.vue'
 const personalDataEnabled = import.meta.env.VITE_ENABLE_PERSONAL_DATA !== 'false'
 import {
   deleteAgentMemory,
@@ -142,8 +144,8 @@ const savingSource = ref('')
 const deletingMemory = ref('')
 const drafts = ref<Record<string, RightsDraft>>({})
 
-const modeTitle = computed(() => data.value?.mode === 'local' ? '隐私模式' : '本地优先 · 增强模式')
-const modeDescription = computed(() => data.value?.mode === 'local' ? '面试评分仅使用本地规则' : '资料本地保存，明确调用时可使用外部模型')
+const modeTitle = computed(() => data.value?.boundaries.storage_location === 'server' ? '网站私有学习空间' : '设备学习空间')
+const modeDescription = computed(() => data.value?.mode === 'local' ? '面试当前使用规则；其他模型操作仍需单独授权' : '资料落点见下方说明，授权后可使用配置的模型服务')
 const formatDate = (value: string) => new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value))
 const fileSuffix = (name: string) => name.includes('.') ? name.split('.').pop()!.slice(0, 4).toUpperCase() : 'DOC'
 const taskMark = (type: string) => ({ interview_session: '问', source_rights: '权', memory_deletion: '删' }[type] || '协')

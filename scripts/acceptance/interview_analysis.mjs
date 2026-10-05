@@ -66,8 +66,8 @@ try {
       const answered = page.waitForResponse(r => r.url() === api + `/interviews/${id}/answers` && r.request().method() === 'POST')
       await button('提交并进入下一题').click()
       assert.equal((await answered).status(), 200)
-      await button('生成本地复盘报告').click()
-      await button('更新本地复盘报告').waitFor()
+      await button('生成规则复盘报告').click()
+      await button('更新规则复盘报告').waitFor()
       const saved = await request(`/interviews/${id}`)
       const turn = saved.turns[0]
       const analyzePath = `/interviews/${id}/turns/${turn.turn_id}/analyze`
@@ -103,15 +103,15 @@ try {
         if (['covered', 'partial'].includes(area.status)) assert.ok(area.evidence.length)
       }
       assert.ok(content.keywords.every(term => answer.includes(term)))
-      await button('生成本地复盘报告').click()
-      await button('更新本地复盘报告').waitFor()
+      await button('生成规则复盘报告').click()
+      await button('更新规则复盘报告').waitFor()
       const report = (await request(`/interviews/${id}/review`)).report
       assert.equal(report.assessed, 1)
       assert.equal(report.turns[0].answer, answer)
       assert.deepEqual((await request(analyzePath, 'post', { external_consent: true })).turns[0].content_analysis, content)
       assert.equal((await stranger.request.get(api + `/interviews/${id}`)).status(), 404)
       await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 })
-      await button('更新本地复盘报告').waitFor()
+      await button('更新规则复盘报告').waitFor()
       assert.equal((await request(`/interviews/${id}/review`)).report.assessed, 1)
       if (name === '换行回答') {
         for (const format of ['PDF', 'JSON', 'Markdown']) {

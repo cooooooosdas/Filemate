@@ -8,7 +8,7 @@
         <label class="search-box"><Search :size="24" aria-hidden="true" /><span class="sr-only">检索知识库</span><input v-model.trim="query" name="knowledge_query" autocomplete="off" placeholder="概念、问题，或一段关键词" @keyup.enter="search" /></label>
         <button :disabled="searching || !query" @click="search">{{ searching ? '检索中…' : '开始检索' }}<ArrowRight :size="21" aria-hidden="true" /></button>
       </div>
-      <div class="search-foot"><p class="privacy"><Lock :size="17" aria-hidden="true" />本机检索 · 原文可回看</p><span v-if="!selectedSource" class="scope-label">范围：全部资料</span><button v-else class="scope-chip" :disabled="searching" @click="selectedSource = ''" :aria-label="`清除检索范围：${scopeName}`">{{ scopeName }}<Close :size="17" aria-hidden="true" /></button></div>
+      <div class="search-foot"><p class="privacy"><Lock :size="17" aria-hidden="true" />私有空间检索 · 原文可回看</p><span v-if="!selectedSource" class="scope-label">范围：全部资料</span><button v-else class="scope-chip" :disabled="searching" @click="selectedSource = ''" :aria-label="`清除检索范围：${scopeName}`">{{ scopeName }}<Close :size="17" aria-hidden="true" /></button></div>
     </MotionSurface>
 
     <nav class="evidence-entries" aria-label="继续学习与查看证据">
@@ -31,7 +31,7 @@
 
     <section class="library">
       <div class="section-head library-heading"><div><h2>我的资料</h2><span>当前载入 {{ sources.length }} 份 · 选择资料继续学习</span></div><label v-if="sources.length" class="library-filter"><Search :size="18" aria-hidden="true" /><span class="sr-only">按资料名筛选</span><input v-model.trim="sourceFilter" placeholder="按资料名筛选" /></label></div>
-      <div v-if="loading" class="empty" aria-live="polite">正在读取本地知识库…</div>
+      <div v-if="loading" class="empty" aria-live="polite">正在读取知识库…</div>
       <DataState v-else-if="error" :error="error" @retry="load" />
       <div v-else-if="sources.length" class="source-grid">
         <article v-for="source in visibleSources" :key="source.source_id" class="source-card" :class="{ expanded: expandedSource === source.source_id }">
@@ -77,7 +77,7 @@
           <div v-else-if="noteSections.length" class="artifact-reading"><section v-for="(section,index) in noteSections" :key="index"><h3>{{ section.title }}</h3><p>{{ section.content }}</p></section></div>
           <p v-else-if="typeof selectedArtifact.content === 'string'" class="artifact-reading plain-reading">{{ selectedArtifact.content }}</p>
           <div v-else class="artifact-handoff"><Reading :size="34" aria-hidden="true" /><h3>到学习工作区继续</h3><p>翻阅知识卡，或逐题练习并保存作答。</p><router-link class="import-link" :to="{path:'/ai-tools',query:{source:selectedArtifact.source_id,artifact:selectedArtifact.artifact_id}}">打开学习内容<ArrowRight :size="20" aria-hidden="true" /></router-link><details><summary>查看保存的内容</summary><pre>{{ formatArtifactContent(selectedArtifact.content) }}</pre></details></div>
-          <footer><span>{{ selectedArtifact.metadata?.read_only_snapshot ? '历史题集只读；原有作答和错题仍可复练' : selectedArtifact.artifact_type === 'questions' ? '修改题目会保留已有作答的只读历史题集' : '修改会保存到本机知识库' }}</span><div><button type="button" @click="exportArtifact">导出</button><button v-if="!editing && !selectedArtifact.metadata?.read_only_snapshot" type="button" @click="editing = true">编辑</button><button v-if="editing" type="button" @click="cancelEdit">取消</button><button v-if="editing" class="primary" type="button" :disabled="saving" @click="saveArtifact">{{ saving ? '保存中…' : '保存修改' }}</button></div></footer>
+          <footer><span>{{ selectedArtifact.metadata?.read_only_snapshot ? '历史题集只读；原有作答和错题仍可复练' : selectedArtifact.artifact_type === 'questions' ? '修改题目会保留已有作答的只读历史题集' : '修改会保存到当前学习空间' }}</span><div><button type="button" @click="exportArtifact">导出</button><button v-if="!editing && !selectedArtifact.metadata?.read_only_snapshot" type="button" @click="editing = true">编辑</button><button v-if="editing" type="button" @click="cancelEdit">取消</button><button v-if="editing" class="primary" type="button" :disabled="saving" @click="saveArtifact">{{ saving ? '保存中…' : '保存修改' }}</button></div></footer>
       </template>
     </el-dialog>
   </div>

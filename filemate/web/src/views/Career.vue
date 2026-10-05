@@ -106,7 +106,7 @@
               <button :disabled="!!busy" @click="closeDraft">取消导入</button>
             </div>
             <p class="muted">
-              本地核对后才保存。自行导入的来源由你声明，平台未验证该企业招聘信息。
+              核对后才保存。自行导入的来源由你声明，平台未验证该企业招聘信息。
             </p>
             <div class="form-grid">
               <label
@@ -303,7 +303,7 @@
             </ul>
             <div class="actions">
               <button :disabled="!!busy || !selected.active" @click="editDraft">
-                修改本地岗位</button
+                修改已存岗位</button
               ><button :disabled="!!busy" @click="transition">
                 {{ selected.active ? "撤销岗位" : "恢复岗位" }}</button
               ><button class="danger" :disabled="!!busy" @click="remove">
@@ -540,7 +540,7 @@
           <section v-if="selected && !draft" class="panel">
             <h2>求职训练记录 · 最近100份中的 {{ trainings.length }} 份</h2>
             <p v-if="!trainings.length" class="muted">
-              创建第一轮模拟笔试或面试，记录会保存在本地。
+              创建第一轮模拟笔试或面试，记录会保存在学习空间。
             </p>
             <button
               v-for="item in trainings"
@@ -963,7 +963,7 @@ async function start(kind: CareerTraining["kind"]) {
     const id = selected.value.position_id,
       revision = selected.value.revision;
     await ElMessageBox.confirm(
-      `按当前岗位版本${revision}创建${kindText(kind)}。题目是平台原创训练，面试默认只在本地记录。`,
+      `按当前岗位版本${revision}创建${kindText(kind)}。题目是平台原创训练，面试默认记录在学习空间。`,
       "确认训练快照",
       { confirmButtonText: "确认创建训练", cancelButtonText: "取消" },
     );

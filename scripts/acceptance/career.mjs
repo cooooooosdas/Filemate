@@ -140,7 +140,7 @@ try {
     await page.getByRole('textbox', { name: '当前训练回答', exact: true }).fill('合成训练：我负责校园查询系统的索引优化，先比较慢查询，再用执行计划检查。调整索引后对照相同输入验证延时与结果。')
     await button('提交并进入下一题').click()
     await page.getByText('第 2 / 5 题', { exact: true }).waitFor()
-    await button('生成本地复盘报告').click()
+    await button('生成规则复盘报告').click()
     await page.getByRole('button', { name: '导出 JSON', exact: true }).waitFor()
     const stored = await data(`/interviews/${interview.interview_id}`)
     assert.equal(stored.turns.length, 1); assert.equal(stored.assessed_turn_count, 0)
@@ -161,7 +161,7 @@ try {
     await page.screenshot({ path: path.join(out, 'comparison-desktop.png') })
   })
   await check('edit preserves old snapshot and stale version returns conflict', 'real_ui_api', async () => {
-    await button('修改本地岗位').click()
+    await button('修改已存岗位').click()
     await page.getByLabel('岗位名称', { exact: true }).fill('用户核对后端训练岗位')
     await button('确认保存岗位修改').click()
     await dialog().getByRole('button', { name: '确认保存', exact: true }).click()

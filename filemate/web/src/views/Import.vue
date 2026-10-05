@@ -3,6 +3,7 @@
     <header class="intake-heading"><div><p class="eyebrow">资料入口</p><h1>放进资料，<span>接着学。</span></h1><p>选择这份资料的下一步，其他操作留在学习中完成。</p></div><router-link to="/knowledge">打开已有资料 <el-icon><ArrowRight /></el-icon></router-link></header>
     <div class="intake-layout">
       <section class="intake-main" aria-label="添加资料">
+        <PrivacyBoundaryNotice @ready="boundaryReady = $event" />
         <div class="purpose-options" aria-label="资料用途">
           <button v-for="option in purposes" :key="option.id" :aria-pressed="intent === option.id" :disabled="hasPending" @click="chooseIntent(option.id)"><el-icon><component :is="option.icon" /></el-icon><span><strong>{{ option.title }}</strong><small>{{ option.description }}</small></span><span class="selection-dot" aria-hidden="true" /></button>
         </div>
@@ -40,6 +41,7 @@ import { ArrowRight, Close, Document, DocumentAdd, FolderOpened, Lock, Plus, Rea
 import { importLearningSource, uploadFile, type KnowledgeSourceDetail } from '../services/api'
 import { useFileStore } from '../stores/fileStore'
 import type { ProcessingSession } from '../types'
+import PrivacyBoundaryNotice from '../components/PrivacyBoundaryNotice.vue'
 
 type Intent = 'study' | 'archive'
 type QueueItem = { id: number; file: File; name: string; size: number; intent: Intent; status: 'pending' | 'uploading' | 'success' | 'error'; error?: string; source?: KnowledgeSourceDetail; session?: ProcessingSession }
@@ -51,9 +53,10 @@ const archiveSteps = [{ title: '添加待整理文件', description: '模型生�
 const currentSteps = computed(() => intent.value === 'study' ? studySteps : archiveSteps)
 const fileInput = ref<HTMLInputElement>(), isDragover = ref(false), isUploading = ref(false), uploadingFileName = ref(''), archiveConsent = ref(false)
 const uploadQueue = ref<QueueItem[]>([])
+const boundaryReady = ref(false)
 watch(intent, () => { archiveConsent.value = false })
 const hasPending = computed(() => isUploading.value || uploadQueue.value.some(item => item.status === 'pending'))
-const canUpload = computed(() => !hasPending.value && (intent.value === 'study' || archiveConsent.value))
+const canUpload = computed(() => boundaryReady.value && !hasPending.value && (intent.value === 'study' || archiveConsent.value))
 const acceptedExtensions = computed(() => '.doc,.docx,.pdf,.ppt,.pptx,.txt' + (intent.value === 'study' ? ',.md,.markdown,.c,.cpp,.h,.hpp,.py,.java,.js,.ts' : ''))
 const failedCount = computed(() => uploadQueue.value.filter(item => item.status === 'error').length)
 const completedCount = computed(() => uploadQueue.value.filter(item => item.status === 'success').length)
@@ -63,7 +66,7 @@ function chooseIntent(value: Intent) { if (!hasPending.value) { archiveConsent.v
 function handleFileSelect(event: Event) { const input = event.target as HTMLInputElement; addToQueue(Array.from(input.files || [])); input.value = '' }
 function handleDrop(event: DragEvent) { isDragover.value = false; addToQueue(Array.from(event.dataTransfer?.files || [])) }
 function addToQueue(files: File[]) {
-  if (!canUpload.value) { ElMessage.info(hasPending.value ? '请等当前资料处理完成。' : '请先确认模型授权。'); return }
+  if (!canUpload.value) { ElMessage.info(!boundaryReady.value ? '请先读取数据保存说明并连接服务。' : hasPending.value ? '请等当前资料处理完成。' : '请先确认模型授权。'); return }
   const allowed = new Set(acceptedExtensions.value.split(','))
   for (const file of files) {
     const extension = `.${file.name.split('.').pop()?.toLowerCase() || ''}`

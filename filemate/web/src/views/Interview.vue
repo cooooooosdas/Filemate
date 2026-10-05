@@ -33,11 +33,11 @@
         <label>训练主题或目标方向<input v-model="form.targetRole" name="target_role" autocomplete="off" placeholder="例如：数据库索引 / Java 后端开发" /></label>
         <label>训练场景<select v-model="form.scenario" name="interview_scenario"><option>知识讲解</option><option>求职面试</option><option>竞赛答辩</option><option>保研复试</option></select></label>
         <label>难度<select v-model="form.difficulty" name="interview_difficulty"><option>入门</option><option>标准</option><option>压力面</option></select></label>
-        <label class="source-field">训练依据（可选）<select v-model="form.sourceId" name="interview_source" @change="focusWrongId = ''; originGoalId = ''"><option value="">不使用资料，按题库训练</option><option v-for="source in knowledgeSources" :key="source.source_id" :value="source.source_id">{{ source.original_name }}</option></select><small>主动选择后才会使用；授权未确认时只用资料名在本地组织问题。</small></label>
+        <label class="source-field">训练依据（可选）<select v-model="form.sourceId" name="interview_source" @change="focusWrongId = ''; originGoalId = ''"><option value="">不使用资料，按题库训练</option><option v-for="source in knowledgeSources" :key="source.source_id" :value="source.source_id">{{ source.original_name }}</option></select><small>主动选择后才会使用；授权未确认时只用资料名按规则组织问题。</small></label>
       </div>
       <p v-if="focusWrongId && form.sourceId" class="focus-note">本轮首题会依据该资料中的一条待纠错练习组织；参考答案不会放进题目。</p>
       <p v-if="form.scenario === '知识讲解'" class="focus-note">讲解会保存为练习记录；当前内容准确性待评估，语音节奏仅作参考。</p>
-      <p v-if="reviewEnabled" class="focus-note">本轮先在本地选题与记录回答。提交后可在复盘区主动授权内容分析；录像和视觉观察不会发给模型。</p>
+      <p v-if="reviewEnabled" class="focus-note">本轮先按规则选题，回答保存到学习空间。提交后可在复盘区主动授权内容分析；录像和视觉观察不会发给模型。</p>
       <label v-else class="legacy-consent"><input v-model="legacyExternalConsent" type="checkbox" />授权已配置模型对问题和回答提供四维参考评分；不发送本地录像。</label>
       <button class="primary" :disabled="loading || !form.targetRole.trim()" @click="begin">{{ loading ? '正在创建…' : '开始模拟面试' }}</button>
       <DataState v-if="error" :error="error" @retry="begin" />
@@ -90,7 +90,7 @@
 
           <div v-if="session.status === 'active'" class="question-block">
             <p>训练问题</p>
-            <span v-if="session.source_context?.source_name" class="source-evidence">依据：{{ session.source_context.source_name }} · {{ session.source_context.focus_wrong_id ? '待纠错练习首题' : session.source_context.mode === 'authorized_excerpt' ? '已授权片段' : '仅本地资料名' }}</span>
+            <span v-if="session.source_context?.source_name" class="source-evidence">依据：{{ session.source_context.source_name }} · {{ session.source_context.focus_wrong_id ? '待纠错练习首题' : session.source_context.mode === 'authorized_excerpt' ? '已授权片段' : '仅资料名' }}</span>
             <span v-if="sourceEvidenceLabel" class="source-evidence source-location-evidence" :class="{ unavailable: session.source_context?.source_evidence?.status === 'unavailable' }">{{ sourceEvidenceLabel }}</span>
             <h2>{{ session.current_question }}</h2>
             <textarea v-model="answer" name="interview_answer" autocomplete="off" aria-label="当前训练回答" rows="7" maxlength="12000" :disabled="loading" :placeholder="session.scenario === '知识讲解' ? '先解释概念，再说明推理过程和一个例子…' : '建议用“情境—任务—行动—结果”结构回答…'"></textarea>
@@ -132,7 +132,7 @@
       />
 
       <section v-if="session.latest_evaluation" class="evaluation">
-        <div class="evaluation-head"><div><p class="eyebrow">{{ session.latest_evaluation.scoring_mode === 'llm' ? '模型评估 · 仅供训练参考' : '本地练习 · 内容待评估' }}</p><h2>{{ session.latest_evaluation.feedback }}</h2></div><strong>{{ displayScore(session.latest_evaluation.score) }}</strong></div>
+        <div class="evaluation-head"><div><p class="eyebrow">{{ session.latest_evaluation.scoring_mode === 'llm' ? '模型评估 · 仅供训练参考' : '规则练习 · 内容待评估' }}</p><h2>{{ session.latest_evaluation.feedback }}</h2></div><strong>{{ displayScore(session.latest_evaluation.score) }}</strong></div>
         <div class="dimension-grid"><div v-for="(score, name) in session.latest_evaluation.dimensions" :key="name"><span>{{ name }}</span><b>{{ score.toFixed(0) }}</b><i><em :style="{ width: `${score}%` }"></em></i></div></div>
       </section>
 
@@ -140,7 +140,7 @@
         <h2>回答记录</h2>
         <details v-for="(turn, index) in session.turns" :key="turn.turn_id" :open="index === session.turns.length - 1">
           <summary><span>Q{{ index + 1 }} · {{ turn.question }}</span><b>{{ displayScore(turn.score) }}</b></summary>
-          <small>{{ turn.scoring_mode === 'llm' ? '模型评估 · 仅供训练参考' : turn.scoring_mode === 'local_fallback' ? '本地练习 · 不计入能力均分' : '历史评分来源未确认 · 不计入能力均分' }}</small>
+          <small>{{ turn.scoring_mode === 'llm' ? '模型评估 · 仅供训练参考' : turn.scoring_mode === 'local_fallback' ? '规则练习 · 不计入能力均分' : '历史评分来源未确认 · 不计入能力均分' }}</small>
           <p>{{ turn.answer }}</p><small>{{ turn.feedback }}</small>
           <div v-if="localRecordings[index]" class="local-replay">
             <div class="replay-head"><strong>本地录像回放</strong><span>仅保留在当前页面，未上传</span></div>
@@ -364,7 +364,7 @@ const submit = async () => {
       mood: latestScore == null ? 'happy' : latestScore >= 85 ? 'wink' : latestScore >= 60 ? 'focused' : 'encouraging',
       title: latestScore == null ? '这一题的回答已保存' : latestScore >= 85 ? '这一题回答得很有力量' : latestScore >= 60 ? '思路已经清楚，再补一层证据' : '这一题值得慢下来重新组织',
       message: session.value.latest_evaluation?.feedback || '继续完成下一题，我会保留每轮证据。',
-      evidence: latestScore == null ? '本地练习记录 · 内容质量待评估' : `依据：本题模型评分 ${Math.round(latestScore)} 分`,
+      evidence: latestScore == null ? '练习记录 · 内容质量待评估' : `依据：本题模型评分 ${Math.round(latestScore)} 分`,
       route: session.value.status === 'completed' ? '/growth' : '/interview',
       actionLabel: session.value.status === 'completed' ? '查看成长证据' : '继续面试'
     })

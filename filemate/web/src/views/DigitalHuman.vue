@@ -17,13 +17,14 @@
         <div class="section-head compact"><div><span class="section-index">02 / 播放</span><h2>把内容说出来</h2></div><span class="state-badge" :data-state="state">{{ stateLabel }}</span></div>
         <div v-if="error" class="error-box" role="alert">{{ error }} <button type="button" :disabled="loading || state === 'starting'" @click="retry">重试</button></div>
         <p v-if="notice" class="notice" role="status">{{ notice }} <button v-if="lastDeleted" type="button" @click="undoDelete">撤销删除</button></p>
-        <p v-if="Object.keys(pendingFinishes).length" class="notice" role="status">播放状态未能同步到本地记录。<button type="button" :disabled="syncing" @click="retrySync">重试同步</button></p>
+        <p v-if="Object.keys(pendingFinishes).length" class="notice" role="status">播放状态未能同步到播报记录。<button type="button" :disabled="syncing" @click="retrySync">重试同步</button></p>
         <div class="transport">
           <button class="play-button" :disabled="loading || state === 'starting' || !text.trim()" @click="state === 'paused' ? resume() : play()"><el-icon><VideoPlay /></el-icon>{{ state === 'paused' ? '继续' : state === 'playing' ? '重新播放' : '开始讲解' }}</button>
           <button :disabled="state !== 'playing'" @click="pause"><el-icon><VideoPause /></el-icon>暂停</button>
           <button :disabled="!text.trim() || loading" @click="replay"><el-icon><RefreshRight /></el-icon>重播</button>
           <button :disabled="!active" @click="stop"><el-icon><Close /></el-icon>停止</button>
         </div>
+        <p class="notice">{{ voiceBoundary }}</p>
         <div class="progress-track" role="progressbar" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100" aria-label="讲解进度"><span :style="{ width: `${progress}%` }" /></div>
         <div class="settings-grid">
           <label>语速 <strong>{{ rate.toFixed(1) }}×</strong><input v-model.number="rate" type="range" min="0.7" max="1.5" step="0.1" @change="restartIfActive" /></label>
@@ -79,6 +80,10 @@ const avatarId = ref(AVATARS[1].avatarId)
 const currentAvatar = computed(() => AVATARS.find(item => item.avatarId === avatarId.value) || AVATARS[0])
 const voiceId = ref(AVATARS[1].voiceId)
 const voices = ref<SpeechSynthesisVoice[]>([])
+const voiceBoundary = computed(() => {
+  const selected = voices.value.find(voice => voice.voiceURI === voiceId.value)
+  return selected?.localService === true ? '当前声线标记为设备本地服务；FileMate不上传讲解正文。' : selected?.localService === false ? '当前声线使用在线服务，开始讲解可能把正文发送给语音供应商。' : '默认声线的服务位置未确认，可能联网；请勿朗读敏感资料。'
+})
 const rate = ref(1)
 const volume = ref(1)
 const subtitles = ref(true)
@@ -183,7 +188,7 @@ async function play(): Promise<void> {
     void loadHistory()
   } catch (cause) {
     if (current !== operation) return
-    state.value = 'failed'; error.value = `讲解记录未创建：${message(cause)}。请检查本地服务并重试。`; return
+    state.value = 'failed'; error.value = `讲解记录未创建：${message(cause)}。请检查服务连接并重试。`; return
   }
   provider.speak(script, { voiceId: voiceId.value, rate: rate.value, volume: volume.value }, {
     onStart: () => { if (current !== operation || state.value === 'paused') return; state.value = 'playing'; startMouth() },

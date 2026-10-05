@@ -78,7 +78,7 @@ try {
     assert.equal(created.request().postDataJSON().allow_external_analysis, false)
     id = (await created.json()).data.interview_id
     await page.getByRole('heading', { name: '面试复盘报告', exact: true }).waitFor()
-    assert.equal(await button('生成本地复盘报告').isDisabled(), true)
+    assert.equal(await button('生成规则复盘报告').isDisabled(), true)
     assert.equal(await button('提交并进入下一题').isDisabled(), true)
     return { interview_id: id }
   })
@@ -130,8 +130,8 @@ try {
     return { visual: firstTurn.visual_metrics, speech: firstTurn.fluency_metrics, note: 'speech recognition callbacks injected; actual local video recording and visual model' }
   })
   await check('generate persistent report and seek synchronized local video', 'real_ui_api_video', async () => {
-    await button('生成本地复盘报告').click()
-    await button('更新本地复盘报告').waitFor()
+    await button('生成规则复盘报告').click()
+    await button('更新规则复盘报告').waitFor()
     firstReport = (await (await context.request.get(api + '/interviews/' + id + '/review')).json()).data.report
     assert.equal(firstReport.visual.sample_count, firstTurn.visual_metrics.sample_count)
     assert.equal(firstReport.assessed, 0)
@@ -175,8 +175,8 @@ try {
   await check('finish all original interview questions and refresh report from actual records', 'real_ui_api', async () => {
     for (let i = 2; i < 5; i++) await submit('首先说明情境和任务，然后描述行动，因为需要核对依据，例如验证样例，最后总结结果和边界。')
     await page.getByText('本轮训练完成', { exact: true }).waitFor()
-    await button('生成本地复盘报告').click()
-    await button('更新本地复盘报告').waitFor()
+    await button('生成规则复盘报告').click()
+    await button('更新规则复盘报告').waitFor()
     const report = (await (await context.request.get(api + '/interviews/' + id + '/review')).json()).data.report
     assert.equal(report.answered, 5); assert.equal(report.status, 'completed'); assert.equal(report.overall_score, null)
     return { answered: 5, assessed: 0 }
@@ -215,7 +215,7 @@ try {
   })
   await check('page refresh restores records report and timeline without video or automatic camera', 'real_persistence_privacy', async () => {
     await page.goto(base + '/interview?interview=' + id)
-    await button('更新本地复盘报告').waitFor()
+    await button('更新规则复盘报告').waitFor()
     assert.equal(await page.locator('.local-replay video').count(), 0)
     assert.equal(await button('开启摄像头').isVisible(), true)
     assert.ok((await stored()).turns[0].visual_metrics.sample_count > 0)
@@ -225,7 +225,7 @@ try {
     await button('清空本场分析').click(); await button('保留分析').click()
     assert.ok((await stored()).turns[0].visual_metrics.sample_count > 0)
     await button('清空本场分析').click(); await button('确认清空').click()
-    await button('生成本地复盘报告').waitFor()
+    await button('生成规则复盘报告').waitFor()
     const record = await stored()
     assert.equal(record.turns.length, 5)
     assert.ok(record.turns[0].fluency_metrics.long_pause_count > 0)

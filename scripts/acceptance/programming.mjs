@@ -99,7 +99,7 @@ try {
   })
   await check('local review notes persist across page reload', 'real_ui_api', async () => {
     assert.equal(await button('AI 代码复盘').isDisabled(), true)
-    await button('保存本地复盘').click()
+    await button('保存规则复盘').click()
     await page.getByText('代码复盘已保存。', { exact: true }).waitFor()
     await page.getByRole('textbox', { name: '我的复盘笔记', exact: true }).fill('用 long long，检查 n=0 与 64 位总和。')
     await button('保存复盘笔记').click()

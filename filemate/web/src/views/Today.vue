@@ -160,7 +160,7 @@ const completePlan = async (item: TodayReviewItem) => {
     companionEvent.value = publishCompanionEvent({
       mood: 'happy',
       title: '今天的学习任务完成啦',
-      message: '这次完成已经进入你的本地成长记录，休息一下再继续也没关系。',
+      message: '这次完成已经进入你的成长记录，休息一下再继续也没关系。',
       evidence: `依据：已完成“${item.title}”`,
       route: '/growth',
       actionLabel: '看看成长变化'

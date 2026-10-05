@@ -865,3 +865,11 @@ GET /api/auth/delete-preview 仅当前登录账号可用；绑定全部业务记
 GET /api/privacy/retention 返回实际保留配置：匿名空间默认连续90天不活动后清理，FILEMATE_GUEST_RETENTION_DAYS支持7–3650天；注册账号不按该期限删除。旧匿名空间没有有效活动时间的，首次维护才开始完整宽限期。活跃请求、注册空间和后台执行任务保护；每60秒扫描候选，只有需清理的空间才打开数据库。DELETE /api/privacy/restore-preview 接受backup_id和confirmation_token，取消并清理其恢复预览；其他仍有效的同包预览保留。过期确认及无有效确认的ZIP副本每分钟清理。恢复清理失败的生成目录使用签名归属记录重试，成功后更新重复确认回执，不允许任意路径删除。
 
 管理员快照支持个人备份签名文件、隐私活动与删除账本，排除服务内临时预览、已经提交删除的暂存副本与恢复回滚目录。恢复至新目录时将仍在原逻辑数据目录内的最新有效删除账本合并；有未恢复的注销阶段或签名轮换则拒绝恢复。启用恢复目录前必须保留最新删除账本与对应身份签名配置；若原数据卷已丢失，应从独立运维保管中恢复最新账本，不能仅依赖旧业务备份。服务启动依该账本拒绝已删除身份，并清除被旧管理员快照恢复的已注销空间/账号。下载到用户设备的备份无法远程删除。
+
+## 网站与本机数据边界（AUD-07）
+
+GET /api/privacy/boundary 公开返回storage_location=server|local_machine、storage_notice、key_notice、model_notice、camera_notice、speech_notice、guest_inactive_days、retention_notice；不返回目录、密钥或账号。部署身份模式anonymous表示网站服务器私有分库，local表示运行服务的设备。面试FILEMATE_INTERVIEW_LOCAL_ONLY仅限制该功能模型评分，不等于整个网站离线，也不决定资料保存位置。GET /trust/overview附同一boundaries，guarantees不再泛化本机保存。
+
+GET /api/llm/status新增credential_storage=browser|system，前端按该模式选择密钥库，包括以回环地址访问的匿名网站；不得仅按URL误用桌面凭据接口。网站自带密钥当前浏览器按账号/游客空间加密，主动AI时经本站临时转发；本机系统凭据和部署环境配置独立。浏览器加密不等于隔离同源恶意脚本，需保留CSP与依赖控制；第三方模型留存由其政策决定。
+
+上传页先读取实际说明，说明未就绪时不允许选取或投放资料；读取失败可重试，不能显示假落点。资料导入/阅读不调用模型，生成笔记/练习/讲解、面试内容分析和代码复盘需主动授权对应正文/片段/回答/代码外发。摄像头/录像不上传，但提交的文字/节奏/观察摘要保存在当前学习空间。浏览器语音识别和TTS可能在线，数字人按所选SpeechSynthesisVoice.localService显示设备/在线/未确认来源；默认声线不保证离线。

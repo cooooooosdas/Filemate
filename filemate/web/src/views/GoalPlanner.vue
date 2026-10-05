@@ -43,7 +43,7 @@
           </select>
         </label>
         <button type="button" class="create-button" :disabled="creating || !canCreate" @click="createGoal">
-          {{ creating ? '正在读取本地记录…' : '安排下一步' }}
+          {{ creating ? '正在读取学习记录…' : '安排下一步' }}
         </button>
       </div>
     </section>
@@ -80,12 +80,12 @@
             <b :class="activeGoal.evidence_status">{{ activeGoal.evidence_status === 'ready' ? '记录充足' : '记录较少 · 待评测' }}</b>
           </div>
           <div class="metric-grid">
-            <div><strong>{{ activeGoal.evidence_snapshot.source_count }}</strong><span>本地资料</span></div>
+            <div><strong>{{ activeGoal.evidence_snapshot.source_count }}</strong><span>已有资料</span></div>
             <div><strong>{{ activeGoal.evidence_snapshot.quiz_attempt_count }}</strong><span>练习作答</span></div>
             <div><strong>{{ activeGoal.evidence_snapshot.pending_wrong_count }}</strong><span>待复习错题</span></div>
             <div><strong>{{ activeGoal.evidence_snapshot.interview_count }}</strong><span>模拟面试</span></div>
           </div>
-          <p class="evidence-note">这里只汇总已保存到本机的行为记录。样本不足时不会生成掌握度、趋势或虚假准确率。</p>
+          <p class="evidence-note">这里只汇总当前学习空间的行为记录。样本不足时不会生成掌握度、趋势或虚假准确率。</p>
         </article>
 
         <article class="gap-panel">
@@ -219,7 +219,7 @@ async function createGoal(): Promise<void> {
     })
     goals.value = [goal, ...goals.value]
     activeGoalId.value = goal.goal_id
-    ElMessage.success('已依据本地证据生成反推路径')
+    ElMessage.success('已依据已有证据生成反推路径')
   } catch (cause: any) {
     ElMessage.error(cause?.message || '目标反推失败')
   } finally {

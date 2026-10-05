@@ -941,6 +941,7 @@ def public_llm_status():
     status = _llm_settings_status()
     return ApiResponse(success=True, data={
         **status, "credential_scope": hashlib.sha256(scope.encode()).hexdigest(),
+        'credential_storage': 'browser' if IDENTITY_MODE == 'anonymous' else 'system',
     })
 
 
@@ -1897,8 +1898,9 @@ def get_trust_overview(limit: int = Query(50, ge=1, le=200)):
                 if os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") == "1"
                 else "local_with_authorized_model"
             ),
+            'boundaries': _privacy_boundary(),
             "guarantees": [
-                "资料正文保存在本机工作区，授权状态默认未确认、仅自己可用",
+                _privacy_boundary()['storage_notice'] + '；授权默认未确认、仅自己可用',
                 "Agent 轨迹只记录来源标识和执行摘要，不复制面试回答原文",
                 "共享记忆可查看、可单条删除，删除后不再向 Agent 提供",
                 "授权未确认的资料不能调整为受限分享或可分享",
@@ -3178,6 +3180,25 @@ def personal_retention_policy():
     return ApiResponse(success=True, data={'guest_inactive_days': _retention.days if _retention else None,
         'registered_accounts_expire': False, 'restore_preview_minutes': 15, 'maintenance_interval_seconds': 60,
         'notice': '匿名学习空间持续未使用达到保留期后清理；注册账号不按此期限清理。恢复预览取消或到期后清理服务内副本；已下载备份与第三方留存需自行管理。'})
+
+
+def _privacy_boundary() -> dict[str, Any]:
+    server_mode = IDENTITY_MODE == 'anonymous'
+    return {
+        'storage_location': 'server' if server_mode else 'local_machine',
+        'storage_notice': '资料、代码、文字回答和学习记录保存在网站服务器的独立私有空间' if server_mode else '资料、代码、文字回答和学习记录保存在运行 FileMate 服务的设备',
+        'key_notice': '自带 API 密钥按学习空间加密保存在当前浏览器；主动模型请求时临时经本站转发，不写入服务器配置、数据库或日志。网站也可能使用维护者的部署凭据。' if server_mode else '本机自带密钥由系统凭据库保存；部署环境变量也可提供模型凭据。浏览器不保存系统凭据。',
+        'model_notice': '导入与阅读不调用模型。主动授权 AI 时，所选资料正文或片段、问题、回答或代码会发送给当前配置的模型服务；结果保存到学习空间。第三方留存由供应商政策决定。',
+        'camera_notice': '摄像头画面与录像仅在当前浏览器页面内存，不上传；主动提交的文字回答、语音节奏和视觉观察摘要会保存到学习空间。刷新后未下载的录像清除。',
+        'speech_notice': '语音识别及朗读由浏览器和设备提供，可能连接供应商服务；不保证全部声线离线。',
+        'guest_inactive_days': _retention.days if _retention else None,
+        'retention_notice': f'匿名空间连续{_retention.days}天未使用后清理，注册账号保留到主动注销；恢复预览15分钟到期，取消或到期后清理副本。' if _retention else '本机学习空间不按匿名期限清理；恢复预览15分钟到期，取消或到期后清理副本。',
+    }
+
+
+@app.get('/api/privacy/boundary', response_model=ApiResponse)
+def privacy_boundary():
+    return ApiResponse(success=True, data=_privacy_boundary())
 
 
 class RestoreCancelRequest(BaseModel):

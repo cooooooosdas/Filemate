@@ -1,7 +1,7 @@
 <template>
   <div class="growth-page">
     <header><div><h1>成长数据</h1><p>最近学了什么、哪些还要练，在这里回顾。</p></div><button type="button" @click="load">刷新数据</button></header>
-    <div v-if="loading" class="state" aria-live="polite">正在汇总本地学习数据…</div>
+    <div v-if="loading" class="state" aria-live="polite">正在汇总学习数据…</div>
     <DataState v-else-if="error" :error="error" @retry="load" />
     <template v-else-if="data">
       <CompanionCard
@@ -114,7 +114,7 @@ const companion = computed((): {
     return {
       mood: 'happy',
       title: '每完成一天，知识都会更有秩序一点',
-      message: '今天的完成记录已经进入本地成长数据，可以继续处理下一项任务。',
+      message: '今天的完成记录已经进入成长数据，可以继续处理下一项任务。',
       evidence: `依据：已完成 ${analytics?.completed_study_days || 0} 个学习日`,
       route: '/today',
       actionLabel: '查看今日任务'

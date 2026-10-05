@@ -54,7 +54,7 @@
       </el-button>
     </div>
 
-    <p v-if="!backendConnected" class="model-message warning" role="status">请先连接本地服务，再配置模型密钥。</p>
+    <p v-if="!backendConnected" class="model-message warning" role="status">请先连接服务，再配置模型密钥。</p>
     <p v-else-if="errorMessage" class="model-message error" role="alert">{{ errorMessage }}</p>
   </section>
 </template>
@@ -79,10 +79,10 @@ const loading = ref(false)
 const saving = ref(false)
 const testing = ref(false)
 const verified = ref(false)
-const browserMode = usesBrowserLLMVault()
-const privacyNote = browserMode
-  ? '密钥按账号隔离，加密保存在当前浏览器本机，不会同步到其他设备。仅在主动使用 AI 时，经本站 HTTPS 转发至 DeepSeek 官方接口，不写入服务器数据库或日志。游客密钥仅用于当前游客空间。'
-  : '密钥保存在当前系统用户的安全凭据库，不写入浏览器或数据库；仅在主动使用 AI 时发送给 DeepSeek 官方接口。'
+const browserMode = computed(() => status.value?.credential_storage === 'browser' || usesBrowserLLMVault())
+const privacyNote = computed(() => browserMode.value
+  ? '密钥按账号隔离，加密保存在当前浏览器本机，不会同步到其他设备。仅在主动使用 AI 时，经本站 HTTPS 转发至当前配置的模型服务，不写入服务器数据库或日志。游客密钥仅用于当前游客空间。'
+  : '密钥保存在当前系统用户的安全凭据库，不写入浏览器或数据库；主动模型请求会发送给当前配置的模型服务。')
 const errorMessage = ref('')
 
 const canSave = computed(() => Boolean(status.value?.secure_storage_available))

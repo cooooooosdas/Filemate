@@ -909,21 +909,24 @@ export interface LLMSettingsStatus {
   removed?: boolean
   credential_scope?: string
   verified?: boolean
+  credential_storage?: 'browser' | 'system'
 }
 
+let browserVaultMode: boolean | undefined
 export function usesBrowserLLMVault(): boolean {
-  return !isLoopbackHost(window.location.hostname) && !('__TAURI_INTERNALS__' in window)
+  return browserVaultMode ?? (!isLoopbackHost(window.location.hostname) && !('__TAURI_INTERNALS__' in window))
 }
 
 async function publicLLMStatus(): Promise<LLMSettingsStatus> {
   const response = await api.get<any, ApiResponse<LLMSettingsStatus>>('/api/llm/status', { timeout: 15000 })
   if (!response.success || !response.data || !/^[a-f0-9]{64}$/.test(response.data.credential_scope || '')) throw new Error(response.error || '模型状态读取失败')
+  browserVaultMode = response.data.credential_storage === 'browser'
   return response.data
 }
 
 export async function getLLMSettings(): Promise<LLMSettingsStatus> {
+  const status = await publicLLMStatus()
   if (usesBrowserLLMVault()) {
-    const status = await publicLLMStatus()
     const available = browserVaultAvailable()
     const saved = available && await hasBrowserApiKey(status.credential_scope!)
     return { ...status, configured: saved || status.configured, source: saved ? 'browser_store' : status.source, secure_storage_available: available }
@@ -1458,7 +1461,11 @@ export interface TrustOverview {
   source_rights: SourceRights[]
   mode: 'local' | 'local_with_authorized_model'
   guarantees: string[]
+  boundaries: PrivacyBoundary
 }
+
+export interface PrivacyBoundary { storage_location: 'server' | 'local_machine'; storage_notice: string; key_notice: string; model_notice: string; camera_notice: string; speech_notice: string; retention_notice: string; guest_inactive_days: number | null }
+export const getPrivacyBoundary = async () => (await api.get<unknown, ApiResponse<PrivacyBoundary>>('/api/privacy/boundary')).data!
 
 export async function getTrustOverview(limit = 50): Promise<TrustOverview> {
   const response = await api.get<any, ApiResponse<TrustOverview>>(

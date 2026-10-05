@@ -4,7 +4,7 @@
       <div>
         <h1>学习计划</h1>
         <p>选好资料和考试日期，把复习分到每一天。</p>
-        <p v-if="restoredTitle" class="restore-note">已恢复：{{ restoredTitle }}，完成状态会自动保存到本机。</p>
+        <p v-if="restoredTitle" class="restore-note">已恢复：{{ restoredTitle }}，完成状态会自动保存到学习空间。</p>
       </div>
     </header>
 

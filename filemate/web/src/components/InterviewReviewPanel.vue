@@ -1,9 +1,9 @@
 <template>
   <section class="interview-review-panel" aria-labelledby="interview-report-title">
-    <header><div><p>本地复盘 · V2.4</p><h2 id="interview-report-title">面试复盘报告</h2></div><span>专家校准：待校准</span></header>
-    <p class="privacy-note">视频只在当前页面内存中，不上传，刷新后清除。回答、节奏和观察摘要保存在本地；模型建议仅供训练参考。</p>
+    <header><div><p>学习空间复盘 · V2.4</p><h2 id="interview-report-title">面试复盘报告</h2></div><span>专家校准：待校准</span></header>
+    <p class="privacy-note">视频只在当前页面内存中，不上传，刷新后清除。回答、节奏和观察摘要保存在学习空间；模型建议仅供训练参考。</p>
     <div class="report-actions">
-      <button class="primary" :disabled="busy || !session.turns.length" @click="generate">{{ generating ? '正在生成…' : report ? '更新本地复盘报告' : '生成本地复盘报告' }}</button>
+      <button class="primary" :disabled="busy || !session.turns.length" @click="generate">{{ generating ? '正在生成…' : report ? '更新规则复盘报告' : '生成规则复盘报告' }}</button>
       <button v-for="format in formats" :key="format.value" :disabled="busy || !report" @click="download(format.value)">导出 {{ format.label }}</button>
       <button :disabled="busy" @click="load">刷新报告</button>
     </div>
@@ -12,7 +12,7 @@
     <div class="content-request">
       <label>选择内容分析的回答<select v-model="selectedTurn" :disabled="busy" aria-label="选择内容分析的回答"><option v-for="turn in session.turns" :key="turn.turn_id" :value="turn.turn_id">第{{ turn.question_index + 1 }}题 · {{ turn.question.slice(0, 35) }}</option></select></label>
       <label class="consent"><input v-model="consent" type="checkbox" :disabled="busy" />确认向已配置模型发送这一题的问题、回答和目标方向；不发送音视频或视觉观察。</label>
-      <small>模型供应商的数据保存策略需另行核对；本地复盘和导出无需外发。</small>
+      <small>模型供应商的数据保存策略需另行核对；规则复盘和导出无需发送给外部模型。</small>
       <div><button :disabled="busy || !consent || !selectedTurn" @click="analyze">{{ analyzing ? '内容分析中…' : '分析这一题的内容' }}</button><button v-if="analyzing" @click="cancel">取消本次分析</button></div>
     </div>
     <article v-if="report" class="report-body">
@@ -28,14 +28,14 @@
       <p v-if="!report.timeline.length">没有采集时间证据，待评测。</p>
       <ol v-else class="report-timeline"><li v-for="(event, index) in report.timeline" :key="index"><button :disabled="event.timebase !== 'recording' || !recordingIndexes.includes(event.question_index)" @click="$emit('seek', event.question_index, event.start)">第{{ event.question_index + 1 }}题 · {{ time(event.start) }}{{ event.end > event.start ? `-${time(event.end)}` : '' }} · {{ event.label }}</button><small>{{ event.timebase === 'recording' ? recordingIndexes.includes(event.question_index) ? '本地录像时间' : '录像已清除，保留观察时间' : event.timebase === 'speech' ? '语音识别时间，未与录像对齐' : '视觉采集时间，未与录像对齐' }}</small></li></ol>
       <h3>专业内容与逻辑结构</h3>
-      <details v-for="turn in report.turns" :key="turn.turn_id"><summary>第{{ turn.question_index + 1 }}题 · {{ turn.content_analysis.areas ? '模型参考建议' : '内容待评估' }}</summary><p>{{ turn.question }}</p><blockquote>{{ turn.answer }}</blockquote><p>本地表达线索：{{ turn.structure.cues.join('、') || '未观察到预设线索' }}；这些线索不代表内容准确。</p><p v-if="turn.data_error" class="report-error">部分分析数据异常，已跳过，原回答保留。</p><div v-for="(area, name) in turn.content_analysis.areas" :key="name" class="analysis-area"><b>{{ areaLabels[String(name)] || name }} · {{ statusLabels[area.status] }}</b><p v-if="area.evidence">原句：{{ area.evidence }}</p><p>{{ area.suggestion }}</p></div><p v-if="turn.content_analysis.keywords?.length">原回答关键词：{{ turn.content_analysis.keywords.join("、") }}</p><div v-for="(quote, name) in turn.content_analysis.dimension_evidence" :key="name" class="quote-evidence">{{ name }}维度原句：{{ quote }}</div></details>
+      <details v-for="turn in report.turns" :key="turn.turn_id"><summary>第{{ turn.question_index + 1 }}题 · {{ turn.content_analysis.areas ? '模型参考建议' : '内容待评估' }}</summary><p>{{ turn.question }}</p><blockquote>{{ turn.answer }}</blockquote><p>规则表达线索：{{ turn.structure.cues.join('、') || '未观察到预设线索' }}；这些线索不代表内容准确。</p><p v-if="turn.data_error" class="report-error">部分分析数据异常，已跳过，原回答保留。</p><div v-for="(area, name) in turn.content_analysis.areas" :key="name" class="analysis-area"><b>{{ areaLabels[String(name)] || name }} · {{ statusLabels[area.status] }}</b><p v-if="area.evidence">原句：{{ area.evidence }}</p><p>{{ area.suggestion }}</p></div><p v-if="turn.content_analysis.keywords?.length">原回答关键词：{{ turn.content_analysis.keywords.join("、") }}</p><div v-for="(quote, name) in turn.content_analysis.dimension_evidence" :key="name" class="quote-evidence">{{ name }}维度原句：{{ quote }}</div></details>
       <h3>薄弱项与下一步</h3>
       <p v-if="!report.review_focus.length">薄弱知识点待评估，不由回答长度或面部动作推断。</p>
       <ul v-else><li v-for="(item, index) in report.review_focus" :key="index">第{{ item.question_index + 1 }}题 · {{ item.area }}（模型待核对）：{{ item.suggestion }}</li></ul>
       <ul><li v-for="suggestion in report.suggestions" :key="suggestion">{{ suggestion }}</li></ul>
       <small>生成时间：{{ report.generated_at }} · {{ report.calibration }}</small>
     </article>
-    <p v-else-if="!loadLoading">提交回答后可生成本地报告。未采集的语音、视觉和专业评价显示待评测。</p>
+    <p v-else-if="!loadLoading">提交回答后可生成复盘报告。未采集的语音、视觉和专业评价显示待评测。</p>
     <details class="operation-log"><summary>操作记录（最近100条）</summary><ul><li v-for="event in events" :key="event.event_id">{{ event.created_at }} · {{ actionLabels[event.action] || event.action }}</li></ul></details>
     <footer><button :disabled="busy" @click="clear">清空本场分析</button><button class="danger" :disabled="busy" @click="remove">删除本场练习</button><small>清空保留原回答和语音节奏；删除会先显示影响，需确认。</small></footer>
   </section>
