@@ -853,3 +853,7 @@ POST /api/privacy/restore-preview 以multipart file上传签名ZIP（≤25MB）�
 POST /api/privacy/restore 接受backup_id、confirmation_token、confirmed=true。校验绑定的当前业务与文件修订；有其他窗口请求或后台处理/判题任务时409。该空间短时阻止新请求，其他空间不受影响。文件先暂存并交换，所有业务表在同一SQLite事务中替换并检查foreign_key，任何失败恢复原文件与原业务数据；数据库故障503（只影响该操作）。成功最小审计、清理临时副本，重复确认不重放恢复。清理失败显式cleanup_pending=true，不能宣称副本已清除。旧文件处理会话与execution_records恢复为失败历史，不能重放旧确认/撤销；登录状态、密码与API密钥不恢复。API响应no-store，签名私钥保留在当前空间受操作系统目录权限保护的文件中（Windows chmod不等同于独立OS密钥库），不发送客户端。
 
 自助上限：压缩25MB、展开128MB、业务数据32MB、托管文件5000个；更大规模使用现有管理员离线备份/恢复工具。备份只能恢复到同一学习空间且签名配置未变更；跨账号迁移及已注销账号恢复不在此合同内。FILEMATE_ENABLE_PERSONAL_DATA=0独立503，VITE_ENABLE_PERSONAL_DATA=false隐藏面板。
+
+## 编程提交永久删除（AUD-06a）
+
+GET /api/programming/submissions/{id}/delete-preview 返回源码/事件/相关简历与成长报告/个人事实关联的影响数量、notice和15分钟绑定当前数据修订的确认token。评测queued/running时409。DELETE同一路径需confirmed=true和confirmation_token；当前空间其他请求活跃时409，等待后重新预览。原产物与coding_submissions/events真正删除；相关简历和成长报告整份删除（避免伪造改写历史统计），当前resume_profile解除该作品引用并提高revision；技能目标保留，证据将重新评估为不可用。缺失或跨空间404，预览变化409，重复已完成确认不重复审计。日志只记录操作与数量，不保存源码。已下载备份及第三方模型留存不属于此操作的删除范围。

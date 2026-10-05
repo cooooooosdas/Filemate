@@ -1519,7 +1519,40 @@ def change_graph_batch(batch_id: str, action: Literal["confirm", "undo", "restor
         raise HTTPException(status_code=404, detail="图谱批次不存在") from exc
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
     return ApiResponse(success=True, data=batch)
+
+
+@app.get('/api/programming/submissions/{submission_id}/delete-preview', response_model=ApiResponse)
+def preview_coding_deletion(submission_id: str):
+    from filemate.programming.privacy import CodingPrivacy
+    try:
+        return ApiResponse(success=True, data=CodingPrivacy(_storage).preview(submission_id))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail='编程提交不存在') from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.delete('/api/programming/submissions/{submission_id}', response_model=ApiResponse)
+def delete_coding_submission(submission_id: str, request: DataDeleteRequest):
+    from filemate.programming.privacy import CodingPrivacy
+    if not request.confirmed or not request.confirmation_token:
+        raise HTTPException(status_code=422, detail='请先预览并确认彻底删除')
+    identity = _current_identity_id()
+    with _tenant_storage_lock:
+        if _active_tenants.get(identity, 0) > 1 or identity in _exclusive_tenants:
+            raise HTTPException(status_code=409, detail='其他窗口仍在操作，请结束后重试')
+        _exclusive_tenants.add(identity)
+    try:
+        return ApiResponse(success=True, data=CodingPrivacy(_storage).delete(submission_id, request.confirmation_token))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail='编程提交不存在') from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    finally:
+        with _tenant_storage_lock:
+            _exclusive_tenants.discard(identity)
 
 
 def _graph_plan_suggestion(node_id: str) -> dict[str, Any]:

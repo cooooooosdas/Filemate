@@ -46,7 +46,7 @@
     <section v-if="tab === 'events'" class="panel"><h2>操作日志</h2><p class="muted">只记录操作与提交标识，日志不包含源代码或模型凭据。</p><p v-if="!overview?.events.length">暂无操作记录。</p><ol class="event-list"><li v-for="event in overview?.events" :key="event.event_id"><strong>{{ actionText(event.action) }}</strong><span>{{ dateText(event.created_at) }}</span><code>{{ event.submission_id?.slice(0, 12) || '环境准备' }}</code></li></ol></section>
 
     <section v-if="current" class="panel result-panel" aria-label="评测结果">
-      <div class="panel-title"><div><p class="eyebrow">{{ titleFor(current.problem_id) }} · {{ current.submission_id.slice(0, 12) }}</p><h2>评测结果 <span class="verdict" :class="{ accepted: current.result.verdict === 'AC' }">{{ verdictText(current) }}</span></h2></div><div class="row-actions"><button v-if="current.status === 'queued'" :disabled="!!busy || !environment?.ready || current.data_error" @click="run(current.submission_id)">继续评测</button><button v-if="tab !== 'practice' && ['queued', 'running'].includes(current.status)" :disabled="cancelling" @click="cancelRun">{{ cancelling ? '正在取消…' : '取消评测' }}</button><button v-if="!['queued', 'running'].includes(current.status)" :disabled="!!busy || (current.data_error && !current.active)" @click="transition(current.active ? 'undo' : 'restore')">{{ current.active ? '撤销这次提交' : '恢复这次提交' }}</button><button :disabled="!!busy || current.data_error" @click="reuseCode">载入这份代码</button></div></div>
+      <div class="panel-title"><div><p class="eyebrow">{{ titleFor(current.problem_id) }} · {{ current.submission_id.slice(0, 12) }}</p><h2>评测结果 <span class="verdict" :class="{ accepted: current.result.verdict === 'AC' }">{{ verdictText(current) }}</span></h2></div><div class="row-actions"><button v-if="current.status === 'queued'" :disabled="!!busy || !environment?.ready || current.data_error" @click="run(current.submission_id)">继续评测</button><button v-if="tab !== 'practice' && ['queued', 'running'].includes(current.status)" :disabled="cancelling" @click="cancelRun">{{ cancelling ? '正在取消…' : '取消评测' }}</button><button v-if="!['queued', 'running'].includes(current.status)" :disabled="!!busy || (current.data_error && !current.active)" @click="transition(current.active ? 'undo' : 'restore')">{{ current.active ? '撤销这次提交' : '恢复这次提交' }}</button><button :disabled="!!busy || current.data_error" @click="reuseCode">载入这份代码</button><button v-if="!['queued', 'running'].includes(current.status)" :disabled="!!busy" @click="eraseSubmission">彻底删除此提交</button></div></div>
       <p v-if="current.data_error" role="alert" class="message error">提交记录损坏或题目版本不可用，原始数据已保留，暂不能评测、修改或恢复。</p><p v-if="current.result.error" role="alert" class="message error">{{ current.result.error }}</p><p v-if="!current.active" class="message">这次提交已撤销，不计入练习统计。恢复后，只有有效完成的评测记录才会重新计入。</p>
       <div class="metrics"><div><span>通过测试点</span><strong>{{ current.result.passed || 0 }} / {{ current.result.total || 0 }}</strong></div><div><span>测试得分</span><strong>{{ current.result.score ?? '待评测' }}</strong></div><div><span>评测状态</span><strong class="state-text">{{ current.data_error ? '记录不可用' : stateText(current.status) }}</strong></div></div>
       <details v-if="current.result.compile_log" class="compile-log" :open="current.result.verdict === 'CE'"><summary>编译器诊断</summary><pre>{{ current.result.compile_log }}</pre></details>
@@ -62,14 +62,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
-import { ElMessageBox } from 'element-plus'
-import { useRoute } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRoute, useRouter } from 'vue-router'
 import CodeEditor from '../components/CodeEditor.vue'
-import { getProgrammingProblems, getProgrammingStatus, setupProgramming, getCodingOverview, getCodingSubmission, createCodingSubmission, runCodingSubmission, changeCodingSubmission, reviewCodingSubmission, saveCodingNotes } from '../services/api'
+import { getProgrammingProblems, getProgrammingStatus, setupProgramming, getCodingOverview, getCodingSubmission, createCodingSubmission, runCodingSubmission, changeCodingSubmission, reviewCodingSubmission, saveCodingNotes, previewCodingDeletion, deleteCodingSubmission } from '../services/api'
 import type { CodingOverview, CodingProblem, CodingSubmission, ProgrammingStatus } from '../types/programming'
 import { codingStateText as stateText, submissionVerdictText as verdictText, submissionEvidenceText } from '../programming/submissionState'
 const problems = shallowRef<CodingProblem[]>([])
-const route = useRoute()
+const route = useRoute(), router = useRouter()
 const overview = shallowRef<CodingOverview | null>(null)
 const environment = shallowRef<ProgrammingStatus | null>(null)
 const current = shallowRef<CodingSubmission | null>(null)
@@ -130,6 +130,21 @@ async function cancelRun() { if (!current.value || cancelling.value) return; can
 async function openSubmission(id: string) { if (busy.value) return; busy.value = 'open'; try { const row = await getCodingSubmission(id); if (!disposed) selectRecord(row) } catch (e) { if (!disposed) error.value = message(e) } finally { if (!disposed) busy.value = '' } }
 function practiceProblem(id: string) { difficulty.value = ''; category.value = ''; chooseProblem(id); tab.value = 'practice' }
 async function reuseCode() { if (!current.value || busy.value) return; busy.value = 'reuse'; try { if (code.value.trim() && code.value !== problem.value?.starter && code.value !== current.value.code) await ElMessageBox.confirm('将用下方已展示的提交代码替换当前编辑内容，请先保留未提交的修改。', '载入提交代码', { confirmButtonText: '载入代码', cancelButtonText: '取消' }); if (disposed) return; const row = current.value; busy.value = ''; practiceProblem(row.problem_id); code.value = row.code; drafts.set(row.problem_id, row.code) } catch { /* 用户取消时保留编辑内容。 */ } finally { if (!disposed) busy.value = '' } }
+async function eraseSubmission() {
+  if (!current.value || busy.value) return
+  const row = current.value; busy.value = 'delete'; error.value = ''
+  try {
+    const preview = await previewCodingDeletion(row.submission_id)
+    await ElMessageBox.confirm(`将删除此提交的源码与反馈，并移除${preview.related_reports}份关联报告、解除${preview.profile_links}处个人事实关联。${preview.notice}`, '彻底删除编程提交', { confirmButtonText: '确认彻底删除', cancelButtonText: '取消' })
+    if (disposed) return
+    await deleteCodingSubmission(row.submission_id, preview.confirmation_token)
+    stopPolling(); drafts.delete(row.problem_id); pending = null
+    if (code.value === row.code) code.value = problem.value?.starter || ''
+    current.value = null; notes.value = ''; externalConsent.value = false
+    await refreshOverview(); ElMessage.success('此提交的源码、反馈与关联报告已删除')
+    if (route.query.submission === row.submission_id) await router.replace({ path: '/programming', query: { problem: row.problem_id } })
+  } catch (e) { if (!disposed && e !== 'cancel' && e !== 'close') error.value = message(e) } finally { if (!disposed) busy.value = '' }
+}
 async function transition(action: 'undo' | 'restore') { if (!current.value || busy.value) return; busy.value = action; try { if (action === 'undo') await ElMessageBox.confirm(current.value.data_error ? '这次提交会被撤销，原始记录保留；数据或题目版本恢复可用前，不能恢复统计资格。' : '这次提交会从练习统计与编程错题证据中排除。原始代码和测试结果保留，之后可恢复。', '撤销这次提交', { confirmButtonText: '确认撤销', cancelButtonText: '取消' }); if (disposed) return; const row = await changeCodingSubmission(current.value.submission_id, action); if (!disposed) { selectRecord(row); await refreshOverview() } } catch (e) { if (!disposed && e !== 'cancel' && e !== 'close') error.value = message(e) } finally { if (!disposed) busy.value = '' } }
 async function review(mode: 'local' | 'llm') { if (!current.value || busy.value) return; busy.value = 'review'; error.value = ''; try { const row = await reviewCodingSubmission(current.value.submission_id, mode, externalConsent.value); if (!disposed) { selectRecord(row); notice.value = '代码复盘已保存。'; await refreshOverview() } } catch (e) { if (!disposed) error.value = message(e) } finally { if (!disposed) busy.value = '' } }
 async function saveNotes() { if (!current.value || busy.value) return; busy.value = 'notes'; error.value = ''; try { const row = await saveCodingNotes(current.value.submission_id, notes.value); if (!disposed) { selectRecord(row); notice.value = '复盘笔记已保存。'; await refreshOverview() } } catch (e) { if (!disposed) error.value = message(e) } finally { if (!disposed) busy.value = '' } }

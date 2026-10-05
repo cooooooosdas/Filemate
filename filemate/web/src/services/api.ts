@@ -138,6 +138,9 @@ export async function saveCodingNotes(id: string, notes: string): Promise<Coding
   return (await api.post<any, ApiResponse<CodingSubmission>>(`/api/programming/submissions/${id}/notes`, { notes }, { timeout: 15000 })).data!
 }
 
+export const previewCodingDeletion = async (id: string) => (await api.get<unknown, ApiResponse<{ confirmation_token: string; related_reports: number; profile_links: number; notice: string }>>(`/api/programming/submissions/${encodeURIComponent(id)}/delete-preview`)).data!
+export const deleteCodingSubmission = async (id: string, token: string) => api.delete(`/api/programming/submissions/${encodeURIComponent(id)}`, { data: { confirmed: true, confirmation_token: token } })
+
 export async function checkHealth(): Promise<boolean> {
   const response = await api.get<any, ApiResponse<{ version: string }>>('/api/health')
   return response.success && Boolean(response.data?.version)
