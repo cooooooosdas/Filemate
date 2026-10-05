@@ -123,6 +123,7 @@ const routes: RouteRecordRaw[] = [
   ...(import.meta.env.VITE_ENABLE_SKILL_TREE === 'false' ? [{ path: '/skills', redirect: '/growth' }] : [{
     path: '/skills', name: 'SkillTree', component: () => import('../views/SkillTree.vue'), meta: { title: '技能树' }
   }]),
+  ...(import.meta.env.VITE_ENABLE_RESUME === 'false' ? [{ path: '/resume', redirect: '/career' }] : [{ path: '/resume', name: 'Resume', component: () => import('../views/Resume.vue'), meta: { title: '我的简历' } }]),
   {
     path: '/knowledge',
     name: 'Knowledge',

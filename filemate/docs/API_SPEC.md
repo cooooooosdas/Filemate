@@ -821,3 +821,11 @@ SQLite v24 **追加** `career_positions`、`career_trainings` 和 `career_events
 criteria关联quiz题集与question_index、coding提交或interview会话，required_successes=1..20（单个coding提交仅1）。统计仅为实际正确作答、有效活动AC或实际面试回答；修改题目、撤销提交、删除证据会重新计算。states为pending_assessment/in_progress/prerequisites_pending/conditions_met，不冒充专业能力分数。
 
 `GET /api/skills/targets?q=...` 在当前空间全量题集里按题干/标题查询，最多展示500课程目标、100编程记录、50面试记录；默认展示近期候选，输入更具体的词可找到旧题。没有外部AI调用。后端FILEMATE_ENABLE_SKILL_TREE=0拒绝模块503，前端VITE_ENABLE_SKILL_TREE=false隐藏入口并重定向；停用不删除数据。
+
+## 简历事实与导出（AUD-05b）
+
+GET /api/resume/profile 返回当前私有空间的事实或 null；PUT 接受 schema_version=1、revision、name/school 必填，教育、联系方式、技能≤40、项目≤30。revision 不匹配返回409；项目可关联当前空间有效编程提交，其他空间或已撤销提交不接受。保存记录最小审计，不修改观察画像。
+
+POST /api/resume/generate：profile_revision、mode=local|llm、allow_external_model。local 不调用模型；llm 必须显式同意，发送教育/技能/项目及目标岗位，姓名/联系方式字段不发送（自由文本须自行去敏）。模型仅返回合法且唯一的事实ID，不能增加正文。结构错误/资料版本变化409，模型故障502；旧事实/简历保留。45秒模型超时、最多一次调用尝试；复用可替换LLM适配器与单请求凭据。
+
+GET /api/resume 列最近30份；GET /api/resume/{id} 返回不可由通用Artifact编辑器修改的快照；GET /api/resume/{id}/export?format=markdown|json 导出事实快照。关联判题仅证明生成时该次结果，教育/技能/经历属于用户声明，不能作为专业能力或岗位录用认证。缺失404、损坏409，不覆盖损坏内容。FILEMATE_ENABLE_RESUME=0 返回503，VITE_ENABLE_RESUME=false隐藏入口，数据保留。

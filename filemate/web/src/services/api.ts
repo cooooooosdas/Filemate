@@ -69,6 +69,13 @@ const api = axios.create({
   }
 })
 
+export const getResumeProfile = async () => (await api.get<unknown, ApiResponse<import('../types/portfolio').ResumeProfile | null>>('/api/resume/profile')).data ?? null
+export const saveResumeProfile = async (profile: import('../types/portfolio').ResumeProfile) => (await api.put<unknown, ApiResponse<import('../types/portfolio').ResumeProfile>>('/api/resume/profile', profile)).data!
+export const generateResume = async (revision: number, mode: 'local' | 'llm', consent: boolean) => (await api.post<unknown, ApiResponse<import('../types/portfolio').ResumeDocument>>('/api/resume/generate', { profile_revision: revision, mode, allow_external_model: consent }, { timeout: 65000 })).data!
+export const getResumes = async () => (await api.get<unknown, ApiResponse<import('../types/portfolio').SavedDocument[]>>('/api/resume')).data!
+export const getResume = async (id: string) => (await api.get<unknown, ApiResponse<import('../types/portfolio').ResumeDocument>>(`/api/resume/${encodeURIComponent(id)}`)).data!
+export const exportResume = async (id: string, format: 'markdown' | 'json') => api.get(`/api/resume/${encodeURIComponent(id)}/export`, { params: { format }, responseType: 'blob' })
+
 export async function getSkillTree(): Promise<import('../types/skills').SkillTree> {
   const response = await api.get<unknown, ApiResponse<import('../types/skills').SkillTree>>('/api/skills/tree')
   if (response.success && response.data) return response.data
@@ -126,7 +133,8 @@ export async function checkHealth(): Promise<boolean> {
 // 请求拦截器
 api.interceptors.request.use(
   async config => {
-    if (usesBrowserLLMVault() && isModelRequest(config.method, config.url)) {
+    if (usesBrowserLLMVault() && isModelRequest(config.method, config.url)
+      && (config.url !== '/api/resume/generate' || config.data?.mode === 'llm')) {
       const destination = new URL(config.url!, new URL(config.baseURL || '/', window.location.origin))
       if (destination.origin !== window.location.origin) throw new Error('浏览器密钥只能用于当前 FileMate 网站')
       if (!config.headers.has('X-FileMate-LLM-Key') && browserVaultAvailable()) {

@@ -45,6 +45,8 @@ try {
         filemate/tests/test_retrieval.py `
         filemate/tests/test_study.py `
         filemate/study `
+        filemate/portfolio `
+        filemate/tests/test_p1_resume.py `
         filemate/programming `
         filemate/interview_review `
         filemate/career `

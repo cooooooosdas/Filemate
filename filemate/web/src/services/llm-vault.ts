@@ -81,5 +81,5 @@ export async function removeBrowserApiKey(scope: string): Promise<void> {
 }
 
 export function isModelRequest(method: string | undefined, path: string | undefined): boolean {
-  return method?.toUpperCase() === 'POST' && /^(?:\/api\/llm\/test|\/process|\/ai\/(?:summarize|knowledge-cards|questions|notes|study-plan|chat)|\/knowledge\/sources\/[^/]+\/artifacts|\/api\/knowledge-graph\/drafts|\/interviews|\/interviews\/[^/]+\/answers|\/interviews\/[^/]+\/turns\/[^/]+\/analyze|\/api\/programming\/submissions\/[^/]+\/review)$/.test(path || '')
+  return method?.toUpperCase() === 'POST' && /^(?:\/api\/llm\/test|\/api\/resume\/generate|\/process|\/ai\/(?:summarize|knowledge-cards|questions|notes|study-plan|chat)|\/knowledge\/sources\/[^/]+\/artifacts|\/api\/knowledge-graph\/drafts|\/interviews|\/interviews\/[^/]+\/answers|\/interviews\/[^/]+\/turns\/[^/]+\/analyze|\/api\/programming\/submissions\/[^/]+\/review)$/.test(path || '')
 }

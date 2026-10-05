@@ -55,6 +55,8 @@ from filemate.llm_client.credential_store import (
     set_stored_api_key,
 )
 from filemate.perception.parsers import PLAIN_TEXT_SUFFIXES
+from filemate.portfolio.resume import Profile as ResumeProfile
+from filemate.portfolio.resume import ResumeRepository, ResumeRequest
 from filemate.understanding.interview_bank_seed import SEED_QUESTIONS
 
 # 加载 .env 文件
@@ -1832,7 +1834,7 @@ def update_knowledge_artifact(
             raise HTTPException(status_code=422, detail=f"题集校验失败：{exc}") from exc
     if existing and isinstance(existing.get("metadata"), dict) and existing["metadata"].get("origin") == "career_plan":
         raise HTTPException(status_code=409, detail="岗位学习计划保留确认时的证据，请更新进度或重新预览新计划")
-    if existing and existing["artifact_type"] in {"coding_submission", "interview_report", "career_training", "skill_tree"}:
+    if existing and existing["artifact_type"] in {"coding_submission", "interview_report", "career_training", "skill_tree", "resume_profile", "resume"}:
         raise HTTPException(status_code=409, detail="评测报告不能直接修改，请在对应工作台更新原始记录或复盘笔记")
     try:
         artifact = _storage.update_artifact(
@@ -2982,6 +2984,73 @@ def wrongbook_page(mastered: bool | None = Query(False), limit: int = Query(50, 
 def learning_analytics():
     """返回学习闭环与模拟面试的本地统计。"""
     return ApiResponse(success=True, data=_storage.get_learning_analytics())
+
+
+def _resume_repository():
+    if os.getenv("FILEMATE_ENABLE_RESUME", "1").lower() in {"0", "false", "off"}:
+        raise HTTPException(status_code=503, detail="简历功能已关闭，原资料保留")
+    return ResumeRepository(_storage)
+
+
+@app.get("/api/resume/profile", response_model=ApiResponse)
+def resume_profile():
+    try:
+        profile = _resume_repository().profile()
+        return ApiResponse(success=True, data=profile.model_dump() if profile else None)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail="个人事实数据异常，原内容保留") from exc
+
+
+@app.put("/api/resume/profile", response_model=ApiResponse)
+def save_resume_profile(request: ResumeProfile):
+    try:
+        return ApiResponse(success=True, data=_resume_repository().save_profile(request))
+    except KeyError as exc:
+        raise HTTPException(status_code=409, detail="关联作品不存在，请在当前空间重新选择") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/api/resume/generate", response_model=ApiResponse)
+def generate_resume(request: ResumeRequest):
+    repository = _resume_repository()
+    if request.mode == "llm" and not request.allow_external_model:
+        raise HTTPException(status_code=422, detail="请先同意将教育、技能、项目事实及目标岗位发送给配置的模型；姓名和联系方式不发送")
+    try:
+        from filemate.llm_client import LLMClient, LLMConfig
+
+        llm = LLMClient(LLMConfig.from_env()) if request.mode == "llm" else None
+        return ApiResponse(success=True, data=repository.generate(request, llm))
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail="事实版本或选材结果无效，请刷新个人事实再生成；原资料和简历保留") from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=409, detail="关联作品已删除，请修订个人事实") from exc
+    except Exception as exc:
+        logger.warning("简历生成失败 (%s)", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="模型选材暂不可用；原资料与旧简历保留，可选择直接排版") from exc
+
+
+@app.get("/api/resume", response_model=ApiResponse)
+def list_resumes():
+    return ApiResponse(success=True, data=_resume_repository().list())
+
+
+@app.get("/api/resume/{identifier}", response_model=ApiResponse)
+def get_resume(identifier: str):
+    try:
+        return ApiResponse(success=True, data=_resume_repository().get(identifier))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="简历不存在") from exc
+    except (ValueError, TypeError, IndexError) as exc:
+        raise HTTPException(status_code=409, detail="简历数据异常，原内容保留") from exc
+
+
+@app.get("/api/resume/{identifier}/export")
+def export_resume(identifier: str, format: Literal["markdown", "json"] = "markdown"):
+    result = get_resume(identifier).data
+    content = result["markdown"] if format == "markdown" else json.dumps(result, ensure_ascii=False, indent=2)
+    return Response(content, media_type="text/markdown" if format == "markdown" else "application/json",
+                    headers={"Content-Disposition": 'attachment; filename="resume.' + ("md" if format == "markdown" else "json") + '"', "Cache-Control": "no-store"})
 
 
 def _skills_repository():

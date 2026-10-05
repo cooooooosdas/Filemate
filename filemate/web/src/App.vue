@@ -294,6 +294,7 @@ const menuGroups = [
       { path: '/interview-bank', title: '题库管理', icon: Notebook },
       ...(import.meta.env.VITE_ENABLE_CAREER === 'false' ? [] : [{ path: '/career', title: '求职训练中心', icon: Aim }]),
       { path: '/growth', title: '成长数据', icon: DataAnalysis },
+      ...(import.meta.env.VITE_ENABLE_RESUME === 'false' ? [] : [{ path: '/resume', title: '我的简历', icon: Notebook }]),
       ...(import.meta.env.VITE_ENABLE_SKILL_TREE === 'false' ? [] : [{ path: '/skills', title: '技能树', icon: Share }]),
       { path: '/trust', title: '可信与隐私', icon: Lock }
     ]
@@ -304,7 +305,7 @@ const pageTitle = computed(() => String(route.meta.title || '学习工作台'))
 const navigationGroups = computed(() => [
   { label: '今天', items: menuGroups[0]!.items.filter(item => ['/', '/today'].includes(item.path)) },
   { label: '读懂资料', items: menuGroups.flatMap(group => group.items).filter(item => ['/ai-tools', '/knowledge'].includes(item.path)) },
-  { label: '练习与表达', items: menuGroups.flatMap(group => group.items).filter(item => ['/programming', '/interview', '/career'].includes(item.path)) },
+  { label: '练习与表达', items: menuGroups.flatMap(group => group.items).filter(item => ['/programming', '/interview', '/career', '/resume'].includes(item.path)) },
   { label: '我的记录', items: menuGroups.flatMap(group => group.items).filter(item => ['/growth', '/skills', '/trust'].includes(item.path)) },
 ])
 const contextLinks = computed(() => {
@@ -313,7 +314,7 @@ const contextLinks = computed(() => {
   else if (['/import', '/classification', '/naming', '/schedule', '/history'].includes(route.path)) paths = ['/classification', '/schedule', '/history']
   else if (['/ai-tools', '/knowledge', '/knowledge-graph', '/digital-human'].includes(route.path)) paths = ['/ai-tools', '/knowledge', '/knowledge-graph', '/digital-human']
   else if (['/today', '/study-plan', '/wrongbook', '/goals'].includes(route.path)) paths = ['/today', '/study-plan', '/wrongbook', '/goals']
-  else if (['/interview', '/interview-bank', '/career'].includes(route.path)) paths = ['/interview', '/interview-bank', '/career']
+  else if (['/interview', '/interview-bank', '/career', '/resume'].includes(route.path)) paths = ['/interview', '/career', '/resume']
   const tools = menuGroups.flatMap(group => group.items)
   return paths.flatMap(path => tools.filter(item => item.path === path))
 })

@@ -754,3 +754,7 @@ powershell -ExecutionPolicy Bypass -File scripts/verify.ps1
 - 成员：汤新阳、张金宝、徐书和、余恒、杨乐
 
 项目的核心评价标准不是“功能数量”，而是学生能否基于自己的资料完成一个可恢复、可解释、可持续复习的真实学习任务。
+
+### AUD-05b 简历事实
+
+“我的简历”支持履历与项目事实编辑、可选关联有效编程作品、直接排版或经同意的AI选材排序、保存历史快照和Markdown/JSON导出。模型不能添加经历、成绩或学历；姓名/联系方式字段不发送，项目自由文本由用户去敏。功能可用 FILEMATE_ENABLE_RESUME=0 / VITE_ENABLE_RESUME=false 关闭。

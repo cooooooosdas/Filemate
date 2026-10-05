@@ -14,6 +14,7 @@ MODEL_PATHS = (
     r"/interviews", r"/interviews/[^/]+/answers",
     r"/interviews/[^/]+/turns/[^/]+/analyze",
     r"/api/programming/submissions/[^/]+/review",
+    r"/api/resume/generate",
 )
 
 

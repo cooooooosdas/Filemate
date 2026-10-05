@@ -11,7 +11,7 @@ test('keys reject whitespace and invalid header characters without echoing their
 })
 
 test('model credential attaches only to the complete generation route set', () => {
-  for (const path of ['/api/llm/test', '/process', '/ai/summarize', '/ai/knowledge-cards', '/ai/questions', '/ai/notes', '/ai/study-plan', '/ai/chat', '/knowledge/sources/source/artifacts', '/api/knowledge-graph/drafts', '/interviews', '/interviews/session/answers', '/interviews/session/turns/turn/analyze', '/api/programming/submissions/submission/review']) {
+  for (const path of ['/api/llm/test', '/api/resume/generate', '/process', '/ai/summarize', '/ai/knowledge-cards', '/ai/questions', '/ai/notes', '/ai/study-plan', '/ai/chat', '/knowledge/sources/source/artifacts', '/api/knowledge-graph/drafts', '/interviews', '/interviews/session/answers', '/interviews/session/turns/turn/analyze', '/api/programming/submissions/submission/review']) {
     assert.equal(isModelRequest('post', path), true, path)
     assert.equal(isModelRequest('get', path), false, path)
   }
