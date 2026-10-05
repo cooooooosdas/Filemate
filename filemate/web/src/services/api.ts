@@ -84,6 +84,10 @@ export const generateGrowthReport = async (start: string, end: string) => (await
 export const getGrowthReport = async (id: string) => (await api.get<unknown, ApiResponse<import('../types/portfolio').GrowthReport>>(`/api/growth/reports/${encodeURIComponent(id)}`)).data!
 export const getGrowthEvidence = async (id: string, offset: number) => (await api.get<unknown, ApiResponse<{ items: import('../types/portfolio').GrowthRecord[]; total: number }>>(`/api/growth/reports/${encodeURIComponent(id)}/evidence`, { params: { offset, limit: 20 } })).data!
 export const exportGrowthReport = async (id: string, format: 'markdown' | 'json') => api.get(`/api/growth/reports/${encodeURIComponent(id)}/export`, { params: { format }, responseType: 'blob' })
+export interface PersonalRestorePreview { backup_id: string; confirmation_token: string; backup_created_at: string; restored_counts: Record<string, number>; current_counts: Record<string, number>; file_count: number; current_file_count: number; notice: string }
+export const exportPersonalData = async (format: 'backup' | 'json') => api.get('/api/privacy/export', { params: { format }, responseType: 'blob', timeout: 120000 })
+export const previewPersonalRestore = async (file: File) => { const body = new FormData(); body.append('file', file); return (await api.post<unknown, ApiResponse<PersonalRestorePreview>>('/api/privacy/restore-preview', body, { timeout: 120000, headers: { 'Content-Type': 'multipart/form-data' } })).data! }
+export const restorePersonalData = async (preview: PersonalRestorePreview) => (await api.post<unknown, ApiResponse<{ restored: boolean; cleanup_pending?: boolean }>>('/api/privacy/restore', { backup_id: preview.backup_id, confirmation_token: preview.confirmation_token, confirmed: true }, { timeout: 120000 })).data!
 
 export async function getSkillTree(): Promise<import('../types/skills').SkillTree> {
   const response = await api.get<unknown, ApiResponse<import('../types/skills').SkillTree>>('/api/skills/tree')

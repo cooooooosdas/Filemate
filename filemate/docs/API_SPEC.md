@@ -843,3 +843,13 @@ GET /api/growth/reports 返回最近30份；GET /api/growth/reports/{id} 返回�
 ### 连续复练日期边界修复
 
 重复正确复练的间隔上限365天，ease_factor限制1.3–3.0，旧异常数值安全归一。此前无上限指数增长会导致日期溢出500；50次连续正确作答回归已覆盖。该间隔是平台复练规则，不是记忆效果实验结论。
+
+## 个人整包导出与自助恢复（AUD-05e）
+
+GET /api/privacy/export?format=backup|json 导出当前空间的业务表，排除accounts/account_sessions/account_attempts/schema_migrations/操作确认凭据。JSON含业务数据及自己的最小操作审计，不包含文件正文，不能作为恢复输入。默认backup是签名ZIP，含业务数据与该空间inbox/archive托管文件；不跟随链接/重解析点/硬链接，不复制外部原文件，不包含环境变量、API凭据或签名私钥。两路导出并发上限；容量超过限制拒绝生成残缺备份。
+
+POST /api/privacy/restore-preview 以multipart file上传签名ZIP（≤25MB），校验当前学习空间归属、签名、条目摘要、路径、schema（自助格式从v26开始，拒绝未来schema）和容量；返回backup_id、15分钟确认token、备份时间、当前/拟恢复记录与文件数量、整体替换说明。原数据保持不变。预览备份在此空间的受限临时目录暂存，成功恢复后清除；取消/超时的清理由AUD-06保留维护处理。
+
+POST /api/privacy/restore 接受backup_id、confirmation_token、confirmed=true。校验绑定的当前业务与文件修订；有其他窗口请求或后台处理/判题任务时409。该空间短时阻止新请求，其他空间不受影响。文件先暂存并交换，所有业务表在同一SQLite事务中替换并检查foreign_key，任何失败恢复原文件与原业务数据；数据库故障503（只影响该操作）。成功最小审计、清理临时副本，重复确认不重放恢复。清理失败显式cleanup_pending=true，不能宣称副本已清除。旧文件处理会话与execution_records恢复为失败历史，不能重放旧确认/撤销；登录状态、密码与API密钥不恢复。API响应no-store，签名私钥保留在当前空间受操作系统目录权限保护的文件中（Windows chmod不等同于独立OS密钥库），不发送客户端。
+
+自助上限：压缩25MB、展开128MB、业务数据32MB、托管文件5000个；更大规模使用现有管理员离线备份/恢复工具。备份只能恢复到同一学习空间且签名配置未变更；跨账号迁移及已注销账号恢复不在此合同内。FILEMATE_ENABLE_PERSONAL_DATA=0独立503，VITE_ENABLE_PERSONAL_DATA=false隐藏面板。

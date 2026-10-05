@@ -762,3 +762,7 @@ powershell -ExecutionPolicy Bypass -File scripts/verify.ps1
 ### AUD-05c/d 学期与报告
 
 学期模式支持课程、每周目标、任务日、考试日期与资料关联；预览确认后创建任务，完成状态持久保存，重新编排保留历史。成长数据页可按北京时间选择期间生成成长报告、逐页回读依据并导出全量Markdown/JSON。无样本显示待评测，旧计划只展示当前状态，不伪造完成日期。两个模块可分别用FILEMATE_ENABLE_SEMESTER / FILEMATE_ENABLE_GROWTH_REPORT关闭，前端对应VITE开关隐藏入口。连续复练已限制365天间隔，避免日期溢出。
+
+### AUD-05e 用户备份
+
+可信与隐私页可下载签名整包（业务记录及托管文件）、导出可读JSON，并校验预览后确认自助恢复。密码/登录会话/API密钥不导出或恢复；外部原文件不属于托管整包。恢复可回滚失败、检查数据关系且不会重放旧文件操作；仅支持同一学习空间。自助上限为ZIP25MB/展开128MB/业务32MB/文件5000个，超限使用管理员离线工具。开关为FILEMATE_ENABLE_PERSONAL_DATA与VITE_ENABLE_PERSONAL_DATA。

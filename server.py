@@ -13,6 +13,7 @@ import mimetypes
 import os
 import re
 import secrets
+import sqlite3
 import threading
 import uuid
 from collections import OrderedDict
@@ -54,6 +55,7 @@ from filemate.llm_client.credential_store import (
     secure_store_available,
     set_stored_api_key,
 )
+from filemate.operations.personal_backup import MAX_BACKUP_BYTES, PersonalBackup
 from filemate.perception.parsers import PLAIN_TEXT_SUFFIXES
 from filemate.portfolio.growth import GrowthRepository, ReportRequest
 from filemate.portfolio.resume import Profile as ResumeProfile
@@ -144,6 +146,8 @@ MAX_OPEN_TENANT_STORAGES = max(
 TENANT_STORAGE_CACHE_LIMIT = MAX_OPEN_TENANT_STORAGES
 _tenant_storages: OrderedDict[str, SQLiteStorage] = OrderedDict()
 _active_tenants: dict[str, int] = {}
+_exclusive_tenants: set[str] = set()
+_personal_data_slots = threading.BoundedSemaphore(2)
 _tenant_storage_lock = threading.RLock()
 
 
@@ -476,7 +480,15 @@ async def reject_untrusted_browser_origins(request: Request, call_next):
 async def isolate_anonymous_workspace(request: Request, call_next):
     """在公网模式下把每个匿名浏览器路由到独立数据目录。"""
     if IDENTITY_MODE == "local":
-        return await call_next(request)
+        with _tenant_storage_lock:
+            if 'local' in _exclusive_tenants:
+                return JSONResponse(status_code=409, content={'success': False, 'error': '个人数据维护中，请稍后重试'})
+            _active_tenants['local'] = _active_tenants.get('local', 0) + 1
+        try:
+            return await call_next(request)
+        finally:
+            with _tenant_storage_lock:
+                _active_tenants['local'] -= 1
 
     session_token = request.cookies.get(ACCOUNT_COOKIE_NAME)
     account = await run_in_threadpool(_accounts.resolve_session, session_token)
@@ -503,6 +515,8 @@ async def isolate_anonymous_workspace(request: Request, call_next):
     tenant_root = DATA_DIR / "users" / identity_id
     context = (identity_id, tenant_root / "inbox", tenant_root / "archive")
     with _tenant_storage_lock:
+        if identity_id in _exclusive_tenants:
+            return JSONResponse(status_code=409, content={'success': False, 'error': '个人数据维护中，请稍后重试'})
         _active_tenants[identity_id] = _active_tenants.get(identity_id, 0) + 1
     token = _tenant_context.set(context)
     try:
@@ -2986,6 +3000,70 @@ def wrongbook_page(mastered: bool | None = Query(False), limit: int = Query(50, 
 def learning_analytics():
     """返回学习闭环与模拟面试的本地统计。"""
     return ApiResponse(success=True, data=_storage.get_learning_analytics())
+
+
+class PersonalRestoreRequest(BaseModel):
+    confirmed: Literal[True]
+    backup_id: str = Field(pattern=r'^[0-9a-f]{64}$')
+    confirmation_token: str = Field(min_length=64, max_length=64)
+
+
+def _personal_backup():
+    if os.getenv('FILEMATE_ENABLE_PERSONAL_DATA', '1').lower() in {'0', 'false', 'off'}:
+        raise HTTPException(status_code=503, detail='个人导出恢复已关闭，原数据保留')
+    return PersonalBackup(_storage, _current_identity_id(), _current_upload_root(), _current_archive_dir())
+
+
+@app.get('/api/privacy/export')
+def export_personal_data(format: Literal['backup', 'json'] = 'backup'):
+    if not _personal_data_slots.acquire(blocking=False):
+        raise HTTPException(status_code=429, detail='导出恢复正在处理其他请求，请稍后重试')
+    try:
+        content = _personal_backup().export(backup=format == 'backup')
+        return Response(content, media_type='application/zip' if format == 'backup' else 'application/json', headers={'Cache-Control': 'no-store', 'Content-Disposition': 'attachment; filename="filemate-personal.' + ('zip' if format == 'backup' else 'json') + '"'})
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=409, detail='个人导出未完成，请检查文件权限、托管目录边界或自助容量；未生成残缺备份') from exc
+    finally:
+        _personal_data_slots.release()
+
+
+@app.post('/api/privacy/restore-preview', response_model=ApiResponse)
+async def preview_personal_restore(file: Annotated[UploadFile, File()]):
+    if not _personal_data_slots.acquire(blocking=False):
+        raise HTTPException(status_code=429, detail='导出恢复正在处理其他请求，请稍后重试')
+    try:
+        raw = await file.read(MAX_BACKUP_BYTES + 1)
+        if len(raw) > MAX_BACKUP_BYTES:
+            raise HTTPException(status_code=413, detail='个人备份不能超过25MB')
+        data = await run_in_threadpool(_personal_backup().preview, raw)
+        return ApiResponse(success=True, data=data)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=409, detail='备份校验失败：须为当前学习空间导出的签名备份，且文件/版本/容量有效；当前数据保留') from exc
+    finally:
+        _personal_data_slots.release()
+
+
+@app.post('/api/privacy/restore', response_model=ApiResponse)
+def restore_personal_data(request: PersonalRestoreRequest):
+    identity = _current_identity_id()
+    with _tenant_storage_lock:
+        if _active_tenants.get(identity, 0) > 1 or identity in _exclusive_tenants:
+            raise HTTPException(status_code=409, detail='当前空间有其他请求，请结束任务并关闭其他窗口后重试')
+        _exclusive_tenants.add(identity)
+    try:
+        result = _personal_backup().restore(request.backup_id, request.confirmation_token)
+        for key in list(_sessions):
+            if key[0] == identity:
+                _sessions.pop(key, None)
+        return ApiResponse(success=True, data=result)
+    except sqlite3.Error as exc:
+        logger.warning('个人恢复数据库失败 (%s)', type(exc).__name__)
+        raise HTTPException(status_code=503, detail='数据库恢复失败，事务与托管文件已回滚，请联系维护者检查后重试') from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=409, detail='恢复未完成：数据可能已变化、任务执行中或文件不可写，请重新预览；原数据保留') from exc
+    finally:
+        with _tenant_storage_lock:
+            _exclusive_tenants.discard(identity)
 
 
 def _growth_repository():

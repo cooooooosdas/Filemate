@@ -20,6 +20,7 @@
           <span>0{{ index + 1 }}</span><p>{{ humanizeGuarantee(item) }}</p>
         </article>
       </section>
+      <PersonalDataPanel v-if="personalDataEnabled" @restored="load" />
 
       <section class="workspace-grid">
         <article class="panel trace-panel">
@@ -99,6 +100,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import DataState from '../components/DataState.vue'
+import PersonalDataPanel from '../components/PersonalDataPanel.vue'
+const personalDataEnabled = import.meta.env.VITE_ENABLE_PERSONAL_DATA !== 'false'
 import {
   deleteAgentMemory,
   getTrustOverview,
