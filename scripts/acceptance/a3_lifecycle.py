@@ -55,12 +55,12 @@ report["steps"].append(
     }
 )
 
-preview = server._storage.preview_source_deletion(source_id)
+preview = client.get(f"/knowledge/sources/{source_id}/delete-preview").json()["data"]
 require(preview is not None, "删除预览未找到已创建的资料源")
 require(preview["affected"]["artifacts"] == 1, "删除预览未统计派生 Artifact")
 report["steps"].append({"step": "delete_preview", "affected": preview["affected"]})
 
-delete_resp = client.delete(f"/knowledge/sources/{source_id}")
+delete_resp = client.request("DELETE", f"/knowledge/sources/{source_id}", json={"confirmed": True, "confirmation_token": preview["confirmation_token"]})
 require(
     delete_resp.status_code == 200,
     f"删除资料源失败：{delete_resp.status_code} {delete_resp.text}",

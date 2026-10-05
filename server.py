@@ -378,6 +378,11 @@ class SourceRightsRequest(BaseModel):
     note: str = Field(default="", max_length=500)
 
 
+class DataDeleteRequest(BaseModel):
+    confirmed: bool = False
+    confirmation_token: str = Field(default="", max_length=64)
+
+
 class DigitalHumanPlaybackRequest(BaseModel):
     text_length: int = Field(ge=1, le=5000)
     avatar_id: Literal["filemate-campus", "filemate-portrait"]
@@ -1815,42 +1820,65 @@ def search_knowledge(
     return ApiResponse(success=True, data=results)
 
 
-@app.delete("/knowledge/sources/{source_id}", response_model=ApiResponse)
-def delete_knowledge_source(source_id: str):
-    """预览并删除一份知识资料及其派生数据。
+class _StagedSourceFile:
+    def __init__(self, path_value: str, shared: bool):
+        self.status = _managed_file_status(path_value)
+        self.status.pop("path", None)
+        self.status["shared"] = shared
+        self.original = Path(path_value).resolve()
+        self.staged: Path | None = None
+        self.backup: bytes | None = None
+        if self.status["managed"] and self.status["exists"] and not shared:
+            self.staged = self.original.with_name(".delete-" + uuid.uuid4().hex)
+            self.original.rename(self.staged)
+            self.status["removed"] = True
 
-    先返回（并执行）删除影响，再仅清理 FILEMATE_UPLOAD_DIR 内的托管副本；
-    用户外部原文件、归档文件与其他 Source 引用文件不会被删除。幂等：重复删除
-    返回 404（与“资源不存在”一致），不重复清理。
-    """
-    preview = _storage.preview_source_deletion(source_id)
+    def rollback(self) -> None:
+        if self.staged is not None:
+            if self.staged.exists():
+                self.staged.rename(self.original)
+            elif self.backup is not None:
+                self.original.parent.mkdir(parents=True, exist_ok=True)
+                with self.original.open("xb") as stream:
+                    stream.write(self.backup)
+
+    def finish(self) -> None:
+        if self.staged is not None:
+            self.backup = self.staged.read_bytes()
+            self.staged.unlink()
+            try:
+                self.original.parent.rmdir()
+            except OSError:
+                pass
+
+
+@app.get("/knowledge/sources/{source_id}/delete-preview", response_model=ApiResponse)
+def preview_knowledge_source_deletion(source_id: str):
+    preview = _storage.source_deletion_preview(source_id)
     if preview is None:
         raise HTTPException(status_code=404, detail="Source not found")
+    preview["managed_file"] = _managed_file_status(preview.pop("source_path"))
+    preview["managed_file"].pop("path", None)
+    return ApiResponse(success=True, data=preview)
 
-    file_status = _managed_file_status(preview.get("source_path"), remove=False)
 
-    deleted = _storage.delete_source(source_id)
-    if deleted is None:
-        raise HTTPException(status_code=404, detail="Source not found")
-
-    if file_status["managed"] and file_status["exists"]:
-        file_status = _managed_file_status(preview.get("source_path"), remove=True)
-        logger.info(
-            "清理托管副本 source_id=%s path=%s removed=%s",
-            source_id,
-            file_status["path"],
-            file_status["removed"],
+@app.delete("/knowledge/sources/{source_id}", response_model=ApiResponse)
+def delete_knowledge_source(source_id: str, request: DataDeleteRequest | None = None):
+    if request is None or not request.confirmed or not request.confirmation_token:
+        if _storage.get_source(source_id) is None:
+            raise HTTPException(status_code=404, detail="Source not found")
+        raise HTTPException(status_code=422, detail="删除前必须预览并明确确认")
+    try:
+        result = _storage.confirmed_source_delete(
+            source_id, request.confirmation_token, _StagedSourceFile,
         )
-
-    return ApiResponse(
-        success=True,
-        data={
-            "source_id": source_id,
-            "affected": deleted["affected"],
-            "managed_file": file_status,
-            "external_files_untouched": not file_status["managed"],
-        },
-    )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="Source not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=503, detail="文件清理失败，请重新检查资料状态") from exc
+    return ApiResponse(success=True, data=result)
 
 
 # =============== AI 工具箱 API ===============

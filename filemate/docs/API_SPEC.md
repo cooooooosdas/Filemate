@@ -430,7 +430,7 @@ HTTP 错误同样保持该结构：参数错误使用 `400/422`，资源不存�
 | `GET` | `/knowledge/sources/{source_id}` | 获取资料源详情 | 包含解析正文与元数据，不返回服务器绝对路径和内部工作区字段 |
 | `GET` | `/knowledge/sources/{source_id}/artifacts` | 查询资料派生产物 | 支持 `artifact_type` 与 `limit` |
 | `GET` | `/knowledge/sources/{source_id}/lineage` | 查询六阶段学习资产链 | 只聚合真实持久化记录，不返回原文 |
-| `DELETE` | `/knowledge/sources/{source_id}` | 预览并删除资料及其派生产物 | 级联删除派生数据；仅清理托管上传副本 |
+| `DELETE` | `/knowledge/sources/{source_id}` | 确认删除资料及其派生产物 | 级联删除派生数据；仅清理托管上传副本 |
 | `PUT` | `/knowledge/sources/{source_id}/rights` | 声明资料来源与分享范围 | 写入 `source_rights`、安全 Agent 轨迹和操作记忆 |
 
 AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。服务重启后，这三个标识仍然有效。`POST /ai/chat` 将 assistant 消息的 `citations` 与正文一并持久化，恢复历史会话后仍可核验引用来源。
@@ -469,13 +469,13 @@ AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。�
 
 ## 4.7.1 知识资料删除语义
 
-`DELETE /knowledge/sources/{source_id}` 提供「预览 → 确认 → 删除」的安全资料生命周期：
+资料删除合同（schema v26）：
 
-- **预览**：删除前返回受影响的 `artifacts`、`chunks`、`contexts`、`quiz_attempts`、`wrong_questions`、`study_plans` 数量。
-- **级联删除**：依赖 SQLite 外键 `ON DELETE CASCADE`，删除 `sources` 行后派生数据不可查询；其他 Source 不受影响。
-- **托管副本清理**：仅当 `source_path` 位于 `FILEMATE_UPLOAD_DIR` 内（`resolve()` 后仍在其下）时，才随删除清理物理文件；符号链接与路径穿越逃逸到目录外的文件不会被删除。
-- **外部文件保护**：用户原始文件、归档文件及其他 Source 引用文件绝不删除，返回 `external_files_untouched=true`。
-- **幂等**：重复删除返回 `404`，不重复清理；托管文件已不存在时返回 `exists=false, removed=false`，仍视为成功。
+- `GET /knowledge/sources/{source_id}/delete-preview`：返回影响数量、托管文件状态及有效15分钟的随机 `confirmation_token`；不暴露绝对路径，不执行删除。
+- `DELETE /knowledge/sources/{source_id}`：JSON 必须为 `{ "confirmed": true, "confirmation_token": "预览凭据" }`。缺少确认422，越权资源404，无效/过期凭据或原文/派生数据变化409。
+- 确认在当前身份数据库内校验；原文和关联行摘要绑定修订，删除与最小审计/成功回执在同一事务中提交。审计不含资料名、路径、正文和凭据。
+- 仅清理当前上传目录内且没有其他 Source 引用的托管副本。暂存、清理或数据库事务失败时恢复原文件并回滚数据；外部原文件保留。
+- 相同凭据重复提交返回首次成功回执，不重复删除或记账；不存在资源且没有有效回执404。
 
 ---
 
@@ -491,7 +491,7 @@ AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。�
 | `GET` | `/sessions/{session_id}/ics` | 获取确认后的 `.ics` 内容 | 无 |
 | `GET` | `/knowledge/artifacts/{artifact_id}` | 获取单个 AI 产物 | 无 |
 | `PATCH` | `/knowledge/artifacts/{artifact_id}` | 更新产物标题与内容；历史题集只读 | 写入 `artifacts`；修订有学习历史的题集时原子保存旧版快照 |
-| `DELETE` | `/knowledge/sources/{source_id}` | 预览并删除资料及其派生产物 | 级联删除；仅清理 `FILEMATE_UPLOAD_DIR` 内托管副本 |
+| `DELETE` | `/knowledge/sources/{source_id}` | 确认删除资料及其派生产物 | 级联删除；仅清理 `FILEMATE_UPLOAD_DIR` 内托管副本 |
 | `GET` | `/knowledge/search` | 跨资料检索 | 无 |
 | `POST` | `/quiz/attempts` | 提交作答并判题；核对题目快照 | 写入 `quiz_attempts`，更新错题；修订冲突409不写入 |
 | `GET` | `/wrongbook` | 查询错题列表，包含知识点标识、错因、来源与置信度 | 无 |

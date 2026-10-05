@@ -1518,9 +1518,15 @@ export interface SourceDeletionResult {
   external_files_untouched: boolean
 }
 
-export async function deleteKnowledgeSource(sourceId: string): Promise<SourceDeletionResult> {
+export async function previewKnowledgeSourceDeletion(sourceId: string): Promise<SourceDeletionResult & { confirmation_token: string }> {
+  const response = await api.get<any, ApiResponse<SourceDeletionResult & { confirmation_token: string }>>(`/knowledge/sources/${sourceId}/delete-preview`)
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '删除预览失败')
+}
+
+export async function deleteKnowledgeSource(sourceId: string, confirmationToken: string): Promise<SourceDeletionResult> {
   const response = await api.delete<any, ApiResponse<SourceDeletionResult>>(
-    `/knowledge/sources/${sourceId}`
+    `/knowledge/sources/${sourceId}`, { data: { confirmed: true, confirmation_token: confirmationToken } }
   )
   if (response.success && response.data) return response.data
   throw new Error(response.error || '删除资料失败')

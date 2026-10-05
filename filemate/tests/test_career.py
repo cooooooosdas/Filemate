@@ -369,7 +369,7 @@ def test_v23_database_upgrades_without_rewriting_existing_interview(tmp_path):
     try:
         store.init_schema()
         store.init_schema()
-        assert store.get_schema_version() == 25 and store.get_interview("old")["questions"] == [
+        assert store.get_schema_version() == 26 and store.get_interview("old")["questions"] == [
             "旧问题"
         ]
         row = CareerRepository(store).create(imported(), "reopen_position_12345678")

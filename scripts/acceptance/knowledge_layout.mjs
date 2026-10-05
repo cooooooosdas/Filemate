@@ -180,7 +180,7 @@ try {
     await library();await card(secondName).getByRole('button',{name:'检索此资料',exact:true}).click()
     await page.getByRole('button',{name:`删除资料：${secondName}`,exact:true}).click();await page.getByRole('button',{name:'取消',exact:true}).click()
     assert.ok(await api(`/knowledge/sources/${b.source_id}`))
-    await page.getByRole('button',{name:`删除资料：${secondName}`,exact:true}).click();await page.locator('.el-message-box').getByRole('button',{name:'删除',exact:true}).click()
+    await page.getByRole('button',{name:`删除资料：${secondName}`,exact:true}).click();await page.locator('.el-message-box').getByRole('button',{name:'确认删除',exact:true}).click()
     await card(secondName).waitFor({state:'hidden'});await page.getByText('范围：全部资料',{exact:true}).waitFor()
     assert.equal((await context.request.get(base+`/knowledge/artifacts/${bn.artifact_id}`)).status(),404)
   })

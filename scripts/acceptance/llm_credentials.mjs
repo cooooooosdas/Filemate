@@ -165,7 +165,7 @@ try {
   await fs.writeFile(`${out}/failure-requests.json`,JSON.stringify(requests,null,2))
 }
 finally {
-  if(sourceId) await api(`/knowledge/sources/${sourceId}`,'DELETE').catch(()=>{})
+  if(sourceId) { const preview=await api(`/knowledge/sources/${sourceId}/delete-preview`); await api(`/knowledge/sources/${sourceId}`,'DELETE',{confirmed:true,confirmation_token:preview.body.data.confirmation_token}).catch(()=>{}) }
   await api('/api/auth/logout','POST',{}).catch(()=>{})
   await context.close()
   const report={passed:!errors.length,checks,errors,sample_kind:'synthetic_account_real_browser_crypto_and_HTTPS_with_explicit_synthetic_model_transport',scope:'Only self-created account, key and material; no production or real user credential read; positive model response injected in isolated server transport, not evidence of real DeepSeek connectivity.'}

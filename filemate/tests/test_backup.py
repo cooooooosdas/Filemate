@@ -62,7 +62,7 @@ def test_preview_and_three_databases_restore(managed: Path, tmp_path: Path) -> N
         entry["database"]["schema_version"]
         for entry in report["manifest"]["entries"]
         if entry["kind"] == "database"
-    } == {25}
+    } == {26}
     target = tmp_path / "staged"
     restore_plan = backup.plan_restore(snapshot, target)
     assert not target.exists()

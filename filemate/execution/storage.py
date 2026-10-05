@@ -15,6 +15,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from filemate.execution import data_actions
+
 logger = logging.getLogger(__name__)
 
 
@@ -609,6 +611,7 @@ _MIGRATIONS = (
     (23, "interview_observation_and_review", _INTERVIEW_REVIEW_SCHEMA),
     (24, "career_training_center", _CAREER_SCHEMA),
     (25, "accounts_and_revocable_sessions", _ACCOUNT_SCHEMA),
+    (26, "confirmed_data_actions", data_actions.SCHEMA),
 )
 
 
@@ -1386,6 +1389,70 @@ class SQLiteStorage:
             preview["affected"],
         )
         return preview
+
+    def _source_deletion_revision(self, source_id: str) -> str | None:
+        """覆盖原文及级联行的变化，不能只依据删除数量。"""
+        conn = self._conn()
+        source = conn.execute("SELECT * FROM sources WHERE source_id=?", (source_id,)).fetchone()
+        if source is None:
+            return None
+        snapshot: dict[str, Any] = {"source": dict(source)}
+        for table in ("artifacts", "document_chunks", "document_contexts", "quiz_attempts",
+                      "wrong_questions", "study_plans", "knowledge_graph_batches",
+                      "knowledge_graph_events", "source_rights"):
+            rows = conn.execute(f"SELECT * FROM {table} WHERE source_id=? ORDER BY rowid",
+                                (source_id,)).fetchall()
+            snapshot[table] = [dict(row) for row in rows]
+        return data_actions.digest(snapshot)
+
+    def source_deletion_preview(self, source_id: str) -> dict[str, Any] | None:
+        """在写锁内生成修订绑定的删除预览。"""
+        with self._write_lock, self._conn() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            preview = self.preview_source_deletion(source_id)
+            if preview is None:
+                return None
+            preview["confirmation_token"] = data_actions.issue(
+                conn, "source_delete", source_id, self._source_deletion_revision(source_id),
+            )
+            return preview
+
+    def confirmed_source_delete(self, source_id: str, token: str,
+                                stage_file: Any) -> dict[str, Any]:
+        """先暂存托管文件，事务失败时还原，提交后再清理暂存副本。"""
+        with self._write_lock:
+            conn = self._conn()
+            staged = None
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                revision = self._source_deletion_revision(source_id)
+                if revision is None and conn.execute(
+                    "SELECT 1 FROM data_action_previews WHERE token_hash=? AND action='source_delete' AND resource_id=? AND result IS NOT NULL",
+                    (data_actions.digest(token), source_id),
+                ).fetchone() is None:
+                    raise LookupError("Source not found")
+                receipt = data_actions.check(conn, "source_delete", source_id, token,
+                                             revision)
+                if receipt is not None:
+                    conn.rollback()
+                    return receipt
+                preview = self.preview_source_deletion(source_id)
+                shared = conn.execute("SELECT COUNT(*) FROM sources WHERE source_path=? AND source_id!=?",
+                                      (preview["source_path"], source_id)).fetchone()[0]
+                staged = stage_file(preview["source_path"], bool(shared))
+                result = {"source_id": source_id, "affected": preview["affected"],
+                          "managed_file": staged.status,
+                          "external_files_untouched": not staged.status["managed"]}
+                conn.execute("DELETE FROM sources WHERE source_id=?", (source_id,))
+                data_actions.finish(conn, "source_delete", source_id, token, result)
+                staged.finish()
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                if staged is not None:
+                    staged.rollback()
+                raise
+            return result
 
     def save_artifact(
         self,

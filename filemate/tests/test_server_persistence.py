@@ -1940,7 +1940,8 @@ def test_delete_source_cleans_managed_inbox_file(
     )
 
     with TestClient(module.app) as client:
-        response = client.delete(f"/knowledge/sources/{source_id}")
+        preview = client.get(f"/knowledge/sources/{source_id}/delete-preview").json()["data"]
+        response = client.request("DELETE", f"/knowledge/sources/{source_id}", json={"confirmed": True, "confirmation_token": preview["confirmation_token"]})
 
     assert response.status_code == 200
     data = response.json()["data"]
@@ -1965,7 +1966,8 @@ def test_delete_source_spares_external_file(
     )
 
     with TestClient(module.app) as client:
-        response = client.delete(f"/knowledge/sources/{source_id}")
+        preview = client.get(f"/knowledge/sources/{source_id}/delete-preview").json()["data"]
+        response = client.request("DELETE", f"/knowledge/sources/{source_id}", json={"confirmed": True, "confirmation_token": preview["confirmation_token"]})
 
     assert response.status_code == 200
     data = response.json()["data"]
@@ -1997,7 +1999,8 @@ def test_delete_source_does_not_follow_symlink_escape(
     )
 
     with TestClient(module.app) as client:
-        response = client.delete(f"/knowledge/sources/{source_id}")
+        preview = client.get(f"/knowledge/sources/{source_id}/delete-preview").json()["data"]
+        response = client.request("DELETE", f"/knowledge/sources/{source_id}", json={"confirmed": True, "confirmation_token": preview["confirmation_token"]})
 
     assert response.status_code == 200
     data = response.json()["data"]
@@ -2005,7 +2008,7 @@ def test_delete_source_does_not_follow_symlink_escape(
     assert external.exists()
 
 
-def test_delete_source_is_idempotent_404(
+def test_delete_source_replays_confirmed_receipt(
     server_module: tuple[ModuleType, SQLiteStorage],
 ) -> None:
     module, storage = server_module
@@ -2016,12 +2019,14 @@ def test_delete_source_is_idempotent_404(
     )
 
     with TestClient(module.app) as client:
-        first = client.delete(f"/knowledge/sources/{source_id}")
-        second = client.delete(f"/knowledge/sources/{source_id}")
+        preview = client.get(f"/knowledge/sources/{source_id}/delete-preview").json()["data"]
+        body = {"confirmed": True, "confirmation_token": preview["confirmation_token"]}
+        first = client.request("DELETE", f"/knowledge/sources/{source_id}", json=body)
+        second = client.request("DELETE", f"/knowledge/sources/{source_id}", json=body)
 
     assert first.status_code == 200
-    assert second.status_code == 404
-    assert second.json()["success"] is False
+    assert second.status_code == 200
+    assert second.json() == first.json()
 
 
 def test_delete_source_when_managed_file_already_missing(
@@ -2039,7 +2044,8 @@ def test_delete_source_when_managed_file_already_missing(
     )
 
     with TestClient(module.app) as client:
-        response = client.delete(f"/knowledge/sources/{source_id}")
+        preview = client.get(f"/knowledge/sources/{source_id}/delete-preview").json()["data"]
+        response = client.request("DELETE", f"/knowledge/sources/{source_id}", json={"confirmed": True, "confirmation_token": preview["confirmation_token"]})
 
     assert response.status_code == 200
     data = response.json()["data"]

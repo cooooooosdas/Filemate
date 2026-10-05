@@ -81,7 +81,10 @@ def test_anonymous_clients_cannot_read_or_mutate_each_others_data(
         assert bob.delete(f"/knowledge/sources/{source_id}").status_code == 404
 
         assert alice.get(f"/knowledge/sources/{source_id}").status_code == 200
-        assert alice.delete(f"/knowledge/sources/{source_id}").status_code == 200
+        preview = alice.get(f"/knowledge/sources/{source_id}/delete-preview").json()["data"]
+        body = {"confirmed": True, "confirmation_token": preview["confirmation_token"]}
+        assert bob.request("DELETE", f"/knowledge/sources/{source_id}", json=body).status_code == 404
+        assert alice.request("DELETE", f"/knowledge/sources/{source_id}", json=body).status_code == 200
 
 
 def test_anonymous_clients_cannot_access_session_execution_routes(

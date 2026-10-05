@@ -88,7 +88,7 @@ import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowRight, ArrowUpRight, ChevronDown, Close, DataAnalysis, Document, DocumentAdd, FolderOpened, Lock, Reading, Search, Share, Trash } from '../icons'
 import MotionSurface from '../components/MotionSurface.vue'
-import { deleteKnowledgeSource, getKnowledgeArtifact, getKnowledgeArtifacts, getKnowledgeLineage, getKnowledgeSources, searchKnowledge, submitProductFeedback, updateKnowledgeArtifact, type KnowledgeArtifact, type KnowledgeLineage, type KnowledgeSearchResult, type KnowledgeSource } from '../services/api'
+import { previewKnowledgeSourceDeletion, deleteKnowledgeSource, getKnowledgeArtifact, getKnowledgeArtifacts, getKnowledgeLineage, getKnowledgeSources, searchKnowledge, submitProductFeedback, updateKnowledgeArtifact, type KnowledgeArtifact, type KnowledgeLineage, type KnowledgeSearchResult, type KnowledgeSource } from '../services/api'
 import DataState from '../components/DataState.vue'
 
 const sources=ref<KnowledgeSource[]>([]); const results=ref<KnowledgeSearchResult[]>([]); const artifacts=ref<KnowledgeArtifact[]>([])
@@ -157,7 +157,21 @@ const saveArtifact = async () => {
   finally { saving.value = false }
 }
 const exportArtifact=()=>{if(!selectedArtifact.value)return;const structured=typeof selectedArtifact.value.content!=='string';const blob=new Blob([formatArtifactContent(selectedArtifact.value.content)],{type:structured?'application/json;charset=utf-8':'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`${selectedArtifact.value.title||'FileMate学习产物'}.${structured?'json':'txt'}`;link.click();URL.revokeObjectURL(url)}
-const confirmDelete=async(source:KnowledgeSource)=>{try{await ElMessageBox.confirm(`删除「${source.original_name}」及其全部学习产物？此操作不可撤销，但不会删除你的外部原文件。`,'删除资料',{confirmButtonText:'删除',cancelButtonText:'取消',type:'warning'})}catch{return}deletingSource.value=source.source_id;try{const result=await deleteKnowledgeSource(source.source_id);sources.value=sources.value.filter(item=>item.source_id!==source.source_id);if(expandedSource.value===source.source_id){artifactEpoch++;expandedSource.value='';artifacts.value=[];lineage.value=null}if(selectedSource.value===source.source_id)selectedSource.value='';results.value=results.value.filter(item=>item.source_id!==source.source_id);const affected=result.affected;const parts=[`已删除资料及其 ${affected.artifacts} 个产物、${affected.chunks} 个片段、${affected.wrong_questions} 条错题记录`];ElMessage.success(parts.join('；'))}catch(error:any){ElMessage.error(error.message||'删除失败')}finally{deletingSource.value=''}}
+const confirmDelete = async (source: KnowledgeSource) => {
+  deletingSource.value = source.source_id
+  try {
+    const preview = await previewKnowledgeSourceDeletion(source.source_id)
+    await ElMessageBox.confirm(`删除「${source.original_name}」及 ${preview.affected.artifacts} 个学习产物、${preview.affected.wrong_questions} 条错题？不可撤销，外部原文件保留。`, '确认删除范围', { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning' })
+    const result = await deleteKnowledgeSource(source.source_id, preview.confirmation_token)
+    sources.value = sources.value.filter(item => item.source_id !== source.source_id)
+    if (expandedSource.value === source.source_id) { artifactEpoch++; expandedSource.value = ''; artifacts.value = []; lineage.value = null }
+    if (selectedSource.value === source.source_id) selectedSource.value = ''
+    results.value = results.value.filter(item => item.source_id !== source.source_id)
+    ElMessage.success(`已删除资料及 ${result.affected.artifacts} 个产物、${result.affected.wrong_questions} 条错题`)
+  } catch (error: any) { if (error !== 'cancel' && error !== 'close') ElMessage.error(error.message || '删除失败') }
+  finally { deletingSource.value = '' }
+}
+
 onMounted(()=>{void load();window.addEventListener('filemate:before-refresh',guardRefresh);window.addEventListener('beforeunload',guardUnload)})
 onUnmounted(()=>{disposed=true;artifactEpoch++;window.removeEventListener('filemate:before-refresh',guardRefresh);window.removeEventListener('beforeunload',guardUnload)})
 </script>

@@ -605,3 +605,7 @@ docs/AGENT_DEVELOPMENT_EXECUTION_PLAN.md 和 filemate/docs/API_SPEC.md。
 - 需要人工评测的结论仍标记为“待评测”。
 
 如果某个 Agent 交付质量不足，应保留其 PR 和失败证据，不直接在 `main` 上继续堆补丁；由负责人决定退回修改、关闭 PR，或基于本任务卡重新建立干净分支。
+
+## 2026-10-05 用户授权的发布阻断修复
+
+当前顺序以 [七项P1修复记录](P1_REMEDIATION_PLAN_2026-10-05.md) 为准，AUD-01 → AUD-07。历史任务卡不构成跳过此次审计问题的依据；修复前报告保持不变。
