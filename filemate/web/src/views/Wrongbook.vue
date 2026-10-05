@@ -2,13 +2,24 @@
   <div class="wrongbook-page" aria-live="polite">
     <header>
       <div><h1>错题复盘</h1><p>答错自动收录，连续答对两次后移入已掌握。</p></div>
-      <button class="filter" @click="showMastered = !showMastered; load()">{{ showMastered ? '查看待复习' : '查看已掌握' }}</button>
+      <button class="filter" @click="showMastered = !showMastered; offset = 0; load()">{{ showMastered ? '查看待复习' : '查看已掌握' }}</button>
     </header>
+    <form class="wrong-search" @submit.prevent="offset = 0; load()">
+      <label>搜索全部错题<input v-model.trim="query" type="search" maxlength="160" placeholder="题干、知识点或资料名" /></label>
+      <label><input v-model="dueOnly" type="checkbox" @change="offset = 0; load()" />仅看今日到期</label>
+      <button :disabled="loading">搜索</button>
+    </form>
+    <nav v-if="total" class="wrong-pages" aria-label="错题分页">
+      <span>共 {{ total }} 道 · 第 {{ Math.floor(offset / 30) + 1 }} / {{ Math.ceil(total / 30) }} 页</span>
+      <button :disabled="loading || offset === 0" @click="offset -= 30; load()">上一页</button>
+      <button :disabled="loading || !hasMore" @click="offset += 30; load()">下一页</button>
+    </nav>
     <div v-if="loading" class="empty">正在加载…</div>
     <DataState v-else-if="error" :error="error" @retry="load" />
     <div v-else-if="!items.length" class="empty empty-state">
       <span class="empty-icon"><el-icon><Tickets v-if="showMastered" /><CircleCheckFilled v-else /></el-icon></span>
-      <strong>{{ showMastered ? '暂无已掌握题目' : '暂无错题，继续保持' }}</strong>
+      <strong>{{ query || dueOnly ? '当前筛选没有匹配错题' : showMastered ? '暂无已掌握题目' : '暂无错题，继续保持' }}</strong>
+      <button v-if="query || dueOnly" @click="query = ''; dueOnly = false; offset = 0; load()">清除筛选</button>
       <p>{{ showMastered ? '完成错题复习并连续答对两次后，题目会出现在这里。' : '从自己的课程资料生成练习，答错的题目会自动进入复习队列。' }}</p>
       <router-link v-if="!showMastered" to="/ai-tools">从资料生成练习</router-link>
     </div>
@@ -55,13 +66,15 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CircleCheckFilled, Tickets } from '@element-plus/icons-vue'
-import { getWrongbook, submitQuizAttempt, updateWrongDiagnosis, type WrongErrorCause, type WrongQuestion } from '../services/api'
+import { getWrongbookPage, submitQuizAttempt, updateWrongDiagnosis, type WrongErrorCause, type WrongQuestion } from '../services/api'
 import DataState from '../components/DataState.vue'
 
 const items = ref<WrongQuestion[]>([])
 const loading = ref(true)
 const error = ref('')
 const showMastered = ref(false)
+const query = ref(''), dueOnly = ref(false), offset = ref(0), total = ref(0), hasMore = ref(false)
+let generation = 0
 const answers = ref<Record<string, string>>({})
 const results = ref<Record<string, string>>({})
 const expanded = ref<Record<string, boolean>>({})
@@ -78,17 +91,21 @@ const causeOptions: Array<{ value: WrongErrorCause; label: string }> = [
   { value: 'careless', label: '审题或检查疏漏' }
 ]
 const load = async () => {
+  const current = ++generation
   loading.value = true
   error.value = ''
   try {
-    items.value = await getWrongbook(showMastered.value)
+    const page = await getWrongbookPage({ mastered: showMastered.value, offset: offset.value, q: query.value, due_only: dueOnly.value })
+    if (current !== generation) return
+    if (!page.items.length && offset.value > 0 && page.total > 0) { offset.value = Math.floor((page.total - 1) / 30) * 30; await load(); return }
+    items.value = page.items; total.value = page.total; hasMore.value = page.has_more
     for (const item of items.value) {
       causeDrafts.value[item.wrong_id] = item.error_cause
       noteDrafts.value[item.wrong_id] = item.error_cause_note || ''
     }
   }
-  catch (e: any) { error.value = e?.message || '加载失败'; ElMessage.error(error.value) }
-  finally { loading.value = false }
+  catch (e: any) { if (current === generation) { error.value = e?.message || '加载失败'; ElMessage.error(error.value) } }
+  finally { if (current === generation) loading.value = false }
 }
 onMounted(load)
 const retry = async (item: WrongQuestion) => {
@@ -128,6 +145,12 @@ const reviewLabel = (item: WrongQuestion) => {
 </script>
 
 <style scoped>
+.wrong-search,.wrong-pages { display:flex; flex-wrap:wrap; align-items:center; gap:14px; margin:18px 0; }
+.wrong-search label { display:flex; align-items:center; gap:10px; }
+.wrong-search input[type=search] { min-width:0; width:min(40vw,360px); padding:12px; border:1px solid var(--border-subtle); border-radius:10px; font:inherit; }
+.wrong-search button,.wrong-pages button { padding:10px 16px; min-height:44px; border:1px solid var(--border-subtle); border-radius:10px; background:var(--surface-card); color:var(--text-primary); font:inherit; cursor:pointer; }
+.wrong-pages button:disabled { opacity:.5; cursor:default; }
+@media(max-width:640px) { .wrong-search label:first-child { flex-direction:column; align-items:stretch; width:100%; } .wrong-search input[type=search] { width:100%; box-sizing:border-box; } }
 .wrongbook-page { max-width: 980px; margin: 0 auto; padding: 28px; color: var(--text-primary); }
 header { display: flex; justify-content: space-between; gap: 24px; align-items: end; margin-bottom: 28px; }
 h1 { margin: 3px 0 8px; font-size: 30px; } header p { margin: 0; color: var(--text-secondary); }
