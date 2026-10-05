@@ -63,30 +63,13 @@ def _normalize(
     subject: str,
     knowledge_point: str,
 ) -> list[dict[str, Any]]:
-    if not isinstance(raw, list):
-        raw = raw.get("questions", []) if isinstance(raw, dict) else []
-    questions: list[dict[str, Any]] = []
-    for item in raw:
-        if not isinstance(item, dict) or not item.get("stem"):
-            continue
-        options = item.get("options") if isinstance(item.get("options"), list) else []
-        questions.append(
-            {
-                "subject": str(item.get("subject", subject)).strip() or subject,
-                "knowledge_point": (
-                    str(item.get("knowledge_point", knowledge_point)).strip()
-                    or knowledge_point
-                ),
-                "question_type": (
-                    str(item.get("question_type", "choice")).strip() or "choice"
-                ),
-                "stem": str(item["stem"]).strip(),
-                "options": [str(opt).strip() for opt in options if str(opt).strip()],
-                "answer": str(item.get("answer", "")).strip(),
-                "analysis": str(item.get("analysis", "")).strip(),
-            }
-        )
-    return questions
+    from filemate.study.question_validation import text_field, validate_questions
+
+    questions = validate_questions(raw)
+    return [{**item,
+             "subject": text_field(item.get("subject", subject), "学科", 160, optional=True),
+             "knowledge_point": text_field(item.get("knowledge_point", knowledge_point), "知识点", 160, optional=True)}
+            for item in questions]
 
 
 def _dedupe(
@@ -124,7 +107,7 @@ def _call_llm_for_json(llm: Any, **kwargs: Any) -> Any:
             return _parse_llm_json(text)
         except json.JSONDecodeError as exc:
             raise RuntimeError(
-                f"AI 出题失败：模型返回无法解析为 JSON: {text[:200]!r}"
+                "AI 出题失败：模型返回无法解析为 JSON"
             ) from exc
     return llm(**kwargs)
 
@@ -164,10 +147,15 @@ def generate_questions_with_llm(
         )
     except Exception as exc:
         raise RuntimeError(f"AI 出题失败：{exc}") from exc
-    generated = _normalize(raw, subject, knowledge_point)
+    try:
+        generated = _normalize(raw, subject, knowledge_point)
+        if len(generated) > count or any(item["question_type"] != question_type for item in generated):
+            raise ValueError("模型返回的题型或数量与请求不一致")
+    except (ValueError, TypeError) as exc:
+        raise RuntimeError(f"AI 出题失败：题目校验未通过（{exc}）") from exc
     if not generated:
         raise RuntimeError("AI 出题失败：模型未返回有效题目，且已关闭模板兜底")
-    return _dedupe(generated, count)
+    return generated
 
 
 def analyze_document_with_llm(

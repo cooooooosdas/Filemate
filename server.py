@@ -1781,7 +1781,23 @@ def list_source_artifacts(
         artifact_type=artifact_type,
         limit=limit,
     )
-    return ApiResponse(success=True, data=artifacts)
+    return ApiResponse(success=True, data=[_artifact_integrity(item) for item in artifacts])
+
+
+def _artifact_integrity(artifact: dict[str, Any]) -> dict[str, Any]:
+    if artifact["artifact_type"] != "questions":
+        return artifact
+    from filemate.study.question_validation import validate_question
+
+    try:
+        questions = artifact["content"]
+        if not isinstance(questions, list) or not questions:
+            raise ValueError("题集为空")
+        for question in questions:
+            validate_question(question, legacy=True)
+    except (ValueError, TypeError):
+        return {**artifact, "metadata": {**artifact.get("metadata", {}), "question_data_error": True}}
+    return artifact
 
 
 @app.get("/knowledge/artifacts/{artifact_id}", response_model=ApiResponse)
@@ -1790,7 +1806,7 @@ def get_knowledge_artifact(artifact_id: str):
     artifact = _storage.get_artifact(artifact_id)
     if artifact is None:
         raise HTTPException(status_code=404, detail="学习产物不存在")
-    return ApiResponse(success=True, data=artifact)
+    return ApiResponse(success=True, data=_artifact_integrity(artifact))
 
 
 @app.patch("/knowledge/artifacts/{artifact_id}", response_model=ApiResponse)
@@ -1803,6 +1819,17 @@ def update_knowledge_artifact(
     if not title:
         raise HTTPException(status_code=422, detail="标题不能为空")
     existing = _storage.get_artifact(artifact_id)
+    if existing and existing["artifact_type"] == "questions" and existing["content"] != request.content:
+        from filemate.study.question_validation import validate_question
+
+        try:
+            if not isinstance(request.content, list) or not 1 <= len(request.content) <= 1000:
+                raise ValueError("题集必须包含1至1000道题")
+            normalized = [validate_question(item, legacy=True) for item in request.content]
+            if len({item["stem"].casefold() for item in normalized}) != len(normalized):
+                raise ValueError("题干重复")
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(status_code=422, detail=f"题集校验失败：{exc}") from exc
     if existing and isinstance(existing.get("metadata"), dict) and existing["metadata"].get("origin") == "career_plan":
         raise HTTPException(status_code=409, detail="岗位学习计划保留确认时的证据，请更新进度或重新预览新计划")
     if existing and existing["artifact_type"] in {"coding_submission", "interview_report", "career_training"}:
@@ -2890,30 +2917,17 @@ def submit_quiz_attempt(request: QuizAttemptRequest):
     if not isinstance(questions, list) or not 0 <= request.question_index < len(questions):
         raise HTTPException(status_code=422, detail="题目序号无效")
 
-    # 旧 Artifact 格式兼容：{type, question, options, answer, explanation}
-    # → 映射为 {question_type, stem, options, answer}
-    _OLD_TYPE_MAP = {
-        "选择题": "choice", "单选题": "choice", "多选题": "choice",
-        "填空题": "fill", "判断题": "short_answer",
-        "简答题": "short_answer", "计算题": "short_answer", "论述题": "short_answer",
-    }
-
-    def _normalize_question(q: dict[str, Any]) -> dict[str, Any]:
-        if "question_type" in q:
-            return q
-        mapped = dict(q)
-        raw_type = str(q.get("type", ""))
-        mapped["question_type"] = _OLD_TYPE_MAP.get(raw_type, "short_answer")
-        if "stem" not in mapped and "question" in q:
-            mapped["stem"] = q["question"]
-        return mapped
-
     raw_question = questions[request.question_index]
     if not isinstance(raw_question, dict):
         raise HTTPException(status_code=422, detail="题目数据格式无效")
     if request.expected_question is not None and request.expected_question != raw_question:
         raise HTTPException(status_code=409, detail="题目已更新，请刷新题集后重新作答")
-    question = _normalize_question(raw_question)
+    from filemate.study.question_validation import validate_question
+
+    try:
+        question = validate_question(raw_question, legacy=True)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail="题目数据不完整或不一致，原记录保留，请重新生成或修订题集") from exc
     user_answer = (request.user_answer or "").strip()
 
     from filemate.study import check_answer

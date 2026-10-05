@@ -67,6 +67,7 @@
     </section>
 
     <el-dialog v-model="dialogVisible" class="artifact-dialog" width="min(860px, calc(100vw - 24px))" :show-close="false" :before-close="beforeDialogClose" :title="selectedArtifact?.title || '学习产物'" append-to-body destroy-on-close>
+      <p v-if="selectedArtifact?.metadata?.question_data_error" class="error" role="alert">此题集数据不完整，已暂停判题；原内容保留，可修订题集或重新生成。</p>
       <template #header><header v-if="selectedArtifact"><div><p class="eyebrow">{{ artifactLabel(selectedArtifact.artifact_type) }}</p><h2 id="artifact-dialog-title">{{ selectedArtifact.title }}</h2></div><button type="button" aria-label="关闭学习产物" @click="closeArtifact"><Close :size="23" aria-hidden="true" /></button></header></template>
       <template v-if="selectedArtifact">
           <template v-if="editing">

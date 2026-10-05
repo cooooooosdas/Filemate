@@ -62,25 +62,22 @@ def test_generate_questions_normalizes_and_deduplicates() -> None:
             {
                 "question_type": "choice",
                 "stem": "矩阵乘法满足什么性质？",
+                "options": ["A. 结合律", "B. 交换律"],
                 "answer": "A",
             },
         ]
 
-    questions = generate_questions_with_llm(
-        fake_llm,
-        "数学",
-        "线性代数",
-        count=3,
-        question_type="choice",
-    )
+    with pytest.raises(RuntimeError, match="题干重复"):
+        generate_questions_with_llm(
+            fake_llm, "数学", "线性代数", count=3, question_type="choice",
+        )
 
-    assert len(questions) == 1
-    assert questions[0]["subject"] == "数学"
+
 
 
 class _FakeLLMClient:
     def call(self, **kwargs):
-        return '[{"stem": "1+1=?", "answer": "2", "question_type": "choice"}]'
+        return '[{"stem": "1+1=?", "options": ["A. 1", "B. 2"], "answer": "B", "question_type": "choice"}]'
 
 
 def test_generate_questions_accepts_llm_client_object() -> None:
@@ -243,6 +240,7 @@ class TestGenerateQuestionsNormalizesNewFields:
         result = _normalize(
             [
                 {
+                    "question_type": "choice",
                     "stem": "矩阵乘法满足什么性质？",
                     "options": ["A. 结合律", "B. 交换律"],
                     "answer": "A",
@@ -275,7 +273,5 @@ class TestGenerateQuestionsNormalizesNewFields:
     def test_normalize_defaults_missing_fields(self):
         from filemate.study.generator import _normalize
 
-        result = _normalize([{"stem": "只有题干"}], subject="", knowledge_point="")
-        assert result[0]["question_type"] == "choice"
-        assert result[0]["answer"] == ""
-        assert result[0]["analysis"] == ""
+        with pytest.raises(ValueError):
+            _normalize([{"stem": "只有题干"}], subject="", knowledge_point="")

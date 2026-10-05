@@ -245,24 +245,14 @@ class QuestionExtractor:
 
             questions = json.loads(content.strip())
 
-            # 规范化题目格式
-            normalized = []
-            for q in questions:
-                if isinstance(q, dict):
-                    normalized.append({
-                        "type": q.get("type", "简答题"),
-                        "question": q.get("question", q.get("题目", "")),
-                        "options": q.get("options", q.get("选项", [])),
-                        "answer": q.get("answer", q.get("答案", "")),
-                        "explanation": q.get("explanation", q.get("解析", "")),
-                    })
+            from filemate.study.question_validation import validate_questions
 
-            return normalized[:num_questions]
-        except json.JSONDecodeError as exc:
-            logger.error("题目JSON解析失败: %s, content: %s", exc, content[:200])
-            return []
+            normalized = validate_questions(questions, maximum=min(num_questions, 10))
+            return [{"type": {"choice": "选择题", "fill": "填空题", "short_answer": "简答题"}[q["question_type"]],
+                     "question": q["stem"], "options": q["options"], "answer": q["answer"],
+                     "explanation": q["analysis"]} for q in normalized]
         except Exception as exc:
-            logger.error("题目提取失败: %s", exc)
+            logger.warning("题目提取校验或调用失败 (%s)", type(exc).__name__)
             return []
 
 

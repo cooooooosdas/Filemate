@@ -327,6 +327,9 @@ def build_graph(storage: Any) -> dict[str, Any]:
     artifacts_by_pair: dict[tuple[str, int], dict[str, Any]] = {}
     source_names = {}
     excluded_by_node: dict[str, int] = {}
+    invalid_pairs: set[tuple[str, int]] = set()
+    from filemate.study.question_validation import validate_question
+
     for sid in {n["source_id"] for n in nodes.values()}:
         source = storage.get_source(sid)
         source_names[sid] = source["original_name"] if source else "资料已删除"
@@ -346,6 +349,11 @@ def build_graph(storage: Any) -> dict[str, Any]:
                 pair_nodes[pair] = key
                 current_questions[pair] = question
                 artifacts_by_pair[pair] = artifact
+                try:
+                    validate_question(question, legacy=True)
+                except (ValueError, TypeError):
+                    invalid_pairs.add(pair)
+                    continue
                 questions_by_node.setdefault(key, []).append({
                     "artifact_id": artifact["artifact_id"], "question_index": index,
                     "read_only_snapshot": bool(artifact.get("metadata", {}).get("read_only_snapshot")),
@@ -356,14 +364,14 @@ def build_graph(storage: Any) -> dict[str, Any]:
             key = pair_nodes.get(pair)
             if key is None:
                 continue
-            if _after_question_revision(attempt, artifacts_by_pair[pair]):
+            if pair not in invalid_pairs and _after_question_revision(attempt, artifacts_by_pair[pair]):
                 attempts_by_node.setdefault(key, []).append(attempt)
             else:
                 excluded_by_node[key] = excluded_by_node.get(key, 0) + 1
         for wrong in evidence["wrong_questions"]:
             pair = (wrong["artifact_id"], wrong["question_index"])
             key = pair_nodes.get(pair)
-            if key is not None and not wrong["mastered"] and wrong["question"] == current_questions[pair]:
+            if key is not None and pair not in invalid_pairs and not wrong["mastered"] and wrong["question"] == current_questions[pair]:
                 wrong_by_node.setdefault(key, []).append(wrong["wrong_id"])
     now = datetime.now(timezone.utc)
     for node in nodes.values():

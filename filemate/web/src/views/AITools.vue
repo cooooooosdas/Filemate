@@ -208,6 +208,7 @@
           >
             <div class="question-type">{{ q.type }}</div>
             <div class="question-text">{{ q.question }}</div>
+            <p v-if="!q.answer?.trim()" class="question-explanation" role="alert">此题缺少参考答案，已暂停判题，请重新生成。</p>
             <div v-if="q.options && q.options.length" class="question-options">
               <span
                 v-for="(opt, oi) in q.options"
@@ -217,7 +218,7 @@
             </div>
             <div class="answer-entry">
               <input v-model="questionAnswers[idx]" :name="`question_answer_${idx}`" autocomplete="off" :aria-label="`第 ${Number(idx) + 1} 题答案`" placeholder="输入你的答案…" />
-              <button class="btn-secondary" :disabled="!questionAnswers[idx]?.trim()" @click="submitAnswer(idx)">提交</button>
+              <button class="btn-secondary" :disabled="!questionAnswers[idx]?.trim() || !q.answer?.trim()" @click="submitAnswer(idx)">提交</button>
             </div>
             <div v-if="questionResults[idx]" class="question-answer" :class="{ incorrect: !questionResults[idx].is_correct }">
               {{ questionResults[idx].feedback }} · 参考答案：{{ questionResults[idx].reference_answer }}
