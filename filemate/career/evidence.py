@@ -48,7 +48,7 @@ def compare(storage: SQLiteStorage, position_id: str, position: dict, revision: 
     coding = [
         row
         for row in CodingRepository(storage).evidence()
-        if row["result"]["verdict"] in {"AC", "WA", "TLE", "RE", "CE", "OLE"}
+        if row["result"]["verdict"] in {"AC", "WA", "TLE", "MLE", "RE", "CE", "OLE"}
     ]
     sessions = []
     for row in storage._conn().execute(

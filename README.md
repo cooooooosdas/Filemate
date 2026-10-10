@@ -1,5 +1,7 @@
 # FileMate
 
+2026-10-10 后续原始要求复核见[FEATURE07–13逐项账本](docs/FEATURE_07_13_REQUIREMENTS_LEDGER.md)，没有将七项P1关闭当作完整13特性验收。[OJ内存识别候选](docs/OJ_MEMORY_LIMIT_2026-10-10.md)通过Windows57/Linux64原生检查，默认全量和发布门禁仍在执行；本条不表示网站已切换，运行版本以随后回执与 `/release.json` 为准。
+
 2026-10-10：[本轮发布回执](docs/P1_RELEASE_2026-10-10.md)及[最终审计](docs/FINAL_PRODUCT_AUDIT_REPORT_2026-10-10.md)。七项P1、连续讲话动画/真实面部动作、默认晓晓及备选云夏已上线，运行代码ae9623cb；公网23步和实际语音通过。总体CONDITIONAL PASS，保留原P2与真实研究/设备边界。
 
 2026-10-10：[Microsoft自然语音](docs/MICROSOFT_NATURAL_VOICE_2026-10-10.md)默认晓晓，备选云夏/云希/晓伊，移除页面设备机械声线。明确授权后转交Microsoft并播放真实MP3；正文/音频不持久化，服务失败提示重试。受限接口、生产锁定依赖、旧元数据兼容及第三方服务边界已同步；上线结果以发布回执为准。

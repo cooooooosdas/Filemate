@@ -65,9 +65,10 @@ def main() -> int:
         "TLE": 'int main(){volatile unsigned long long i=0;for(;;)++i;}',
         "RE": '#include <cstdlib>\nint main(){std::abort();}',
         "CE": 'int main( { missing syntax',
+        "MLE": '#include <cstdlib>\nint main(){void* p=malloc(512UL*1024*1024);return p?0:1;}',
     }
     for problem in ([] if args.security_only else PROBLEMS):
-        for verdict in ["AC", "WA", "TLE", "RE", "CE"]:
+        for verdict in ["AC", "WA", "TLE", "MLE", "RE", "CE"]:
             code = solutions[problem["id"]] if verdict == "AC" else codes[verdict]
             check(problem["id"] + " " + verdict,
                   lambda c=code, p=problem, v=verdict: evaluate(c, p, v))
@@ -135,7 +136,7 @@ def main() -> int:
              'std::cout<<(ok?"LEAK":"DENIED");}')
     check("child process creation denied", lambda: evaluate(child, probe, "AC"))
     memory = '#include <new>\nint main(){auto p=new char[512*1024*1024];p[0]=1;return p[0]-1;}'
-    check("memory cap rejects 512MB allocation", lambda: evaluate(memory, probe, "RE"))
+    check("memory cap reports kernel-confirmed 512MB allocation violation", lambda: evaluate(memory, probe, "MLE"))
     output = '#include <iostream>\nint main(){for(;;)std::cout<<"012345678901234567890123456789";}'
     def output_cap():
         result = evaluate(output, probe, "RE")

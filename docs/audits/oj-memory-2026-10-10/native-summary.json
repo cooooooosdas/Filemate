@@ -1,0 +1,530 @@
+{
+  "sample_kind": "original_synthetic_regression_with_real_compilers_and_OS_sandboxes",
+  "passed": true,
+  "windows": {
+    "passed": 57,
+    "total": 57,
+    "checks": [
+      {
+        "name": "array-sum AC",
+        "passed": true
+      },
+      {
+        "name": "array-sum WA",
+        "passed": true
+      },
+      {
+        "name": "array-sum TLE",
+        "passed": true
+      },
+      {
+        "name": "array-sum MLE",
+        "passed": true
+      },
+      {
+        "name": "array-sum RE",
+        "passed": true
+      },
+      {
+        "name": "array-sum CE",
+        "passed": true
+      },
+      {
+        "name": "palindrome AC",
+        "passed": true
+      },
+      {
+        "name": "palindrome WA",
+        "passed": true
+      },
+      {
+        "name": "palindrome TLE",
+        "passed": true
+      },
+      {
+        "name": "palindrome MLE",
+        "passed": true
+      },
+      {
+        "name": "palindrome RE",
+        "passed": true
+      },
+      {
+        "name": "palindrome CE",
+        "passed": true
+      },
+      {
+        "name": "lower-bound AC",
+        "passed": true
+      },
+      {
+        "name": "lower-bound WA",
+        "passed": true
+      },
+      {
+        "name": "lower-bound TLE",
+        "passed": true
+      },
+      {
+        "name": "lower-bound MLE",
+        "passed": true
+      },
+      {
+        "name": "lower-bound RE",
+        "passed": true
+      },
+      {
+        "name": "lower-bound CE",
+        "passed": true
+      },
+      {
+        "name": "brackets AC",
+        "passed": true
+      },
+      {
+        "name": "brackets WA",
+        "passed": true
+      },
+      {
+        "name": "brackets TLE",
+        "passed": true
+      },
+      {
+        "name": "brackets MLE",
+        "passed": true
+      },
+      {
+        "name": "brackets RE",
+        "passed": true
+      },
+      {
+        "name": "brackets CE",
+        "passed": true
+      },
+      {
+        "name": "intervals AC",
+        "passed": true
+      },
+      {
+        "name": "intervals WA",
+        "passed": true
+      },
+      {
+        "name": "intervals TLE",
+        "passed": true
+      },
+      {
+        "name": "intervals MLE",
+        "passed": true
+      },
+      {
+        "name": "intervals RE",
+        "passed": true
+      },
+      {
+        "name": "intervals CE",
+        "passed": true
+      },
+      {
+        "name": "tree-depth AC",
+        "passed": true
+      },
+      {
+        "name": "tree-depth WA",
+        "passed": true
+      },
+      {
+        "name": "tree-depth TLE",
+        "passed": true
+      },
+      {
+        "name": "tree-depth MLE",
+        "passed": true
+      },
+      {
+        "name": "tree-depth RE",
+        "passed": true
+      },
+      {
+        "name": "tree-depth CE",
+        "passed": true
+      },
+      {
+        "name": "shortest-path AC",
+        "passed": true
+      },
+      {
+        "name": "shortest-path WA",
+        "passed": true
+      },
+      {
+        "name": "shortest-path TLE",
+        "passed": true
+      },
+      {
+        "name": "shortest-path MLE",
+        "passed": true
+      },
+      {
+        "name": "shortest-path RE",
+        "passed": true
+      },
+      {
+        "name": "shortest-path CE",
+        "passed": true
+      },
+      {
+        "name": "knapsack AC",
+        "passed": true
+      },
+      {
+        "name": "knapsack WA",
+        "passed": true
+      },
+      {
+        "name": "knapsack TLE",
+        "passed": true
+      },
+      {
+        "name": "knapsack MLE",
+        "passed": true
+      },
+      {
+        "name": "knapsack RE",
+        "passed": true
+      },
+      {
+        "name": "knapsack CE",
+        "passed": true
+      },
+      {
+        "name": "runtime denies private host read/write and inherited environment",
+        "passed": true
+      },
+      {
+        "name": "compiler cannot include private host files",
+        "passed": true
+      },
+      {
+        "name": "loopback TCP connection cannot be established",
+        "passed": true
+      },
+      {
+        "name": "compiler AppContainer denies a real Winsock connection",
+        "passed": true
+      },
+      {
+        "name": "child process creation denied",
+        "passed": true
+      },
+      {
+        "name": "memory cap reports kernel-confirmed 512MB allocation violation",
+        "passed": true
+      },
+      {
+        "name": "stdout flood stopped and captured output bounded",
+        "passed": true
+      },
+      {
+        "name": "filesystem write flood stopped by job I/O guard",
+        "passed": true
+      },
+      {
+        "name": "cancellation stops before executing testpoints",
+        "passed": true
+      }
+    ]
+  },
+  "linux": {
+    "passed": 64,
+    "total": 64,
+    "image": "sha256:69d6644ba8f5aa4eb5b0ca5c2d0cc81e4fd5a05adb030d0c5ff2467bb2f75e56",
+    "checks": [
+      {
+        "name": "nonroot, no host config, read-only image, socket and fork denied",
+        "passed": true
+      },
+      {
+        "name": "C++17 correct output",
+        "passed": true
+      },
+      {
+        "name": "wrong answer cannot receive accepted verdict",
+        "passed": true
+      },
+      {
+        "name": "syntax diagnostics are actual GCC errors",
+        "passed": true
+      },
+      {
+        "name": "wall-clock loop terminates",
+        "passed": true
+      },
+      {
+        "name": "memory allocation is bounded",
+        "passed": true
+      },
+      {
+        "name": "memory pressure is identified from trusted memory evidence",
+        "passed": true
+      },
+      {
+        "name": "reserved address space over budget is detected without RAM exhaustion",
+        "passed": true
+      },
+      {
+        "name": "below-budget memory allocation is not misclassified as MLE",
+        "passed": true
+      },
+      {
+        "name": "student memory error words cannot forge an MLE verdict",
+        "passed": true
+      },
+      {
+        "name": "output flood is capped",
+        "passed": true
+      },
+      {
+        "name": "test points cannot inherit previous files",
+        "passed": true
+      },
+      {
+        "name": "temporary filesystem has a hard total capacity",
+        "passed": true
+      },
+      {
+        "name": "student cannot forge final runner evidence",
+        "passed": true
+      },
+      {
+        "name": "array-sum AC",
+        "passed": true
+      },
+      {
+        "name": "array-sum WA",
+        "passed": true
+      },
+      {
+        "name": "array-sum TLE",
+        "passed": true
+      },
+      {
+        "name": "array-sum MLE",
+        "passed": true
+      },
+      {
+        "name": "array-sum RE",
+        "passed": true
+      },
+      {
+        "name": "array-sum CE",
+        "passed": true
+      },
+      {
+        "name": "palindrome AC",
+        "passed": true
+      },
+      {
+        "name": "palindrome WA",
+        "passed": true
+      },
+      {
+        "name": "palindrome TLE",
+        "passed": true
+      },
+      {
+        "name": "palindrome MLE",
+        "passed": true
+      },
+      {
+        "name": "palindrome RE",
+        "passed": true
+      },
+      {
+        "name": "palindrome CE",
+        "passed": true
+      },
+      {
+        "name": "lower-bound AC",
+        "passed": true
+      },
+      {
+        "name": "lower-bound WA",
+        "passed": true
+      },
+      {
+        "name": "lower-bound TLE",
+        "passed": true
+      },
+      {
+        "name": "lower-bound MLE",
+        "passed": true
+      },
+      {
+        "name": "lower-bound RE",
+        "passed": true
+      },
+      {
+        "name": "lower-bound CE",
+        "passed": true
+      },
+      {
+        "name": "brackets AC",
+        "passed": true
+      },
+      {
+        "name": "brackets WA",
+        "passed": true
+      },
+      {
+        "name": "brackets TLE",
+        "passed": true
+      },
+      {
+        "name": "brackets MLE",
+        "passed": true
+      },
+      {
+        "name": "brackets RE",
+        "passed": true
+      },
+      {
+        "name": "brackets CE",
+        "passed": true
+      },
+      {
+        "name": "intervals AC",
+        "passed": true
+      },
+      {
+        "name": "intervals WA",
+        "passed": true
+      },
+      {
+        "name": "intervals TLE",
+        "passed": true
+      },
+      {
+        "name": "intervals MLE",
+        "passed": true
+      },
+      {
+        "name": "intervals RE",
+        "passed": true
+      },
+      {
+        "name": "intervals CE",
+        "passed": true
+      },
+      {
+        "name": "tree-depth AC",
+        "passed": true
+      },
+      {
+        "name": "tree-depth WA",
+        "passed": true
+      },
+      {
+        "name": "tree-depth TLE",
+        "passed": true
+      },
+      {
+        "name": "tree-depth MLE",
+        "passed": true
+      },
+      {
+        "name": "tree-depth RE",
+        "passed": true
+      },
+      {
+        "name": "tree-depth CE",
+        "passed": true
+      },
+      {
+        "name": "shortest-path AC",
+        "passed": true
+      },
+      {
+        "name": "shortest-path WA",
+        "passed": true
+      },
+      {
+        "name": "shortest-path TLE",
+        "passed": true
+      },
+      {
+        "name": "shortest-path MLE",
+        "passed": true
+      },
+      {
+        "name": "shortest-path RE",
+        "passed": true
+      },
+      {
+        "name": "shortest-path CE",
+        "passed": true
+      },
+      {
+        "name": "knapsack AC",
+        "passed": true
+      },
+      {
+        "name": "knapsack WA",
+        "passed": true
+      },
+      {
+        "name": "knapsack TLE",
+        "passed": true
+      },
+      {
+        "name": "knapsack MLE",
+        "passed": true
+      },
+      {
+        "name": "knapsack RE",
+        "passed": true
+      },
+      {
+        "name": "knapsack CE",
+        "passed": true
+      },
+      {
+        "name": "active container cancellation",
+        "passed": true
+      },
+      {
+        "name": "all containers and temporary mounts cleaned",
+        "passed": true
+      }
+    ]
+  },
+  "observed_verdicts_per_original_problem": [
+    "AC",
+    "WA",
+    "TLE",
+    "MLE",
+    "RE",
+    "CE"
+  ],
+  "original_problem_difficulties": {
+    "easy": 3,
+    "medium": 3,
+    "hard": 2
+  },
+  "limits": {
+    "student_address_budget_mb": 256,
+    "linux_address_hard_limit_mb": 272,
+    "linux_container_memory_mb": 384,
+    "linux_runtime_reserve_mb": 128
+  },
+  "previous_failures": [
+    "Windows new unit test used unsupported withdraw action; corrected to existing undo/restore.",
+    "BuildKit treated the local image ID as a registry name; immutable local base was verified and built offline.",
+    "Linux VmPeak not exposed by installed runtime; address allocation wrongly accepted in candidate B.",
+    "Transient empty memory accounting at process exit falsely closed candidate C.",
+    "Shared cgroup OOM and container cleanup timeout in candidate D; own container later verified absent."
+  ],
+  "real_student_data": false,
+  "deployed": false,
+  "note": "These native checks do not prove the complete FEATURE07–13 goal, learning gains, or immunity to all sandbox attacks. Windows default verification and exact-commit CI are separate gates."
+}

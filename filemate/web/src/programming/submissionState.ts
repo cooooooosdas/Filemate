@@ -1,7 +1,7 @@
 import type { CodingSubmission } from '../types/programming'
 
 type SubmissionState = Pick<CodingSubmission, 'status' | 'active' | 'data_error' | 'result'>
-const assessedVerdicts = new Set(['AC', 'WA', 'TLE', 'RE', 'CE'])
+const assessedVerdicts = new Set(['AC', 'WA', 'TLE', 'MLE', 'RE', 'CE'])
 
 export function codingStateText(state: string): string {
   return ({ queued: '待评测', running: '评测中', completed: '已完成', cancelled: '已取消', failed: '环境异常' } as Record<string, string>)[state] || state

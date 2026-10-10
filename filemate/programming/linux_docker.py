@@ -24,6 +24,7 @@ DOCKER = "/usr/bin/docker"
 RUNTIME = "filemate-runsc"
 OUTPUT_LIMIT = 65536
 JOBS = Path("/var/lib/filemate-judge/runs")
+RUNTIME_MEMORY_RESERVE_MB = 128
 
 
 def command(arguments: list[str], *, timeout: float = 10) -> str:
@@ -36,7 +37,8 @@ def container_arguments(image: str, name: str, directory: Path, *, compile_code:
     """构造固定隔离策略，禁止客户端自定义任何容器参数。"""
     if not re.fullmatch(r"sha256:[0-9a-f]{64}", image):
         raise SandboxUnavailable("判题镜像必须固定为本地内容摘要")
-    memory = 384 if compile_code else memory_mb
+    # gVisor的Sentry也在容器cgroup中；学生地址空间由运行器独立限制。
+    memory = 384 if compile_code else memory_mb + RUNTIME_MEMORY_RESERVE_MB
     mount = (f"type=bind,src={directory},dst=/workspace" if compile_code else
              f"type=bind,src={directory / 'main'},dst=/program,readonly")
     arguments = [DOCKER, "create", "--name", name, "--runtime", RUNTIME, "--pull=never",
@@ -61,6 +63,34 @@ class DockerCppJudge:
         self.image = image
         self.quarantined = False
 
+    def _cleanup(self, name: str, process: Any) -> None:
+        """无法证明资源已清理时关闭评测，并在所有路径释放客户端管道。"""
+        try:
+            cleaned = subprocess.run([DOCKER, "rm", "--force", name], timeout=10, check=False,
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if cleaned.returncode:
+                listed = subprocess.run([DOCKER, "container", "ls", "--all", "--filter",
+                                         f"name=^/{name}$", "--format", "{{.ID}}"], timeout=10,
+                                        check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                if listed.returncode or listed.stdout.strip():
+                    self.quarantined = True
+                    raise SandboxUnavailable("评测容器未能确认清理，服务停止接收新任务")
+        except (OSError, subprocess.SubprocessError) as exc:
+            self.quarantined = True
+            raise SandboxUnavailable("评测容器清理未完成，服务停止接收新任务") from exc
+        finally:
+            if process:
+                try:
+                    if process.poll() is None:
+                        process.kill()
+                        process.wait(timeout=5)
+                except (OSError, subprocess.SubprocessError) as exc:
+                    self.quarantined = True
+                    raise SandboxUnavailable("评测客户端清理未完成，服务停止接收新任务") from exc
+                finally:
+                    for stream in (process.stdin, process.stdout, process.stderr):
+                        stream.close()
+
     def _run(self, directory: Path, *, compile_code: bool, cancel: threading.Event,
              stdin: str = "", time_ms: int = 1000, memory_mb: int = 256) -> ProcessResult:
         name = "filemate-judge-" + uuid.uuid4().hex
@@ -72,7 +102,7 @@ class DockerCppJudge:
             host = info["HostConfig"]
             if (host["Runtime"] != RUNTIME or host["NetworkMode"] != "none" or not host["ReadonlyRootfs"]
                     or host["CapDrop"] != ["ALL"] or info["Image"] != self.image
-                    or host["Memory"] != (384 if compile_code else memory_mb) * 1024 * 1024
+                    or host["Memory"] != (384 if compile_code else memory_mb + RUNTIME_MEMORY_RESERVE_MB) * 1024 * 1024
                     or host["MemorySwap"] != host["Memory"] or host["NanoCpus"] != 1000000000):
                 raise SandboxUnavailable("容器隔离配置未生效")
             started = time.monotonic()
@@ -126,6 +156,7 @@ class DockerCppJudge:
             text = stderr.decode("utf-8", errors="replace")
             elapsed = round((time.monotonic() - started) * 1000)
             peak = 0
+            peak_address = 0
             exit_code = state["ExitCode"]
             if not compile_code and not reason:
                 match = re.search(r'\nFILEMATE_RESULT=(\{[^\n]+\})\n$', text)
@@ -135,26 +166,16 @@ class DockerCppJudge:
                     evidence = json.loads(match[1])
                     exit_code, elapsed, peak, reason = (evidence[key] for key in
                                                         ("exit_code", "elapsed_ms", "peak_memory_bytes", "reason"))
+                    peak_address = evidence.get("peak_address_bytes", 0)
                     text = text[:match.start()]
                 else:
                     raise SandboxUnavailable("隔离运行器未返回有效证据")
             if state["Error"] or reason in {"sandbox_timeout", "sandbox_error"}:
                 raise SandboxUnavailable("隔离执行器启动或运行失败")
-            return ProcessResult(exit_code, stdout.decode("utf-8", errors="replace"), text, elapsed, peak, reason)
+            return ProcessResult(exit_code, stdout.decode("utf-8", errors="replace"), text,
+                                 elapsed, peak, reason, peak_address)
         finally:
-            cleaned = subprocess.run([DOCKER, "rm", "--force", name], timeout=10, check=False,
-                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            if process:
-                if process.poll() is None:
-                    process.kill()
-                    process.wait(timeout=5)
-                for stream in (process.stdin, process.stdout, process.stderr):
-                    stream.close()
-            if cleaned.returncode and subprocess.run([DOCKER, "inspect", name], timeout=10, check=False,
-                                                      stdout=subprocess.DEVNULL,
-                                                      stderr=subprocess.DEVNULL).returncode == 0:
-                self.quarantined = True
-                raise SandboxUnavailable("评测容器未能清理，服务停止接收新任务")
+            self._cleanup(name, process)
 
     def judge(self, code: str, problem: dict[str, Any], cancel: threading.Event,
               progress: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
@@ -175,6 +196,8 @@ class DockerCppJudge:
                     "compile_log": compiled.stdout + compiled.stderr, "compile_ms": compiled.elapsed_ms,
                     "tests": [], "provider": "linux-gvisor-gcc", "language": "cpp17",
                     "limits": {"time_ms": problem["time_limit_ms"], "memory_mb": problem["memory_limit_mb"],
+                               "container_memory_mb": problem["memory_limit_mb"] + RUNTIME_MEMORY_RESERVE_MB,
+                               "address_hard_limit_mb": problem["memory_limit_mb"] + 16,
                                "processes": 1, "network": False, "output_bytes": OUTPUT_LIMIT,
                                "file_write_bytes": 16 * 1024 * 1024},
                 }
@@ -204,7 +227,8 @@ class DockerCppJudge:
                     if execution.reason == "cancelled":
                         result["verdict"] = "CANCELLED"
                         return result
-                    verdict = ("TLE" if execution.reason == "timeout" else
+                    verdict = ("MLE" if execution.reason == "memory_limit" else
+                               "TLE" if execution.reason == "timeout" else
                                "RE" if execution.exit_code or execution.reason else
                                "AC" if normalized_output(execution.stdout) == normalized_output(test["expected"])
                                else "WA")
@@ -214,6 +238,7 @@ class DockerCppJudge:
                                             "expected": test["expected"], "actual": execution.stdout,
                                             "stderr": execution.stderr, "elapsed_ms": execution.elapsed_ms,
                                             "peak_memory_bytes": execution.peak_memory_bytes,
+                                            "peak_address_bytes": execution.peak_address_bytes,
                                             "exit_code": execution.exit_code, "reason": execution.reason})
                     result["passed"] = sum(item["verdict"] == "AC" for item in result["tests"])
                     result["score"] = round(100 * result["passed"] / result["total"], 1)

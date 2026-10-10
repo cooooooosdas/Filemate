@@ -104,6 +104,72 @@ def test_student_output_does_not_silently_use_compiler_ansi_decoder():
     assert windows_sandbox.decode_output(data) != "语法错误"
 
 
+@pytest.mark.parametrize("messages,expected", [
+    ([(6, 1), (9, 1), (7, 1)], True),
+    ([(10, 1)], True),
+    ([(9, 999), (8, 1), (2, 1)], False),
+])
+def test_job_memory_detection_requires_own_kernel_memory_notification(messages, expected):
+    import ctypes
+
+    class Kernel:
+        def GetQueuedCompletionStatus(self, port, message, key, process, timeout):
+            assert port == 0x123456789 and timeout == 0
+            if not messages:
+                return False
+            value, completion_key = messages.pop(0)
+            ctypes.cast(message, ctypes.POINTER(windows_sandbox.w.DWORD))[0] = value
+            ctypes.cast(key, ctypes.POINTER(ctypes.c_size_t))[0] = completion_key
+            return True
+
+    assert windows_sandbox._memory_limit_reported(Kernel(), 0x123456789) is expected
+
+
+@pytest.mark.parametrize("reason,exit_code,stderr,expected", [
+    ("memory_limit", 1, "", "MLE"),
+    ("memory_limit", 0, "", "MLE"),
+    ("timeout", 1, "", "TLE"),
+    ("", 1, "std::bad_alloc memory_limit", "RE"),
+    ("", 0, "std::bad_alloc memory_limit", "AC"),
+])
+def test_windows_judge_uses_sandbox_evidence_not_student_error_words(
+    tmp_path, monkeypatch, reason, exit_code, stderr, expected,
+):
+    from filemate.programming.judge import WindowsCppJudge
+
+    provider = WindowsCppJudge(tmp_path)
+    monkeypatch.setattr(provider, "ready", lambda: True)
+
+    def compile_code(code, directory, cancel):
+        (directory / "main.exe").write_bytes(b"synthetic_test_binary")
+        return windows_sandbox.ProcessResult(0, "", "", 1, 0)
+
+    monkeypatch.setattr(provider, "_compile", compile_code)
+    monkeypatch.setattr("filemate.programming.judge.run_isolated", lambda *a, **kw:
+                        windows_sandbox.ProcessResult(exit_code, "answer", stderr, 9, 1234, reason))
+    problem = {"tests": [{"name": "boundary", "input": "", "expected": "answer"}],
+               "time_limit_ms": 1000, "memory_limit_mb": 256}
+    result = provider.judge("int main(){}", problem, threading.Event(), lambda _: None)
+    assert result["verdict"] == result["tests"][0]["verdict"] == expected
+    assert result["tests"][0]["reason"] == reason
+    assert result["passed"] == int(expected == "AC")
+
+
+def test_memory_limit_result_remains_in_wrongbook_and_statistics_until_withdrawn(repository):
+    row = complete(repository, "MLE", "memory")
+    row["result"]["tests"] = [{"index": 0, "name": "memory", "verdict": "MLE"}]
+    feedback = local_feedback(row)
+    assert "内存超限" in feedback["failed_tests"][0]["message"]
+    profile = evidence_profile(repository.list())
+    assert profile["attempt_count"] == profile["weekly"]["verdicts"]["MLE"] == 1
+    assert profile["accepted_count"] == 0
+    assert profile["wrongbook"][0]["latest_error_id"] == row["submission_id"]
+    repository.transition(row["submission_id"], "undo")
+    assert evidence_profile(repository.list())["attempt_count"] == 0
+    repository.transition(row["submission_id"], "restore")
+    assert evidence_profile(repository.list())["weekly"]["verdicts"]["MLE"] == 1
+
+
 def test_compile_requests_ansi_fallback_only_for_compiler(tmp_path, monkeypatch):
     from filemate.programming.judge import WindowsCppJudge
 

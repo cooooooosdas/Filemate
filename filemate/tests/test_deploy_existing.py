@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import ast
 import io
+import json
 import sqlite3
 import tarfile
+from argparse import Namespace
 from pathlib import Path
 
 import pytest
@@ -117,3 +119,96 @@ def test_upgrade_allows_append_but_rejects_changed_referenced_sql(tmp_path) -> N
     new.write_text('_SQL = "CREATE TABLE x(a TEXT)"\n_MIGRATIONS = ((24, "old", _SQL), (25, "accounts", "CREATE TABLE y(a INT)"))')
     with pytest.raises(AssertionError, match='改写'):
         deploy.check_migration_upgrade(old, new)
+
+
+def test_joint_candidate_rejects_mismatched_code_and_incomplete_options(tmp_path, monkeypatch) -> None:
+    base = tmp_path / 'judge'
+    candidate = base / 'releases/new'
+    release = tmp_path / 'release'
+    monkeypatch.setattr(deploy, 'JUDGE', base)
+    calls = []
+    monkeypatch.setattr(deploy, 'run', lambda *args: calls.append(args))
+    args = Namespace(judge_source=str(candidate), judge_image='sha256:' + '1' * 64)
+    for directory in (candidate, release):
+        (directory / 'filemate/programming').mkdir(parents=True)
+        for name in ('linux_broker.py', 'linux_docker.py', 'judge.py', 'windows_sandbox.py', 'problems.py'):
+            (directory / 'filemate/programming' / name).write_text('synthetic matching candidate')
+    deploy.judge_candidate(args, release)
+    assert '--activate' not in calls[-1]
+    calls.clear()
+    (candidate / 'filemate/programming/linux_docker.py').write_text('synthetic old adapter')
+    with pytest.raises(ValueError, match='代码不同'):
+        deploy.judge_candidate(args, release)
+    assert not calls
+    args.judge_image = None
+    with pytest.raises(ValueError, match='同时提供'):
+        deploy.judge_candidate(args, release)
+
+
+@pytest.mark.parametrize('failure', ['install', 'readiness'])
+def test_joint_failure_restores_both_services_before_leaving_maintenance(tmp_path, monkeypatch, failure) -> None:
+    for name in ('BACKEND', 'WEB', 'JUDGE', 'BACKUPS'):
+        directory = tmp_path / name.lower()
+        directory.mkdir()
+        monkeypatch.setattr(deploy, name, directory)
+    monkeypatch.setattr(deploy, 'MAINTENANCE', deploy.WEB / 'maintenance.flag')
+    for name in ('CONFIG', 'DROPIN', 'JUDGE_ENV', 'JUDGE_UNIT'):
+        path = tmp_path / name.lower()
+        path.write_text('synthetic old ' + name)
+        monkeypatch.setattr(deploy, name, path)
+    old_judge = deploy.JUDGE / 'releases/old'
+    new_judge = deploy.JUDGE / 'releases/new'
+    old_judge.mkdir(parents=True)
+    new_judge.mkdir()
+    (deploy.JUDGE / 'current').symlink_to(old_judge)
+    old_backend = deploy.BACKEND / 'releases/old'
+    release_id = 'alpha4-12345678'
+    release = deploy.BACKEND / 'releases' / release_id
+    for directory in (old_backend, release):
+        (directory / 'filemate/execution').mkdir(parents=True)
+        (directory / 'filemate/execution/storage.py').write_text('_MIGRATIONS = ((24, "old", "same SQL"),)')
+    (release / 'deploy').mkdir()
+    (release / 'deploy/nginx.filemate.conf').write_text('synthetic new nginx')
+    (deploy.BACKEND / 'current').symlink_to(old_backend)
+    (deploy.WEB / 'releases/old').mkdir(parents=True)
+    (deploy.WEB / 'releases' / release_id).mkdir()
+    (deploy.WEB / 'current').symlink_to('releases/old')
+    source = tmp_path / 'data'
+    _data(source)
+    monkeypatch.setattr(deploy, 'DATA', source)
+    args = Namespace(action='activate', release_id=release_id, commit='1' * 40,
+                     version='synthetic-version', backend_sha256='2' * 64, web_sha256='3' * 64,
+                     judge_source=str(new_judge), judge_image='sha256:' + '4' * 64)
+    incoming = deploy.BACKEND / 'incoming' / release_id
+    incoming.mkdir(parents=True)
+    (incoming / 'staged.json').write_text(json.dumps(vars(args)))
+    calls = []
+
+    def run(*arguments):
+        calls.append(arguments)
+        if '--activate' in arguments:
+            deploy.atomic_link(str(new_judge), deploy.JUDGE / 'current')
+            deploy.JUDGE_ENV.write_text('synthetic new env')
+            deploy.JUDGE_UNIT.write_text('synthetic new unit')
+            if failure == 'install':
+                raise RuntimeError('synthetic install failure')
+
+    monkeypatch.setattr(deploy, 'run', run)
+    monkeypatch.setattr(deploy, 'judge_candidate', lambda *args: None)
+    monkeypatch.setattr(deploy.subprocess, 'check_output', lambda *args: b'synthetic old API unit')
+    monkeypatch.setattr(deploy, 'health', lambda *args: None)
+    monkeypatch.setattr(deploy, 'probe', lambda *args: (b'{"data":{"ready":false}}', {}))
+    with pytest.raises((RuntimeError, AssertionError)):
+        deploy.activate(args)
+    assert (deploy.BACKEND / 'current').resolve() == old_backend
+    assert (deploy.WEB / 'current').resolve() == deploy.WEB / 'releases/old'
+    assert (deploy.JUDGE / 'current').resolve() == old_judge
+    assert deploy.JUDGE_ENV.read_text() == 'synthetic old JUDGE_ENV'
+    assert deploy.JUDGE_ENV.stat().st_mode & 0o777 == 0o600
+    assert deploy.JUDGE_UNIT.read_text() == 'synthetic old JUDGE_UNIT'
+    assert deploy.CONFIG.read_text() == 'synthetic old CONFIG'
+    assert deploy.DROPIN.read_text() == 'synthetic old DROPIN'
+    assert not deploy.MAINTENANCE.exists()
+    assert calls.index(('systemctl', 'stop', 'filemate-api')) < calls.index(('systemctl', 'stop', 'filemate-judge'))
+    assert calls.index(('systemctl', 'start', 'filemate-judge')) < calls.index(('systemctl', 'start', 'filemate-api'), calls.index(('systemctl', 'start', 'filemate-judge')))
+    assert (source / 'identity.secret').read_text() == 'synthetic-only-deployment-key'

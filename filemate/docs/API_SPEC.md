@@ -638,11 +638,11 @@ V2.2 本次加固新增 SQLite v21 `knowledge_graph_events`，与业务变更在
 
 SQLite v22只追加两个表，旧迁移不变。提交复用现役Artifact，保存代码、语言、哈希、判题、本地提示、复盘与笔记，可不绑定Source。日志只保存提交ID、操作、环境自检结果和时间，不包含代码、凭据或供应商异常详情。通用Artifact编辑拒绝修改评测证据（409）；代码修改须新建提交。损坏JSON、题目缺失或固定版本不可用的记录以 `data_error=true` 返回，阻止执行/改写/恢复，不进入profile，仍可取消和撤销，原库字节保留；不会用新版题目重判旧提交。服务中断后overview将本进程未持有的running记录标为failed；损坏记录只更新索引状态与中断事件，正常记录保留代码供新提交重试。一条损坏的孤立记录不会阻断其他历史；状态与事件必须原子提交，失败回滚且重复读取不重复记事件。
 
-`result` 包含 `verdict`、`passed`、`total`、`score`、`compile_log`、`compile_ms`、`provider`、`tests`。CE无运行测试点；编译后逐点返回编号/名称、AC/WA/TLE/RE、输入预览与SHA-256、期望/实际输出、stderr、耗时、Job峰值内存、退出码及限制触发原因。输入预览最多4096字符，实际输出上限64KB字节。允许行末空白与末尾空行，不忽略中间空格、前导空格或大小写。分数严格为通过点数/总点数×100，总判定取首个失败测试点，全部通过为AC。CANCELLED与基础设施SYSTEM_ERROR不作为学习正确率样本。
+`result` 包含 `verdict`、`passed`、`total`、`score`、`compile_log`、`compile_ms`、`provider`、`tests`。CE无运行测试点；编译后逐点返回编号/名称、AC/WA/TLE/MLE/RE、输入预览与SHA-256、期望/实际输出、stderr、耗时、峰值内存、退出码及限制触发原因。MLE只由受信沙箱 `reason=memory_limit`（Windows本Job内核通知、Linux运行器实际计数或Docker OOMKilled）决定，不由学生错误文字/退出码137/AI推断。Linux新增可选 `tests[].peak_address_bytes`，为采样得到的地址空间观察峰值，不替代RSS；未观测不伪填预算值，旧记录保持可读。具体检测余量/平台差异见[内存识别修复](../../docs/OJ_MEMORY_LIMIT_2026-10-10.md)。输入预览最多4096字符，实际输出上限64KB字节。允许行末空白与末尾空行，不忽略中间空格、前导空格或大小写。分数严格为通过点数/总点数×100，总判定取首个失败测试点，全部通过为AC。CANCELLED与基础设施SYSTEM_ERROR不作为学习正确率样本。
 
 Windows x64适配层要求MSVC/SDK。编译使用无网络能力的AppContainer，运行使用LPAC；恢复挂起进程前建立Job限制。编译30秒/768MB/8进程，运行每点1秒/256MB/1进程，CPU与墙钟均受限。只继承stdin/stdout/stderr三个句柄及必要标准路径变量。工具链副本只读，每点独立目录/身份，不修改宿主安装目录权限。BFE/MpsSvc未运行或隔离属性失败则禁止执行，不退回普通宿主进程。I/O写入观察阈值16MB，每20ms核对并终止洪泛，可能在观察间隔内超出，不是磁盘硬配额。支持标准C++17头文件；Windows不支持GCC扩展头；macOS执行暂不支持。
 
-Linux适配层使用独立受限Unix socket代理，Web进程不持有Docker权限。代理要求固定摘要镜像与gVisor `filemate-runsc`，不退回原生Docker/宿主进程；请求仅含内置题目ID和代码，不接受路径、命令或自定义资源。每点独立容器，仅挂载二进制，根文件系统只读、移除能力、禁止提权/网络；受信任运行器限制学生单进程和线程，容器内计时排除启动开销，默认1秒/256MB。编译30秒/384MB/单CPU，临时文件总量64MB；运行文件系统16MB，单文件8MB，输出合计64KB。取消或断连删除容器，异常清理失败关闭代理。部署合同与固定版本见 `scripts/judge/README.md`。
+Linux适配层使用独立受限Unix socket代理，Web进程不持有Docker权限。代理要求固定摘要镜像与gVisor `filemate-runsc`，不退回原生Docker/宿主进程；请求仅含内置题目ID和代码，不接受路径、命令或自定义资源。每点独立容器，仅挂载二进制，根文件系统只读、移除能力、禁止提权/网络；受信任运行器限制学生单进程和线程，容器内计时排除启动开销，默认1秒/256MB学生地址空间预算，硬地址保护有16MiB检测余量。容器内存上限另含128MiB运行时预算，默认384MB、禁止额外swap，`result.limits`分别标明三种预算。编译30秒/384MB/单CPU，临时文件总量64MB；运行文件系统16MB，单文件8MB，输出合计64KB。取消或断连删除容器，异常/超时清理失败关闭代理并释放客户端。部署合同与固定版本见 `scripts/judge/README.md`。
 
 编译诊断优先按UTF-8解码；未安装英语MSVC语言包时可回退Windows系统ANSI编码，避免中文CE日志乱码。学生程序输出不使用该回退，仍按UTF-8处理；日志捕获上限、隔离和判题规则不变。
 

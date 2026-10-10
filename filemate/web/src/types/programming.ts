@@ -6,6 +6,7 @@ export interface CodingProblem {
 export interface CodingTest {
   index: number; name: string; verdict: string; input: string; input_truncated: boolean
   expected: string; actual: string; stderr: string; elapsed_ms: number; peak_memory_bytes: number
+  peak_address_bytes?: number
   exit_code: number; reason: string
 }
 export interface CodingFeedback {

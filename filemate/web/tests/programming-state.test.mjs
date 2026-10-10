@@ -5,7 +5,7 @@ import { submissionEvidenceText, submissionVerdictText } from '../src/programmin
 const record = (overrides = {}) => ({ status: 'completed', active: 1, data_error: false, result: { verdict: 'AC' }, ...overrides })
 
 test('submission labels match the evidence eligibility contract', () => {
-  for (const verdict of ['AC', 'WA', 'TLE', 'RE', 'CE']) {
+  for (const verdict of ['AC', 'WA', 'TLE', 'MLE', 'RE', 'CE']) {
     assert.equal(submissionEvidenceText(record({ result: { verdict } })), '计入练习统计')
   }
   for (const status of ['cancelled', 'failed']) {

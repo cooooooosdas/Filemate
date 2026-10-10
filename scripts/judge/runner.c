@@ -21,6 +21,17 @@ static long millis(void) {
     clock_gettime(CLOCK_MONOTONIC, &t);
     return t.tv_sec * 1000 + t.tv_nsec / 1000000;
 }
+static long address_size_kb(pid_t child) {
+    char path[64];
+    snprintf(path, sizeof(path), "/proc/%ld/statm", (long)child);
+    FILE *statistics = fopen(path, "r");
+    if (!statistics) return 0;
+    long pages = 0;
+    int parsed = fscanf(statistics, "%ld", &pages);
+    fclose(statistics);
+    /* statm has no process name or user-controlled text; gVisor need not expose VmPeak. */
+    return parsed == 1 && pages > 0 ? pages * (sysconf(_SC_PAGESIZE)/1024) : 0;
+}
 static int restrict_child(void) {
     struct sock_filter instructions[] = {
         BPF_STMT(BPF_LD|BPF_W|BPF_ABS, offsetof(struct seccomp_data, arch)),
@@ -45,6 +56,7 @@ int main(int argc, char **argv) {
     if (argc != 3) return 125;
     long limit = strtol(argv[1], NULL, 10), memory = strtol(argv[2], NULL, 10);
     if (limit < 100 || limit > 10000 || memory < 16 || memory > 256) return 125;
+    if (!address_size_kb(getpid())) return 125;
     int control[2];
     if (pipe2(control, O_CLOEXEC) || prctl(PR_SET_DUMPABLE, 0)) return 125;
     long started = millis();
@@ -52,7 +64,9 @@ int main(int argc, char **argv) {
     if (child < 0) return 125;
     if (child == 0) {
         close(control[0]);
-        struct rlimit address = {(rlim_t)memory*1024*1024, (rlim_t)memory*1024*1024};
+        /* The supervisor observes the declared limit; the hard VM guard allows
+           only 16 MiB of detection headroom. Sentry has a separate cgroup reserve. */
+        struct rlimit address = {(rlim_t)(memory+16)*1024*1024, (rlim_t)(memory+16)*1024*1024};
         struct rlimit files = {8*1024*1024, 8*1024*1024}, core = {0, 0};
         struct rlimit cpu = {(rlim_t)(limit/1000+1), (rlim_t)(limit/1000+1)};
         if (setrlimit(RLIMIT_AS, &address) || setrlimit(RLIMIT_FSIZE, &files) ||
@@ -65,12 +79,32 @@ int main(int argc, char **argv) {
         _exit(125);
     }
     close(control[1]);
-    int status = 0, timeout = 0;
+    int status = 0, timeout = 0, memory_exceeded = 0, observation_failed = 0, observation_misses = 0;
+    long peak_address = 0;
     struct rusage usage = {0};
     while (1) {
+        long current_peak = address_size_kb(child);
+        if (current_peak > peak_address) peak_address = current_peak;
         pid_t result = wait4(child, &status, WNOHANG, &usage);
-        if (result == child) break;
+        if (result == child) {
+            memory_exceeded = peak_address > memory*1024 || usage.ru_maxrss > memory*1024;
+            break;
+        }
         if (result < 0 && errno != EINTR) return 125;
+        /* A process shutting down may have released its mm before wait4 can reap it. */
+        observation_misses = current_peak ? 0 : observation_misses + 1;
+        if (observation_misses >= 10 && result == 0) {
+            observation_failed = 1;
+            kill(child, SIGKILL);
+            if (wait4(child, &status, 0, &usage) != child) return 125;
+            break;
+        }
+        if (peak_address > memory*1024) {
+            memory_exceeded = 1;
+            kill(child, SIGKILL);
+            if (wait4(child, &status, 0, &usage) != child) return 125;
+            break;
+        }
         if (millis() - started >= limit) {
             timeout = 1;
             kill(child, SIGKILL);
@@ -82,9 +116,10 @@ int main(int argc, char **argv) {
     }
     int exit_code = WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status);
     char setup_error;
-    int failed = read(control[0], &setup_error, 1) > 0;
+    int failed = read(control[0], &setup_error, 1) > 0 || observation_failed;
     close(control[0]);
-    fprintf(stderr, "\nFILEMATE_RESULT={\"exit_code\":%d,\"elapsed_ms\":%ld,\"peak_memory_bytes\":%ld,\"reason\":\"%s\"}\n",
-            exit_code, millis()-started, usage.ru_maxrss*1024, failed ? "sandbox_error" : timeout ? "timeout" : "");
+    fprintf(stderr, "\nFILEMATE_RESULT={\"exit_code\":%d,\"elapsed_ms\":%ld,\"peak_memory_bytes\":%ld,\"peak_address_bytes\":%ld,\"reason\":\"%s\"}\n",
+            exit_code, millis()-started, usage.ru_maxrss*1024, peak_address*1024,
+            failed ? "sandbox_error" : memory_exceeded ? "memory_limit" : timeout ? "timeout" : "");
     return 0;
 }

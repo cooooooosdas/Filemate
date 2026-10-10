@@ -41,6 +41,7 @@ class ProcessResult:
     elapsed_ms: int
     peak_memory_bytes: int
     reason: str = ""
+    peak_address_bytes: int = 0
 
 
 def decode_output(data: bytes | bytearray, fallback_encoding: str | None = None) -> str:
@@ -100,6 +101,24 @@ class _ExtendedLimits(ctypes.Structure):
                ("peak_process", ctypes.c_size_t), ("peak_job", ctypes.c_size_t)]
 
 
+class _CompletionPort(ctypes.Structure):
+    _fields_ = [("key", w.LPVOID), ("port", w.HANDLE)]
+
+
+def _memory_limit_reported(kernel, port) -> bool:
+    """仅使用专用 Job 的内核限制通知，不从学生输出推断内存超限。"""
+    exceeded = False
+    for _ in range(64):
+        message, key, process = w.DWORD(), ctypes.c_size_t(), w.LPVOID()
+        if not kernel.GetQueuedCompletionStatus(
+            port, ctypes.byref(message), ctypes.byref(key), ctypes.byref(process), 0,
+        ):
+            break
+        if key.value == 1 and message.value in {9, 10}:
+            exceeded = True
+    return exceeded
+
+
 class _Accounting(ctypes.Structure):
     _fields_ = [(name, ctypes.c_int64) for name in
                ("user_time", "kernel_time", "period_user_time", "period_kernel_time")] + [
@@ -125,6 +144,9 @@ def _api():
     advapi = ctypes.WinDLL("advapi32", use_last_error=True)
     signatures = {
         "CreateJobObjectW": ([w.LPVOID, w.LPCWSTR], w.HANDLE),
+        "CreateIoCompletionPort": ([w.HANDLE, w.HANDLE, ctypes.c_size_t, w.DWORD], w.HANDLE),
+        "GetQueuedCompletionStatus": ([w.HANDLE, ctypes.POINTER(w.DWORD),
+                                       ctypes.POINTER(ctypes.c_size_t), ctypes.POINTER(w.LPVOID), w.DWORD], w.BOOL),
         "SetInformationJobObject": ([w.HANDLE, ctypes.c_int, w.LPVOID, w.DWORD], w.BOOL),
         "QueryInformationJobObject": ([w.HANDLE, ctypes.c_int, w.LPVOID, w.DWORD, w.LPVOID], w.BOOL),
         "AssignProcessToJobObject": ([w.HANDLE, w.HANDLE], w.BOOL),
@@ -237,6 +259,7 @@ def run_isolated(
     name = "filemate.cpp." + uuid.uuid4().hex
     profile_created = False
     job = None
+    completion_port = None
     info = _ProcessInfo()
     pipe_writes: list[int] = []
     started = time.monotonic()
@@ -289,6 +312,12 @@ def run_isolated(
         job = kernel.CreateJobObjectW(None, None)
         if not job:
             raise SandboxUnavailable("无法建立资源限制")
+        completion_port = kernel.CreateIoCompletionPort(w.HANDLE(-1), None, 0, 1)
+        if not completion_port:
+            raise SandboxUnavailable("无法建立资源限制观察通道")
+        association = _CompletionPort(w.LPVOID(1), completion_port)
+        if not kernel.SetInformationJobObject(job, 7, ctypes.byref(association), ctypes.sizeof(association)):
+            raise SandboxUnavailable("无法关联资源限制观察通道")
         limits = _ExtendedLimits()
         limits.basic.flags = 0x2000 | 0x200 | 0x100 | 0x8 | 0x4 | 0x400
         limits.basic.active_processes = processes
@@ -340,10 +369,13 @@ def run_isolated(
             raise SandboxUnavailable("无法恢复隔离进程")
         reason = ""
         while kernel.WaitForSingleObject(info.process, 20) == 0x102:
+            memory_exceeded = _memory_limit_reported(kernel, completion_port)
             if cancel and cancel.is_set():
                 reason = "cancelled"
             elif exceeded.is_set():
                 reason = "output_limit"
+            elif memory_exceeded:
+                reason = "memory_limit"
             elif time.monotonic() - started > timeout:
                 reason = "timeout"
             else:
@@ -369,6 +401,8 @@ def run_isolated(
             reason = "output_limit"
         elif cancel and cancel.is_set():
             reason = "cancelled"
+        elif _memory_limit_reported(kernel, completion_port):
+            reason = "memory_limit"
         elif code.value == 0xC0000044:
             reason = "timeout"
         return ProcessResult(code.value, decode_output(chunks[0], output_fallback_encoding),
@@ -381,6 +415,8 @@ def run_isolated(
             kernel.CloseHandle(handle)
         if job:
             kernel.CloseHandle(job)
+        if completion_port:
+            kernel.CloseHandle(completion_port)
         if attributes:
             kernel.DeleteProcThreadAttributeList(attributes)
         for file in files:

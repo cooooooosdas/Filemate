@@ -97,7 +97,8 @@ class WindowsCppJudge:
                 if execution.reason == "cancelled":
                     result["verdict"] = "CANCELLED"
                     return result
-                verdict = ("TLE" if execution.reason == "timeout" else
+                verdict = ("MLE" if execution.reason == "memory_limit" else
+                           "TLE" if execution.reason == "timeout" else
                            "RE" if execution.exit_code or execution.reason else
                            "AC" if normalized_output(execution.stdout) == normalized_output(test["expected"])
                            else "WA")

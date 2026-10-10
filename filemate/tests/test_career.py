@@ -128,6 +128,18 @@ def test_unfinished_cancelled_and_infrastructure_failures_do_not_become_evidence
     assert all(s["coding_count"] == 0 for s in repo.comparison(row["position_id"])["skills"])
 
 
+def test_memory_failure_remains_career_evidence_and_follows_undo_restore(repo, storage):
+    row = position(repo)
+    coding = CodingRepository(storage)
+    record = coding.create(get_problem("array-sum"), "合成MLE代码", "memory_career_12345678")
+    coding.update(record["submission_id"], status="completed", payload={"result": {"verdict": "MLE"}})
+    assert any(s["coding_count"] == 1 for s in repo.comparison(row["position_id"])["skills"])
+    coding.transition(record["submission_id"], "undo")
+    assert all(s["coding_count"] == 0 for s in repo.comparison(row["position_id"])["skills"])
+    coding.transition(record["submission_id"], "restore")
+    assert any(s["coding_count"] == 1 for s in repo.comparison(row["position_id"])["skills"])
+
+
 def test_create_edit_retry_and_historical_snapshot_are_independent(repo):
     row = position(repo)
     assert position(repo)["position_id"] == row["position_id"]

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import io
 import json
 import socket
+import subprocess
 import threading
 from pathlib import Path
 
@@ -12,8 +14,8 @@ import pytest
 from filemate.programming import linux_broker, service
 from filemate.programming.feedback import local_feedback
 from filemate.programming.linux_broker import validate_request
-from filemate.programming.linux_docker import container_arguments
-from filemate.programming.windows_sandbox import SandboxUnavailable
+from filemate.programming.linux_docker import DockerCppJudge, container_arguments
+from filemate.programming.windows_sandbox import ProcessResult, SandboxUnavailable
 
 
 @pytest.mark.parametrize("value", [[], {"operation": "shell", "command": "id"},
@@ -35,7 +37,7 @@ def test_request_does_not_accept_caller_chosen_tests_or_resources():
     image = "sha256:" + "a" * 64
     arguments = container_arguments(image, "filemate-judge-test", Path("/trusted/job"), compile_code=False)
     assert "--network=none" in arguments and "--read-only" in arguments and "--cap-drop=ALL" in arguments
-    assert "--memory=256m" in arguments and "--memory-swap=256m" in arguments
+    assert "--memory=384m" in arguments and "--memory-swap=384m" in arguments
     assert arguments[arguments.index("--runtime") + 1] == "filemate-runsc"
     assert arguments[-3:] == ["/usr/local/bin/filemate-runner", "1000", "256"]
     with pytest.raises(SandboxUnavailable):
@@ -87,3 +89,82 @@ def test_gcc_diagnostics_keep_verified_source_line_numbers():
                                "result": {"compile_log": "main.cpp:2:9: error: missing was not declared\n"
                                                          "main.cpp:99:1: error: outside source\n", "tests": []}})
     assert [issue["line"] for issue in feedback["issues"]] == [2]
+
+
+@pytest.mark.parametrize("reason,exit_code,stderr,verdict", [
+    ("memory_limit", 137, "", "MLE"),
+    ("timeout", 137, "", "TLE"),
+    ("", 137, "std::bad_alloc memory_limit", "RE"),
+    ("", 0, "std::bad_alloc memory_limit", "AC"),
+])
+def test_linux_judge_distinguishes_resource_evidence_from_student_output(
+    tmp_path, monkeypatch, reason, exit_code, stderr, verdict,
+):
+    monkeypatch.setattr("filemate.programming.linux_docker.JOBS", tmp_path)
+    monkeypatch.setattr("filemate.programming.linux_docker.command", lambda *a, **kw: "")
+    provider = DockerCppJudge("sha256:" + "a" * 64)
+
+    def run(directory, *, compile_code, **kwargs):
+        if compile_code:
+            (directory / "main").write_bytes(b"\x7fELFsynthetic_test_binary")
+            return ProcessResult(0, "", "", 1, 0)
+        return ProcessResult(exit_code, "answer", stderr, 9, 1234, reason)
+
+    monkeypatch.setattr(provider, "_run", run)
+    problem = {"tests": [{"name": "memory", "input": "", "expected": "answer"}],
+               "time_limit_ms": 1000, "memory_limit_mb": 256}
+    result = provider.judge("int main(){}", problem, threading.Event(), lambda _: None)
+    assert result["verdict"] == result["tests"][0]["verdict"] == verdict
+    assert result["tests"][0]["reason"] == reason
+    assert result["passed"] == int(verdict == "AC")
+
+
+def test_cleanup_timeout_quarantines_provider_and_always_releases_client(monkeypatch):
+    def run(*args, **kwargs):
+        raise subprocess.TimeoutExpired("docker rm", 10)
+
+    class Client:
+        stdin, stdout, stderr = io.BytesIO(), io.BytesIO(), io.BytesIO()
+        killed = False
+
+        def poll(self):
+            return None
+
+        def kill(self):
+            self.killed = True
+
+        def wait(self, timeout):
+            assert timeout == 5
+
+    monkeypatch.setattr("filemate.programming.linux_docker.subprocess.run", run)
+    provider, process = DockerCppJudge("sha256:" + "a" * 64), Client()
+    with pytest.raises(SandboxUnavailable, match="停止接收"):
+        provider._cleanup("filemate-judge-synthetic", process)
+    assert provider.quarantined and process.killed
+    assert all(s.closed for s in (process.stdin, process.stdout, process.stderr))
+    with pytest.raises(SandboxUnavailable, match="管理员检查"):
+        provider.judge("int main(){}", {}, threading.Event(), lambda _: None)
+
+
+@pytest.mark.parametrize("exit_code,container_id,unavailable", [
+    (1, b"", True), (0, b"synthetic-live-container\n", True), (0, b"", False),
+])
+def test_failed_removal_requires_successful_absence_evidence(monkeypatch, exit_code, container_id, unavailable):
+    calls = []
+
+    def run(arguments, **kwargs):
+        calls.append(arguments)
+        if arguments[1] == "rm":
+            return subprocess.CompletedProcess(arguments, 1)
+        assert arguments[1:4] == ["container", "ls", "--all"]
+        assert "name=^/filemate-judge-synthetic$" in arguments
+        return subprocess.CompletedProcess(arguments, exit_code, stdout=container_id)
+
+    monkeypatch.setattr("filemate.programming.linux_docker.subprocess.run", run)
+    provider = DockerCppJudge("sha256:" + "a" * 64)
+    if unavailable:
+        with pytest.raises(SandboxUnavailable, match="停止接收"):
+            provider._cleanup("filemate-judge-synthetic", None)
+    else:
+        provider._cleanup("filemate-judge-synthetic", None)
+    assert provider.quarantined is unavailable and len(calls) == 2

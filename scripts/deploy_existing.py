@@ -24,9 +24,13 @@ from urllib.request import ProxyHandler, Request, build_opener
 BACKEND = Path('/opt/filemate')
 WEB = Path('/clouddream/nginx-proxy-manage/data/filemate')
 DATA = Path('/var/lib/filemate')
+BACKUPS = Path('/var/backups/filemate')
 CONFIG = Path('/clouddream/nginx-proxy-manage/data/nginx/custom/http.conf')
 DROPIN = Path('/etc/systemd/system/filemate-api.service.d/30-release-runtime.conf')
 MAINTENANCE = WEB / 'maintenance.flag'
+JUDGE = Path('/opt/filemate-judge')
+JUDGE_ENV = Path('/etc/filemate-judge.env')
+JUDGE_UNIT = Path('/etc/systemd/system/filemate-judge.service')
 HTTP = build_opener(ProxyHandler({}))
 PREFLIGHT_PATHS = (
     '/api/knowledge-graph', '/api/career/status', '/api/programming/status',
@@ -91,6 +95,49 @@ def health(base: str, version: str) -> None:
             time.sleep(1)
 
 
+def judge_candidate(args: argparse.Namespace, release: Path) -> None:
+    """核对联合发布的代理代码及固定镜像，保持未激活。"""
+    source = getattr(args, 'judge_source', None)
+    image = getattr(args, 'judge_image', None)
+    if source is None and image is None:
+        return
+    if not source or not image or not re.fullmatch(r'sha256:[0-9a-f]{64}', image):
+        raise ValueError('联合发布必须同时提供代理路径和固定镜像')
+    candidate = Path(source)
+    if not candidate.is_absolute() or not candidate.resolve().is_relative_to(JUDGE / 'releases'):
+        raise ValueError('代理必须位于独立的受管理发布目录')
+    for relative in [Path('filemate/programming') / name for name in
+                     ('linux_broker.py', 'linux_docker.py', 'judge.py', 'windows_sandbox.py', 'problems.py')]:
+        if digest(candidate / relative) != digest(release / relative):
+            raise ValueError('代理与API候选代码不同')
+    run('/usr/bin/python3.11', str(release / 'scripts/judge/install.py'),
+        '--source', source, '--image', image)
+
+
+def snapshot_judge(backup: Path) -> str:
+    """保存代理链接及私有配置，支持同一次维护中的代码回退。"""
+    previous = os.readlink(JUDGE / 'current')
+    assert (JUDGE / 'current').resolve().is_relative_to(JUDGE / 'releases')
+    for source, name in [(JUDGE_ENV, 'judge-env-before'), (JUDGE_UNIT, 'judge-unit-before')]:
+        assert source.is_file() and not source.is_symlink()
+        shutil.copy2(source, backup / name)
+        (backup / name).chmod(0o600)
+    save(backup / 'judge-before.json', {'previous_source': previous})
+    return previous
+
+
+def restore_judge(backup: Path, previous: str) -> None:
+    """维护期间恢复旧代理与配置，不恢复旧用户数据库。"""
+    run('systemctl', 'stop', 'filemate-judge')
+    atomic_link(previous, JUDGE / 'current')
+    shutil.copy2(backup / 'judge-env-before', JUDGE_ENV)
+    JUDGE_ENV.chmod(0o600)
+    shutil.copy2(backup / 'judge-unit-before', JUDGE_UNIT)
+    JUDGE_UNIT.chmod(0o644)
+    run('systemctl', 'daemon-reload')
+    run('systemctl', 'start', 'filemate-judge')
+
+
 def stage(args: argparse.Namespace) -> None:
     """隔离安装并对临时数据运行候选服务。"""
     incoming = BACKEND / 'incoming' / args.release_id
@@ -101,6 +148,7 @@ def stage(args: argparse.Namespace) -> None:
     extract(incoming / 'web.tar.gz', static, args.web_sha256)
     check_migration_upgrade(BACKEND / 'current/filemate/execution/storage.py',
                             release / 'filemate/execution/storage.py')
+    judge_candidate(args, release)
     marker = json.loads((static / 'release.json').read_text())
     assert marker['commit'] == args.commit and marker['version'] == args.version
     assert not (release / '.env').exists()
@@ -292,7 +340,8 @@ def activate(args: argparse.Namespace) -> None:
     release = BACKEND / 'releases' / args.release_id
     check_migration_upgrade(BACKEND / 'current/filemate/execution/storage.py',
                             release / 'filemate/execution/storage.py')
-    backup = Path('/var/backups/filemate') / (args.release_id + '-' +
+    judge_candidate(args, release)
+    backup = BACKUPS / (args.release_id + '-' +
               datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'))
     backup.mkdir(mode=0o700)
     shutil.copy2(CONFIG, backup / 'nginx-before.conf')
@@ -300,6 +349,8 @@ def activate(args: argparse.Namespace) -> None:
         shutil.copy2(DROPIN, backup / 'dropin-before.conf')
     before_service = subprocess.check_output(['systemctl', 'cat', 'filemate-api'])
     (backup / 'systemd-before.service').write_bytes(before_service)
+    previous_judge = snapshot_judge(backup) if getattr(args, 'judge_source', None) else None
+    judge_attempted = False
     save(backup / 'release-metadata.json', {
         'previous_backend': old_backend, 'previous_web': old_web,
         'release': args.release_id, 'commit': args.commit, 'version': args.version,
@@ -311,6 +362,11 @@ def activate(args: argparse.Namespace) -> None:
         manifest = snapshot(backup / 'data')
         save(backup / 'ownership.json', manifest)
         restore_drill(backup / 'data', backup / 'restore-drill', manifest)
+        if previous_judge is not None:
+            judge_attempted = True
+            run('systemctl', 'stop', 'filemate-judge')
+            run('/usr/bin/python3.11', str(release / 'scripts/judge/install.py'),
+                '--source', args.judge_source, '--image', args.judge_image, '--activate')
         shutil.copy2(release / 'deploy/nginx.filemate.conf', CONFIG)
         run('docker', 'exec', 'nginx-app', 'nginx', '-t')
         DROPIN.write_text('[Service]\nExecStart=\nExecStart=/opt/filemate/venvs/' +
@@ -320,6 +376,9 @@ def activate(args: argparse.Namespace) -> None:
         run('systemctl', 'daemon-reload')
         run('systemctl', 'start', 'filemate-api')
         health('http://172.18.0.1:8001', args.version)
+        if previous_judge is not None:
+            body, _ = probe('http://172.18.0.1:8001', '/api/programming/status')
+            assert json.loads(body)['data']['ready'], '联合候选隔离自检未通过'
         run('docker', 'exec', 'nginx-app', 'nginx', '-s', 'reload')
         # 维护标记仅阻断网关；切换前通过实际Nginx容器校验本包文件映射。
         run('docker', 'exec', 'nginx-app', 'test', '-r', '/data/filemate/current/index.html')
@@ -328,6 +387,7 @@ def activate(args: argparse.Namespace) -> None:
              'file_count': sum(bool(r['sha256']) for r in manifest['records']),
              'schemas': sorted({d['schema_version'] for d in manifest['databases']}),
              'commit': args.commit, 'version': args.version,
+             'judge_updated': previous_judge is not None,
              'rollback_policy': 'after public writes use a release preserving accounts and schema; never restore old snapshot over new data'})
     except Exception:
         run('systemctl', 'stop', 'filemate-api')
@@ -338,6 +398,8 @@ def activate(args: argparse.Namespace) -> None:
             shutil.copy2(backup / 'dropin-before.conf', DROPIN)
         elif DROPIN.exists():
             DROPIN.unlink()
+        if judge_attempted:
+            restore_judge(backup, previous_judge)
         run('systemctl', 'daemon-reload')
         run('systemctl', 'start', 'filemate-api')
         run('docker', 'exec', 'nginx-app', 'nginx', '-t')
@@ -368,6 +430,8 @@ def main() -> None:
     parser.add_argument('--version', required=True)
     parser.add_argument('--backend-sha256', required=True)
     parser.add_argument('--web-sha256', required=True)
+    parser.add_argument('--judge-source')
+    parser.add_argument('--judge-image')
     args = parser.parse_args()
     assert os.geteuid() == 0 and re.fullmatch(r'alpha[1-9][0-9]*-[0-9a-f]{7,40}', args.release_id)
     assert re.fullmatch(r'[0-9a-f]{40}', args.commit)

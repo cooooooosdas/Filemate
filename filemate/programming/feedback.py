@@ -24,6 +24,7 @@ def local_feedback(submission: dict[str, Any]) -> dict[str, Any]:
     failed = [{"index": t["index"], "name": t["name"], "verdict": t["verdict"],
                "message": {"WA": "实际输出与期望输出不一致，请核对输入边界与算法。",
                            "TLE": "触发 CPU 或墙钟时间限制，请检查无限循环与复杂度。",
+                           "MLE": "沙箱确认内存超限，请减少同时保留的数据，核对容器大小与空间复杂度。",
                            "RE": "程序异常退出或触发资源限制，请核对数组下标、内存和退出码。"}[t["verdict"]]}
               for t in result.get("tests", []) if t["verdict"] != "AC"]
     return {"provider": "local_rules", "summary": "基于真实编译诊断与测试点的本地复盘提示。",
@@ -98,7 +99,7 @@ def model_feedback(client: Any, submission: dict[str, Any]) -> dict[str, Any]:
 def evidence_profile(submissions: list[dict[str, Any]], *, now: datetime | None = None) -> dict[str, Any]:
     """只统计已完成且未撤销的真实判题记录。"""
     observed = [s for s in reversed(submissions) if s["status"] == "completed" and s["active"]
-                and not s["data_error"] and s["result"].get("verdict") in {"AC", "WA", "TLE", "RE", "CE"}]
+                and not s["data_error"] and s["result"].get("verdict") in {"AC", "WA", "TLE", "MLE", "RE", "CE"}]
     tags = sorted({tag for problem in PROBLEMS for tag in problem["tags"]})
     categories = []
     for tag in tags:
@@ -139,7 +140,7 @@ def evidence_profile(submissions: list[dict[str, Any]], *, now: datetime | None 
             continue
     practiced = len({s["problem_id"] for s in observed})
     weekly_verdicts = {verdict: sum(s["result"]["verdict"] == verdict for s in weekly)
-                       for verdict in ("AC", "WA", "TLE", "RE", "CE")}
+                       for verdict in ("AC", "WA", "TLE", "MLE", "RE", "CE")}
     assessed = [c for c in categories if c["submissions"] >= 3]
     lowest = min((c["accept_rate"] for c in assessed), default=None)
     return {"attempt_count": len(observed), "accepted_count": sum(s["result"]["verdict"] == "AC" for s in observed),
