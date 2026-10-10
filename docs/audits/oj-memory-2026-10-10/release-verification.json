@@ -1,0 +1,43 @@
+{
+  "passed": true,
+  "commit": "b56ad72cdec1ebdd6995a5b5250e6aaebbd9dabb",
+  "version": "1.3.0-alpha.4",
+  "overall_status": "CONDITIONAL PASS",
+  "judge_image": "sha256:69d6644ba8f5aa4eb5b0ca5c2d0cc81e4fd5a05adb030d0c5ff2467bb2f75e56",
+  "same_commit_API_web_judge": true,
+  "CI": {
+    "candidate_run": 38020604747,
+    "main_run": 38021061157,
+    "backend_passed": 970,
+    "backend_skipped": 18,
+    "backend_deselected": 5,
+    "backend_warnings": 3,
+    "frontend_passed": 46
+  },
+  "native": {
+    "windows_passed": 57,
+    "linux_final_F_passed": 64
+  },
+  "public_steps_passed": 9,
+  "backup": "/var/backups/filemate/alpha4-b56ad72cdec1ebdd6995a5b5250e6aaebbd9dabb-20261010T033450Z",
+  "backup_restore_verified": true,
+  "database_count": 207,
+  "file_count": 431,
+  "backup_schemas": [
+    15,
+    24,
+    25,
+    26
+  ],
+  "active_schema": 26,
+  "schema_changed": false,
+  "owned_test_accounts_cleaned": 2,
+  "real_student_data": false,
+  "human_audio_quality_tested": false,
+  "root_image_canonical_runner_binary_cmp": true,
+  "retained_old_hashed_assets": 261,
+  "rollback_validation": "Linux CI injected install/readiness failures restore both service links/config before lifting maintenance; real snapshot restored and hash/permission/SQLite checked in independent directory",
+  "rollback_data_policy": "Keep all post-cutover writes; never replace new data with the old snapshot",
+  "full_feature_objective_complete": false,
+  "remaining_engineering_card": "AUD-08 actual LLM usage and cumulative budget"
+}

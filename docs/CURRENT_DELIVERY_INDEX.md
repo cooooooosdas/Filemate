@@ -1,5 +1,7 @@
 # FileMate 当前交付资源索引
 
+2026-10-10 最新：[OJ内存识别与联合发布](OJ_MEMORY_RELEASE_2026-10-10.md)已上线b56ad72c；970后端/46前端、Windows57/Linux64原生、公网9步及完整备份恢复演练通过。默认晓晓、备选云夏/云希/晓伊；总体CONDITIONAL PASS，[完整需求与未完成项](FEATURE_07_13_REQUIREMENTS_LEDGER.md)继续保留，下一卡AUD-08。
+
 2026-10-10 后续：[FEATURE07–13逐项账本](FEATURE_07_13_REQUIREMENTS_LEDGER.md)保留完整原始目标与未完成项；[OJ内存识别候选](OJ_MEMORY_LIMIT_2026-10-10.md)原生Windows57/Linux64通过、尚未同步线上。全量门禁与联合API/判题代理发布继续执行，不替换先前已上线回执。
 
 2026-10-10：[本轮发布回执](P1_RELEASE_2026-10-10.md)及[最终审计](FINAL_PRODUCT_AUDIT_REPORT_2026-10-10.md)。七项P1、连续讲话动画/真实面部动作、默认晓晓及备选云夏已上线，运行代码ae9623cb；公网23步和实际语音通过。总体CONDITIONAL PASS，保留原P2与真实研究/设备边界。

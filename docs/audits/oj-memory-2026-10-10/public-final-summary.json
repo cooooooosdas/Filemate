@@ -1,0 +1,101 @@
+{
+  "sample_kind": "original_synthetic_registered_account_actual_browser_API_SQLite_gvisor_compiler_and_Microsoft_audio",
+  "commit": "b56ad72cdec1ebdd6995a5b5250e6aaebbd9dabb",
+  "passed": true,
+  "checks": [
+    {
+      "name": "01 current release and actual sandbox readiness",
+      "passed": true,
+      "elapsed_ms": 202
+    },
+    {
+      "name": "02 UI registration and password login",
+      "passed": true,
+      "elapsed_ms": 10736
+    },
+    {
+      "name": "03 MLE through real UI preserves compiler evidence and wrongbook",
+      "passed": true,
+      "elapsed_ms": 18665
+    },
+    {
+      "name": "04 local coaching is persistently saved",
+      "passed": true,
+      "elapsed_ms": 1187
+    },
+    {
+      "name": "05 UI undo and restore are idempotent and preserve code",
+      "passed": true,
+      "elapsed_ms": 3273
+    },
+    {
+      "name": "06 other five compiler verdicts preserve native and local feedback contracts",
+      "passed": true,
+      "elapsed_ms": 23016
+    },
+    {
+      "name": "07 six-state statistics and MLE are visible on the desktop and narrow screen",
+      "passed": true,
+      "elapsed_ms": 2954
+    },
+    {
+      "name": "08 natural voice whitelist, default Xiaoxiao and actual Microsoft playback",
+      "passed": true,
+      "elapsed_ms": 15775
+    },
+    {
+      "name": "09 delete only owned synthetic account with bound confirmation",
+      "passed": true,
+      "elapsed_ms": 807
+    }
+  ],
+  "errors": [],
+  "owned_synthetic_account_cleaned": true,
+  "external_model": false,
+  "real_student_data": false,
+  "native_cases": [
+    {
+      "verdict": "MLE",
+      "native": true,
+      "limits": {
+        "time_ms": 1000,
+        "memory_mb": 256,
+        "container_memory_mb": 384,
+        "address_hard_limit_mb": 272,
+        "processes": 1,
+        "network": false,
+        "output_bytes": 65536,
+        "file_write_bytes": 16777216
+      }
+    },
+    {
+      "verdict": "WA",
+      "native": true
+    },
+    {
+      "verdict": "TLE",
+      "native": true
+    },
+    {
+      "verdict": "RE",
+      "native": true
+    },
+    {
+      "verdict": "CE",
+      "native": true
+    },
+    {
+      "verdict": "AC",
+      "native": true
+    }
+  ],
+  "playback": {
+    "voice_id": "zh-CN-XiaoxiaoNeural",
+    "status": "completed",
+    "provider": "microsoft_edge"
+  },
+  "limitations": [
+    "真实听感尚待人工验收；Microsoft语音响应和真实浏览器完成状态不代表人类音质评分。",
+    "本次不重复上一轮23步真实模型全链；本轮限定OJ和语音合同。"
+  ]
+}
