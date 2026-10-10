@@ -54,6 +54,7 @@ try {
         filemate/interview_review `
         filemate/career `
         filemate/operations `
+        filemate/speech.py filemate/tests/test_natural_speech.py `
         filemate/understanding/interview.py `
         filemate/understanding/retrieval.py `
         evaluation/run_evaluation.py `

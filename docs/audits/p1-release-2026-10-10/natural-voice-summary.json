@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-10-10T01:40:11.123Z",
+  "sample_kind": "synthetic_engineering_regression_with_real_microsoft_tts",
+  "passed": true,
+  "results": [
+    {
+      "name": "responsive layout, curated defaults, and explicit consent",
+      "kind": "real_ui",
+      "passed": true,
+      "evidence": {
+        "widths": [
+          375,
+          768,
+          1440
+        ],
+        "default": "Xiaoxiao",
+        "voices": 4,
+        "consent_required": true
+      }
+    },
+    {
+      "name": "Xiaoxiao actual synthesis and 50-character audio completes",
+      "kind": "real_tts",
+      "passed": true,
+      "evidence": {
+        "voice": "zh-CN-XiaoxiaoNeural",
+        "actual_audio_bytes": 72576,
+        "completed": true
+      }
+    },
+    {
+      "name": "Yunxia 500-character playback, animation, pause, resume, replay and stop",
+      "kind": "real_tts",
+      "passed": true,
+      "evidence": {
+        "voice": "zh-CN-YunxiaNeural",
+        "characters": 500,
+        "distinct_animation_frames": 6,
+        "completed": true,
+        "replay_stop": true
+      }
+    },
+    {
+      "name": "upstream failure preserves text and does not use robotic fallback",
+      "kind": "synthetic_fault_injection",
+      "passed": true,
+      "evidence": {
+        "no_device_fallback": true,
+        "text_preserved": true
+      }
+    },
+    {
+      "name": "playback metadata is private, deletable and restorable",
+      "kind": "real_api",
+      "passed": true,
+      "evidence": {
+        "completed_records": 2,
+        "minimal_metadata": true
+      }
+    }
+  ],
+  "pageErrors": [],
+  "limitation": "Real MP3 decoding and browser playback events do not constitute human listening quality evaluation or phoneme-level lip alignment."
+}

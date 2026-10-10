@@ -1,7 +1,7 @@
 <template>
   <div class="digital-human">
     <header class="page-intro">
-      <div><span class="eyebrow">FILEMATE · VOICE STUDIO</span><h1>让学习，有声可循。</h1><p>把已保存的 AI 回答交给校园导师，也可以写下你想听的讲解。播报时不向 FileMate 后端发送讲解正文；浏览器声线是否联网由设备环境决定。</p></div>
+      <div><span class="eyebrow">FILEMATE · VOICE STUDIO</span><h1>让学习，有声可循。</h1><p>把已保存的 AI 回答交给校园导师，也可以写下你想听的讲解。默认使用 Microsoft 晓晓自然语音，也可选择云夏。</p></div>
       <router-link to="/ai-tools">返回学习工作区 <el-icon><ArrowRight /></el-icon></router-link>
     </header>
 
@@ -11,7 +11,7 @@
         <p v-if="sourceLabel" class="source-tag"><el-icon><Document /></el-icon>{{ sourceLabel }}</p>
         <label class="script-label" for="lecture-text">讲解内容</label>
         <textarea id="lecture-text" v-model="text" maxlength="5000" placeholder="在学习工作区点击“让 AI 导师讲解”，或在这里输入一段文字。" :disabled="loading" @input="markManual" />
-        <div class="script-hint"><span>支持中文长文本；500 字会自动分段朗读。</span><button type="button" :disabled="loading || !text" @click="clearText">清空</button></div>
+        <div class="script-hint"><span>支持中文长文本；进度按音频时长估算。</span><button type="button" :disabled="loading || !text" @click="clearText">清空</button></div>
 
         <div class="control-divider" />
         <div class="section-head compact"><div><span class="section-index">02 / 播放</span><h2>把内容说出来</h2></div><span class="state-badge" :data-state="state">{{ stateLabel }}</span></div>
@@ -29,14 +29,14 @@
         <div class="settings-grid">
           <label>语速 <strong>{{ rate.toFixed(1) }}×</strong><input v-model.number="rate" type="range" min="0.7" max="1.5" step="0.1" @change="restartIfActive" /></label>
           <label>音量 <strong>{{ Math.round(volume * 100) }}%</strong><input v-model.number="volume" type="range" min="0" max="1" step="0.1" @change="restartIfActive" /></label>
-          <label class="select-setting">声音<select v-model="voiceId" aria-label="声音" @change="restartIfActive"><option value="default">设备默认中文声线</option><option v-for="voice in voices" :key="voice.voiceURI" :value="voice.voiceURI">{{ voice.name }} · {{ voice.lang }}</option></select></label>
+          <label class="select-setting">声音<select v-model="voiceId" aria-label="声音" @change="restartIfActive"><option v-for="voice in voices" :key="voice.voiceURI" :value="voice.voiceURI">{{ voice.name }}</option></select></label>
           <label class="select-setting">形象<select v-model="avatarId" aria-label="形象"><option v-for="avatar in AVATARS" :key="avatar.avatarId" :value="avatar.avatarId">{{ avatar.avatarName }}</option></select></label>
         </div>
-        <div class="privacy-note"><el-icon><Lock /></el-icon><span>FileMate 仅记录播报时间、字数、状态和形象/声线，不保存正文或音频；可删除单条记录。浏览器声线可能联网，请勿朗读敏感资料。</span></div>
+        <div class="privacy-note"><el-icon><Lock /></el-icon><span><label><input v-model="voiceConsent" type="checkbox" @change="!voiceConsent && stop()" />允许将本次讲解正文经 FileMate 服务发送给 Microsoft 合成语音。</label><br />正文和音频只在处理内存中使用；FileMate 只保存可删除的播报元数据。请勿朗读敏感资料。</span></div>
       </section>
 
       <section ref="stage" class="mentor-stage" aria-label="数字人舞台">
-        <div class="stage-top"><div><span class="section-index">03 / 数字人</span><h2>你的学习搭子</h2></div><span class="provider-chip"><span />{{ provider.available() ? '设备语音就绪' : '设备不支持语音' }}</span></div>
+        <div class="stage-top"><div><span class="section-index">03 / 数字人</span><h2>你的学习搭子</h2></div><span class="provider-chip"><span />Microsoft 自然语音</span></div>
         <div class="stage-copy"><p>每次讲解，都按你的节奏来。</p><small>拖动右下角卡片，或把它收起，学习内容始终可见。人物使用连续讲解动画，口型为节奏示意。</small></div>
         <div class="stage-watermark" aria-hidden="true">FM</div>
         <button v-if="collapsed" class="collapsed-mentor" @click="collapsed = false"><el-icon><Microphone /></el-icon>展开导师</button>
@@ -62,12 +62,12 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowDown, ArrowRight, Close, Document, FullScreen, Lock, Microphone, Minus, Plus, RefreshRight, VideoPause, VideoPlay } from '@element-plus/icons-vue'
 import { AVATARS } from '../digital-human/avatars'
-import { BrowserSpeechProvider } from '../digital-human/provider'
-import { createDigitalHumanPlayback, deleteDigitalHumanPlayback, finishDigitalHumanPlayback, getAIContext, listDigitalHumanPlaybacks, restoreDigitalHumanPlayback, type DigitalHumanPlayback } from '../services/api'
+import { MicrosoftSpeechProvider, NATURAL_VOICES } from '../digital-human/natural-speech'
+import { createDigitalHumanPlayback, deleteDigitalHumanPlayback, finishDigitalHumanPlayback, getAIContext, listDigitalHumanPlaybacks, restoreDigitalHumanPlayback, synthesizeNaturalSpeech, type DigitalHumanPlayback } from '../services/api'
 
 type PlaybackState = 'idle' | 'starting' | 'playing' | 'paused' | 'completed' | 'stopped' | 'failed'
 const route = useRoute()
-const provider = new BrowserSpeechProvider()
+const provider = new MicrosoftSpeechProvider(synthesizeNaturalSpeech)
 const text = ref('')
 const loading = ref(false)
 const state = ref<PlaybackState>('idle')
@@ -78,12 +78,10 @@ const history = ref<DigitalHumanPlayback[]>([])
 const lastDeleted = ref<string | null>(null)
 const avatarId = ref(AVATARS[1].avatarId)
 const currentAvatar = computed(() => AVATARS.find(item => item.avatarId === avatarId.value) || AVATARS[0])
-const voiceId = ref(AVATARS[1].voiceId)
-const voices = ref<SpeechSynthesisVoice[]>([])
-const voiceBoundary = computed(() => {
-  const selected = voices.value.find(voice => voice.voiceURI === voiceId.value)
-  return selected?.localService === true ? '当前声线标记为设备本地服务；FileMate不上传讲解正文。' : selected?.localService === false ? '当前声线使用在线服务，开始讲解可能把正文发送给语音供应商。' : '默认声线的服务位置未确认，可能联网；请勿朗读敏感资料。'
-})
+const voiceId = ref<string>(NATURAL_VOICES[0].voiceURI)
+const voices = NATURAL_VOICES
+const voiceConsent = ref(false)
+const voiceBoundary = 'Microsoft 在线自然语音；服务失败时可重试，不自动切换设备机械声线。'
 const rate = ref(1)
 const volume = ref(1)
 const subtitles = ref(true)
@@ -116,15 +114,12 @@ let disposed = false
 let endDrag: (() => void) | undefined
 let stageObserver: ResizeObserver | undefined
 
-function refreshVoices(): void {
-  voices.value = provider.voices().filter(item => item.lang.toLowerCase().startsWith('zh'))
-  if (voiceId.value !== 'default' && !voices.value.some(item => item.voiceURI === voiceId.value)) voiceId.value = 'default'
-}
 function markManual(): void {
+  voiceConsent.value = false
   if (active.value) stop()
   if (sourceReference.value && text.value !== sourceReference.value.content) { sourceReference.value = null; sourceLabel.value = '手动编辑的讲解稿' }
 }
-function clearText(): void { stop(); text.value = ''; spokenText.value = ''; sourceReference.value = null; sourceLabel.value = ''; progress.value = 0; error.value = '' }
+function clearText(): void { stop(); voiceConsent.value = false; text.value = ''; spokenText.value = ''; sourceReference.value = null; sourceLabel.value = ''; progress.value = 0; error.value = '' }
 function message(cause: unknown): string { return cause instanceof Error ? cause.message : '操作失败，请重试。' }
 async function loadHistory(): Promise<void> {
   const current = ++historyOperation
@@ -167,7 +162,8 @@ async function play(): Promise<void> {
   const script = text.value.trim()
   if (!script) { error.value = '请先输入讲解文字。'; return }
   if (Array.from(script).length > 5000) { error.value = '讲解稿不能超过 5000 字，请先精简内容。'; return }
-  if (!provider.available()) { error.value = '当前浏览器不支持语音合成，请使用最新版 Chrome 或 Edge。'; state.value = 'failed'; return }
+  if (!voiceConsent.value) { error.value = '请先允许将讲解正文发送给 Microsoft 合成语音。'; return }
+  if (!provider.available()) { error.value = '当前浏览器不支持音频播放。'; state.value = 'failed'; return }
   stop()
   const current = ++operation
   error.value = ''; errorSource.value = false; notice.value = ''; lastDeleted.value = null; state.value = 'starting'; progress.value = 0; characterIndex.value = 0; spokenText.value = script
@@ -175,7 +171,7 @@ async function play(): Promise<void> {
     const reference = sourceReference.value
     const saved = await createDigitalHumanPlayback({
       text_length: Array.from(script).length, avatar_id: avatarId.value, voice_id: voiceId.value,
-      provider: 'web_speech',
+      provider: 'microsoft_edge',
       ...(reference ? { context_id: reference.contextId, message_index: reference.messageIndex } : {}),
     })
     if (disposed || current !== operation) { void finishRecord(saved.playback_id, 'stopped'); return }
@@ -237,6 +233,7 @@ async function retry(): Promise<void> {
 }
 async function loadSelectedAnswer(): Promise<void> {
   stop()
+  voiceConsent.value = false
   const current = ++sourceOperation
   text.value = ''; sourceReference.value = null; sourceLabel.value = ''; error.value = ''; progress.value = 0; state.value = 'idle'; loading.value = false
   const ctx = typeof route.query.ctx === 'string' ? route.query.ctx : ''
@@ -258,8 +255,6 @@ async function loadSelectedAnswer(): Promise<void> {
   finally { if (!disposed && current === sourceOperation) loading.value = false }
 }
 onMounted(() => {
-  refreshVoices()
-  if (provider.available()) window.speechSynthesis.addEventListener('voiceschanged', refreshVoices)
   document.addEventListener('fullscreenchange', syncFullscreen)
   void loadHistory()
   stageObserver = new ResizeObserver(() => { endDrag?.(); offset.value = { x: 0, y: 0 } })
@@ -271,7 +266,6 @@ onUnmounted(() => {
   stop()
   endDrag?.()
   stageObserver?.disconnect()
-  if (provider.available()) window.speechSynthesis.removeEventListener('voiceschanged', refreshVoices)
   document.removeEventListener('fullscreenchange', syncFullscreen)
 })
 watch([avatarId, panelWidth], () => { endDrag?.(); offset.value = { x: 0, y: 0 } })

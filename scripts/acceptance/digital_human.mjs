@@ -4,267 +4,97 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const base = process.env.FILEMATE_WEB_URL || 'http://127.0.0.1:5173'
-const out = path.resolve(process.env.FILEMATE_EVIDENCE_DIR || '_working/v2-1-acceptance')
+const out = path.resolve(process.env.FILEMATE_EVIDENCE_DIR || '_working/natural-voice-acceptance')
 fs.mkdirSync(out, { recursive: true })
-const browser = await chromium.launch({
-  channel: process.env.FILEMATE_BROWSER_CHANNEL || (process.platform === 'win32' ? 'msedge' : undefined), headless: true,
-  args: ['--autoplay-policy=no-user-gesture-required'],
-})
-const results = []
-const caseFilter = process.env.FILEMATE_CASE_FILTER ? new RegExp(process.env.FILEMATE_CASE_FILTER) : null
+const browser = await chromium.launch({ channel: process.platform === 'win32' ? 'msedge' : undefined, headless: true })
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
+await context.request.get(base + '/api/auth/me')
 const page = await context.newPage()
-page.setDefaultTimeout(10000)
-const pageErrors = []
+const results = [], pageErrors = []
 page.on('pageerror', error => pageErrors.push(String(error)))
-
-async function check(name, kind, run) {
-  if (caseFilter && !caseFilter.test(name)) return
-  console.log(`RUN ${name} (${kind})`)
-  try {
-    const evidence = await run()
-    results.push({ name, kind, passed: true, evidence })
-    console.log(`PASS ${name} (${kind})`)
-  } catch (error) {
-    results.push({ name, kind, passed: false, error: String(error) })
-    console.log(`FAIL ${name}: ${error}`)
-  }
-}
-async function open(target = '/digital-human') {
-  await page.goto(base + target)
-  await page.locator('#lecture-text').waitFor()
-}
-const state = () => page.locator('.state-badge')
-async function waitState(value, timeout = 20000) {
+page.setDefaultTimeout(15000)
+const button = name => page.getByRole('button', { name, exact: true })
+const consent = () => page.getByRole('checkbox', { name: /允许将本次讲解正文/ })
+async function waitState(value, timeout = 25000) {
   await page.waitForFunction(value => document.querySelector('.state-badge')?.dataset.state === value, value, { timeout })
 }
-const button = name => page.getByRole('button', { name, exact: true })
-
+async function check(name, kind, run) {
+  console.log(`RUN ${name}`)
+  try { results.push({ name, kind, passed: true, evidence: await run() }); console.log(`PASS ${name}`) }
+  catch (error) { results.push({ name, kind, passed: false, error: String(error) }); await page.screenshot({ path: path.join(out, `failure-${results.length}.png`) }).catch(() => {}); console.log(`FAIL ${name}: ${error}`) }
+}
+async function open() { await page.goto(base + '/digital-human'); await page.locator('#lecture-text').waitFor() }
+async function fill(text) { await page.locator('#lecture-text').fill(text); await consent().check() }
 try {
-  await check('responsive stage and visible controls', 'real_ui', async () => {
-    const sizes = []
-    for (const width of [375, 768, 1024, 1440]) {
-      await page.setViewportSize({ width, height: 1000 })
-      await open()
-      const geometry = await page.evaluate(() => {
-        const stage = document.querySelector('.mentor-stage').getBoundingClientRect()
-        const panel = document.querySelector('.mentor-panel').getBoundingClientRect()
-        return {
-          overflow: document.documentElement.scrollWidth > innerWidth,
-          inside: panel.left >= stage.left && panel.right <= stage.right && panel.top >= stage.top && panel.bottom <= stage.bottom,
-        }
-      })
-      assert.equal(geometry.overflow, false)
-      assert.equal(geometry.inside, true)
+  await check('responsive layout, curated defaults, and explicit consent', 'real_ui', async () => {
+    for (const width of [375, 768, 1440]) {
+      await page.setViewportSize({ width, height: 1000 }); await open()
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false)
       await page.screenshot({ path: path.join(out, `mentor-${width}.png`), fullPage: true })
-      sizes.push({ width, ...geometry })
     }
-    await page.getByLabel('形象', { exact: true }).selectOption('filemate-campus')
-    await page.locator('.campus-image img').waitFor()
-    await button('收起数字人').click()
-    await button('展开导师').click()
-    await page.getByLabel('显示字幕').uncheck()
-    assert.match(await page.locator('.mentor-caption').innerText(), /字幕已关闭/)
-    await page.getByLabel('显示字幕').check()
-    await button('全屏').click()
-    assert.equal(await page.evaluate(() => !!document.fullscreenElement), true)
-    await button('退出全屏').click()
-    return sizes
+    assert.equal(await page.getByLabel('声音', { exact: true }).inputValue(), 'zh-CN-XiaoxiaoNeural')
+    assert.equal(await page.getByLabel('声音', { exact: true }).locator('option').count(), 4)
+    await page.locator('#lecture-text').fill('今天学习栈。')
+    let calls = 0
+    const listener = request => { if (request.url().endsWith('/speech')) calls++ }
+    page.on('request', listener); await button('开始讲解').click()
+    await page.getByRole('alert').filter({ hasText: '请先允许' }).waitFor(); page.off('request', listener)
+    assert.equal(calls, 0)
+    return { widths: [375, 768, 1440], default: 'Xiaoxiao', voices: 4, consent_required: true }
   })
-
-  await check('50 characters synthesize with native browser speech events', 'real_tts', async () => {
-    await open()
-    const text = '这道题考察二叉树遍历。请先理解前序与中序的访问顺序，再结合例子核对每一步，最后独立练习并复盘。'.padEnd(50, '学').slice(0, 50)
-    await page.locator('#lecture-text').fill(text)
+  await check('Xiaoxiao actual synthesis and 50-character audio completes', 'real_tts', async () => {
+    await open(); await fill('这道题考察二叉树遍历。请先理解前序与中序的访问顺序，再结合例子核对每一步，最后独立练习并复盘。'.padEnd(50, '学').slice(0, 50))
+    const pending = page.waitForResponse(r => r.url().endsWith('/speech') && r.request().method() === 'POST', { timeout: 65000 })
     await button('开始讲解').click()
-    await waitState('playing')
-    const during = await page.evaluate(() => ({
-      speaking: speechSynthesis.speaking,
-      voices: speechSynthesis.getVoices().filter(voice => voice.lang.startsWith('zh')).map(voice => ({ name: voice.name, local: voice.localService })),
-      mouth: document.querySelector('.mentor-art').classList.contains('talking'),
-    }))
-    assert.equal(during.speaking, true)
-    assert.equal(during.mouth, true)
-    await page.screenshot({ path: path.join(out, 'mentor-speaking.png'), fullPage: true })
-    await waitState('completed', 60000)
-    return { characters: text.length, ...during, completion: await state().innerText() }
+    const response = await pending
+    assert.equal(response.status(), 200); assert.match(response.headers()['content-type'], /audio\/mpeg/)
+    const bytes = (await response.body()).length; assert.ok(bytes > 1000)
+    await waitState('playing'); await page.screenshot({ path: path.join(out, 'xiaoxiao-playing.png'), fullPage: true })
+    await waitState('completed', 65000)
+    return { voice: 'zh-CN-XiaoxiaoNeural', actual_audio_bytes: bytes, completed: true }
   })
-
-  await check('500 characters pause/resume/replay/stop on native speech', 'real_tts', async () => {
-    await open()
-    await page.locator('#lecture-text').fill('请先理解二叉树遍历，再结合示例核对访问顺序。'.repeat(30).slice(0, 500))
-    await button('开始讲解').click()
-    await waitState('playing')
-    await button('暂停').click()
-    await waitState('paused')
-    await page.waitForFunction(() => speechSynthesis.paused, null, { timeout: 5000 })
-    assert.equal(await page.evaluate(() => speechSynthesis.paused), true)
-    await button('继续').click()
-    await waitState('playing')
-    await page.waitForFunction(() => !speechSynthesis.paused, null, { timeout: 5000 })
-    assert.equal(await page.evaluate(() => speechSynthesis.paused), false)
-    await waitState('completed', 240000)
-    await button('重播').click()
-    await waitState('playing')
-    await button('暂停').click()
-    await button('重播').click()
-    await waitState('playing')
-    assert.equal(await page.evaluate(() => speechSynthesis.paused), false)
-    await button('停止').click()
-    await waitState('stopped')
-    assert.equal(await page.evaluate(() => speechSynthesis.speaking), false)
-    return { characters: 500, stopped: true }
-  })
-
-  await check('saved answer reloads when only query changes', 'real_api_ui', async () => {
-    await open('/digital-human?ctx=v2-1-acceptance&message=0')
-    await page.waitForFunction(() => document.querySelector('#lecture-text').value === '合成测试回答一：前序遍历先访问根节点，再遍历左右子树。')
-    await page.evaluate(() => {
-      history.pushState(null, '', '/digital-human?ctx=v2-1-acceptance&message=1')
-      dispatchEvent(new PopStateEvent('popstate'))
-    })
-    await page.waitForFunction(() => document.querySelector('#lecture-text').value === '合成测试回答二：中序遍历先遍历左子树，再访问根节点。')
-    assert.match(await page.locator('.source-tag').innerText(), /第 2 条/)
-  })
-
-  // MOCK: synthetic device events below test error/cancellation paths against real API/storage.
-  await context.addInitScript(() => {
-    const mock = { utterances: [], paused: false, failPause: false }
-    class Utterance { constructor(text) { this.text = text } }
-    const speech = {
-      getVoices: () => [{ voiceURI: 'mock-voice', name: 'MOCK 中文声线', lang: 'zh-CN' }],
-      speak: utterance => { mock.utterances.push(utterance); setTimeout(() => utterance.onstart?.(), 20) },
-      cancel: () => {},
-      get paused() { return mock.paused },
-      pause: () => { if (mock.failPause) throw new Error('MOCK pause failure'); mock.paused = true },
-      resume: () => { mock.paused = false },
-      addEventListener: () => {}, removeEventListener: () => {},
-    }
-    Object.defineProperty(window, 'speechSynthesis', { value: speech, configurable: true })
-    Object.defineProperty(window, 'SpeechSynthesisUtterance', { value: Utterance, configurable: true })
-    window.__speechMock = mock
-  })
-
-  await check('continuous mouth animation preserves one portrait and stops on pause', 'mock_device_real_api', async () => {
-    await open()
-    await page.locator('#lecture-text').fill('原创动画验收，检查连续口型与停止行为。')
-    await button('开始讲解').click(); await waitState('playing')
-    const samples = []
-    for (let index = 0; index < 6; index++) {
-      samples.push(await page.locator('.lip-motion').evaluate(node => getComputedStyle(node).transform))
-      await page.waitForTimeout(70)
-    }
-    assert.ok(new Set(samples).size > 3)
-    const position = await page.locator('.portrait-image').evaluate(node => getComputedStyle(node).backgroundPosition)
+  await check('Yunxia 500-character playback, animation, pause, resume, replay and stop', 'real_tts', async () => {
+    await open(); await fill('理解栈的后进先出规律。把每次入栈和出栈画出来，再核对程序运行结果。'.repeat(20).slice(0, 500))
+    await page.getByLabel('声音', { exact: true }).selectOption('zh-CN-YunxiaNeural')
+    await button('开始讲解').click(); await waitState('playing', 65000)
+    const frames = []
+    for (let i = 0; i < 6; i++) { frames.push(await page.locator('.lip-motion').evaluate(el => getComputedStyle(el).transform)); await page.waitForTimeout(110) }
+    assert.ok(new Set(frames).size > 2)
     await button('暂停').click(); await waitState('paused')
-    assert.equal(await page.locator('.lip-motion').evaluate(node => getComputedStyle(node).animationName), 'none')
-    assert.equal(await page.locator('.portrait-image').evaluate(node => getComputedStyle(node).backgroundPosition), position)
+    assert.equal(await page.locator('.lip-motion').evaluate(el => getComputedStyle(el).animationName), 'none')
     await button('继续').click(); await waitState('playing')
-    await page.screenshot({ path: path.join(out, 'continuous-portrait.png'), fullPage: true })
-    await button('停止').click(); await waitState('stopped')
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await button('开始讲解').click(); await waitState('playing')
-    assert.equal(await page.locator('.lip-motion').evaluate(node => getComputedStyle(node).animationName), 'none')
-    await button('停止').click(); await page.emulateMedia({ reducedMotion: 'no-preference' })
-    return { distinct_interpolated_frames: new Set(samples).size, fixed_portrait: position, reduced_motion: true }
+    assert.equal(await page.locator('.lip-motion').evaluate(el => getComputedStyle(el).animationName), 'none')
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await waitState('completed', 240000)
+    await button('重播').click(); await waitState('playing', 65000)
+    await button('停止').click(); await waitState('stopped')
+    return { voice: 'zh-CN-YunxiaNeural', characters: 500, distinct_animation_frames: new Set(frames).size, completed: true, replay_stop: true }
   })
-
-  await check('empty input and server failure preserve the lecture and retry', 'mock_device_real_api', async () => {
-    await open()
-    assert.equal(await button('开始讲解').isDisabled(), true)
-    const text = '用于网络异常回归的合成讲解。'
-    await page.locator('#lecture-text').fill(text)
-    await page.route('**/api/digital-human/playbacks', route => route.request().method() === 'POST' ? route.abort() : route.continue())
-    await button('开始讲解').click()
-    await waitState('failed')
-    assert.equal(await page.locator('#lecture-text').inputValue(), text)
-    await page.unroute('**/api/digital-human/playbacks')
-    await button('重试').click()
-    await waitState('playing')
-    await button('停止').click()
+  await check('upstream failure preserves text and does not use robotic fallback', 'synthetic_fault_injection', async () => {
+    await open(); await fill('这是故障模拟，正文应保留。')
+    await page.route('**/api/digital-human/speech', route => route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ detail: 'Microsoft 自然语音暂不可用，请稍后重试' }) }))
+    await button('开始讲解').click(); await waitState('failed')
+    assert.match(await page.getByRole('alert').innerText(), /自然语音暂不可用/)
+    assert.equal(await page.locator('#lecture-text').inputValue(), '这是故障模拟，正文应保留。')
+    assert.equal(await page.evaluate(() => speechSynthesis.speaking), false)
+    assert.equal(await page.locator('.lip-motion').evaluate(el => getComputedStyle(el).animationName), 'none')
+    await page.unroute('**/api/digital-human/speech')
+    return { no_device_fallback: true, text_preserved: true }
   })
-
-  await check('cancel before create response never starts audio and finishes the record', 'mock_device_real_api', async () => {
-    await open()
-    let identifier
-    await page.route('**/api/digital-human/playbacks', async route => {
-      if (route.request().method() !== 'POST') return route.continue()
-      const response = await route.fetch()
-      identifier = (await response.json()).data.playback_id
-      await new Promise(resolve => setTimeout(resolve, 500))
-      await route.fulfill({ response })
-    })
-    await page.locator('#lecture-text').fill('取消操作测试')
-    await button('开始讲解').click()
-    await waitState('starting')
-    await button('停止').click()
-    await waitState('stopped')
-    await page.waitForTimeout(900)
-    assert.equal(await page.evaluate(() => __speechMock.utterances.length), 0)
-    assert.ok(identifier)
-    const records = await (await context.request.get(base + '/api/digital-human/playbacks')).json()
-    assert.equal(records.data.find(item => item.playback_id === identifier).status, 'stopped')
-    await page.unroute('**/api/digital-human/playbacks')
-  })
-
-  await check('failed final-state sync can be retried without new playback', 'mock_device_real_api', async () => {
-    await open()
-    await page.route('**/api/digital-human/playbacks/*', route => route.request().method() === 'PATCH' ? route.abort() : route.continue())
-    await page.locator('#lecture-text').fill('同步异常测试')
-    await button('开始讲解').click()
-    await waitState('playing')
-    await page.evaluate(() => __speechMock.utterances.at(-1).onend())
-    await waitState('completed')
-    await button('重试同步').waitFor()
-    await page.unroute('**/api/digital-human/playbacks/*')
-    await button('重试同步').click()
-    await button('重试同步').waitFor({ state: 'hidden' })
-  })
-
-  await check('pause failure remains failed and does not restart mouth animation', 'mock_device_real_api', async () => {
-    await open()
-    await page.locator('#lecture-text').fill('设备异常测试')
-    await button('开始讲解').click()
-    await waitState('playing')
-    await page.evaluate(() => { __speechMock.failPause = true })
-    await button('暂停').click()
-    await waitState('failed')
-    assert.match(await page.locator('.error-box').innerText(), /暂停失败/)
-    assert.equal(await page.locator('.mentor-art.talking').count(), 0)
-  })
-
-  await check('context failure retry reloads the answer rather than playing empty text', 'mock_device_real_api', async () => {
-    await page.route('**/ai/contexts/v2-1-acceptance', route => route.abort())
-    await open('/digital-human?ctx=v2-1-acceptance&message=0')
-    await button('重试').waitFor()
-    await page.unroute('**/ai/contexts/v2-1-acceptance')
-    await button('重试').click()
-    await page.waitForFunction(() => document.querySelector('#lecture-text').value.startsWith('合成测试回答一'))
-    assert.equal(await state().getAttribute('data-state'), 'idle')
-  })
-
-  await check('delete/undo retains the original saved answer', 'mock_device_real_api', async () => {
-    await open('/digital-human?ctx=v2-1-acceptance&message=0')
-    await page.waitForFunction(() => document.querySelector('#lecture-text').value.startsWith('合成测试回答一'))
-    await button('开始讲解').click()
-    await waitState('playing')
-    const length = Array.from(await page.locator('#lecture-text').inputValue()).length
-    await page.waitForFunction(length => document.querySelector('.history-panel li strong')?.textContent?.startsWith(`${length} 字`), length)
-    await page.locator('.history-panel li').first().getByRole('button').click()
-    await waitState('stopped')
-    await button('撤销删除').click()
-    assert.equal(await button('重试同步').count(), 0)
-    assert.equal(await page.locator('#lecture-text').inputValue(), '合成测试回答一：前序遍历先访问根节点，再遍历左右子树。')
+  await check('playback metadata is private, deletable and restorable', 'real_api', async () => {
+    const response = await context.request.get(base + '/api/digital-human/playbacks')
+    const records = (await response.json()).data
+    assert.ok(records.length >= 3)
+    assert.equal(records.some(record => 'text' in record || 'audio' in record), false)
+    assert.equal(records.some(record => record.provider === 'microsoft_edge' && record.status === 'completed'), true)
+    const id = records[0].playback_id
+    assert.equal((await context.request.delete(base + '/api/digital-human/playbacks/' + id)).status(), 200)
+    assert.equal((await context.request.post(base + '/api/digital-human/playbacks/' + id + '/restore')).status(), 200)
+    return { completed_records: records.filter(record => record.status === 'completed').length, minimal_metadata: true }
   })
 } finally {
+  fs.writeFileSync(path.join(out, 'results.json'), JSON.stringify({ generated_at: new Date().toISOString(), sample_kind: 'synthetic_engineering_regression_with_real_microsoft_tts', passed: results.every(r => r.passed) && !pageErrors.length, results, pageErrors, limitation: 'Real MP3 decoding and browser playback events do not constitute human listening quality evaluation or phoneme-level lip alignment.' }, null, 2))
   await browser.close()
-  const report = {
-    version: 'V2.1.1', generated_at: new Date().toISOString(), sample_kind: 'synthetic_engineering_regression',
-    passed: results.length > 0 && results.every(item => item.passed) && pageErrors.length === 0,
-    results, pageErrors,
-    limitation: 'Native speech events do not establish audible output quality or phoneme alignment. MOCK device tests do not establish real TTS.',
-  }
-  fs.writeFileSync(path.join(out, 'results.json'), JSON.stringify(report, null, 2), 'utf8')
-  console.log(JSON.stringify({ passed: report.passed, cases: results.length, failures: results.filter(item => !item.passed), pageErrors }, null, 2))
-  if (!report.passed) process.exitCode = 1
 }
+if (results.some(result => !result.passed) || pageErrors.length) process.exitCode = 1

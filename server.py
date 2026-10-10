@@ -64,6 +64,7 @@ from filemate.perception.parsers import PLAIN_TEXT_SUFFIXES
 from filemate.portfolio.growth import GrowthRepository, ReportRequest
 from filemate.portfolio.resume import Profile as ResumeProfile
 from filemate.portfolio.resume import ResumeRepository, ResumeRequest
+from filemate.speech import MicrosoftSpeech, SpeechBusy, SpeechUnavailable
 from filemate.study.semester import ConfirmSemester, SemesterConfig, SemesterRepository, TaskUpdate
 from filemate.understanding.interview_bank_seed import SEED_QUESTIONS
 
@@ -404,7 +405,7 @@ class DigitalHumanPlaybackRequest(BaseModel):
     text_length: int = Field(ge=1, le=5000)
     avatar_id: Literal["filemate-campus", "filemate-portrait"]
     voice_id: str = Field(min_length=1, max_length=160)
-    provider: Literal["web_speech"] = "web_speech"
+    provider: Literal["web_speech", "microsoft_edge"] = "web_speech"
     context_id: str | None = Field(default=None, max_length=80)
     message_index: int | None = Field(default=None, ge=0)
 
@@ -412,6 +413,15 @@ class DigitalHumanPlaybackRequest(BaseModel):
 class DigitalHumanPlaybackFinishRequest(BaseModel):
     status: Literal["completed", "stopped", "failed"]
     error_code: str = Field(default="", max_length=80)
+
+
+class NaturalSpeechRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=5000, strict=True)
+    voice_id: Literal[
+        "zh-CN-XiaoxiaoNeural", "zh-CN-YunxiaNeural",
+        "zh-CN-YunxiNeural", "zh-CN-XiaoyiNeural",
+    ] = "zh-CN-XiaoxiaoNeural"
+    allow_external_voice: bool = Field(default=False, strict=True)
 
 
 # =============== App ===============
@@ -995,6 +1005,33 @@ def _require_digital_human_enabled() -> None:
     """允许独立关闭数字人，不影响既有学习接口。"""
     if os.getenv("FILEMATE_ENABLE_DIGITAL_HUMAN", "1") == "0":
         raise HTTPException(status_code=503, detail="数字人功能已暂时关闭")
+
+
+_natural_speech = MicrosoftSpeech()
+
+
+@app.post("/api/digital-human/speech")
+async def synthesize_natural_speech(payload: NaturalSpeechRequest):
+    """仅在明确授权后将正文转交 Microsoft，不保存正文和音频。"""
+    _require_digital_human_enabled()
+    if os.getenv("FILEMATE_ENABLE_NATURAL_VOICE", "1") == "0":
+        raise HTTPException(status_code=503, detail="Microsoft 自然语音已暂时关闭")
+    if not payload.allow_external_voice:
+        raise HTTPException(status_code=403, detail="请先允许将讲解正文发送给 Microsoft")
+    if not payload.text.strip():
+        raise HTTPException(status_code=422, detail="请先输入讲解文字")
+    context = _tenant_context.get()
+    try:
+        audio = await _natural_speech.synthesize(
+            payload.text, payload.voice_id, context[0] if context else "local",
+        )
+    except SpeechBusy as exc:
+        raise HTTPException(status_code=429, detail=str(exc), headers={"Retry-After": "60"}) from exc
+    except SpeechUnavailable as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return Response(audio, media_type="audio/mpeg", headers={
+        "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+    })
 
 
 @app.get("/api/digital-human/playbacks", response_model=ApiResponse)
@@ -3197,7 +3234,7 @@ def _privacy_boundary() -> dict[str, Any]:
         'key_notice': '自带 API 密钥按学习空间加密保存在当前浏览器；主动模型请求时临时经本站转发，不写入服务器配置、数据库或日志。网站也可能使用维护者的部署凭据。' if server_mode else '本机自带密钥由系统凭据库保存；部署环境变量也可提供模型凭据。浏览器不保存系统凭据。',
         'model_notice': '导入与阅读不调用模型。主动授权 AI 时，所选资料正文或片段、问题、回答或代码会发送给当前配置的模型服务；结果保存到学习空间。第三方留存由供应商政策决定。',
         'camera_notice': '摄像头画面与录像仅在当前浏览器页面内存，不上传；主动提交的文字回答、语音节奏和视觉观察摘要会保存到学习空间。刷新后未下载的录像清除。',
-        'speech_notice': '语音识别及朗读由浏览器和设备提供，可能连接供应商服务；不保证全部声线离线。',
+        'speech_notice': '导师朗读使用 Microsoft 在线自然语音：确认后正文经 FileMate 服务转交 Microsoft，正文和音频不在 FileMate 持久化。语音识别仍由浏览器和设备提供；不保证供应商服务离线或第三方不留存。',
         'guest_inactive_days': _retention.days if _retention else None,
         'retention_notice': f'匿名空间连续{_retention.days}天未使用后清理，注册账号保留到主动注销；恢复预览15分钟到期，取消或到期后清理副本。' if _retention else '本机学习空间不按匿名期限清理；恢复预览15分钟到期，取消或到期后清理副本。',
     }

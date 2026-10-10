@@ -12,3 +12,4 @@ python-multipart>=0.0.9
 icalendar>=6.0
 keyring>=25.0
 reportlab>=4.4,<5
+edge-tts==7.2.8

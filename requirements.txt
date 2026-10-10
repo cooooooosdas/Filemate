@@ -9,6 +9,7 @@ PaddleOCR>=2.7; platform_system != "Windows"  # Windows 环境按需安装
 # ── 理解层 ──
 requests>=2.31
 python-dotenv>=1.0
+edge-tts==7.2.8
 
 # ── 确认层 ──
 gradio>=4.44

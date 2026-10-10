@@ -18,6 +18,7 @@ const button = name => page.getByRole('button', { name, exact: true })
 const get = async url => { const r = await context.request.get(api + url); assert.equal(r.status(), 200, `${url} HTTP ${r.status()}`); return (await r.json()).data }
 const post = async (url, data) => { const r = await context.request.post(api + url, { data }); assert.equal(r.status(), 200, `${url} HTTP ${r.status()}: ${(await r.text()).slice(0,180)}`); return (await r.json()).data }
 async function step(name, action) {
+  if (process.env.FILEMATE_PUBLIC_FLOW === '1') await new Promise(resolve => setTimeout(resolve, 8000))
   console.log('RUN', name)
   const start = Date.now()
   try { await action(); checks.push({ name, status: 'PASS', elapsed_ms: Date.now() - start }); console.log('PASS', name) }
@@ -118,10 +119,10 @@ try {
     await button('发送').click(); const r = await pending; assert.equal(r.status(), 200); await page.locator('.message.assistant').waitFor()
     assert.ok((await page.locator('.message.assistant .citations button').count()) > 0)
   })
-  await step('12 数字人讲解与浏览器真实语音尝试', async () => {
+  await step('12 数字人讲解与真实 Microsoft 自然语音', async () => {
     await page.getByRole('link', { name: '让 AI 导师讲解', exact: true }).last().click(); await page.getByLabel('讲解内容').waitFor()
-    await page.getByLabel('讲解内容').fill('栈采用后进先出。'); await button('开始讲解').click()
-    await page.waitForFunction(() => ['讲解完成', '讲解失败'].includes(document.querySelector('.state-badge')?.textContent?.trim()), null, { timeout: 25000 }).catch(() => {})
+    await page.getByLabel('讲解内容').fill('栈采用后进先出。'); await page.getByRole('checkbox', { name: /允许将本次讲解正文/ }).check(); await button('开始讲解').click()
+    await page.waitForFunction(() => ['讲解完成', '讲解失败'].includes(document.querySelector('.state-badge')?.textContent?.trim()), null, { timeout: 65000 }).catch(() => {})
     const records = await get('/api/digital-human/playbacks'); assert.ok(records.length)
     const speech = records[0].status
     if (speech !== 'completed') { limitations.push('此Edge自动化环境真实TTS未完成；已验证明确失败/停止和文字保留，不能作为可听语音验收。'); await button('停止').click().catch(() => {}) }
@@ -199,6 +200,13 @@ try {
     for (const url of [`/knowledge/sources/${sid}`, '/api/knowledge-graph', `/api/programming/submissions/${accepted}`, `/interviews/${iid}/review`, `/api/career/positions/${pid}`, `/api/resume/${resumeId}`, `/api/growth/reports/${growthId}`, '/api/semester', '/api/skills/tree']) assert.ok(await get(url))
     assert.equal((await get('/api/auth/me')).user.email, email); await page.reload(); await page.getByRole('heading', { name: '导出与恢复个人数据', exact: true }).waitFor()
     await page.setViewportSize({ width: 375, height: 1000 }); assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)); await page.screenshot({ path: path.join(out, 'full-flow-mobile.png'), fullPage: true })
+  })
+  await step('23 仅注销本轮自建合成账户', async () => {
+    assert.equal((await get('/api/auth/me')).user.email, email)
+    const preview = await get('/api/auth/delete-preview')
+    const response = await context.request.post(api + '/api/auth/delete', { headers: { 'X-FileMate-Action': 'account' }, data: { confirmed: true, confirmation_token: preview.confirmation_token, password } })
+    assert.equal(response.status(), 200)
+    assert.equal((await response.json()).data.cleanup_pending, false)
   })
   assert.deepEqual(errors, [])
 } catch (error) {

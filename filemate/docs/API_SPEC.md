@@ -1,5 +1,7 @@
 # API 规范
 
+2026-10-10 自然语音合同：`POST /api/digital-human/speech` 接收 `{text, voice_id, allow_external_voice}`。正文1–5000字，默认 `zh-CN-XiaoxiaoNeural`，另允许 Yunxia/Yunxi/Xiaoyi Neural；必须明确传入布尔 `true` 授权正文经当前 FileMate 服务转交 Microsoft。响应为 `audio/mpeg`、`Cache-Control:no-store`，不保存请求正文或音频。每空间每分钟6次、每进程并发2次、55秒总超时、8MiB音频上限；无授权403，非法参数422，繁忙429，供应商失败502，功能关闭503。`FILEMATE_ENABLE_NATURAL_VOICE=0` 可独立关闭，数字人总开关同时生效。元数据 provider 新增 `microsoft_edge`，旧 `web_speech` 记录兼容；无需数据库迁移。完整边界见[自然语音交付](../../docs/MICROSOFT_NATURAL_VOICE_2026-10-10.md)。
+
 > 核心 Python 模块与现役 HTTP API 的输入输出契约。
 
 2026-10-04 首页接入外部[一言诗词API](https://developer.hitokoto.cn/sentence/)：前端`services/api.ts`发起HTTPS GET `https://v1.hitokoto.cn/?c=i&encode=json&min_length=8&max_length=22`，仅读取`uuid/hitokoto/type/from/from_who`，不携带Cookie、Referer、资料或学习内容。没有新增本服务路由、环境变量或schema。请求2.5秒超时，每次页面加载最多一次，同次SPA切页共享结果；允许的外部CSP连接仅为该端点。

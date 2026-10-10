@@ -172,7 +172,10 @@ api.interceptors.request.use(
 // 响应拦截器
 api.interceptors.response.use(
   response => response.data,
-  error => {
+  async error => {
+    if (typeof Blob !== 'undefined' && error.response?.data instanceof Blob) {
+      try { error.response.data = JSON.parse(await error.response.data.text()) } catch { /* 保留通用网络错误。 */ }
+    }
     const message =
       error.response?.data?.error ||
       error.response?.data?.detail ||
@@ -777,11 +780,17 @@ export interface DigitalHumanPlayback {
   updated_at: string
 }
 
+export async function synthesizeNaturalSpeech(text: string, voiceId: string, signal: AbortSignal): Promise<Blob> {
+  return api.post<unknown, Blob>('/api/digital-human/speech', {
+    text, voice_id: voiceId, allow_external_voice: true,
+  }, { responseType: 'blob', timeout: 60000, signal })
+}
+
 export async function createDigitalHumanPlayback(input: {
   text_length: number
   avatar_id: string
   voice_id: string
-  provider: 'web_speech'
+  provider: 'web_speech' | 'microsoft_edge'
   context_id?: string
   message_index?: number
 }): Promise<DigitalHumanPlayback> {
