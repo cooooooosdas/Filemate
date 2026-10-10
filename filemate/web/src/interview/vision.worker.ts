@@ -35,6 +35,8 @@ self.onmessage = async (event: MessageEvent) => {
       self.postMessage({ type: 'sample', epoch: message.epoch, second: message.second,
         face: Boolean(landmarks), luminance: luminance / (64 * 48), yaw, pitch,
         smile: (coefficient('mouthSmileLeft') + coefficient('mouthSmileRight')) / 2,
+        brow: (coefficient('browDownLeft') + coefficient('browDownRight')) / 2,
+        jaw: coefficient('jawOpen'),
         look: (coefficient('eyeLookOutLeft') + coefficient('eyeLookInRight') - coefficient('eyeLookInLeft') - coefficient('eyeLookOutRight')) / 2 })
     } catch { self.postMessage({ type: 'error', reason: '视觉采样中断；已采集观察仍保留，可重新开启。' }) }
     finally { bitmap.close() }

@@ -93,7 +93,7 @@ try {
     await button('开启摄像头').click()
     await button('关闭摄像头').waitFor()
     await button('开启本地视觉观察').click()
-    await page.getByText('本地视觉已就绪，开始录像后采集观察。', { exact: true }).waitFor({ timeout: 40000 })
+    await page.getByRole('heading', { name: '实时面部动作', exact: true }).waitFor({ timeout: 40000 })
     assert.ok(requests.some(r => r.url.includes('face_landmarker.task')))
     assert.ok(requests.filter(r => r.url.includes('interview-vision')).every(r => r.url.startsWith(base)))
   })

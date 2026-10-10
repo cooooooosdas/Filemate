@@ -97,9 +97,11 @@ try {
     await waitState('playing')
     await button('暂停').click()
     await waitState('paused')
+    await page.waitForFunction(() => speechSynthesis.paused, null, { timeout: 5000 })
     assert.equal(await page.evaluate(() => speechSynthesis.paused), true)
     await button('继续').click()
     await waitState('playing')
+    await page.waitForFunction(() => !speechSynthesis.paused, null, { timeout: 5000 })
     assert.equal(await page.evaluate(() => speechSynthesis.paused), false)
     await waitState('completed', 240000)
     await button('重播').click()
@@ -141,6 +143,30 @@ try {
     Object.defineProperty(window, 'speechSynthesis', { value: speech, configurable: true })
     Object.defineProperty(window, 'SpeechSynthesisUtterance', { value: Utterance, configurable: true })
     window.__speechMock = mock
+  })
+
+  await check('continuous mouth animation preserves one portrait and stops on pause', 'mock_device_real_api', async () => {
+    await open()
+    await page.locator('#lecture-text').fill('原创动画验收，检查连续口型与停止行为。')
+    await button('开始讲解').click(); await waitState('playing')
+    const samples = []
+    for (let index = 0; index < 6; index++) {
+      samples.push(await page.locator('.lip-motion').evaluate(node => getComputedStyle(node).transform))
+      await page.waitForTimeout(70)
+    }
+    assert.ok(new Set(samples).size > 3)
+    const position = await page.locator('.portrait-image').evaluate(node => getComputedStyle(node).backgroundPosition)
+    await button('暂停').click(); await waitState('paused')
+    assert.equal(await page.locator('.lip-motion').evaluate(node => getComputedStyle(node).animationName), 'none')
+    assert.equal(await page.locator('.portrait-image').evaluate(node => getComputedStyle(node).backgroundPosition), position)
+    await button('继续').click(); await waitState('playing')
+    await page.screenshot({ path: path.join(out, 'continuous-portrait.png'), fullPage: true })
+    await button('停止').click(); await waitState('stopped')
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await button('开始讲解').click(); await waitState('playing')
+    assert.equal(await page.locator('.lip-motion').evaluate(node => getComputedStyle(node).animationName), 'none')
+    await button('停止').click(); await page.emulateMedia({ reducedMotion: 'no-preference' })
+    return { distinct_interpolated_frames: new Set(samples).size, fixed_portrait: position, reduced_motion: true }
   })
 
   await check('empty input and server failure preserve the lecture and retry', 'mock_device_real_api', async () => {

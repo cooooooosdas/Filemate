@@ -1,11 +1,13 @@
 import { onBeforeUnmount, ref } from 'vue'
 import type { VisualMetrics } from '../types/interviewReview'
-import { ObservationAccumulator, type VisualSample } from './observations'
+import { ObservationAccumulator } from './observations'
+import { liveFaceIndicators, type LiveFaceSample } from './liveFace'
 
 export function useInterviewVision() {
   const state = ref<'off' | 'loading' | 'ready' | 'observing' | 'error'>('off')
   const hint = ref('视觉观察默认关闭，开启后只在本机处理画面。')
   const metrics = ref<VisualMetrics>()
+  const live = ref<ReturnType<typeof liveFaceIndicators>>()
   let worker: Worker | undefined
   let timer: number | undefined
   let epoch = 0
@@ -30,8 +32,8 @@ export function useInterviewVision() {
     context.drawImage(video, 0, 0, 640, 480)
     return captureCanvas.transferToImageBitmap()
   }
-  function reset() { epoch++; accumulator = new ObservationAccumulator(); metrics.value = undefined; startTime = 0; busy = false }
-  function pause() { if (timer !== undefined) clearInterval(timer); timer = undefined; if (state.value === 'observing') state.value = 'ready' }
+  function reset() { pause(); epoch++; accumulator = new ObservationAccumulator(); metrics.value = undefined; live.value = undefined; startTime = 0; busy = false }
+  function pause() { if (timer !== undefined) clearInterval(timer); timer = undefined; live.value = undefined; if (state.value === 'observing') state.value = 'ready' }
   function stop() {
     pause(); epoch++; workerGeneration++; worker?.terminate(); worker = undefined
     if (initializationTimer !== undefined) clearTimeout(initializationTimer)
@@ -60,12 +62,14 @@ export function useInterviewVision() {
           if (current !== workerGeneration) return
           if (event.data.type === 'ready') {
             clearTimeout(initializationTimer); initializationTimer = undefined; pendingInitialization = undefined
-            state.value = 'ready'; hint.value = '本地视觉已就绪，开始录像后采集观察。'; resolve(true)
+            state.value = 'ready'; hint.value = '本地视觉已就绪，开启后实时采集动作；画面不上传。'; resolve(true)
           } else if (event.data.type === 'error') { clearTimeout(initializationTimer); fail(event.data.reason) }
           else if (event.data.type === 'sample') {
             busy = false
             if (event.data.epoch !== epoch) return
-            const sample: VisualSample = event.data
+            if (state.value !== 'observing') return
+            const sample: LiveFaceSample = event.data
+            live.value = liveFaceIndicators(sample)
             accumulator.add(sample)
             metrics.value = accumulator.snapshot(sample.second, origin)
             hint.value = sample.luminance < 45 ? '当前视频质量较低，视觉观察可信度可能下降。' : !sample.face ? '当前未检测到稳定人脸，可检查镜头位置。' : '正在记录可观察动作，不推断心理状态。'
@@ -99,5 +103,5 @@ export function useInterviewVision() {
   }
   function finish() { pause(); epoch++; busy = false; if (startTime) { metrics.value = accumulator.snapshot(Math.min(1800, (performance.now() - startTime) / 1000), origin); startTime = 0 }; return metrics.value }
   onBeforeUnmount(stop)
-  return { state, hint, metrics, enable, observe, finish, pause, stop, reset }
+  return { state, hint, metrics, live, enable, observe, finish, pause, stop, reset }
 }

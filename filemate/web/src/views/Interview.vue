@@ -80,6 +80,17 @@
               <button :disabled="!cameraActive || videoRecording || vision.state.value === 'loading'" @click="toggleVision">{{ vision.state.value === 'loading' ? '加载视觉模型…' : ['ready', 'observing'].includes(vision.state.value) ? '关闭本地视觉观察' : '开启本地视觉观察' }}</button>
               <small role="status">{{ vision.hint.value }}</small>
               <small>每秒约2次采样；观察头部、眼部与嘴角动作，不判断情绪或注意力。</small>
+              <section v-if="vision.state.value === 'observing'" class="live-face" aria-label="实时面部动作">
+                <h3>实时面部动作</h3><p>{{ vision.live.value?.status || '等待有效画面…' }}</p>
+                <template v-if="vision.live.value">
+                  <div v-for="item in [{key: 'smile', label: '微笑动作'}, {key: 'brow', label: '皱眉动作'}, {key: 'jaw', label: '张口动作'}] as const" :key="item.key" class="face-reading">
+                    <span>{{ item.label }}</span><strong>{{ vision.live.value[item.key] ?? '待测' }}{{ vision.live.value[item.key] == null ? '' : ' / 100' }}</strong>
+                    <meter v-if="vision.live.value[item.key] != null" :value="vision.live.value[item.key]!" min="0" max="100" :aria-label="item.label" />
+                  </div>
+                  <p>头部偏转 {{ vision.live.value.yaw == null ? '待测' : `${vision.live.value.yaw}°` }} · 俯仰 {{ vision.live.value.pitch == null ? '待测' : `${vision.live.value.pitch}°` }}</p>
+                </template>
+                <small>0–100 为模型动作系数换算，不是开心、紧张或疑惑的概率；光线不足或无人脸时停止读数。实时系数不保存、不上传，不用于面试评分。</small>
+              </section>
             </div>
           </div>
         </div>
@@ -522,7 +533,10 @@ const stopCamera = () => {
 const toggleCamera = () => { cameraActive.value ? stopCamera() : startCamera() }
 const toggleVision = async () => {
   if (['ready', 'observing'].includes(vision.state.value)) { vision.finish(); vision.stop(); return }
-  await vision.enable()
+  if (await vision.enable()) {
+    await nextTick()
+    if (cameraActive.value && cameraVideo.value) vision.observe(cameraVideo.value)
+  }
 }
 
 const stopLocalRecordingTracks = () => {
@@ -710,10 +724,14 @@ onMounted(async () => {
 
 <style scoped>
 .interview-page{max-width:1180px;margin:0 auto;padding:28px;color:var(--text-primary)}.page-head{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:26px}.eyebrow{margin:0;color:var(--accent);font-size:11px;font-weight:800;letter-spacing:.15em}.page-head h1{font-size:32px;margin:0 0 7px}.page-head p{margin:0;color:var(--text-secondary)}.status-pill{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--accent-border);border-radius:999px;color:var(--accent);background:var(--accent-soft)}.status-pill i,.online i{width:7px;height:7px;border-radius:50%;background:#36a269}.setup-card,.studio,.evaluation,.review-list{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:18px}.setup-card{padding:30px}.setup-copy span{color:var(--accent);font-size:12px;font-weight:700}.setup-copy h2{font-size:24px;margin:8px 0}.setup-copy p{color:var(--text-secondary)}.form-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin:26px 0}.form-grid label{font-size:13px;color:var(--text-secondary)}input,select,textarea{box-sizing:border-box;width:100%;margin-top:7px;padding:12px;border:1px solid var(--border-default);border-radius:10px;background:var(--bg-elevated);color:var(--text-primary);font:inherit}textarea{resize:vertical;line-height:1.7}.primary,.ghost,.voice{border:0;border-radius:10px;padding:11px 17px;cursor:pointer}.primary{background:var(--accent);color:white;font-weight:700}.primary:disabled{opacity:.45}.studio{display:grid;grid-template-columns:310px 1fr;overflow:hidden}.interviewer-panel{padding:30px;background:var(--sidebar-bg);text-align:center;border-right:1px solid var(--border-subtle)}.avatar-stage{position:relative;width:180px;height:180px;margin:12px auto 24px;display:grid;place-items:center}.avatar-face{position:relative;z-index:2;width:124px;height:124px;display:grid;place-items:center;overflow:hidden;border:4px solid rgba(255,255,255,.9);border-radius:50%;background:linear-gradient(145deg,var(--brand-blue-soft),#e7f6ee);box-shadow:0 16px 35px rgba(37,99,235,.18)}.avatar-face img{width:100%;height:100%;object-fit:cover;object-position:50% 22%;transform:scale(1.08)}.pulse{position:absolute;border:1px solid var(--brand-blue-border);border-radius:50%}.pulse-one{inset:12px}.pulse-two{inset:0}.speaking .pulse{animation:pulse 1.3s infinite}.voice-bars{position:absolute;bottom:1px;display:flex;gap:3px}.voice-bars i{width:3px;height:8px;background:var(--accent);border-radius:3px}.speaking .voice-bars i{animation:bars .7s infinite alternate}.voice-bars i:nth-child(2n){animation-delay:.2s}.role{font-weight:700}.online{font-size:12px;color:var(--text-secondary)}.online i{display:inline-block;margin-right:5px}.ghost{margin-top:18px;border:1px solid var(--accent-border);background:transparent;color:var(--accent)}.conversation-panel{padding:30px}.progress-row{display:flex;justify-content:space-between;color:var(--text-secondary);font-size:13px}.progress{height:5px;background:var(--bg-elevated);border-radius:5px;margin:10px 0 28px}.progress i{display:block;height:100%;background:var(--accent);border-radius:5px}.question-block>p{font-size:12px;color:var(--accent)}.question-block h2{font-size:22px;line-height:1.5}.answer-actions{display:flex;gap:12px;align-items:center;margin-top:12px}.answer-actions span{color:var(--text-muted);font-size:12px;margin-right:auto}.voice{border:1px solid var(--accent-border);color:var(--accent);background:var(--accent-soft)}.voice.recording{background:#fff0ec;color:#b44b34}.evaluation,.review-list{margin-top:18px;padding:24px}.evaluation-head{display:flex;justify-content:space-between;gap:20px}.evaluation-head h2{font-size:17px}.evaluation-head>strong{font-size:42px;color:var(--accent)}.dimension-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.dimension-grid>div{display:grid;grid-template-columns:1fr auto;gap:8px}.dimension-grid i{grid-column:1/-1;height:5px;background:var(--bg-elevated);border-radius:5px}.dimension-grid em{display:block;height:100%;background:var(--accent);border-radius:5px}.review-list h2{font-size:18px}.review-list details{border-top:1px solid var(--border-subtle);padding:14px 0}.review-list summary{display:flex;justify-content:space-between;gap:18px;cursor:pointer}.review-list p,.review-list small{color:var(--text-secondary);line-height:1.7}.completion{display:flex;align-items:center;justify-content:center;gap:24px;padding:60px 20px}.score-ring{width:110px;height:110px;display:grid;place-items:center;border:8px solid var(--accent-soft);outline:2px solid var(--accent);border-radius:50%;font-size:34px;font-weight:800;color:var(--accent)}@keyframes pulse{50%{transform:scale(1.05);opacity:.45}}@keyframes bars{to{height:25px}}@media(max-width:800px){.studio{grid-template-columns:1fr}.interviewer-panel{border-right:0;border-bottom:1px solid var(--border-subtle)}.form-grid,.dimension-grid{grid-template-columns:1fr 1fr}.page-head{align-items:start;flex-direction:column}}@media(max-width:520px){.form-grid,.dimension-grid{grid-template-columns:1fr}.interview-page{padding:16px}.conversation-panel{padding:20px}.answer-actions{flex-wrap:wrap}.answer-actions .primary{width:100%}}
+
+.live-face{border-top:1px solid var(--border-subtle);padding-top:12px}.live-face h3{font-size:18px;margin:0 0 10px}.live-face p{font-size:14px;line-height:1.6}.face-reading{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:12px 0;font-size:15px}.face-reading strong{font-size:17px}.face-reading meter{grid-column:1/-1;width:100%;height:12px;accent-color:var(--accent)}.live-face small{font-size:14px;line-height:1.7}
 </style>
 
 <style scoped>
 .vision-controls{display:grid;gap:8px;margin-top:12px;padding:12px;background:var(--accent-soft);border-radius:10px;text-align:left}.vision-controls button{padding:10px;border:1px solid var(--accent-border);border-radius:8px;background:white;color:var(--accent);cursor:pointer}.vision-controls button:disabled{opacity:.5}.vision-controls small{font-size:11px;line-height:1.6;color:var(--text-secondary)}.speech-privacy{display:block;margin-top:10px;line-height:1.6;color:var(--text-muted);font-size:11px}.recording-actions{display:flex;flex-wrap:wrap;gap:8px}.recording-actions .ghost{margin-top:10px}.review-list p{white-space:pre-wrap;overflow-wrap:anywhere}
+
+.live-face{border-top:1px solid var(--border-subtle);padding-top:12px}.live-face h3{font-size:18px;margin:0 0 10px}.live-face p{font-size:14px;line-height:1.6}.face-reading{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:12px 0;font-size:15px}.face-reading strong{font-size:17px}.face-reading meter{grid-column:1/-1;width:100%;height:12px;accent-color:var(--accent)}.live-face small{font-size:14px;line-height:1.7}
 </style>
 
 <style scoped>
@@ -896,4 +914,6 @@ onMounted(async () => {
   .speaking .pulse,
   .speaking .voice-bars i { animation: none; }
 }
+
+.live-face{border-top:1px solid var(--border-subtle);padding-top:12px}.live-face h3{font-size:18px;margin:0 0 10px}.live-face p{font-size:14px;line-height:1.6}.face-reading{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:12px 0;font-size:15px}.face-reading strong{font-size:17px}.face-reading meter{grid-column:1/-1;width:100%;height:12px;accent-color:var(--accent)}.live-face small{font-size:14px;line-height:1.7}
 </style>
