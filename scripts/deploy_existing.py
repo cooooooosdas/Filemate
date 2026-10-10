@@ -99,6 +99,8 @@ def stage(args: argparse.Namespace) -> None:
     environment = BACKEND / 'venvs' / args.release_id
     extract(incoming / 'backend.tar.gz', release, args.backend_sha256)
     extract(incoming / 'web.tar.gz', static, args.web_sha256)
+    check_migration_upgrade(BACKEND / 'current/filemate/execution/storage.py',
+                            release / 'filemate/execution/storage.py')
     marker = json.loads((static / 'release.json').read_text())
     assert marker['commit'] == args.commit and marker['version'] == args.version
     assert not (release / '.env').exists()
@@ -234,10 +236,37 @@ def migration_contract(path: Path) -> list[tuple[int, str, str]]:
         and isinstance(node.value, ast.Constant)
         for target in node.targets if isinstance(target, ast.Name)
     }
+    imports = {
+        alias.asname or alias.name: f'{statement.module}.{alias.name}'
+        for statement in tree.body if isinstance(statement, ast.ImportFrom)
+        and statement.level == 0 and statement.module
+        and statement.module.startswith('filemate.')
+        for alias in statement.names
+    }
+
+    def constant(value: ast.expr):
+        if isinstance(value, ast.Name):
+            return constants[value.id]
+        if isinstance(value, ast.Attribute) and isinstance(value.value, ast.Name):
+            module = imports.get(value.value.id)
+            if not module or not all(part.isidentifier() for part in module.split('.')):
+                raise ValueError('迁移常量引用不是候选源码包中的模块')
+            root = path.resolve().parents[2]
+            source = root.joinpath(*module.split('.')).with_suffix('.py')
+            if source.is_symlink() or not source.resolve().is_relative_to(root):
+                raise ValueError('迁移常量模块超出候选源码边界')
+            # 静态解析字面量，不执行迁移模块的导入或其他顶层代码。
+            imported = ast.parse(source.read_text(encoding='utf-8'))
+            declaration = next(statement for statement in imported.body
+                               if isinstance(statement, ast.Assign)
+                               and any(isinstance(target, ast.Name) and target.id == value.attr
+                                       for target in statement.targets))
+            return ast.literal_eval(declaration.value)
+        return ast.literal_eval(value)
+
     node = next(n for n in tree.body if isinstance(n, ast.Assign)
                 and any(isinstance(t, ast.Name) and t.id == '_MIGRATIONS' for t in n.targets))
-    return [tuple(constants[value.id] if isinstance(value, ast.Name) else ast.literal_eval(value)
-                  for value in migration.elts) for migration in node.value.elts]
+    return [tuple(constant(value) for value in migration.elts) for migration in node.value.elts]
 
 
 def migration_signature(path: Path) -> str:

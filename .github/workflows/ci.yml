@@ -42,6 +42,7 @@ jobs:
           filemate/tests/test_storage.py
           filemate/tests/test_release_contract.py
           filemate/tests/test_deploy_existing.py
+          filemate/tests/test_deploy_migration_contract.py
           filemate/tests/test_file_ops.py
           filemate/tests/test_archiver.py
           filemate/tests/test_confirmation_executor.py

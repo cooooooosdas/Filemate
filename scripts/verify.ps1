@@ -28,6 +28,7 @@ try {
         filemate/tests/test_storage.py `
         filemate/tests/test_release_contract.py `
         filemate/tests/test_deploy_existing.py `
+        filemate/tests/test_deploy_migration_contract.py `
         filemate/tests/test_interview_review.py `
         filemate/tests/test_career.py `
         filemate/tests/test_career_planning.py `
