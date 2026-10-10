@@ -53,7 +53,10 @@ try {
   })
   await step('04 图谱预览确认与画像真实证据', async () => {
     await page.goto(base + '/knowledge-graph'); await page.locator('.extract-fields select').first().selectOption(sid)
-    await button('提取并预览').click(); await button('确认加入图谱').waitFor(); await button('确认加入图谱').click()
+    await button('提取并预览').click(); await button('确认加入图谱').waitFor()
+    const confirmed = page.waitForResponse(r => /\/api\/knowledge-graph\/batches\/[^/]+\/confirm$/.test(r.url()) && r.request().method() === 'POST')
+    await button('确认加入图谱').click(); assert.equal((await confirmed).status(), 200)
+    await page.getByText('图谱已更新，学习状态仍由真实练习证据计算。', { exact: true }).waitFor()
     await page.waitForFunction(() => document.querySelector('.map-panel')?.textContent.includes('个知识点'))
     const g = await get('/api/knowledge-graph'); assert.ok(g.nodes.length >= 3); assert.ok(g.nodes.every(n => n.excerpt))
     nid = g.nodes.find(n => n.label === '栈')?.id || g.nodes[0].id
@@ -123,7 +126,13 @@ try {
     await page.getByRole('link', { name: '让 AI 导师讲解', exact: true }).last().click(); await page.getByLabel('讲解内容').waitFor()
     await page.getByLabel('讲解内容').fill('栈采用后进先出。'); await page.getByRole('checkbox', { name: /允许将本次讲解正文/ }).check(); await button('开始讲解').click()
     await page.waitForFunction(() => ['讲解完成', '讲解失败'].includes(document.querySelector('.state-badge')?.textContent?.trim()), null, { timeout: 65000 }).catch(() => {})
-    const records = await get('/api/digital-human/playbacks'); assert.ok(records.length)
+    let records = await get('/api/digital-human/playbacks'); assert.ok(records.length)
+    // The visible end event precedes the asynchronous completion metadata write.
+    const completionDeadline = Date.now() + 30000
+    while (records[0].status === 'started' && Date.now() < completionDeadline) {
+      await page.waitForTimeout(1000)
+      records = await get('/api/digital-human/playbacks'); assert.ok(records.length)
+    }
     const speech = records[0].status
     if (speech !== 'completed') { limitations.push('此Edge自动化环境真实TTS未完成；已验证明确失败/停止和文字保留，不能作为可听语音验收。'); await button('停止').click().catch(() => {}) }
     checks.push({ name: '真实TTS设备分支', status: speech === 'completed' ? 'PASS' : 'CONDITIONAL', device_status: speech })

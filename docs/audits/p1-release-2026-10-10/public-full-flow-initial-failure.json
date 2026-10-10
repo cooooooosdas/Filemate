@@ -1,0 +1,30 @@
+{
+  "sample_kind": "original_synthetic_single_registered_account_actual_UI_API_SQLite_native_compiler_real_DeepSeek",
+  "passed": false,
+  "checks": [
+    {
+      "name": "01 注册与保存恢复码",
+      "status": "PASS",
+      "elapsed_ms": 14935
+    },
+    {
+      "name": "02 退出与原密码重新登录",
+      "status": "PASS",
+      "elapsed_ms": 20868
+    },
+    {
+      "name": "03 上传课程并读取真实解析正文",
+      "status": "PASS",
+      "elapsed_ms": 8664
+    },
+    {
+      "name": "04 图谱预览确认与画像真实证据",
+      "status": "FAIL",
+      "diagnostic": "AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:\n\n  assert.ok(g.nodes.length >= 3)\n"
+    }
+  ],
+  "errors": [],
+  "limitations": [],
+  "real_student_data": false,
+  "external_model": true
+}

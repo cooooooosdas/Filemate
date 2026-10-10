@@ -1,0 +1,26 @@
+{
+  "sample_kind": "post_run_verification_of_same_synthetic_account_export",
+  "passed": true,
+  "data_flow_steps": 23,
+  "data_flow_status": "PASS",
+  "voice_status": "PASS_BY_FINAL_PERSISTED_COMPLETION",
+  "original_summary_passed": false,
+  "initial_voice_observation": {
+    "name": "真实TTS设备分支",
+    "status": "CONDITIONAL",
+    "device_status": "started"
+  },
+  "final_voice_record": {
+    "provider": "microsoft_edge",
+    "voice_id": "zh-CN-XiaoxiaoNeural",
+    "status": "completed",
+    "text_length": 8,
+    "error_code": "",
+    "created_at": "2026-10-10T02:17:36+00:00",
+    "updated_at": "2026-10-10T02:17:42+00:00"
+  },
+  "personal_export_sha256": "b68dfdab2a4ccfed014b3ddc5a18be48d46668c55e64649dfb209fc2376466e9",
+  "page_errors": [],
+  "real_student_data": false,
+  "note": "原始summary的CONDITIONAL和passed=false完整保留。本文件独立核验同一账户后续导出中的最终完成记录；没有修改原始结果，没有模拟语音。"
+}
