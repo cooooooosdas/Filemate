@@ -1,5 +1,10 @@
 # API 规范
 
+2026-10-11 本地任务/执行候选：治理追加migration2，业务schema26不变。Session/Agent/目标与学习任务/图谱及岗位计划/岗位训练/学期确认写入前校验空间和全站日额度。默认日任务/执行账号4000/100、游客1500/20、本地10000/500、全站30000/1000，执行并发2/1/2/2，UTC+08:00午夜重置。新增 FILEMATE_RESOURCE_{ACCOUNT,GUEST,LOCAL,GLOBAL}_{DAILY_TASKS,DAILY_EXECUTIONS,EXECUTION_CONCURRENT}，前两项1–100000、并发1–16，不能为0。计数为准入工作量，失败不退款，不是学习统计。Windows实际编译自检计数，缓存命中不计；Linux固定自检保持原代理十分钟缓存/单槽。
+
+执行在认领/编译前拒绝超额429或账本故障503，保留queued与代码。完成/取消/重复确认不创建新工作，资料授权/记忆撤销审计免于预算；读取/完成/取消/隐私动作保留。HTTP绑定实际服务端数据库，生产缺可信Scope/绑定时拒绝新资源。GET /api/llm/usage追加resources计数/限额/独立coverage_started_at，offset改0–1000000（超大整数422），原字段/no-store保留。个人导出增加resource_events，恢复不回写额度；注销清本人资源记录，匿名全站累计保留。管理员备份/部署只读兼容治理schema1/2，M1应用不直接支持M2，回滚须配套完整备份/兼容工具。存储/费用/完整Trace及AUD-09未关闭；见[资源准入子卡](../../docs/TASK_EXECUTION_BUDGET_2026-10-11.md)，未上线。
+
+
 2026-10-11 本地模型准入候选：统一LLM每次供应商尝试（含重试）及明确授权后的Microsoft语音使用独立持久账本，原子校验当前学习空间/全站的每日次数、准入单位和跨进程并发。次数/单位默认账号300/2000000、游客60/250000、本地1000/10000000、全站3000/20000000；单空间4路/全站16路，UTC+08:00午夜重置。准入单位是消息UTF-8字节＋最大输出token＋消息开销，不是实际token或账单；未知token和费用为NULL。账本故障拒绝新的外部调用，读取/健康/核心导出继续可用。模型连接测试的预算拒绝429、账本故障503，不作为无效密钥502处理。
 
 新增 `GET /api/llm/usage?limit=50&offset=0`，limit1–100/offset非负，归属只来自服务端会话，不接受owner选择；返回日计数/上限/重置时间、coverage_started_at、分页attempt/trace/provider/model/duration/status/error_code/request_id及真实usage。partial汇总带每字段已知记录数，cost.status=`not_available`且amount/currency=NULL；响应no-store。个人JSON导出增加model_usage，ZIP新增签名保护的model-usage.json；恢复不安装该文件到数据库，不改变额度或恢复预览。用量导出故障/32MiB上限明确available:false，核心导出保留。注销/到期删除清理本人元数据，保留匿名全站累计；失败cleanup_pending:true由维护重试。

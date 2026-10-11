@@ -312,6 +312,8 @@ class CareerPlans:
             if preview["evidence_revision"] != revision:
                 raise ValueError("岗位或学习证据已变化，请重新预览后确认")
             plan = preview["plan"]
+            from filemate.task_resources import admit_plan
+            admit_plan(self.storage.db_path, 'study_plan', plan)
             now = _now_iso()
             content = json.dumps(plan, ensure_ascii=False)
             metadata = json.dumps(

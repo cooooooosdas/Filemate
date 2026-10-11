@@ -296,6 +296,7 @@ class CareerRepository:
             raise ValueError("无效训练类型")
         conn = self.storage._conn()
         with self.storage._write_lock, conn:
+            conn.execute('BEGIN IMMEDIATE')
             prior = conn.execute(
                 "SELECT * FROM career_trainings WHERE request_key=?", (key,)
             ).fetchone()
@@ -355,6 +356,9 @@ class CareerRepository:
                         "依据确认的岗位快照创建5道原创口头训练问题",
                     ),
                 )
+            if kind != 'interview':
+                from filemate.task_resources import admit_tasks
+                admit_tasks(self.storage.db_path, 1)
             conn.execute(
                 "INSERT INTO artifacts(artifact_id,artifact_type,title,content,metadata) VALUES(?,?,?,?,?)",
                 (

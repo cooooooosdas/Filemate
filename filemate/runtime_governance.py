@@ -25,8 +25,9 @@ from filemate.llm_client.exceptions import LLMAPIError
 from filemate.llm_client.models.response import safe_request_id, validated_usage
 
 logger = logging.getLogger(__name__)
-SCHEMA_VERSION = 1
-SCHEMA_TABLES = frozenset({'resource_schema_migrations', 'resource_daily', 'ai_attempts'})
+SCHEMA_VERSION = 2
+SCHEMA_V1_TABLES = frozenset({'resource_schema_migrations', 'resource_daily', 'ai_attempts'})
+SCHEMA_TABLES = SCHEMA_V1_TABLES | {'resource_events'}
 DAY_TIMEZONE = timezone(timedelta(hours=8))
 GLOBAL_OWNER = '__global__'
 OwnerKind = Literal['account', 'guest', 'local']
@@ -52,13 +53,42 @@ _SCHEMA = (
     "CREATE INDEX ai_attempts_retention ON ai_attempts(finished_at)",
 )
 
+_MIGRATION_2 = (
+    'ALTER TABLE resource_daily ADD COLUMN task_admissions INTEGER NOT NULL DEFAULT 0 CHECK(task_admissions>=0)',
+    'ALTER TABLE resource_daily ADD COLUMN execution_admissions INTEGER NOT NULL DEFAULT 0 CHECK(execution_admissions>=0)',
+    'CREATE INDEX resource_daily_day ON resource_daily(day)',
+    """CREATE TABLE resource_events(
+        event_id TEXT PRIMARY KEY, trace_id TEXT NOT NULL, owner_hash TEXT NOT NULL,
+        day TEXT NOT NULL, operation TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('tasks','execution')),
+        amount INTEGER NOT NULL CHECK(amount>0), started_at REAL NOT NULL, finished_at REAL,
+        status TEXT NOT NULL CHECK(status IN ('admitted','inflight','success','failed','abandoned')),
+        error_code TEXT, pid INTEGER NOT NULL, process_started_at REAL NOT NULL)""",
+    'CREATE INDEX resource_events_owner_time ON resource_events(owner_hash,started_at DESC,event_id)',
+    'CREATE INDEX resource_events_status ON resource_events(status,kind,owner_hash)',
+    'CREATE INDEX resource_events_retention ON resource_events(finished_at)',
+)
+
+
+def resource_schema_version(connection: sqlite3.Connection) -> int:
+    """只读识别原版和追加迁移后的控制账本，备份验证不触发升级。"""
+    tables = {row[0] for row in connection.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}
+    if 'resource_schema_migrations' not in tables:
+        raise GovernanceUnavailable('资源治理账本版本不兼容，请联系维护者')
+    versions = [row[0] for row in connection.execute('SELECT version FROM resource_schema_migrations ORDER BY version')]
+    if versions == [1] and tables == SCHEMA_V1_TABLES:
+        return 1
+    if versions == [1, 2] and tables == SCHEMA_TABLES:
+        return 2
+    raise GovernanceUnavailable('资源治理账本版本不兼容，请联系维护者')
+
 
 class GovernanceUnavailable(LLMAPIError):
-    """治理账本故障时拒绝新的外部调用，但不阻止读取和删除业务数据。"""
+    """账本故障时拒绝新资源任务，但不阻止读取和删除业务数据。"""
 
 
 class BudgetExceeded(LLMAPIError):
-    """累计或并发预算不足，调用尚未发往供应商。"""
+    """累计或并发预算不足，受控业务操作尚未执行。"""
 
 
 @dataclass(frozen=True)
@@ -69,12 +99,23 @@ class Limits:
 
 
 @dataclass(frozen=True)
+class ResourceLimits:
+    task_admissions: int
+    execution_admissions: int
+    execution_concurrent: int
+
+
+@dataclass(frozen=True)
 class Policy:
     account: Limits = Limits(300, 2_000_000, 4)
     guest: Limits = Limits(60, 250_000, 4)
     local: Limits = Limits(1000, 10_000_000, 4)
     global_limits: Limits = Limits(3000, 20_000_000, 16)
     retention_days: int = 30
+    resources_account: ResourceLimits = ResourceLimits(4000, 100, 2)
+    resources_guest: ResourceLimits = ResourceLimits(1500, 20, 1)
+    resources_local: ResourceLimits = ResourceLimits(10000, 500, 2)
+    resources_global: ResourceLimits = ResourceLimits(30000, 1000, 2)
 
     def __post_init__(self) -> None:
         for limits in (self.account, self.guest, self.local, self.global_limits):
@@ -85,6 +126,11 @@ class Policy:
                     raise ValueError('模型预算配置必须为范围内的正整数')
         if type(self.retention_days) is not int or not 1 <= self.retention_days <= 90:
             raise ValueError('模型审计保留天数必须为1至90天')
+        for limits in (self.resources_account, self.resources_guest, self.resources_local, self.resources_global):
+            for value, maximum in ((limits.task_admissions, 100000),
+                                   (limits.execution_admissions, 100000), (limits.execution_concurrent, 16)):
+                if type(value) is not int or not 1 <= value <= maximum:
+                    raise ValueError('任务和执行预算必须为范围内的正整数')
 
     @classmethod
     def from_env(cls) -> Policy:
@@ -97,6 +143,12 @@ class Policy:
                                            ('DAILY_BUDGET_UNITS', limits.budget_units),
                                            ('CONCURRENT', limits.concurrent))]
             configured['global_limits' if name == 'global' else name] = Limits(*values)
+            resources = getattr(default, f'resources_{name}')
+            configured[f'resources_{name}'] = ResourceLimits(*[
+                int(os.getenv(f'FILEMATE_RESOURCE_{name.upper()}_{field}', str(value)))
+                for field, value in (('DAILY_TASKS', resources.task_admissions),
+                                     ('DAILY_EXECUTIONS', resources.execution_admissions),
+                                     ('EXECUTION_CONCURRENT', resources.execution_concurrent))])
         return cls(**configured, retention_days=int(os.getenv('FILEMATE_AI_RETENTION_DAYS', '30')))
 
 
@@ -131,6 +183,7 @@ class Scope:
     kind: OwnerKind
     operation: str
     trace_id: str
+    managed_db_path: Path | None = None
 
 
 CURRENT_SCOPE: ContextVar[Scope | None] = ContextVar('filemate_resource_scope', default=None)
@@ -138,10 +191,11 @@ CURRENT_SCOPE: ContextVar[Scope | None] = ContextVar('filemate_resource_scope', 
 
 @contextmanager
 def resource_scope(store: BudgetStore, owner: str, kind: OwnerKind,
-                   operation: str = 'model.local') -> Iterator[Scope]:
+                   operation: str = 'model.local', *, managed_db_path: Path | None = None) -> Iterator[Scope]:
     if kind not in {'account', 'guest', 'local'} or (owner == 'local') != (kind == 'local'):
         raise ValueError('学习空间与模型预算类型不一致')
-    scope = Scope(store, owner_digest(owner), kind, _label(operation), uuid.uuid4().hex)
+    scope = Scope(store, owner_digest(owner), kind, _label(operation), uuid.uuid4().hex,
+                  Path(managed_db_path).resolve() if managed_db_path is not None else None)
     token = CURRENT_SCOPE.set(scope)
     try:
         yield scope
@@ -213,10 +267,12 @@ class BudgetStore:
                     for statement in _SCHEMA:
                         connection.execute(statement)
                     connection.execute('INSERT INTO resource_schema_migrations VALUES (?,?)',
-                                       (SCHEMA_VERSION, time.time()))
-                elif tables != SCHEMA_TABLES or connection.execute(
-                        'SELECT version FROM resource_schema_migrations').fetchall() != [(SCHEMA_VERSION,)]:
-                    raise GovernanceUnavailable('模型治理账本版本不兼容，请联系维护者')
+                                       (1, time.time()))
+                version = resource_schema_version(connection)
+                if version == 1:
+                    for statement in _MIGRATION_2:
+                        connection.execute(statement)
+                    connection.execute('INSERT INTO resource_schema_migrations VALUES (?,?)', (2, time.time()))
             self.path.chmod(0o600)
 
     @staticmethod
@@ -235,6 +291,13 @@ class BudgetStore:
         cutoff = now - retention_days * 86400
         connection.execute("DELETE FROM ai_attempts WHERE status!='inflight' AND finished_at<?", (cutoff,))
         connection.execute('DELETE FROM resource_daily WHERE day<?', (BudgetStore._day(cutoff),))
+        for row in connection.execute(
+                "SELECT DISTINCT pid,process_started_at FROM resource_events WHERE status='inflight'").fetchall():
+            if not _alive(row['pid'], row['process_started_at']):
+                connection.execute("""UPDATE resource_events SET status='abandoned',error_code='process_exit',finished_at=?
+                    WHERE status='inflight' AND pid=? AND process_started_at=?""",
+                                   (now, row['pid'], row['process_started_at']))
+        connection.execute("DELETE FROM resource_events WHERE status!='inflight' AND finished_at<?", (cutoff,))
 
     def reserve(self, scope: Scope, *, provider: str, model: str, budget_units: int,
                 secret: str = '') -> Attempt:
@@ -262,7 +325,7 @@ class BudgetStore:
                 if inflight >= limits.concurrent:
                     raise BudgetExceeded('模型调用正在处理其他请求，请稍后重试')
             for owner in (scope.owner_hash, GLOBAL_OWNER):
-                connection.execute("""INSERT INTO resource_daily VALUES (?,?,1,?)
+                connection.execute("""INSERT INTO resource_daily(owner_hash,day,attempts,budget_units) VALUES (?,?,1,?)
                     ON CONFLICT(owner_hash,day) DO UPDATE SET attempts=attempts+1,budget_units=budget_units+excluded.budget_units""",
                                    (owner, day, budget_units))
             connection.execute("""INSERT INTO ai_attempts(attempt_id,trace_id,owner_hash,day,operation,
@@ -273,6 +336,12 @@ class BudgetStore:
         return Attempt(self, identifier, scope.owner_hash, secret)
 
     def _settle(self, identifier: str, payload: dict[str, Any]) -> None:
+        if payload.get('resource'):
+            with self._connection() as connection:
+                connection.execute("""UPDATE resource_events SET status=?,error_code=?,finished_at=?
+                    WHERE event_id=? AND status='inflight'""",
+                                   (payload['status'], payload['error_code'], payload['finished_at'], identifier))
+            return
         with self._connection() as connection:
             connection.execute('BEGIN IMMEDIATE')
             row = connection.execute('SELECT * FROM ai_attempts WHERE attempt_id=?', (identifier,)).fetchone()
@@ -321,6 +390,7 @@ class BudgetStore:
             connection.execute('BEGIN IMMEDIATE')
             # 匿名全站累计仍保留，避免注册/注销反复重置公共资源额度。
             connection.execute('DELETE FROM ai_attempts WHERE owner_hash=?', (digest,))
+            connection.execute('DELETE FROM resource_events WHERE owner_hash=?', (digest,))
             connection.execute('DELETE FROM resource_daily WHERE owner_hash=?', (digest,))
             for identifier, payload in list(self._pending.items()):
                 if payload['owner_hash'] == digest:
@@ -329,11 +399,11 @@ class BudgetStore:
     def owner_hashes(self) -> list[str]:
         with self._connection() as connection:
             return [row[0] for row in connection.execute(
-                'SELECT owner_hash FROM ai_attempts UNION SELECT owner_hash FROM resource_daily WHERE owner_hash!=?',
+                'SELECT owner_hash FROM ai_attempts UNION SELECT owner_hash FROM resource_events UNION SELECT owner_hash FROM resource_daily WHERE owner_hash!=?',
                 (GLOBAL_OWNER,))]
 
     def view(self, scope: Scope, limit: int = 50, offset: int = 0) -> dict[str, Any]:
-        if scope.store is not self or type(limit) is not int or not 1 <= limit <= 100 or type(offset) is not int or offset < 0:
+        if scope.store is not self or type(limit) is not int or not 1 <= limit <= 100 or type(offset) is not int or not 0 <= offset <= 1_000_000:
             raise ValueError('模型用量查询参数无效')
         self.flush_pending()
         now, limits = time.time(), getattr(self.policy, scope.kind)
@@ -341,7 +411,7 @@ class BudgetStore:
         with self._connection() as connection:
             connection.execute('BEGIN IMMEDIATE')
             self._cleanup(connection, now, self.policy.retention_days)
-            daily = connection.execute('SELECT attempts,budget_units FROM resource_daily WHERE owner_hash=? AND day=?',
+            daily = connection.execute('SELECT * FROM resource_daily WHERE owner_hash=? AND day=?',
                                        (scope.owner_hash, day)).fetchone()
             rows = connection.execute("""SELECT attempt_id,trace_id,operation,provider,model,started_at,
                 finished_at,duration_ms,status,error_code,request_id,budget_units,prompt_tokens,
@@ -355,7 +425,8 @@ class BudgetStore:
             reported_counts = dict(connection.execute("""SELECT COUNT(prompt_tokens) AS prompt_tokens,
                 COUNT(completion_tokens) AS completion_tokens,COUNT(total_tokens) AS total_tokens
                 FROM ai_attempts WHERE owner_hash=? AND day=?""", (scope.owner_hash, day)).fetchone())
-            coverage = connection.execute('SELECT applied_at FROM resource_schema_migrations WHERE version=?', (SCHEMA_VERSION,)).fetchone()[0]
+            coverage = connection.execute('SELECT applied_at FROM resource_schema_migrations WHERE version=1').fetchone()[0]
+            resource_coverage = connection.execute('SELECT applied_at FROM resource_schema_migrations WHERE version=2').fetchone()[0]
         reset = datetime.fromisoformat(day).replace(tzinfo=DAY_TIMEZONE) + timedelta(days=1)
         return {'available': True, 'day': day, 'timezone': 'UTC+08:00', 'reset_at': reset.isoformat(),
                 'coverage_started_at': coverage, 'retention_days': self.policy.retention_days,
@@ -365,6 +436,11 @@ class BudgetStore:
                                      'concurrent': limits.concurrent}, 'reported_tokens': reported,
                           'reported_field_counts': reported_counts},
                 'cost': {'status': 'not_available', 'amount': None, 'currency': None},
+                'resources': {'coverage_started_at': resource_coverage,
+                              'task_admissions': daily['task_admissions'] if daily else 0,
+                              'execution_admissions': daily['execution_admissions'] if daily else 0,
+                              'limits': {key: getattr(getattr(self.policy, f'resources_{scope.kind}'), key)
+                                         for key in ('task_admissions', 'execution_admissions', 'execution_concurrent')}},
                 'total': count, 'limit': limit, 'offset': offset, 'items': [dict(row) for row in rows]}
 
     def export(self, scope: Scope) -> dict[str, Any]:
@@ -384,7 +460,66 @@ class BudgetStore:
                     raise GovernanceUnavailable('模型审计导出超过32MB，请按页导出用量记录')
                 summary['items'].append(record)
         summary['total'] = len(summary['items'])
+        summary['resource_events'] = []
+        with self._connection() as connection:
+            for row in connection.execute("""SELECT event_id,trace_id,day,operation,kind,amount,started_at,
+                finished_at,status,error_code FROM resource_events WHERE owner_hash=?
+                ORDER BY started_at DESC,event_id DESC""", (scope.owner_hash,)):
+                record = dict(row)
+                size += len(json.dumps(record).encode('utf-8'))
+                if size > 32 * 1024 * 1024:
+                    raise GovernanceUnavailable('资源审计导出超过32MB，请联系维护者')
+                summary['resource_events'].append(record)
         return summary
+
+    def admit_resource(self, scope: Scope, kind: Literal['tasks', 'execution'], amount: int = 1) -> ResourceLease:
+        """在业务写入或编译之前原子占用空间及全站额度，失败不退款。"""
+        if scope.store is not self or kind not in {'tasks', 'execution'} or type(amount) is not int or amount < 1:
+            raise ValueError('资源准入参数无效')
+        if kind == 'execution' and amount != 1:
+            raise ValueError('执行必须逐次准入')
+        self.flush_pending()
+        now, identifier = time.time(), uuid.uuid4().hex
+        day, column = self._day(now), 'task_admissions' if kind == 'tasks' else 'execution_admissions'
+        with self._connection() as connection:
+            connection.execute('BEGIN IMMEDIATE')
+            self._cleanup(connection, now, self.policy.retention_days)
+            for owner, limits in ((scope.owner_hash, getattr(self.policy, f'resources_{scope.kind}')),
+                                  (GLOBAL_OWNER, self.policy.resources_global)):
+                row = connection.execute(f'SELECT {column} FROM resource_daily WHERE owner_hash=? AND day=?', (owner, day)).fetchone()
+                if (row[0] if row else 0) + amount > getattr(limits, column):
+                    raise BudgetExceeded('今日任务创建额度已用完，请明日再试' if kind == 'tasks'
+                                         else '今日代码评测额度已用完，请明日再试')
+                if kind == 'execution':
+                    concurrent = connection.execute("SELECT COUNT(*) FROM resource_events WHERE kind='execution' AND status='inflight'" +
+                                                    ('' if owner == GLOBAL_OWNER else ' AND owner_hash=?'),
+                                                    () if owner == GLOBAL_OWNER else (owner,)).fetchone()[0]
+                    if concurrent >= limits.execution_concurrent:
+                        raise BudgetExceeded('隔离评测正在处理其他请求，请稍后继续评测')
+            for owner in (scope.owner_hash, GLOBAL_OWNER):
+                connection.execute(f"""INSERT INTO resource_daily(owner_hash,day,attempts,budget_units,{column}) VALUES(?,?,0,0,?)
+                    ON CONFLICT(owner_hash,day) DO UPDATE SET {column}={column}+excluded.{column}""", (owner, day, amount))
+            connection.execute("""INSERT INTO resource_events(event_id,trace_id,owner_hash,day,operation,kind,amount,
+                started_at,finished_at,status,pid,process_started_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                               (identifier, scope.trace_id, scope.owner_hash, day, scope.operation, kind, amount, now,
+                                now if kind == 'tasks' else None, 'admitted' if kind == 'tasks' else 'inflight',
+                                os.getpid(), psutil.Process().create_time()))
+        return ResourceLease(self, identifier, scope.owner_hash, finished=kind == 'tasks')
+
+
+@dataclass
+class ResourceLease:
+    store: BudgetStore
+    identifier: str
+    owner_hash: str
+    finished: bool = False
+
+    def finish(self, status: Literal['success', 'failed'], error_code: str | None = None) -> None:
+        if self.finished:
+            return
+        self.finished = True
+        self.store.settle(self.identifier, {'resource': True, 'owner_hash': self.owner_hash, 'status': status,
+                                           'error_code': _label(error_code) if error_code else None, 'finished_at': time.time()})
 
 
 @dataclass

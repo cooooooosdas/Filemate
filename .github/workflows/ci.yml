@@ -37,7 +37,7 @@ jobs:
           server.py main.py
           filemate/llm_client filemate/tests/test_llm_client.py
           filemate/tests/test_llm_observability.py
-          filemate/runtime_governance.py filemate/tests/conftest.py filemate/tests/test_runtime_governance.py
+          filemate/runtime_governance.py filemate/task_resources.py filemate/tests/conftest.py filemate/tests/test_runtime_governance.py filemate/tests/test_task_resources.py
           filemate/execution
           filemate/accounts.py
           filemate/tests/test_accounts.py

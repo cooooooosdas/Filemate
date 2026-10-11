@@ -169,12 +169,13 @@ def _database_facts(path: Path) -> dict[str, Any]:
             )
         ]
         if "schema_migrations" not in tables:
-            from filemate.runtime_governance import SCHEMA_TABLES, SCHEMA_VERSION
+            from filemate.runtime_governance import GovernanceUnavailable, resource_schema_version
 
-            if set(tables) != SCHEMA_TABLES or conn.execute(
-                    'SELECT version FROM resource_schema_migrations ORDER BY version').fetchall() != [(SCHEMA_VERSION,)]:
-                raise ValueError("数据库缺少FileMate迁移记录或治理版本不兼容")
-            return {'database_kind': 'resource_governance', 'schema_version': SCHEMA_VERSION,
+            try:
+                resource_version = resource_schema_version(conn)
+            except GovernanceUnavailable as exc:
+                raise ValueError('数据库缺少FileMate迁移记录或治理版本不兼容') from exc
+            return {'database_kind': 'resource_governance', 'schema_version': resource_version,
                     'table_counts': {name: conn.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0]
                                      for name in sorted(tables)}, 'path_references': []}
         versions = [

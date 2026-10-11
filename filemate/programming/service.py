@@ -7,6 +7,9 @@ import threading
 import time
 from typing import Any
 
+from filemate.runtime_governance import BudgetExceeded, GovernanceUnavailable
+from filemate.task_resources import execution_budget
+
 from .judge import WindowsCppJudge
 from .linux_judge import LinuxCppJudge
 from .repository import CodingRepository
@@ -55,7 +58,8 @@ def status(*, force: bool = False) -> dict[str, Any]:
                 probe = {"tests": [{"name": "身份自检", "input": "", "expected": "1"}],
                          "time_limit_ms": 1000, "memory_limit_mb": 256}
                 try:
-                    ready = provider.judge(code, probe, threading.Event(), lambda _: None)["verdict"] == "AC"
+                    with execution_budget():
+                        ready = provider.judge(code, probe, threading.Event(), lambda _: None)["verdict"] == "AC"
                 except (SandboxUnavailable, OSError):
                     ready = False
                 _HEALTH[str(root)] = (time.monotonic(), ready)
@@ -84,18 +88,21 @@ def execute(repository: CodingRepository, identifier: str) -> dict[str, Any]:
         cancel = threading.Event()
         _RUNNING[key] = cancel
     try:
-        submission, claimed = repository.start(identifier)
-        if not claimed:
-            return submission
-        result = (WindowsCppJudge() if os.name == "nt" else LinuxCppJudge()).judge(
-            submission["code"], get_problem(submission["problem_id"]), cancel,
-            lambda evidence: repository.update(identifier, payload={"result": evidence}),
-        )
-        state = "cancelled" if result["verdict"] == "CANCELLED" else "completed"
-        submission["result"] = result
-        return repository.update(identifier, status=state,
-                                 payload={"result": result, "local_feedback": local_feedback(submission)},
-                                 event=state)
+        with execution_budget(repository.storage.db_path):
+            submission, claimed = repository.start(identifier)
+            if not claimed:
+                return submission
+            result = (WindowsCppJudge() if os.name == "nt" else LinuxCppJudge()).judge(
+                submission["code"], get_problem(submission["problem_id"]), cancel,
+                lambda evidence: repository.update(identifier, payload={"result": evidence}),
+            )
+            state = "cancelled" if result["verdict"] == "CANCELLED" else "completed"
+            submission["result"] = result
+            return repository.update(identifier, status=state,
+                                     payload={"result": result, "local_feedback": local_feedback(submission)},
+                                     event=state)
+    except (BudgetExceeded, GovernanceUnavailable):
+        raise
     except Exception as exc:
         repository.update(identifier, status="failed", payload={"result": {
             "verdict": "SYSTEM_ERROR", "error": "隔离评测未完成，请检查环境后用原代码新建提交重试",

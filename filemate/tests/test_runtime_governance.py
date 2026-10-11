@@ -224,11 +224,11 @@ def test_corrupt_ledger_fails_closed_without_calling_provider(store, monkeypatch
 def test_future_ledger_version_is_rejected_without_rewriting(store):
     store.initialize()
     with sqlite3.connect(store.path) as connection:
-        connection.execute('UPDATE resource_schema_migrations SET version=2')
+        connection.execute('UPDATE resource_schema_migrations SET version=3 WHERE version=2')
     with resource_scope(store, OWNER_A, 'account') as scope, pytest.raises(GovernanceUnavailable, match='版本'):
         admit(scope)
     with sqlite3.connect(store.path) as connection:
-        assert connection.execute('SELECT version FROM resource_schema_migrations').fetchone() == (2,)
+        assert connection.execute('SELECT version FROM resource_schema_migrations ORDER BY version').fetchall() == [(1,), (3,)]
 
 
 def _process_attempt(path, queue, owner):
@@ -411,7 +411,7 @@ def test_admin_backup_includes_and_restores_ledger_separately(managed, tmp_path)
     with resource_scope(restored, OWNER_A, 'account') as scope:
         assert restored.view(scope)['daily']['attempts'] == 1
     summary = backup._summary(created)
-    assert summary['schema_versions'] == [26] and summary['resource_schema_versions'] == [1]
+    assert summary['schema_versions'] == [26] and summary['resource_schema_versions'] == [2]
 
 
 def test_restored_ledger_cannot_resurrect_erased_owner_usage(store, tmp_path):

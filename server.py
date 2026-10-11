@@ -551,7 +551,7 @@ async def isolate_anonymous_workspace(request: Request, call_next):
                 return JSONResponse(status_code=409, content={'success': False, 'error': '个人数据维护中，请稍后重试'})
             _active_tenants['local'] = _active_tenants.get('local', 0) + 1
         try:
-            with resource_scope(_model_budget, 'local', 'local', f'http.{request.method.lower()}'):
+            with resource_scope(_model_budget, 'local', 'local', f'http.{request.method.lower()}', managed_db_path=_storage.db_path):
                 return await call_next(request)
         finally:
             with _tenant_storage_lock:
@@ -596,7 +596,8 @@ async def isolate_anonymous_workspace(request: Request, call_next):
                 return JSONResponse(status_code=503, content={
                     'success': False, 'data': None, 'error': '学习空间维护记录暂不可用，请稍后重试',
                 })
-        with resource_scope(_model_budget, identity_id, 'account' if account else 'guest', f'http.{request.method.lower()}'):
+        with resource_scope(_model_budget, identity_id, 'account' if account else 'guest', f'http.{request.method.lower()}',
+                            managed_db_path=tenant_root / 'filemate.db'):
             response = await call_next(request)
     finally:
         _tenant_context.reset(token)
@@ -990,7 +991,7 @@ def public_llm_status():
 
 
 @app.get('/api/llm/usage', response_model=ApiResponse)
-def own_model_usage(response: Response, limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0)):
+def own_model_usage(response: Response, limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0, le=1_000_000)):
     """仅返回会话绑定的当前空间用量，不接受他人空间参数。"""
     scope = default_scope()
     response.headers['Cache-Control'] = 'no-store'
