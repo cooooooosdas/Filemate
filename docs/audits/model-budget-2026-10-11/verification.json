@@ -330,7 +330,7 @@
   "final_specialist_passed": 34,
   "earlier_related_passed": 124,
   "deployed": false,
-  "ci_verified": false,
+  "ci_verified": true,
   "business_schema": 26,
   "control_schema": 1,
   "raw_log_bytes_verified": true,
@@ -353,5 +353,10 @@
     "reason": "fixture_did_not_override_secure_store_precedence",
     "real_credential_store_modified": false,
     "external_paid_calls": 0
-  }
+  },
+  "ci_verified_commit": "7320eb83108875e97ebc60e1e18c11fcf9f7b001",
+  "ci_run_id": 38147446243,
+  "ci_backend_passed": 1031,
+  "changed_sources_byte_identical": true,
+  "untouched_line_ending_difference_count": 95
 }
