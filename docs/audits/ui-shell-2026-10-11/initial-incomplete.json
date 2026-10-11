@@ -1,0 +1,318 @@
+{
+  "scope": "isolated synthetic browser regression; no model/physical-device/student effectiveness claim",
+  "complete": false,
+  "results": [
+    {
+      "name": "1440 /",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /today",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /import",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /classification",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /naming",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /schedule",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /history",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /ai-tools",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /study-plan",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /wrongbook",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /interview",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /interview-bank",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /growth",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /knowledge",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /digital-human",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /knowledge-graph",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /programming",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /career",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /goals",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /trust",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /semester",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /resume",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /skills",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /login",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /register",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /recover",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    }
+  ]
+}

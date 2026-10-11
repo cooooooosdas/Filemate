@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import { pageLoadFailure } from './load-errors'
+import { navigationPending, pageLoadFailure } from './load-errors'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -156,14 +156,18 @@ const router = createRouter({
 
 router.onError((_error, to) => {
   pageLoadFailure.value = { path: to.fullPath }
+  if (navigationPending.value === to.fullPath) navigationPending.value = null
 })
-router.afterEach((_to, _from, failure) => {
-  if (!failure) pageLoadFailure.value = null
+router.afterEach((to, _from, failure) => {
+  if (navigationPending.value === to.fullPath) navigationPending.value = null
+  if (!failure) {
+    pageLoadFailure.value = null
+    document.title = `${to.meta.title || '学习工作台'} · FileMate`
+  }
 })
 
-// 路由守卫 - 更新页面标题
 router.beforeEach((to, _from, next) => {
-  document.title = `${to.meta.title || '学习工作台'} · FileMate`
+  navigationPending.value = to.fullPath
   next()
 })
 

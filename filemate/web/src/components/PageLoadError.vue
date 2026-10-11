@@ -19,7 +19,7 @@ function reopen() {
 
 <style scoped>
 .page-load-error{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:16px 24px;border-bottom:1px solid #e7d1ae;background:#fff8ea;color:#614418}
-.page-load-error div{flex:1;min-width:200px}.page-load-error p{margin:6px 0 0;font-size:13px;line-height:1.6}
+.page-load-error div{flex:1;min-width:200px}.page-load-error p{margin:6px 0 0;font-size:16px;line-height:1.6}
 .page-load-error button,.page-load-error a{min-height:44px;padding:10px 14px;border:1px solid #9a651d;border-radius:10px;color:#614418;background:transparent;text-decoration:none;font:inherit;cursor:pointer}
-.page-load-error button:focus-visible,.page-load-error a:focus-visible{outline:2px solid #2f7d55;outline-offset:3px}
+.page-load-error button:focus-visible,.page-load-error a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 </style>

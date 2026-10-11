@@ -1,0 +1,705 @@
+{
+  "generated_at": "2026-10-11T04:41:03.506Z",
+  "scope": "isolated synthetic browser regression; no model/physical-device/student effectiveness claim",
+  "complete": true,
+  "passed": false,
+  "results": [
+    {
+      "name": "1440 /",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /today",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /import",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /classification",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /naming",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /schedule",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /history",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /ai-tools",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /study-plan",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /wrongbook",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /interview",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /interview-bank",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /growth",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /knowledge",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /digital-human",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /knowledge-graph",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /programming",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /career",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /goals",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /trust",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /semester",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /resume",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /skills",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /login",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /register",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "1440 /recover",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /today",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /import",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /classification",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /naming",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /schedule",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /history",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /ai-tools",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /study-plan",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /wrongbook",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /interview",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /interview-bank",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /growth",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /knowledge",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /digital-human",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /knowledge-graph",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /programming",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /career",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /goals",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /trust",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /semester",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /resume",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /skills",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /login",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /register",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /recover",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "768 /",
+      "passed": true
+    },
+    {
+      "name": "768 /ai-tools",
+      "passed": true
+    },
+    {
+      "name": "768 /semester",
+      "passed": true
+    },
+    {
+      "name": "768 /growth",
+      "passed": true
+    },
+    {
+      "name": "1024 /",
+      "passed": true
+    },
+    {
+      "name": "1024 /ai-tools",
+      "passed": true
+    },
+    {
+      "name": "1024 /semester",
+      "passed": true
+    },
+    {
+      "name": "1024 /growth",
+      "passed": true
+    },
+    {
+      "name": "subpage parent and current context",
+      "passed": false,
+      "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n1 !== 0\n"
+    },
+    {
+      "name": "keyword search, empty state and keyboard wrap",
+      "passed": true
+    },
+    {
+      "name": "mobile navigation focus trap and finder",
+      "passed": true
+    },
+    {
+      "name": "lazy settings failure has a recovery action",
+      "passed": false,
+      "error": "TimeoutError: locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog', { name: '应用设置', exact: true }).getByRole('heading', { name: 'DeepSeek 模型服务' }) to be visible\u001b[22m\n"
+    },
+    {
+      "name": "slow lazy route has loading feedback and clears on success",
+      "passed": true
+    },
+    {
+      "name": "route network failure preserves the page and offers recovery",
+      "passed": false,
+      "error": "TimeoutError: locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('region', { name: '页面加载失败' }) to be visible\u001b[22m\n",
+      "page_errors": [
+        "TypeError: Failed to fetch dynamically imported module: http://127.0.0.1:5292/assets/Semester-BHsiM38e.js"
+      ]
+    },
+    {
+      "name": "service outage stays local and recovers without discarding the whole application",
+      "passed": true
+    },
+    {
+      "name": "reduced motion and content scroll restoration",
+      "passed": true
+    }
+  ],
+  "page_errors": [
+    "TypeError: Failed to fetch dynamically imported module: http://127.0.0.1:5292/assets/Semester-BHsiM38e.js"
+  ]
+}

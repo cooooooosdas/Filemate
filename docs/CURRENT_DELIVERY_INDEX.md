@@ -1,5 +1,7 @@
 # FileMate 当前交付资源索引
 
+2026-10-11 [前端产品完善与功能复核](FRONTEND_PRODUCT_POLISH_2026-10-11.md)候选通过51项前端及68项浏览器检查，统一任务目录/键盘查找/子页定位/网络恢复；默认全量957后端/51前端及类型、构建、体积门禁通过，候选尚待CI与部署。完整FEATURE07–13缺项与AUD-08保留，不宣称全部功能完成。
+
 2026-10-10 最新：[OJ内存识别与联合发布](OJ_MEMORY_RELEASE_2026-10-10.md)已上线b56ad72c；970后端/46前端、Windows57/Linux64原生、公网9步及完整备份恢复演练通过。默认晓晓、备选云夏/云希/晓伊；总体CONDITIONAL PASS，[完整需求与未完成项](FEATURE_07_13_REQUIREMENTS_LEDGER.md)继续保留，下一卡AUD-08。
 
 2026-10-10 后续：[FEATURE07–13逐项账本](FEATURE_07_13_REQUIREMENTS_LEDGER.md)保留完整原始目标与未完成项；[OJ内存识别候选](OJ_MEMORY_LIMIT_2026-10-10.md)原生Windows57/Linux64通过、尚未同步线上。全量门禁与联合API/判题代理发布继续执行，不替换先前已上线回执。

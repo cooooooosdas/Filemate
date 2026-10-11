@@ -1,0 +1,373 @@
+{
+  "generated_at": "2026-10-11T04:33:59.367Z",
+  "scope": "isolated synthetic browser regression; no model/physical-device/student effectiveness claim",
+  "complete": true,
+  "passed": false,
+  "results": [
+    {
+      "name": "375 /",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /today",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /import",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /classification",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /naming",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /schedule",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /history",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /ai-tools",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /study-plan",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /wrongbook",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /interview",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /interview-bank",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /growth",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /knowledge",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /digital-human",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /knowledge-graph",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /programming",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /career",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /goals",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /trust",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /semester",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /resume",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /skills",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /login",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /register",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "375 /recover",
+      "passed": true,
+      "details": {
+        "violations": [],
+        "layout": {
+          "overflow": false,
+          "contentOverflow": false,
+          "mains": 1
+        }
+      }
+    },
+    {
+      "name": "768 /",
+      "passed": true
+    },
+    {
+      "name": "768 /ai-tools",
+      "passed": true
+    },
+    {
+      "name": "768 /semester",
+      "passed": true
+    },
+    {
+      "name": "768 /growth",
+      "passed": true
+    },
+    {
+      "name": "1024 /",
+      "passed": true
+    },
+    {
+      "name": "1024 /ai-tools",
+      "passed": true
+    },
+    {
+      "name": "1024 /semester",
+      "passed": true
+    },
+    {
+      "name": "1024 /growth",
+      "passed": true
+    },
+    {
+      "name": "subpage parent and current context",
+      "passed": false,
+      "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   {\n+     id: 'color-contrast',\n+     impact: 'serious',\n+     targets: [\n+       [\n+         '#feature-option-0 > small'\n+       ],\n+       [\n+         '#feature-option-1 > small'\n+       ],\n+       [\n+         '#feature-option-2 > small'\n+       ],\n+       [\n+         '#feature-option-3 > small'\n+       ],\n+       [\n+         '#feature-option-4 > small'\n+       ],\n+       [\n+         '#feature-option-5 > small'\n+       ],\n+       [\n+         '#feature-option-6 > small'\n+       ],\n+       [\n+         '#feature-option-7 > small'\n+       ],\n+       [\n+         '.finder-hint'\n+       ]\n+     ]\n+   }\n+ ]\n- []\n"
+    },
+    {
+      "name": "keyword search, empty state and keyboard wrap",
+      "passed": false,
+      "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n9 !== 1\n"
+    },
+    {
+      "name": "mobile navigation focus trap and finder",
+      "passed": false,
+      "error": "Error: locator.fill: Error: strict mode violation: getByRole('combobox') resolved to 3 elements:\n    1) <select data-v-a96fa25b=\"\">…</select> aka getByLabel('每周任务日星期一星期二星期三星期四星期五星期六星期日')\n    2) <select data-v-a96fa25b=\"\">…</select> aka getByLabel('关联已有资料（可选）暂不关联')\n    3) <input role=\"combobox\" data-v-16eb43fa=\"\" aria-label=\"输入功能名称\" aria-expanded=\"true\" aria-autocomplete=\"list\" placeholder=\"搜索资料、面试、API、备份…\" aria-controls=\"feature-results\" aria-activedescendant=\"feature-option-0\"/> aka getByRole('combobox', { name: '输入功能名称' })\n\nCall log:\n\u001b[2m  - waiting for getByRole('combobox')\u001b[22m\n"
+    },
+    {
+      "name": "lazy settings failure has a recovery action",
+      "passed": false,
+      "error": "AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:\n\n  assert.ok((await dialog.innerText()).includes('模型设置暂时无法'))\n"
+    }
+  ],
+  "page_errors": []
+}

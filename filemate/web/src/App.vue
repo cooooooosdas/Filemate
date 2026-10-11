@@ -49,10 +49,12 @@
             :to="item.path"
             :title="item.title"
             :aria-label="item.title"
+            :aria-current="selectedPrimary === item.path ? (route.path === item.path ? 'page' : 'location') : undefined"
             class="nav-item"
+            :class="{ 'nav-selected': selectedPrimary === item.path }"
             @click="finishMobileNavigation"
           >
-            <el-icon><component :is="item.icon" /></el-icon>
+            <el-icon><component :is="toolIcons[item.icon]" /></el-icon>
             <span>{{ item.title }}</span>
           </router-link>
         </section>
@@ -67,7 +69,7 @@
       </div>
     </aside>
 
-    <main id="main-content" class="workspace" tabindex="-1" :inert="mobileNavOpen">
+    <main id="main-content" class="workspace" tabindex="-1" :inert="mobileNavOpen" :aria-busy="navigationPending !== null">
       <PageLoadError />
       <div v-if="accountState?.expired" class="service-banner" role="alert">
         <el-icon><Lock /></el-icon><div><strong>登录已过期</strong><span>重新登录后可继续访问账号资料。</span></div>
@@ -77,8 +79,8 @@
       <div v-if="backendConnected === false" class="service-banner" role="alert">
         <el-icon><Connection /></el-icon>
         <div>
-          <strong>本地服务尚未连接</strong>
-          <span>请运行 <code>scripts/dev.ps1</code>，启动后可导入、检索和保存学习资料。</span>
+          <strong>服务暂时无法连接</strong>
+          <span>请检查网络后重试；本机使用时，请确认学习服务已启动。</span>
         </div>
         <button type="button" :disabled="serviceChecking" @click="loadShellState">
           {{ serviceChecking ? '检查中…' : '重新检查' }}
@@ -138,6 +140,10 @@
         </div>
       </header>
 
+      <div v-if="navigationPending" class="navigation-loading" role="status">
+        <span class="navigation-track" aria-hidden="true" />正在打开页面…
+      </div>
+
       <div class="content-scroll">
         <TaskNavigation v-if="contextLinks.length" :items="contextLinks" />
         <router-view v-slot="{ Component }">
@@ -186,24 +192,19 @@
           </el-tag>
         </div>
       </div>
-      <LLMSettingsPanel :backend-connected="backendConnected" :active="showSettings" />
+      <SettingsPanelLoader v-if="showSettings" :backend-connected="backendConnected" :active="showSettings" />
       <template #footer>
         <el-button @click="showSettings = false">关闭</el-button>
       </template>
     </el-dialog>
-    <el-dialog v-model="showFinder" title="查找功能" width="min(520px, calc(100vw - 32px))" @opened="finderInput?.focus()" @closed="finderQuery = ''">
-      <div class="finder">
-        <label class="finder-input"><el-icon><Search /></el-icon><input ref="finderInput" v-model="finderQuery" aria-label="输入功能名称" placeholder="试试：面试、资料、计划…" @keydown.enter.prevent="openFirstResult" /></label>
-        <nav class="finder-results" aria-label="功能查找结果"><router-link v-for="item in finderResults" :key="item.path" :to="item.path" @click="showFinder = false"><el-icon><component :is="item.icon" /></el-icon><span>{{ item.title }}</span><small>{{ item.group }}</small></router-link></nav>
-        <p v-if="!finderResults.length" class="finder-empty" role="status">没有找到这个功能，换个关键词试试。</p>
-        <p class="finder-hint">Enter 打开第一项 · Esc 关闭</p>
-      </div>
+    <el-dialog v-model="showFinder" title="查找功能" width="min(580px, calc(100vw - 32px))" @opened="finder?.focus()" @closed="finder?.reset()">
+      <FeatureFinder ref="finder" :tools="tools" :icons="toolIcons" @select="openTool" />
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import PageLoadError from './components/PageLoadError.vue'
@@ -240,7 +241,10 @@ import {
   ArrowRight
 } from './icons'
 import Logo from './components/Logo.vue'
-import LLMSettingsPanel from './components/LLMSettingsPanel.vue'
+import FeatureFinder from './components/FeatureFinder.vue'
+import SettingsPanelLoader from './components/SettingsPanelLoader.vue'
+import { availableTools, primaryGroups, primaryPath, relatedTools, type Tool } from './navigation/catalog'
+import { navigationPending } from './router/load-errors'
 import { checkHealth, getAccountState, logoutAccount } from './services/api'
 import type { AccountState } from './types/account'
 
@@ -257,73 +261,23 @@ const serviceChecking = ref(false)
 const refreshing = ref(false)
 const refreshToken = ref(0)
 const showFinder = ref(false)
-const finderQuery = ref('')
-const finderInput = ref<HTMLInputElement | null>(null)
+const finder = ref<{ focus: () => void; reset: () => void } | null>(null)
 const mobileMenuButton = ref<HTMLButtonElement | null>(null)
 let refreshTimer: number | undefined
+let shellRevision = 0
+let shellLoad: Promise<void> | null = null
 
-const menuGroups = [
-  {
-    label: '工作空间',
-    items: [
-      { path: '/', title: '学习工作台', icon: House },
-      { path: '/today', title: '今日学习', icon: DataLine },
-      { path: '/schedule', title: '学习日程', icon: Calendar }
-    ]
-  },
-  {
-    label: '资料管理',
-    items: [
-      { path: '/import', title: '导入资料', icon: DocumentAdd },
-      { path: '/knowledge', title: '个人知识库', icon: FolderOpened },
-      ...(import.meta.env.VITE_ENABLE_KNOWLEDGE_GRAPH === 'false' ? [] : [{ path: '/knowledge-graph', title: '我的知识图谱', icon: Share }]),
-      { path: '/classification', title: '资料审核', icon: Collection },
-      { path: '/history', title: '处理记录', icon: Clock }
-    ]
-  },
-  {
-    label: '学习与练习',
-    items: [
-      { path: '/ai-tools', title: '学习工作区', icon: Reading },
-      ...(import.meta.env.VITE_ENABLE_DIGITAL_HUMAN === 'false' ? [] : [{ path: '/digital-human', title: 'AI 导师讲解', icon: VideoPlay }]),
-      ...(import.meta.env.VITE_ENABLE_PROGRAMMING === 'false' ? [] : [{ path: '/programming', title: '编程练习', icon: Cpu }]),
-      { path: '/study-plan', title: '学习计划', icon: Reading },
-      ...(import.meta.env.VITE_ENABLE_SEMESTER === 'false' ? [] : [{ path: '/semester', title: '学期模式', icon: Calendar }]),
-      { path: '/goals', title: '目标反推', icon: Aim },
-      { path: '/wrongbook', title: '错题复盘', icon: Tickets },
-      { path: '/interview', title: '模拟面试', icon: Microphone },
-      { path: '/interview-bank', title: '题库管理', icon: Notebook },
-      ...(import.meta.env.VITE_ENABLE_CAREER === 'false' ? [] : [{ path: '/career', title: '求职训练中心', icon: Aim }]),
-      { path: '/growth', title: '成长数据', icon: DataAnalysis },
-      ...(import.meta.env.VITE_ENABLE_RESUME === 'false' ? [] : [{ path: '/resume', title: '我的简历', icon: Notebook }]),
-      ...(import.meta.env.VITE_ENABLE_SKILL_TREE === 'false' ? [] : [{ path: '/skills', title: '技能树', icon: Share }]),
-      { path: '/trust', title: '可信与隐私', icon: Lock }
-    ]
-  }
-]
+const tools = availableTools(import.meta.env)
+const toolIcons: Record<string, Component> = { Calendar, Clock, Collection, Share, DataLine, DocumentAdd, House, Lock, Cpu, Notebook, Reading, Tickets, Microphone, VideoPlay, DataAnalysis, FolderOpened, Aim }
 
 const pageTitle = computed(() => String(route.meta.title || '学习工作台'))
-const navigationGroups = computed(() => [
-  { label: '今天', items: menuGroups[0]!.items.filter(item => ['/', '/today'].includes(item.path)) },
-  { label: '读懂资料', items: menuGroups.flatMap(group => group.items).filter(item => ['/ai-tools', '/knowledge'].includes(item.path)) },
-  { label: '练习与表达', items: menuGroups.flatMap(group => group.items).filter(item => ['/programming', '/interview', '/career', '/resume'].includes(item.path)) },
-  { label: '我的记录', items: menuGroups.flatMap(group => group.items).filter(item => ['/growth', '/skills', '/trust'].includes(item.path)) },
-])
-const contextLinks = computed(() => {
-  let paths: string[] = []
-  if (route.path === '/import' && route.query.intent !== 'archive') paths = ['/ai-tools', '/knowledge']
-  else if (['/import', '/classification', '/naming', '/schedule', '/history'].includes(route.path)) paths = ['/classification', '/schedule', '/history']
-  else if (['/ai-tools', '/knowledge', '/knowledge-graph', '/digital-human'].includes(route.path)) paths = ['/ai-tools', '/knowledge', '/knowledge-graph', '/digital-human']
-  else if (['/today', '/study-plan', '/wrongbook', '/goals', '/semester'].includes(route.path)) paths = ['/today', '/study-plan', '/semester', '/wrongbook', '/goals']
-  else if (['/interview', '/interview-bank', '/career', '/resume'].includes(route.path)) paths = ['/interview', '/career', '/resume']
-  const tools = menuGroups.flatMap(group => group.items)
-  return paths.flatMap(path => tools.filter(item => item.path === path))
-})
-const finderResults = computed(() => menuGroups.flatMap(group => group.items.map(item => ({ ...item, group: group.label }))).filter(item => item.title.includes(finderQuery.value.trim())))
+const navigationGroups = primaryGroups(tools)
+const selectedPrimary = computed(() => primaryPath(route.path, tools))
+const contextLinks = computed(() => relatedTools(route.path, route.query.intent, tools).map(item => ({ ...item, icon: toolIcons[item.icon]! })))
 
-function openFirstResult(): void {
-  const first = finderResults.value[0]
-  if (first) { showFinder.value = false; void router.push(first.path) }
+function openTool(item: Tool): void {
+  showFinder.value = false
+  void router.push(item.path).catch(() => {})
 }
 async function openMobileNav(): Promise<void> {
   mobileNavOpen.value = true
@@ -365,18 +319,26 @@ watch(() => route.fullPath, () => {
   if (route.meta.layout !== 'auth') void loadShellState()
   else { showFinder.value = false; showSettings.value = false; showAccount.value = false }
 })
+watch(() => route.path, async () => {
+  await nextTick()
+  document.querySelector('.content-scroll')?.scrollTo({ top: 0, left: 0 })
+})
 
 async function loadShellState(): Promise<void> {
+  if (shellLoad) return shellLoad
+  const revision = ++shellRevision
   serviceChecking.value = true
-  try {
-    const [health, account] = await Promise.all([checkHealth(), getAccountState().catch(() => null)])
-    backendConnected.value = health
-    if (account) accountState.value = account
-  } catch {
-    backendConnected.value = false
-  } finally {
-    serviceChecking.value = false
-  }
+  shellLoad = (async () => {
+    try {
+      const [health, account] = await Promise.all([checkHealth(), getAccountState().catch(() => null)])
+      if (revision !== shellRevision) return
+      backendConnected.value = health
+      if (account) accountState.value = account
+    } catch {
+      if (revision === shellRevision) backendConnected.value = false
+    } finally { serviceChecking.value = false; shellLoad = null }
+  })()
+  return shellLoad
 }
 
 async function signOut(): Promise<void> {
@@ -387,6 +349,7 @@ async function signOut(): Promise<void> {
   finally { loggingOut.value = false }
 }
 function expireSession(): void {
+  shellRevision += 1
   accountState.value = { user: null, enabled: true, expired: true }
   showAccount.value = false
 }
@@ -403,7 +366,8 @@ async function refreshPage(): Promise<void> {
   refreshTimer = window.setTimeout(() => {
     refreshing.value = false
   }, 220)
-  ElMessage.success('工作台已刷新')
+  if (backendConnected.value) ElMessage.success('工作台已刷新')
+  else ElMessage.warning('页面已重新加载，服务暂时无法连接')
 }
 
 async function toggleFullscreen(): Promise<void> {
@@ -427,6 +391,7 @@ onMounted(() => {
   window.addEventListener('filemate:session-expired', expireSession)
 })
 onUnmounted(() => {
+  shellRevision += 1
   window.removeEventListener('keydown', handleShortcut)
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('filemate:session-expired', expireSession)
@@ -439,6 +404,11 @@ function isAuthPath(path: string): boolean {
 </script>
 
 <style scoped>
+.navigation-loading { position:relative; flex-shrink:0; padding:10px 24px 8px; font-size:15px; color:var(--accent); background:var(--bg-surface); overflow:hidden; }
+.navigation-track { position:absolute; inset:0 auto auto 0; width:30%; height:3px; background:var(--accent); animation:navigation-progress 1.1s ease-in-out infinite alternate; }
+@keyframes navigation-progress { to { transform:translateX(230%); } }
+@media(prefers-reduced-motion:reduce) { .navigation-track { width:100%; animation:none; } }
+
 .account-entry span { max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .account-details { font-size:16px; line-height:1.8; overflow-wrap:anywhere; }
 .app-shell {
@@ -585,14 +555,14 @@ function isAuthPath(path: string): boolean {
   background: var(--bg-hover);
 }
 
-.nav-item.router-link-active {
+.nav-item.nav-selected {
   color: #f2f6ff;
   background: var(--accent);
   border-color: transparent;
   font-weight: 600;
 }
 
-.nav-item.router-link-active::before {
+.nav-item.nav-selected::before {
   display: none;
   content: '';
   position: absolute;
@@ -1027,15 +997,6 @@ function isAuthPath(path: string): boolean {
 .finder-trigger { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; margin-right: 8px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--bg-surface); color: var(--text-muted); font-size: 12px; }
 .finder-trigger:hover { border-color: var(--accent-border); color: var(--accent); }
 .finder-trigger kbd { margin-left: 24px; padding: 3px 5px; border: 1px solid var(--border-subtle); border-radius: 4px; font: 10px var(--font-mono); }
-.finder-input { display: flex; align-items: center; gap: 12px; border: 1px solid var(--border-strong); border-radius: 8px; padding: 0 14px; color: var(--text-muted); }
-.finder-input:focus-within { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 2px; }
-.finder-input input { min-width: 0; width: 100%; min-height: 48px; border: 0; background: transparent; color: var(--text-primary); outline: none; font-size: 14px; }
-.finder-results { max-height: 360px; overflow: auto; margin-top: 12px; }
-.finder-results a { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 12px; border-radius: 8px; color: var(--text-primary); font-size: 13px; text-decoration: none; }
-.finder-results a:hover { background: var(--accent-soft); }
-.finder-results small { margin-left: auto; color: var(--text-muted); font-size: 11px; }
-.finder-hint,.finder-empty { color: var(--text-muted); font-size: 12px; margin: 16px 0 0; }
-.finder-hint { padding-top: 12px; border-top: 1px solid var(--border-subtle); }
 @media(max-width: 1100px) { .finder-trigger kbd { display: none; } }
 @media(max-width: 900px) {
   .sidebar-collapsed .brand-link { display: block; }
@@ -1060,16 +1021,16 @@ function isAuthPath(path: string): boolean {
 .space-copy strong { font-size:16px; }.space-copy small { font-size:14px; }.space-switch { min-height:70px; }
 .page-title { font-size:18px; font-weight:600; }.workspace-label { font-size:14px; }
 .service-state,.version-label,.site-footer,.setting-row span { font-size:14px; }
-.setting-row strong,.finder-results a,.finder-input input { font-size:16px; }
-.finder-trigger { font-size:15px; }.finder-results small,.finder-hint,.finder-empty { font-size:14px; }
+.setting-row strong { font-size:16px; }
+.finder-trigger { font-size:15px; }
 .global-import { display:inline-flex; align-items:center; gap:9px; min-height:44px; padding:0 16px; margin-right:8px; border-radius:10px; background:var(--accent); color:white; font-size:16px; font-weight:600; text-decoration:none; }
 .global-import:hover { background:var(--accent-hover); }
 
 .page-fade-enter-from { transform:translateY(10px); }
-.nav-item:hover:not(.router-link-active) .el-icon { transform:translateX(2px); }
+.nav-item:hover:not(.nav-selected) .el-icon { transform:translateX(2px); }
 .nav-item .el-icon { transition:transform var(--motion-fast); }
 .topbar-actions svg,.nav-item svg,.finder-results svg { stroke-width:1.8; }
-@media(prefers-reduced-motion:reduce) { .nav-item .el-icon { transition:none; } .nav-item:hover:not(.router-link-active) .el-icon { transform:none; } }
+@media(prefers-reduced-motion:reduce) { .nav-item .el-icon { transition:none; } .nav-item:hover:not(.nav-selected) .el-icon { transform:none; } }
 @media(max-width:1100px) { .avatar { display:none; } }
 @media(max-width:560px) { .global-import { width:44px; padding:0; margin-right:0; flex-shrink:0; }.global-import span { display:none; }.topbar-actions>.icon-button { display:none; }.topbar-title { min-width:0; }.page-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } }
 @media(max-width:560px) { .page-title { font-size:16px; }.nav-item { font-size:18px; } }

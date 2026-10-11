@@ -19,7 +19,7 @@ const out = path.resolve(process.env.FILEMATE_EVIDENCE_DIR || path.join(root, '_
 assert.ok(out.startsWith(path.join(root, '_working') + path.sep), 'Evidence must stay in this project _working')
 const settleMs = Number(process.env.FILEMATE_ROUTE_SETTLE_MS || 800)
 assert.ok(Number.isInteger(settleMs) && settleMs >= 800 && settleMs <= 30000)
-const routes = ['/', '/today', '/import', '/classification', '/naming', '/schedule', '/history', '/ai-tools', '/study-plan', '/wrongbook', '/interview', '/interview-bank', '/growth', '/knowledge', '/digital-human', '/knowledge-graph', '/programming', '/career', '/goals', '/trust', '/login', '/register']
+const routes = ['/', '/today', '/import', '/classification', '/naming', '/schedule', '/history', '/ai-tools', '/study-plan', '/wrongbook', '/interview', '/interview-bank', '/growth', '/knowledge', '/digital-human', '/knowledge-graph', '/programming', '/career', '/goals', '/trust', '/semester', '/resume', '/skills', '/login', '/register', '/recover']
 await fs.mkdir(out, { recursive: true })
 const browser = await chromium.launch({ channel: process.env.FILEMATE_BROWSER_CHANNEL || (process.platform === 'win32' ? 'msedge' : undefined) })
 const context = await browser.newContext({
@@ -165,6 +165,20 @@ try {
     assert.deepEqual(finder.violations, [], JSON.stringify(finder.violations))
     await page.keyboard.press('Escape')
     return { settings, finder }
+  })
+  await check('feature finder keywords and keyboard selection', async () => {
+    await page.goto(base); await page.waitForTimeout(settleMs)
+    await page.keyboard.press('Control+k'); await page.waitForTimeout(450)
+    const input = page.getByRole('combobox', { name: '输入功能名称' })
+    await input.fill('API'); await page.waitForTimeout(100)
+    assert.equal(await page.getByRole('option').count(), 1)
+    await input.press('Enter'); await page.waitForURL(base + '/trust')
+    await page.getByRole('dialog', { name: '查找功能', exact: true }).waitFor({ state: 'hidden' })
+    await page.keyboard.press('Control+k'); await page.waitForTimeout(450)
+    await input.fill(''); await input.press('ArrowDown')
+    assert.equal(await input.getAttribute('aria-activedescendant'), 'feature-option-1')
+    await input.press('Enter'); await page.waitForURL(base + '/today')
+    await page.getByRole('dialog', { name: '查找功能', exact: true }).waitFor({ state: 'hidden' })
   })
   await check('reduced motion and keyboard skip link', async () => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
