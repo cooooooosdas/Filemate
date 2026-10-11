@@ -28,8 +28,11 @@
   "frontend_unchanged_from_deployed_runtime": "8abeb8a83a92e96ac9625afa82d02177c3de094a",
   "browser_retested_this_card": false,
   "public_retested_this_card": false,
-  "ci_verified": false,
+  "ci_verified": true,
   "deployed": false,
   "external_llm_or_billing_verified": false,
-  "cumulative_ai_task_storage_budget_verified": false
+  "cumulative_ai_task_storage_budget_verified": false,
+  "ci_verified_commit": "28d90156e478ed15016fb696ab7e7edfb3eead34",
+  "ci_run_id": 38115872404,
+  "ci_backend_passed": 997
 }
