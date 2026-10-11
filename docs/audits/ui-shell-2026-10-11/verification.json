@@ -110,5 +110,13 @@
   "backend_skipped": 20,
   "backend_deselected": 5,
   "backend_warnings": 3,
-  "default_verify_exit_code": 0
+  "default_verify_exit_code": 0,
+  "deployed": true,
+  "runtime_commit": "8abeb8a83a92e96ac9625afa82d02177c3de094a",
+  "ci_main_passed": true,
+  "ci_backend_passed": 970,
+  "ci_backend_skipped": 18,
+  "public_passed": 6,
+  "public_page_errors": 0,
+  "owned_public_account_cleaned": true
 }

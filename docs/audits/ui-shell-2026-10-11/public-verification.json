@@ -1,0 +1,34 @@
+{
+  "generated_at": "2026-10-11T04:58:47.400Z",
+  "sample_kind": "owned synthetic account actual public browser and API; no LLM/audio/student-code call",
+  "commit": "8abeb8a83a92e96ac9625afa82d02177c3de094a",
+  "passed": true,
+  "checks": [
+    {
+      "name": "release and existing isolated judge readiness",
+      "passed": true
+    },
+    {
+      "name": "actual UI registration and password login",
+      "passed": true
+    },
+    {
+      "name": "keyword finder reaches model settings and lazy panel renders",
+      "passed": true
+    },
+    {
+      "name": "subpage belongs to today and related features remain reachable",
+      "passed": true
+    },
+    {
+      "name": "375px mobile layout and digital-human entry through finder",
+      "passed": true
+    },
+    {
+      "name": "delete only the owned synthetic account with bound confirmation",
+      "passed": true
+    }
+  ],
+  "page_errors": [],
+  "owned_account_cleaned": true
+}
