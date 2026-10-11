@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "data_kind": "synthetic_loopback_http",
+  "external_paid_calls": 0,
+  "registered_flow": [
+    "register",
+    "actual_loopback_chat",
+    "unknown_usage_chat",
+    "daily_cap_denied",
+    "owner_isolation",
+    "personal_export",
+    "personal_restore_no_quota_reset",
+    "ledger_failure_503",
+    "health_and_core_export",
+    "deploy_control_metadata",
+    "account_erasure"
+  ],
+  "model_statuses": [
+    200,
+    200,
+    429
+  ],
+  "provider_http_calls": 2,
+  "reported_total_tokens": 10,
+  "unknown_usage_records": 1,
+  "cost": "not_available",
+  "control_schema": 1
+}

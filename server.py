@@ -64,6 +64,13 @@ from filemate.perception.parsers import PLAIN_TEXT_SUFFIXES
 from filemate.portfolio.growth import GrowthRepository, ReportRequest
 from filemate.portfolio.resume import Profile as ResumeProfile
 from filemate.portfolio.resume import ResumeRepository, ResumeRequest
+from filemate.runtime_governance import (
+    BudgetExceeded,
+    BudgetStore,
+    GovernanceUnavailable,
+    default_scope,
+    resource_scope,
+)
 from filemate.speech import MicrosoftSpeech, SpeechBusy, SpeechUnavailable
 from filemate.study.semester import ConfirmSemester, SemesterConfig, SemesterRepository, TaskUpdate
 from filemate.understanding.interview_bank_seed import SEED_QUESTIONS
@@ -348,7 +355,12 @@ _local_storage = SQLiteStorage(DATABASE_PATH)
 _local_storage.init_schema()
 _local_storage.ensure_interview_questions(SEED_QUESTIONS)
 _accounts = AccountStore(DATABASE_PATH) if IDENTITY_MODE == "anonymous" else None
-_workspace_deletion = WorkspaceDeletion(DATA_DIR, _identity_secret) if _accounts else None
+_model_budget = BudgetStore(DATA_DIR / 'control' / 'resource-governance.db')
+try:
+    _model_budget.initialize()
+except (sqlite3.Error, OSError, GovernanceUnavailable) as exc:
+    logger.warning('模型治理初始化暂不可用: %s', type(exc).__name__)
+_workspace_deletion = WorkspaceDeletion(DATA_DIR, _identity_secret, _model_budget.purge_owner_hash, _model_budget.owner_hashes) if _accounts else None
 if _workspace_deletion:
     _workspace_deletion.recover(_accounts)
     _accounts.denied_workspace = _workspace_deletion.blocked
@@ -427,6 +439,10 @@ class NaturalSpeechRequest(BaseModel):
 # =============== App ===============
 
 def _maintain_private_data():
+    try:
+        _model_budget.maintain()
+    except GovernanceUnavailable:
+        logger.warning('模型审计维护暂不可用，将在下一轮重试')
     with _tenant_storage_lock:
         if _retention:
             result = _retention.run(_tenant_storages, _active_tenants, _exclusive_tenants, _tenant_storage)
@@ -535,7 +551,8 @@ async def isolate_anonymous_workspace(request: Request, call_next):
                 return JSONResponse(status_code=409, content={'success': False, 'error': '个人数据维护中，请稍后重试'})
             _active_tenants['local'] = _active_tenants.get('local', 0) + 1
         try:
-            return await call_next(request)
+            with resource_scope(_model_budget, 'local', 'local', f'http.{request.method.lower()}'):
+                return await call_next(request)
         finally:
             with _tenant_storage_lock:
                 _active_tenants['local'] -= 1
@@ -579,7 +596,8 @@ async def isolate_anonymous_workspace(request: Request, call_next):
                 return JSONResponse(status_code=503, content={
                     'success': False, 'data': None, 'error': '学习空间维护记录暂不可用，请稍后重试',
                 })
-        response = await call_next(request)
+        with resource_scope(_model_budget, identity_id, 'account' if account else 'guest', f'http.{request.method.lower()}'):
+            response = await call_next(request)
     finally:
         _tenant_context.reset(token)
         with _tenant_storage_lock:
@@ -608,6 +626,15 @@ class AccountRegisterRequest(BaseModel):
     password: SecretStr = Field(max_length=128)
     keep_guest_data: bool = True
     remember: bool = True
+
+
+@app.exception_handler(BudgetExceeded)
+@app.exception_handler(GovernanceUnavailable)
+async def model_budget_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    del request
+    return JSONResponse(status_code=429 if isinstance(exc, BudgetExceeded) else 503,
+                        content={'success': False, 'data': None, 'error': str(exc)},
+                        headers={'Cache-Control': 'no-store'})
 
 
 class AccountLoginRequest(BaseModel):
@@ -962,6 +989,14 @@ def public_llm_status():
     })
 
 
+@app.get('/api/llm/usage', response_model=ApiResponse)
+def own_model_usage(response: Response, limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0)):
+    """仅返回会话绑定的当前空间用量，不接受他人空间参数。"""
+    scope = default_scope()
+    response.headers['Cache-Control'] = 'no-store'
+    return ApiResponse(success=True, data=scope.store.view(scope, limit, offset))
+
+
 @app.post("/api/llm/test", response_model=ApiResponse)
 def test_llm_connection(request: Request):
     """主动发起小额模型请求，验证鉴权与实际响应。"""
@@ -981,6 +1016,8 @@ def test_llm_connection(request: Request):
         )
         if not isinstance(reply, str) or not reply.strip():
             raise HTTPException(status_code=502, detail="模型返回空内容，请稍后重试")
+    except (BudgetExceeded, GovernanceUnavailable):
+        raise
     except LLMError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return ApiResponse(success=True, data={
@@ -3203,7 +3240,8 @@ class PersonalRestoreRequest(BaseModel):
 def _personal_backup():
     if os.getenv('FILEMATE_ENABLE_PERSONAL_DATA', '1').lower() in {'0', 'false', 'off'}:
         raise HTTPException(status_code=503, detail='个人导出恢复已关闭，原数据保留')
-    return PersonalBackup(_storage, _current_identity_id(), _current_upload_root(), _current_archive_dir())
+    return PersonalBackup(_storage, _current_identity_id(), _current_upload_root(), _current_archive_dir(),
+                          usage_export=lambda: _model_budget.export(default_scope()))
 
 
 @app.get('/api/privacy/export')

@@ -11,12 +11,14 @@ import secrets
 import shutil
 import time
 import zipfile
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from filemate.execution import data_actions
 from filemate.execution.storage import _MIGRATIONS, SQLiteStorage, _now_iso
 from filemate.operations.backup import _check_node, _relative
+from filemate.runtime_governance import GovernanceUnavailable
 
 MAX_BACKUP_BYTES = 25 * 1024 * 1024
 MAX_EXPANDED_BYTES = 128 * 1024 * 1024
@@ -43,8 +45,10 @@ def _remove_tree(path: Path, boundary: Path) -> None:
 
 
 class PersonalBackup:
-    def __init__(self, storage: SQLiteStorage, owner: str, inbox: Path, archive: Path) -> None:
+    def __init__(self, storage: SQLiteStorage, owner: str, inbox: Path, archive: Path,
+                 usage_export: Callable[[], dict[str, Any]] | None = None) -> None:
         self.storage, self.owner = storage, owner
+        self.usage_export = usage_export
         self.roots = {'inbox': inbox.resolve(), 'archive': archive.resolve()}
         if self.roots['inbox'].is_relative_to(self.roots['archive']) or self.roots['archive'].is_relative_to(self.roots['inbox']):
             raise ValueError('上传与归档目录必须独立，才能安全恢复')
@@ -202,10 +206,20 @@ class PersonalBackup:
             finally:
                 self.storage = original
             content['created_at'] = _now_iso()
+            usage = None
+            if self.usage_export is not None:
+                try:
+                    usage = self.usage_export()
+                except (GovernanceUnavailable, OSError, ValueError):
+                    usage = {'available': False, 'reason': 'usage_export_unavailable'}
             if not backup:
+                if usage is not None:
+                    content['model_usage'] = usage
                 return _json(content)
             files = self._files()
             entries = {'personal-data.json': _json(content), **{'files/' + key: value for key, value in files.items()}}
+            if usage is not None:
+                entries['model-usage.json'] = _json(usage)
             if sum(len(value) for value in entries.values()) > MAX_EXPANDED_BYTES:
                 raise ValueError('个人备份超过128MB展开容量；未生成残缺备份')
             manifest = {'format_version': 1, 'owner': self.owner, 'files': {key: _sha(value) for key, value in entries.items()}}
@@ -226,7 +240,7 @@ class PersonalBackup:
             with zipfile.ZipFile(io.BytesIO(raw)) as archive:
                 entries = archive.infolist()
                 names = [entry.filename for entry in entries]
-                if (len(entries) > 5002 or len(set(names)) != len(names) or 'manifest.json' not in names
+                if (len(entries) > 5002 + int('model-usage.json' in names) or len(set(names)) != len(names) or 'manifest.json' not in names
                         or sum(entry.file_size for entry in entries) > MAX_EXPANDED_BYTES
                         or any(entry.flag_bits & 1 or entry.is_dir() or entry.file_size > MAX_EXPANDED_BYTES for entry in entries)):
                     raise ValueError('备份条目、加密方式或展开容量无效')
@@ -249,6 +263,8 @@ class PersonalBackup:
         except (zipfile.BadZipFile, KeyError, TypeError, UnicodeError, json.JSONDecodeError) as exc:
             raise ValueError('不是有效的FileMate个人备份') from exc
         content = json.loads(contents.pop('personal-data.json'))
+        # 用量文件只供用户审阅；恢复旧业务数据永远不修改运行治理账本。
+        contents.pop('model-usage.json', None)
         allowed = self._tables()
         if content.get('owner') != self.owner or content.get('format_version') != 1 or type(content.get('schema_version')) is not int or not 26 <= content['schema_version'] <= _MIGRATIONS[-1][0]:
             raise ValueError('备份格式、归属或数据库版本不支持')

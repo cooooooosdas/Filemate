@@ -1,5 +1,11 @@
 # API 规范
 
+2026-10-11 本地模型准入候选：统一LLM每次供应商尝试（含重试）及明确授权后的Microsoft语音使用独立持久账本，原子校验当前学习空间/全站的每日次数、准入单位和跨进程并发。次数/单位默认账号300/2000000、游客60/250000、本地1000/10000000、全站3000/20000000；单空间4路/全站16路，UTC+08:00午夜重置。准入单位是消息UTF-8字节＋最大输出token＋消息开销，不是实际token或账单；未知token和费用为NULL。账本故障拒绝新的外部调用，读取/健康/核心导出继续可用。模型连接测试的预算拒绝429、账本故障503，不作为无效密钥502处理。
+
+新增 `GET /api/llm/usage?limit=50&offset=0`，limit1–100/offset非负，归属只来自服务端会话，不接受owner选择；返回日计数/上限/重置时间、coverage_started_at、分页attempt/trace/provider/model/duration/status/error_code/request_id及真实usage。partial汇总带每字段已知记录数，cost.status=`not_available`且amount/currency=NULL；响应no-store。个人JSON导出增加model_usage，ZIP新增签名保护的model-usage.json；恢复不安装该文件到数据库，不改变额度或恢复预览。用量导出故障/32MiB上限明确available:false，核心导出保留。注销/到期删除清理本人元数据，保留匿名全站累计；失败cleanup_pending:true由维护重试。
+
+独立 `FILEMATE_DATA_DIR/control/resource-governance.db` 为治理schema1，业务schema26和已发布迁移不变，管理员完整备份/部署工具识别两种数据库。环境配置新增 `FILEMATE_AI_{ACCOUNT,GUEST,LOCAL,GLOBAL}_{DAILY_ATTEMPTS,DAILY_BUDGET_UNITS,CONCURRENT}`、`FILEMATE_AI_RETENTION_DAYS`；只接受有界正整数，默认保留30天。直接依赖psutil锁定7.2.2。真实费用、任务/存储预算、完整统一Trace、HTTP下载硬截止及AUD-08/09仍未完成；详见[本地模型累计准入子卡](../../docs/MODEL_BUDGET_AUDIT_2026-10-11.md)，尚未部署。
+
 2026-10-11 本地候选的 LLM 模块合同：`call()`/供应商 `chat()` 保持纯文本；新增适配层 `chat_with_metadata()` 返回文本、供应商实际 token 计数及有界请求标识。`get_usage()` 按当前请求/线程隔离，仅包含供应商返回的合法字段，未知或`call()`失败为 `{}`，不会补写0；HTTP成功后的上层解析失败仍保留已知消耗。默认 timeout/retry 读取 `LLMConfig`，单次1–3次尝试共享递减的重试时间预算；Requests 的 socket 超时仍不是整个下载的硬截止。没有新增 HTTP API、环境变量或迁移，累计预算、持久化和成本仍未完成；详见[用量与调用隔离子卡](../../docs/LLM_USAGE_FOUNDATION_2026-10-11.md)。上线状态以该交付回执为准。
 
 2026-10-10 自然语音合同：`POST /api/digital-human/speech` 接收 `{text, voice_id, allow_external_voice}`。正文1–5000字，默认 `zh-CN-XiaoxiaoNeural`，另允许 Yunxia/Yunxi/Xiaoyi Neural；必须明确传入布尔 `true` 授权正文经当前 FileMate 服务转交 Microsoft。响应为 `audio/mpeg`、`Cache-Control:no-store`，不保存请求正文或音频。每空间每分钟6次、每进程并发2次、55秒总超时、8MiB音频上限；无授权403，非法参数422，繁忙429，供应商失败502，功能关闭503。`FILEMATE_ENABLE_NATURAL_VOICE=0` 可独立关闭，数字人总开关同时生效。元数据 provider 新增 `microsoft_edge`，旧 `web_speech` 记录兼容；无需数据库迁移。完整边界见[自然语音交付](../../docs/MICROSOFT_NATURAL_VOICE_2026-10-10.md)。

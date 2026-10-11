@@ -7,6 +7,7 @@ import hmac
 import json
 import os
 import re
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,7 @@ from filemate.execution import data_actions
 from filemate.execution.storage import _now_iso
 from filemate.operations.backup import _check_node
 from filemate.operations.personal_backup import EXCLUDED_TABLES, _remove_tree
+from filemate.runtime_governance import GovernanceUnavailable
 
 
 def _digest(value: str) -> str:
@@ -50,7 +52,9 @@ def deletion_snapshot(storage: Any, roots: list[Path]) -> tuple[str, dict[str, i
 
 
 class WorkspaceDeletion:
-    def __init__(self, data_root: Path, secret: bytes) -> None:
+    def __init__(self, data_root: Path, secret: bytes,
+                 erase_usage: Callable[[str], None] | None = None,
+                 usage_owners: Callable[[], list[str]] | None = None) -> None:
         self.data_root = data_root.resolve()
         self.actions = self.data_root / '_working' / 'privacy-actions'
         self.trash = self.data_root / '_working' / 'erased-workspaces'
@@ -58,6 +62,8 @@ class WorkspaceDeletion:
         if len(secret) < 32:
             raise ValueError('空间删除签名配置无效')
         self.secret = secret
+        self.erase_usage = erase_usage
+        self.usage_owners = usage_owners
 
     def _write(self, path: Path, record: dict[str, Any]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -170,6 +176,12 @@ class WorkspaceDeletion:
                 _remove_tree(temporary, self.trash)
             except OSError:
                 pending = True
+        if self.erase_usage is not None:
+            try:
+                self.erase_usage(record['workspace_hash'])
+            except (GovernanceUnavailable, OSError, ValueError):
+                # 隐私清理待重试，不能把账本故障隐藏成全部删除成功。
+                pending = True
         self._write(self.tombstones / (record['workspace_hash'] + '.json'), {'state': 'erased', 'action_id': identifier, 'updated_at': _now_iso()})
         final = {key: value for key, value in record.items() if key not in {'workspace_id', 'account_id'}}
         self._write(path, {**final, 'state': 'cleanup_pending' if pending else 'complete', 'updated_at': _now_iso()})
@@ -223,7 +235,27 @@ class WorkspaceDeletion:
                 if marker.exists() and self._read(marker).get('state') == 'erased':
                     db.execute('DELETE FROM account_sessions WHERE account_id=?', (row['account_id'],))
                     db.execute('DELETE FROM accounts WHERE account_id=?', (row['account_id'],))
+        result['pending'] += self._erase_restored_usage()
         return result
+
+    def _erase_restored_usage(self) -> int:
+        if self.erase_usage is None or self.usage_owners is None:
+            return 0
+        pending = 0
+        try:
+            owners = self.usage_owners()
+        except (GovernanceUnavailable, OSError, ValueError):
+            return 1
+        for digest in owners:
+            if not re.fullmatch(r'[0-9a-f]{64}', digest):
+                raise ValueError('治理账本空间标识非法')
+            marker = self.tombstones / (digest + '.json')
+            if marker.exists() and self._read(marker).get('state') == 'erased':
+                try:
+                    self.erase_usage(digest)
+                except (GovernanceUnavailable, OSError, ValueError):
+                    pending += 1
+        return pending
 
     def retry_cleanup(self) -> int:
         pending = 0
@@ -232,4 +264,4 @@ class WorkspaceDeletion:
                 raise ValueError('删除阶段文件名异常')
             if self._read(path).get('state') == 'cleanup_pending':
                 pending += int(self._finish_identifier(path.stem)['cleanup_pending'])
-        return pending
+        return pending + self._erase_restored_usage()

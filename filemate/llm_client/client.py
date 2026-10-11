@@ -125,12 +125,21 @@ class LLMClient:
         if prompt:
             messages = [{"role": "system", "content": prompt}] + messages
 
+        from filemate.runtime_governance import default_scope, input_budget_units
+
+        scope = default_scope()
+        units = input_budget_units(messages, max_tokens)
+
         last_exc: Exception | None = None
         deadline = time.monotonic() + timeout
         for attempt in range(1, retry + 1):
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise LLMTimeoutError("模型调用重试预算已耗尽，请稍后重试") from last_exc
+            admission = scope.store.reserve(
+                scope, provider=self.config.provider, model=self.config.model,
+                budget_units=units, secret=self.config.api_key,
+            )
             try:
                 response = self._provider.chat_with_metadata(
                     messages,
@@ -139,9 +148,8 @@ class LLMClient:
                     response_format=response_format,
                     timeout=remaining,
                 )
-                self._remember_usage(validated_usage(response.usage))
-                return response.text
             except LLMRateLimitError as exc:
+                admission.finish(status='failed', error_code='rate_limit')
                 # 只对限流错误重试
                 last_exc = exc
                 if attempt < retry:
@@ -151,13 +159,22 @@ class LLMClient:
                     logger.warning("模型限流，%ds 后重试 (%d/%d)", wait, attempt, retry)
                     time.sleep(wait)
             except LLMTimeoutError as exc:
+                admission.finish(status='failed', error_code='timeout')
                 # 只对超时错误重试
                 logger.warning("超时，%d/%d 次重试", attempt, retry)
                 last_exc = exc
             except LLMAPIError as exc:
+                admission.finish(status='failed', error_code='provider_error')
                 # 不对业务层面错误（配置错误、无效请求等）重试
                 logger.error("模型API错误（不重试）: %s", type(exc).__name__)
                 raise
+            except BaseException:
+                admission.finish(status='failed', error_code='interrupted')
+                raise
+            else:
+                admission.finish(status='success', usage=response.usage, request_id=response.request_id)
+                self._remember_usage(validated_usage(response.usage))
+                return response.text
 
         raise LLMAPIError(f"模型调用在{retry}次尝试后仍失败，请稍后重试") from last_exc
 

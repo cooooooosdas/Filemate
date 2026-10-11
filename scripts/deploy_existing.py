@@ -207,6 +207,11 @@ def database_facts(path: Path) -> dict[str, Any]:
     """只读校验数据库完整性与迁移版本。"""
     with closing(sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True)) as connection:
         assert connection.execute('PRAGMA integrity_check').fetchall() == [('ok',)]
+        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}
+        if 'schema_migrations' not in tables:
+            assert tables == {'resource_schema_migrations', 'resource_daily', 'ai_attempts'}
+            assert connection.execute('SELECT version FROM resource_schema_migrations ORDER BY version').fetchall() == [(1,)]
+            return {'database_kind': 'resource_governance', 'schema_version': 1, 'integrity': 'ok'}
         version = connection.execute('SELECT MAX(version) FROM schema_migrations').fetchone()[0]
         return {'schema_version': version, 'integrity': 'ok'}
 
@@ -385,7 +390,8 @@ def activate(args: argparse.Namespace) -> None:
         save(backup / 'result.json', {'passed': True, 'backup_restore_verified': True,
              'database_count': len(manifest['databases']),
              'file_count': sum(bool(r['sha256']) for r in manifest['records']),
-             'schemas': sorted({d['schema_version'] for d in manifest['databases']}),
+             'schemas': sorted({d['schema_version'] for d in manifest['databases'] if d.get('database_kind') != 'resource_governance'}),
+             'resource_schemas': sorted({d['schema_version'] for d in manifest['databases'] if d.get('database_kind') == 'resource_governance'}),
              'commit': args.commit, 'version': args.version,
              'judge_updated': previous_judge is not None,
              'rollback_policy': 'after public writes use a release preserving accounts and schema; never restore old snapshot over new data'})
