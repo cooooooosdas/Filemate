@@ -1,0 +1,78 @@
+{
+  "passed": true,
+  "base": "4119ec2308dd23eeaf4663cd2334ace58e36c025",
+  "files": [
+    {
+      "path": "README.md",
+      "before_sha256": "e5ce1668e7dbbfd704b6b2321fdd292c5366cb77a2c633c302eab94d899d1b61",
+      "after_sha256": "ffb5017d65e015e865f7519c769f9eb80751367dbee8332c954272f71f25cec6",
+      "only_line_endings_changed": true
+    },
+    {
+      "path": "docs/FINAL_PRODUCT_AUDIT_REPORT_2026-10-10.md",
+      "before_sha256": "e4585b5016227059cb19bb800d665e488220f70c78d9f0f8c476c00c286c3320",
+      "after_sha256": "9412baa5d2189b57ed1075a0c555debc9c0cc6710710c5b9b3f725830f60da29",
+      "only_line_endings_changed": true
+    },
+    {
+      "path": "docs/LLM_USAGE_FOUNDATION_2026-10-11.md",
+      "before_sha256": "a0b3a617519763c3924150acd385e09a2e415d15c5da6dc0c851f91a731e6a7f",
+      "after_sha256": "b5ff92bc835b3968050f76bb20258ac125b4eb4deceee1b527ab4dce1e6c3dae",
+      "only_line_endings_changed": true
+    },
+    {
+      "path": "docs/audits/llm-usage-2026-10-11/ci-verification.json",
+      "before_sha256": "302f856908c15d4b87130b68c12560380ef9cf948563262185cd060c01a56a6d",
+      "after_sha256": "1762c7789f8333cef51274d5d7a136c82e6cfdd4c1b9c8e42dadfe03c461ff07",
+      "only_line_endings_changed": true
+    },
+    {
+      "path": "docs/audits/llm-usage-2026-10-11/focused-tests.txt",
+      "before_sha256": "c30fc0b2425ad70e19160a034cf93f935e5da43ec73c49f583c843a368006f2f",
+      "after_sha256": "d128f7fe99766d9327e1812bad1c38a425a719613b0fd231aa7cc7372d4836dc",
+      "only_line_endings_changed": true
+    },
+    {
+      "path": "docs/audits/llm-usage-2026-10-11/raw-logs.json",
+      "before_sha256": "24eeb3aef5fd955287b4b3ab43fa89d4600ca0c42661273e305acc6c3720025f",
+      "after_sha256": "2780b1cd0558491af95b0ee81dae67712a813354e0bb704fa613fb1963843d0f",
+      "only_line_endings_changed": true
+    },
+    {
+      "path": "docs/audits/llm-usage-2026-10-11/usage-after.json",
+      "before_sha256": "609f00c199f4c3febb51244dceab094e98f181480c2e8b4e908938d8e34ba960",
+      "after_sha256": "2223c8938a3e1652f9e23d6ae6b3625f88b3aca6d2b48436d65ff1237c0bfbfb",
+      "only_line_endings_changed": true
+    },
+    {
+      "path": "docs/audits/llm-usage-2026-10-11/usage-baseline.json",
+      "before_sha256": "b953dd847c3fc9ea1a9fcaf4b805c9c965d74f26f32eef0013441aae70bafb8d",
+      "after_sha256": "5baa09047ba1dd8b5d9bf58366aaab344dfd6569778a4a2b58b046d0a79bc6b9",
+      "only_line_endings_changed": true
+    },
+    {
+      "path": "docs/audits/llm-usage-2026-10-11/verification.json",
+      "before_sha256": "36e141a55c3c86b7228c985d89c0e0085b50f2b37e339651dd8a4c78bbc22f97",
+      "after_sha256": "b665f97aa49e9cb8c0ca8c9f8975a6a73e3b947286179c3e7acb9d5b0c206071",
+      "only_line_endings_changed": true
+    },
+    {
+      "path": "filemate/llm_client/client.py",
+      "before_sha256": "73746d2ff44ff1cf346c9fba4b7d97942fafed23dc51034d71f02e5337ab3045",
+      "after_sha256": "04b049b2ac2d55f5867163c582fc4dc4a3b016a24e719c06d92efe0345f64796",
+      "only_line_endings_changed": true
+    },
+    {
+      "path": "filemate/llm_client/models/response.py",
+      "before_sha256": "15fc951a22a841f95332d25aa97cca9fbaef39c186bf503b48c9143f89abb748",
+      "after_sha256": "e92118c9169d0ff34d4b8fb1a3d4ff6ebb9ee4cebfd0d7d7f3bf1b8dfe08b1ea",
+      "only_line_endings_changed": true
+    },
+    {
+      "path": "filemate/llm_client/providers/openai_compatible.py",
+      "before_sha256": "1b74cb9719d4ab023765bc46eefa4b68bdf27c077c5f141c8193dba77c03ce94",
+      "after_sha256": "4827da67dce374238514bc997f1549ad607f7b32c82620355187d2d3c303fa77",
+      "only_line_endings_changed": true
+    }
+  ]
+}

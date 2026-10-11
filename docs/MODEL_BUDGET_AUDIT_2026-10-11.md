@@ -57,3 +57,8 @@ AUD-08仍需累计任务/执行与存储配额、所有后台工作项的可信S
 ## 精确提交CI与交付状态
 
 候选 `7320eb83108875e97ebc60e1e18c11fcf9f7b001` 的 [CI](https://github.com/cooooooosdas/Filemate/actions/runs/38147446243) 成功：Linux 1031后端、18跳过/5排除/3告警，51前端及静态、类型、构建、体积通过。Windows安装包job按既有规则跳过，本轮未构建桌面安装包。Windows受检源码前后无漂移，所有新增/修改源码与Git提交逐字节相同；95个未修改文件仅有工作区CRLF与Git LF差异，逐项归一核验并记录，Linux验证对应精确Git提交。原始CI日志也以Base64+SHA256存档并解码核验。[PR #53](https://github.com/cooooooosdas/Filemate/pull/53)标题/说明已按本候选重写，保持草稿。main仍为`4119ec2308dd23eeaf4663cd2334ace58e36c025`，公网及已上线ZIP未更新本子卡。本轮仅完成模型累计准入与持久化工程子卡，完整AUD-08和原FEATURE07–13仍未完成。旧版管理员工具不识别新增control布局，代码回滚后的维护须使用支持治理账本的工具；不能把保留数据宣称为所有版本工具都已兼容。
+
+
+## 全分支行尾收口
+
+最后按main `4119ec23`复核整条分支，发现12个历史新增/改动文件的CRLF使基础空白校验失败；该失败独立存档。仅规范新增内容的行尾，逐项证明正文经换行归一前后完全一致，未调整预算、API或数据逻辑。原有日志Base64内容与哈希不变，原先未编码的历史focused-tests.txt原始字节另存historic-focused-original.json，避免改变证据本体。静态和模型80项专项再次通过；完整分支空白校验在提交后再次确认。前述Windows1018/Linux1031完整验收对应7320eb83行为版本；行尾收口的源码桥接见line-ending-repair.json，最新提交CI由平台继续执行。尚未更新main、公网或线上ZIP，完整AUD-08仍保留。
