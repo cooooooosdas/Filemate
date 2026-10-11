@@ -1,5 +1,7 @@
 # API 规范
 
+2026-10-11 本地候选的 LLM 模块合同：`call()`/供应商 `chat()` 保持纯文本；新增适配层 `chat_with_metadata()` 返回文本、供应商实际 token 计数及有界请求标识。`get_usage()` 按当前请求/线程隔离，仅包含供应商返回的合法字段，未知或`call()`失败为 `{}`，不会补写0；HTTP成功后的上层解析失败仍保留已知消耗。默认 timeout/retry 读取 `LLMConfig`，单次1–3次尝试共享递减的重试时间预算；Requests 的 socket 超时仍不是整个下载的硬截止。没有新增 HTTP API、环境变量或迁移，累计预算、持久化和成本仍未完成；详见[用量与调用隔离子卡](../../docs/LLM_USAGE_FOUNDATION_2026-10-11.md)。上线状态以该交付回执为准。
+
 2026-10-10 自然语音合同：`POST /api/digital-human/speech` 接收 `{text, voice_id, allow_external_voice}`。正文1–5000字，默认 `zh-CN-XiaoxiaoNeural`，另允许 Yunxia/Yunxi/Xiaoyi Neural；必须明确传入布尔 `true` 授权正文经当前 FileMate 服务转交 Microsoft。响应为 `audio/mpeg`、`Cache-Control:no-store`，不保存请求正文或音频。每空间每分钟6次、每进程并发2次、55秒总超时、8MiB音频上限；无授权403，非法参数422，繁忙429，供应商失败502，功能关闭503。`FILEMATE_ENABLE_NATURAL_VOICE=0` 可独立关闭，数字人总开关同时生效。元数据 provider 新增 `microsoft_edge`，旧 `web_speech` 记录兼容；无需数据库迁移。完整边界见[自然语音交付](../../docs/MICROSOFT_NATURAL_VOICE_2026-10-10.md)。
 
 > 核心 Python 模块与现役 HTTP API 的输入输出契约。

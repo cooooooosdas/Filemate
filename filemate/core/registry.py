@@ -22,6 +22,7 @@ from filemate.execution.file_ops import FileOps
 from filemate.execution.scheduler import CalendarBuilder
 from filemate.execution.storage import SQLiteStorage
 from filemate.llm_client import LLMClient, LLMConfig
+from filemate.llm_client.request_credentials import REQUEST_API_KEY
 from filemate.perception import FileParser, OCRBackend
 
 logger = logging.getLogger(__name__)
@@ -79,6 +80,9 @@ class ModuleRegistry:
 
     def get_llm(self, force_refresh: bool = False) -> LLMClient:
         """获取 LLM 客户端（延迟初始化）。"""
+        if REQUEST_API_KEY.get():
+            # 请求专属密钥不能写进跨账号复用的全局客户端或配置。
+            return LLMClient(LLMConfig.from_env())
         if self._llm is None or force_refresh:
             if self._config is None:
                 self._config = LLMConfig.from_env()

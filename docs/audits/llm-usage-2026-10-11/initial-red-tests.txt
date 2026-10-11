@@ -1,0 +1,653 @@
+FFFF.FFFFFFFFFFFFFFFFFFF                                                 [100%]
+================================== FAILURES ===================================
+_____ test_real_http_usage_is_preserved_and_failure_clears_previous_usage _____
+filemate\tests\test_llm_observability.py:63: in test_real_http_usage_is_preserved_and_failure_clears_previous_usage
+    assert client.get_usage() == {'prompt_tokens': 7, 'completion_tokens': 3, 'total_tokens': 10}
+E   AssertionError: assert {'prompt_toke...on_tokens': 0} == {'prompt_toke...l_tokens': 10}
+E     
+E     Differing items:
+E     {'completion_tokens': 0} != {'completion_tokens': 3}
+E     {'prompt_tokens': 0} != {'prompt_tokens': 7}
+E     Right contains 1 more item:
+E     {'total_tokens': 10}
+E     Use -v to get more diff
+_ test_unknown_and_invalid_usage_never_become_fabricated_zero[None-expected0] _
+filemate\tests\test_llm_observability.py:81: in test_unknown_and_invalid_usage_never_become_fabricated_zero
+    assert client.get_usage() == expected
+E   AssertionError: assert {'prompt_toke...on_tokens': 0} == {}
+E     
+E     Left contains 2 more items:
+E     {'completion_tokens': 0, 'prompt_tokens': 0}
+E     Use -v to get more diff
+_ test_unknown_and_invalid_usage_never_become_fabricated_zero[usage1-expected1] _
+filemate\tests\test_llm_observability.py:81: in test_unknown_and_invalid_usage_never_become_fabricated_zero
+    assert client.get_usage() == expected
+E   AssertionError: assert {'prompt_toke...on_tokens': 0} == {}
+E     
+E     Left contains 2 more items:
+E     {'completion_tokens': 0, 'prompt_tokens': 0}
+E     Use -v to get more diff
+_ test_unknown_and_invalid_usage_never_become_fabricated_zero[invalid-expected2] _
+filemate\tests\test_llm_observability.py:81: in test_unknown_and_invalid_usage_never_become_fabricated_zero
+    assert client.get_usage() == expected
+E   AssertionError: assert {'prompt_toke...on_tokens': 0} == {}
+E     
+E     Left contains 2 more items:
+E     {'completion_tokens': 0, 'prompt_tokens': 0}
+E     Use -v to get more diff
+_ test_unknown_and_invalid_usage_never_become_fabricated_zero[usage4-expected4] _
+filemate\tests\test_llm_observability.py:81: in test_unknown_and_invalid_usage_never_become_fabricated_zero
+    assert client.get_usage() == expected
+E   AssertionError: assert {'prompt_toke...on_tokens': 0} == {'prompt_tokens': 7}
+E     
+E     Differing items:
+E     {'prompt_tokens': 0} != {'prompt_tokens': 7}
+E     Left contains 1 more item:
+E     {'completion_tokens': 0}
+E     Use -v to get more diff
+_ test_unknown_and_invalid_usage_never_become_fabricated_zero[usage5-expected5] _
+filemate\tests\test_llm_observability.py:81: in test_unknown_and_invalid_usage_never_become_fabricated_zero
+    assert client.get_usage() == expected
+E   AssertionError: assert {'prompt_toke...on_tokens': 0} == {}
+E     
+E     Left contains 2 more items:
+E     {'completion_tokens': 0, 'prompt_tokens': 0}
+E     Use -v to get more diff
+_ test_unknown_and_invalid_usage_never_become_fabricated_zero[usage6-expected6] _
+filemate\tests\test_llm_observability.py:81: in test_unknown_and_invalid_usage_never_become_fabricated_zero
+    assert client.get_usage() == expected
+E   AssertionError: assert {'prompt_toke...on_tokens': 0} == {}
+E     
+E     Left contains 2 more items:
+E     {'completion_tokens': 0, 'prompt_tokens': 0}
+E     Use -v to get more diff
+___________ test_invalid_content_is_rejected_even_with_valid_usage ____________
+filemate\tests\test_llm_observability.py:87: in test_invalid_content_is_rejected_even_with_valid_usage
+    with pytest.raises(LLMAPIError, match='响应格式'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE LLMAPIError
+____________ test_shared_client_usage_is_isolated_between_threads _____________
+filemate\tests\test_llm_observability.py:111: in test_shared_client_usage_is_isolated_between_threads
+    assert [future.result(timeout=3) for future in futures] == [
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\concurrent\futures\thread.py:59: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+filemate\tests\test_llm_observability.py:105: in run
+    client.call(messages=[{'role': 'user', 'content': str(count)}], retry=1)
+filemate\llm_client\client.py:106: in call
+    text = self._provider.chat(
+filemate\llm_client\providers\openai_compatible.py:82: in chat
+    raise LLMAccessError(
+E   filemate.llm_client.exceptions.LLMAccessError: LLM API 访问被拒绝（401），请检查密钥、余额和账号权限。密钥无效或已失效。
+------------------------------ Captured log call ------------------------------
+ERROR    filemate.llm_client.client:client.py:127 API 错误（不重试）: LLM API 访问被拒绝（401），请检查密钥、余额和账号权限。密钥无效或已失效。
+ERROR    filemate.llm_client.client:client.py:127 API 错误（不重试）: LLM API 访问被拒绝（401），请检查密钥、余额和账号权限。密钥无效或已失效。
+________ test_shared_client_usage_is_isolated_between_request_contexts ________
+filemate\tests\test_llm_observability.py:125: in test_shared_client_usage_is_isolated_between_request_contexts
+    context.run(client.call, messages=[{'role': 'user', 'content': str(count)}], retry=1)
+filemate\llm_client\client.py:106: in call
+    text = self._provider.chat(
+filemate\llm_client\providers\openai_compatible.py:82: in chat
+    raise LLMAccessError(
+E   filemate.llm_client.exceptions.LLMAccessError: LLM API 访问被拒绝（401），请检查密钥、余额和账号权限。密钥无效或已失效。
+------------------------------ Captured log call ------------------------------
+ERROR    filemate.llm_client.client:client.py:127 API 错误（不重试）: LLM API 访问被拒绝（401），请检查密钥、余额和账号权限。密钥无效或已失效。
+___________ test_invalid_call_bounds_do_not_send_http[parameters0] ____________
+filemate\tests\test_llm_observability.py:137: in test_invalid_call_bounds_do_not_send_http
+    client.call(**parameters)
+filemate\llm_client\client.py:130: in call
+    raise LLMAPIError(
+E   filemate.llm_client.exceptions.LLMAPIError: LLM 调用在 0 次重试后仍失败: None
+___________ test_invalid_call_bounds_do_not_send_http[parameters1] ____________
+.venv\Lib\site-packages\urllib3\connectionpool.py:788: in urlopen
+    response = self._make_request(
+.venv\Lib\site-packages\urllib3\connectionpool.py:534: in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\connection.py:571: in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:1450: in getresponse
+    response.begin()
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:336: in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:305: in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+E   http.client.RemoteDisconnected: Remote end closed connection without response
+
+During handling of the above exception, another exception occurred:
+.venv\Lib\site-packages\requests\adapters.py:696: in send
+    resp = conn.urlopen(
+.venv\Lib\site-packages\urllib3\connectionpool.py:842: in urlopen
+    retries = retries.increment(
+.venv\Lib\site-packages\urllib3\util\retry.py:498: in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\util\util.py:38: in reraise
+    raise value.with_traceback(tb)
+.venv\Lib\site-packages\urllib3\connectionpool.py:788: in urlopen
+    response = self._make_request(
+.venv\Lib\site-packages\urllib3\connectionpool.py:534: in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\connection.py:571: in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:1450: in getresponse
+    response.begin()
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:336: in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:305: in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+E   urllib3.exceptions.ProtocolError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+During handling of the above exception, another exception occurred:
+filemate\llm_client\providers\openai_compatible.py:71: in chat
+    resp = requests.post(url, json=payload, headers=headers, timeout=timeout, allow_redirects=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:134: in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:71: in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:651: in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:784: in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\adapters.py:711: in send
+    raise ConnectionError(err, request=request)
+E   requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+The above exception was the direct cause of the following exception:
+filemate\tests\test_llm_observability.py:137: in test_invalid_call_bounds_do_not_send_http
+    client.call(**parameters)
+filemate\llm_client\client.py:106: in call
+    text = self._provider.chat(
+filemate\llm_client\providers\openai_compatible.py:75: in chat
+    raise LLMAPIError("模型连接失败，请检查网络后重试") from exc
+E   filemate.llm_client.exceptions.LLMAPIError: 模型连接失败，请检查网络后重试
+---------------------------- Captured stderr call -----------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 27366)
+Traceback (most recent call last):
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\server.py", line 440, in handle
+    self.handle_one_request()
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\server.py", line 428, in handle_one_request
+    method()
+  File "C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\tests\test_llm_observability.py", line 24, in do_POST
+    status, data = replies.pop(0)
+                   ^^^^^^^^^^^^^^
+IndexError: pop from empty list
+----------------------------------------
+------------------------------ Captured log call ------------------------------
+ERROR    filemate.llm_client.client:client.py:127 API 错误（不重试）: 模型连接失败，请检查网络后重试
+___________ test_invalid_call_bounds_do_not_send_http[parameters2] ____________
+.venv\Lib\site-packages\urllib3\connectionpool.py:788: in urlopen
+    response = self._make_request(
+.venv\Lib\site-packages\urllib3\connectionpool.py:534: in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\connection.py:571: in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:1450: in getresponse
+    response.begin()
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:336: in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:305: in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+E   http.client.RemoteDisconnected: Remote end closed connection without response
+
+During handling of the above exception, another exception occurred:
+.venv\Lib\site-packages\requests\adapters.py:696: in send
+    resp = conn.urlopen(
+.venv\Lib\site-packages\urllib3\connectionpool.py:842: in urlopen
+    retries = retries.increment(
+.venv\Lib\site-packages\urllib3\util\retry.py:498: in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\util\util.py:38: in reraise
+    raise value.with_traceback(tb)
+.venv\Lib\site-packages\urllib3\connectionpool.py:788: in urlopen
+    response = self._make_request(
+.venv\Lib\site-packages\urllib3\connectionpool.py:534: in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\connection.py:571: in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:1450: in getresponse
+    response.begin()
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:336: in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:305: in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+E   urllib3.exceptions.ProtocolError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+During handling of the above exception, another exception occurred:
+filemate\llm_client\providers\openai_compatible.py:71: in chat
+    resp = requests.post(url, json=payload, headers=headers, timeout=timeout, allow_redirects=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:134: in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:71: in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:651: in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:784: in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\adapters.py:711: in send
+    raise ConnectionError(err, request=request)
+E   requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+The above exception was the direct cause of the following exception:
+filemate\tests\test_llm_observability.py:137: in test_invalid_call_bounds_do_not_send_http
+    client.call(**parameters)
+filemate\llm_client\client.py:106: in call
+    text = self._provider.chat(
+filemate\llm_client\providers\openai_compatible.py:75: in chat
+    raise LLMAPIError("模型连接失败，请检查网络后重试") from exc
+E   filemate.llm_client.exceptions.LLMAPIError: 模型连接失败，请检查网络后重试
+---------------------------- Captured stderr call -----------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 62389)
+Traceback (most recent call last):
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\server.py", line 440, in handle
+    self.handle_one_request()
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\server.py", line 428, in handle_one_request
+    method()
+  File "C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\tests\test_llm_observability.py", line 24, in do_POST
+    status, data = replies.pop(0)
+                   ^^^^^^^^^^^^^^
+IndexError: pop from empty list
+----------------------------------------
+------------------------------ Captured log call ------------------------------
+ERROR    filemate.llm_client.client:client.py:127 API 错误（不重试）: 模型连接失败，请检查网络后重试
+___________ test_invalid_call_bounds_do_not_send_http[parameters3] ____________
+filemate\tests\test_llm_observability.py:137: in test_invalid_call_bounds_do_not_send_http
+    client.call(**parameters)
+filemate\llm_client\client.py:106: in call
+    text = self._provider.chat(
+filemate\llm_client\providers\openai_compatible.py:71: in chat
+    resp = requests.post(url, json=payload, headers=headers, timeout=timeout, allow_redirects=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:134: in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:71: in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:651: in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:784: in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\adapters.py:693: in send
+    resolved_timeout = TimeoutSauce(connect=timeout, read=timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\util\timeout.py:115: in __init__
+    self._connect = self._validate_timeout(connect, "connect")
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\util\timeout.py:159: in _validate_timeout
+    raise ValueError(
+E   ValueError: Attempted to set connect timeout to 0, but the timeout cannot be set to a value less than or equal to 0.
+___________ test_invalid_call_bounds_do_not_send_http[parameters4] ____________
+filemate\tests\test_llm_observability.py:137: in test_invalid_call_bounds_do_not_send_http
+    client.call(**parameters)
+filemate\llm_client\client.py:106: in call
+    text = self._provider.chat(
+filemate\llm_client\providers\openai_compatible.py:71: in chat
+    resp = requests.post(url, json=payload, headers=headers, timeout=timeout, allow_redirects=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:134: in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:71: in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:651: in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:784: in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\adapters.py:696: in send
+    resp = conn.urlopen(
+.venv\Lib\site-packages\urllib3\connectionpool.py:788: in urlopen
+    response = self._make_request(
+.venv\Lib\site-packages\urllib3\connectionpool.py:493: in _make_request
+    conn.request(
+.venv\Lib\site-packages\urllib3\connection.py:500: in request
+    self.endheaders()
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:1353: in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:1113: in _send_output
+    self.send(msg)
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:1057: in send
+    self.connect()
+.venv\Lib\site-packages\urllib3\connection.py:331: in connect
+    self.sock = self._new_conn()
+                ^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\connection.py:204: in _new_conn
+    sock = connection.create_connection(
+.venv\Lib\site-packages\urllib3\util\connection.py:70: in create_connection
+    sock.settimeout(timeout)
+E   ValueError: Invalid value NaN (not a number)
+___________ test_invalid_call_bounds_do_not_send_http[parameters5] ____________
+filemate\tests\test_llm_observability.py:137: in test_invalid_call_bounds_do_not_send_http
+    client.call(**parameters)
+filemate\llm_client\client.py:106: in call
+    text = self._provider.chat(
+filemate\llm_client\providers\openai_compatible.py:71: in chat
+    resp = requests.post(url, json=payload, headers=headers, timeout=timeout, allow_redirects=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:134: in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:71: in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:651: in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:784: in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\adapters.py:696: in send
+    resp = conn.urlopen(
+.venv\Lib\site-packages\urllib3\connectionpool.py:788: in urlopen
+    response = self._make_request(
+.venv\Lib\site-packages\urllib3\connectionpool.py:493: in _make_request
+    conn.request(
+.venv\Lib\site-packages\urllib3\connection.py:500: in request
+    self.endheaders()
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:1353: in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:1113: in _send_output
+    self.send(msg)
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:1057: in send
+    self.connect()
+.venv\Lib\site-packages\urllib3\connection.py:331: in connect
+    self.sock = self._new_conn()
+                ^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\connection.py:204: in _new_conn
+    sock = connection.create_connection(
+.venv\Lib\site-packages\urllib3\util\connection.py:70: in create_connection
+    sock.settimeout(timeout)
+E   OverflowError: timestamp out of range for platform time_t
+___________ test_invalid_call_bounds_do_not_send_http[parameters6] ____________
+.venv\Lib\site-packages\urllib3\connectionpool.py:788: in urlopen
+    response = self._make_request(
+.venv\Lib\site-packages\urllib3\connectionpool.py:534: in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\connection.py:571: in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:1450: in getresponse
+    response.begin()
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:336: in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:305: in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+E   http.client.RemoteDisconnected: Remote end closed connection without response
+
+During handling of the above exception, another exception occurred:
+.venv\Lib\site-packages\requests\adapters.py:696: in send
+    resp = conn.urlopen(
+.venv\Lib\site-packages\urllib3\connectionpool.py:842: in urlopen
+    retries = retries.increment(
+.venv\Lib\site-packages\urllib3\util\retry.py:498: in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\util\util.py:38: in reraise
+    raise value.with_traceback(tb)
+.venv\Lib\site-packages\urllib3\connectionpool.py:788: in urlopen
+    response = self._make_request(
+.venv\Lib\site-packages\urllib3\connectionpool.py:534: in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\connection.py:571: in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:1450: in getresponse
+    response.begin()
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:336: in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:305: in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+E   urllib3.exceptions.ProtocolError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+During handling of the above exception, another exception occurred:
+filemate\llm_client\providers\openai_compatible.py:71: in chat
+    resp = requests.post(url, json=payload, headers=headers, timeout=timeout, allow_redirects=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:134: in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:71: in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:651: in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:784: in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\adapters.py:711: in send
+    raise ConnectionError(err, request=request)
+E   requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+The above exception was the direct cause of the following exception:
+filemate\tests\test_llm_observability.py:137: in test_invalid_call_bounds_do_not_send_http
+    client.call(**parameters)
+filemate\llm_client\client.py:106: in call
+    text = self._provider.chat(
+filemate\llm_client\providers\openai_compatible.py:75: in chat
+    raise LLMAPIError("模型连接失败，请检查网络后重试") from exc
+E   filemate.llm_client.exceptions.LLMAPIError: 模型连接失败，请检查网络后重试
+---------------------------- Captured stderr call -----------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 55242)
+Traceback (most recent call last):
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\server.py", line 440, in handle
+    self.handle_one_request()
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\server.py", line 428, in handle_one_request
+    method()
+  File "C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\tests\test_llm_observability.py", line 24, in do_POST
+    status, data = replies.pop(0)
+                   ^^^^^^^^^^^^^^
+IndexError: pop from empty list
+----------------------------------------
+------------------------------ Captured log call ------------------------------
+ERROR    filemate.llm_client.client:client.py:127 API 错误（不重试）: 模型连接失败，请检查网络后重试
+___________ test_invalid_call_bounds_do_not_send_http[parameters7] ____________
+.venv\Lib\site-packages\urllib3\connectionpool.py:788: in urlopen
+    response = self._make_request(
+.venv\Lib\site-packages\urllib3\connectionpool.py:534: in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\connection.py:571: in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:1450: in getresponse
+    response.begin()
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:336: in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:305: in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+E   http.client.RemoteDisconnected: Remote end closed connection without response
+
+During handling of the above exception, another exception occurred:
+.venv\Lib\site-packages\requests\adapters.py:696: in send
+    resp = conn.urlopen(
+.venv\Lib\site-packages\urllib3\connectionpool.py:842: in urlopen
+    retries = retries.increment(
+.venv\Lib\site-packages\urllib3\util\retry.py:498: in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\util\util.py:38: in reraise
+    raise value.with_traceback(tb)
+.venv\Lib\site-packages\urllib3\connectionpool.py:788: in urlopen
+    response = self._make_request(
+.venv\Lib\site-packages\urllib3\connectionpool.py:534: in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\urllib3\connection.py:571: in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:1450: in getresponse
+    response.begin()
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:336: in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\client.py:305: in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+E   urllib3.exceptions.ProtocolError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+During handling of the above exception, another exception occurred:
+filemate\llm_client\providers\openai_compatible.py:71: in chat
+    resp = requests.post(url, json=payload, headers=headers, timeout=timeout, allow_redirects=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:134: in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:71: in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:651: in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:784: in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\adapters.py:711: in send
+    raise ConnectionError(err, request=request)
+E   requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+The above exception was the direct cause of the following exception:
+filemate\tests\test_llm_observability.py:137: in test_invalid_call_bounds_do_not_send_http
+    client.call(**parameters)
+filemate\llm_client\client.py:106: in call
+    text = self._provider.chat(
+filemate\llm_client\providers\openai_compatible.py:75: in chat
+    raise LLMAPIError("模型连接失败，请检查网络后重试") from exc
+E   filemate.llm_client.exceptions.LLMAPIError: 模型连接失败，请检查网络后重试
+---------------------------- Captured stderr call -----------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 55244)
+Traceback (most recent call last):
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\server.py", line 440, in handle
+    self.handle_one_request()
+  File "C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\http\server.py", line 428, in handle_one_request
+    method()
+  File "C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\tests\test_llm_observability.py", line 24, in do_POST
+    status, data = replies.pop(0)
+                   ^^^^^^^^^^^^^^
+IndexError: pop from empty list
+----------------------------------------
+------------------------------ Captured log call ------------------------------
+ERROR    filemate.llm_client.client:client.py:127 API 错误（不重试）: 模型连接失败，请检查网络后重试
+______ test_retries_share_a_deadline_and_do_not_sleep_after_last_attempt ______
+filemate\tests\test_llm_observability.py:163: in test_retries_share_a_deadline_and_do_not_sleep_after_last_attempt
+    assert timeouts == [10, 7.75]
+E   assert [] == [10, 7.75]
+E     
+E     Right contains 2 more items, first extra item: 10
+E     Use -v to get more diff
+------------------------------ Captured log call ------------------------------
+ERROR    filemate.llm_client.client:client.py:127 API 错误（不重试）: LLM API 访问被拒绝（401），请检查密钥、余额和账号权限。密钥无效或已失效。
+__________ test_retry_does_not_start_another_request_after_deadline ___________
+filemate\tests\test_llm_observability.py:181: in test_retry_does_not_start_another_request_after_deadline
+    client.call(retry=3, timeout=1)
+filemate\llm_client\client.py:106: in call
+    text = self._provider.chat(
+filemate\llm_client\providers\openai_compatible.py:82: in chat
+    raise LLMAccessError(
+E   filemate.llm_client.exceptions.LLMAccessError: LLM API 访问被拒绝（401），请检查密钥、余额和账号权限。密钥无效或已失效。
+------------------------------ Captured log call ------------------------------
+WARNING  filemate.llm_client.client:client.py:123 超时，1/3 次重试
+ERROR    filemate.llm_client.client:client.py:127 API 错误（不重试）: LLM API 访问被拒绝（401），请检查密钥、余额和账号权限。密钥无效或已失效。
+_______________ test_registry_never_caches_request_credentials ________________
+filemate\tests\test_llm_observability.py:194: in test_registry_never_caches_request_credentials
+    assert registry._llm is None and registry._config is None
+E   assert (<filemate.llm_client.client.LLMClient object at 0x000002A634EB7500> is None)
+E    +  where <filemate.llm_client.client.LLMClient object at 0x000002A634EB7500> = <filemate.core.registry.ModuleRegistry object at 0x000002A634EB5DF0>._llm
+_ test_agent_workers_inherit_request_context_without_cross_worker_mutation[parallel] _
+filemate\tests\test_llm_observability.py:205: in test_agent_workers_inherit_request_context_without_cross_worker_mutation
+    from filemate.core.agent_coordinator import AgentCoordinator, BaseAgent
+E   ImportError: cannot import name 'BaseAgent' from 'filemate.core.agent_coordinator' (C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\core\agent_coordinator.py)
+_ test_agent_workers_inherit_request_context_without_cross_worker_mutation[serial_then_parallel] _
+filemate\tests\test_llm_observability.py:205: in test_agent_workers_inherit_request_context_without_cross_worker_mutation
+    from filemate.core.agent_coordinator import AgentCoordinator, BaseAgent
+E   ImportError: cannot import name 'BaseAgent' from 'filemate.core.agent_coordinator' (C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\core\agent_coordinator.py)
+=========================== short test summary info ===========================
+FAILED filemate/tests/test_llm_observability.py::test_real_http_usage_is_preserved_and_failure_clears_previous_usage
+FAILED filemate/tests/test_llm_observability.py::test_unknown_and_invalid_usage_never_become_fabricated_zero[None-expected0]
+FAILED filemate/tests/test_llm_observability.py::test_unknown_and_invalid_usage_never_become_fabricated_zero[usage1-expected1]
+FAILED filemate/tests/test_llm_observability.py::test_unknown_and_invalid_usage_never_become_fabricated_zero[invalid-expected2]
+FAILED filemate/tests/test_llm_observability.py::test_unknown_and_invalid_usage_never_become_fabricated_zero[usage4-expected4]
+FAILED filemate/tests/test_llm_observability.py::test_unknown_and_invalid_usage_never_become_fabricated_zero[usage5-expected5]
+FAILED filemate/tests/test_llm_observability.py::test_unknown_and_invalid_usage_never_become_fabricated_zero[usage6-expected6]
+FAILED filemate/tests/test_llm_observability.py::test_invalid_content_is_rejected_even_with_valid_usage
+FAILED filemate/tests/test_llm_observability.py::test_shared_client_usage_is_isolated_between_threads
+FAILED filemate/tests/test_llm_observability.py::test_shared_client_usage_is_isolated_between_request_contexts
+FAILED filemate/tests/test_llm_observability.py::test_invalid_call_bounds_do_not_send_http[parameters0]
+FAILED filemate/tests/test_llm_observability.py::test_invalid_call_bounds_do_not_send_http[parameters1]
+FAILED filemate/tests/test_llm_observability.py::test_invalid_call_bounds_do_not_send_http[parameters2]
+FAILED filemate/tests/test_llm_observability.py::test_invalid_call_bounds_do_not_send_http[parameters3]
+FAILED filemate/tests/test_llm_observability.py::test_invalid_call_bounds_do_not_send_http[parameters4]
+FAILED filemate/tests/test_llm_observability.py::test_invalid_call_bounds_do_not_send_http[parameters5]
+FAILED filemate/tests/test_llm_observability.py::test_invalid_call_bounds_do_not_send_http[parameters6]
+FAILED filemate/tests/test_llm_observability.py::test_invalid_call_bounds_do_not_send_http[parameters7]
+FAILED filemate/tests/test_llm_observability.py::test_retries_share_a_deadline_and_do_not_sleep_after_last_attempt
+FAILED filemate/tests/test_llm_observability.py::test_retry_does_not_start_another_request_after_deadline
+FAILED filemate/tests/test_llm_observability.py::test_registry_never_caches_request_credentials
+FAILED filemate/tests/test_llm_observability.py::test_agent_workers_inherit_request_context_without_cross_worker_mutation[parallel]
+FAILED filemate/tests/test_llm_observability.py::test_agent_workers_inherit_request_context_without_cross_worker_mutation[serial_then_parallel]
+23 failed, 1 passed in 18.79s

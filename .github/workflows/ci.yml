@@ -36,6 +36,7 @@ jobs:
           uv run ruff check
           server.py main.py
           filemate/llm_client filemate/tests/test_llm_client.py
+          filemate/tests/test_llm_observability.py
           filemate/execution
           filemate/accounts.py
           filemate/tests/test_accounts.py

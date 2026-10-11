@@ -15,6 +15,7 @@ from ..exceptions import (
     LLMRateLimitError,
     LLMTimeoutError,
 )
+from ..models.response import LLMResponse, safe_request_id, validated_usage
 from .base import BaseLLMProvider
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,22 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         response_format: dict[str, Any] | None = None,
         timeout: float = 60.0,
     ) -> str:
-        """发起一次 Chat Completions 调用并返回纯文本。"""
+        """保留适配器原有的纯文本合同。"""
+        return self.chat_with_metadata(
+            messages, temperature=temperature, max_tokens=max_tokens,
+            response_format=response_format, timeout=timeout,
+        ).text
+
+    def chat_with_metadata(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        temperature: float = 0.2,
+        max_tokens: int = 1024,
+        response_format: dict[str, Any] | None = None,
+        timeout: float = 60.0,
+    ) -> LLMResponse:
+        """发起一次调用，保留回复、真实用量和有界请求标识。"""
         base_url_lower = self.config.base_url.lower()
         url = f"{self.config.base_url.rstrip('/')}/chat/completions"
         payload: dict[str, Any] = {
@@ -75,8 +91,7 @@ class OpenAICompatibleProvider(BaseLLMProvider):
             raise LLMAPIError("模型连接失败，请检查网络后重试") from exc
 
         if resp.status_code == 429:
-            retry_after = resp.headers.get("Retry-After", "5")
-            raise LLMRateLimitError(f"触发限流，{retry_after}s 后重试")
+            raise LLMRateLimitError("模型服务触发限流，请稍后重试")
 
         if resp.status_code in {401, 402, 403}:
             raise LLMAccessError(
@@ -99,4 +114,11 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         except (KeyError, IndexError, TypeError) as exc:
             raise LLMAPIError("模型服务响应格式异常，请稍后重试") from exc
 
-        return text
+        if not isinstance(text, str):
+            raise LLMAPIError("模型服务响应格式异常，请稍后重试")
+        request_id = safe_request_id(getattr(resp, 'headers', {}).get('x-request-id'))
+        request_id = request_id or safe_request_id(body.get('id'))
+        return LLMResponse(
+            text=text, model=self.config.model,
+            usage=validated_usage(body.get('usage')), request_id=request_id,
+        )
