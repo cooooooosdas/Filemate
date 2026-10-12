@@ -67,9 +67,22 @@ FOLLOWUP_AREAS = (
 )
 
 
+def apply_interview_difficulty(question: str, scenario: str, difficulty: str) -> str:
+    """让训练要求进入实际提问，不借难度选项改变未经校准的能力分。"""
+    if difficulty == "入门":
+        suffix = ("Start with one concrete example, then explain the key step."
+                  if scenario == "英语面" else "可以先给出一个具体例子，再讲清一个关键步骤。")
+    elif difficulty == "压力面":
+        suffix = ("Now challenge your own reasoning: give a counterexample and decide whether your conclusion still holds."
+                  if scenario == "英语面" else "请再提出一个可能的反例，并说明你的结论是否仍成立；证据不足时明确承认。")
+    else:
+        return question
+    return f"{question} {suffix}"
+
+
 def grounded_followup(
     answer: str, scenario: str, step: int, analysis: dict[str, Any] | None = None,
-    *, previous_session: bool = False,
+    *, previous_session: bool = False, difficulty: str = "标准",
 ) -> str:
     """只引用真实回答，模型分析有效时优先追问其中尚未展开的部分。"""
     areas = (analysis or {}).get("areas", {})
@@ -93,18 +106,21 @@ def grounded_followup(
     quote = evidence[:160 if scenario == "英语面" else 90].strip()
     if scenario == "英语面":
         origin = "In your previous practice" if previous_session else "In your last answer"
-        return f'{origin}, you said: “{quote}”. {focus[2]} Distinguish facts from assumptions.'
+        question = f'{origin}, you said: “{quote}”. {focus[2]} Distinguish facts from assumptions.'
+        return apply_interview_difficulty(question, scenario, difficulty)
     origin = "上次练习" if previous_session else "刚才的回答"
-    return f"你在{origin}中提到：“{quote}”。{focus[1]}请区分已做事实和设想。"
+    question = f"你在{origin}中提到：“{quote}”。{focus[1]}请区分已做事实和设想。"
+    return apply_interview_difficulty(question, scenario, difficulty)
 
 
-def project_questions(name: str, details: str) -> list[str]:
+def project_questions(name: str, details: str, *, difficulty: str = "标准") -> list[str]:
     """只把用户填写的项目原文作为提问依据。"""
     quote = details.strip()[:180]
-    return [
+    questions = [
         f"你填写的项目是“{name}”，描述为：“{quote}”。请说明目标、你的职责和已完成部分。",
         *SPECIALIST_QUESTIONS["项目面"][1:],
     ]
+    return [apply_interview_difficulty(question, "项目面", difficulty) for question in questions]
 
 
 class InterviewPracticeRepository:

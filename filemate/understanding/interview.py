@@ -6,7 +6,7 @@ import json
 import re
 from typing import Any
 
-from .interview_practice import SPECIALIST_QUESTIONS
+from .interview_practice import SPECIALIST_QUESTIONS, apply_interview_difficulty
 
 QUESTION_BANK = {
     "知识讲解": [
@@ -167,7 +167,8 @@ def build_interview_questions(
 ) -> tuple[list[str], list[str | None]]:
     """AI 选题 + AI 补题 + 确定性回退，返回 (题目列表, 题库题目 ID 列表)。"""
     if scenario in SPECIALIST_QUESTIONS:
-        questions = build_questions(scenario, target_role)[:limit]
+        questions = [apply_interview_difficulty(question, scenario, difficulty)
+                     for question in build_questions(scenario, target_role)[:limit]]
         return questions, [None] * len(questions)
     candidates = storage.list_interview_questions(
         scenario=scenario,

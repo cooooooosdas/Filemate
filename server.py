@@ -4054,7 +4054,7 @@ def start_interview(request: InterviewStartRequest):
         questions = [grounded_question, *[item[0] for item in remaining]]
         question_ids = [None, *[item[1] for item in remaining]]
     if request.scenario == "项目面":
-        questions = project_questions(project_name, project_details)
+        questions = project_questions(project_name, project_details, difficulty=request.difficulty)
         question_ids = [None] * len(questions)
     if remembered is not None:
         past = remembered["interview"]
@@ -4065,7 +4065,8 @@ def start_interview(request: InterviewStartRequest):
                             if isinstance(area, dict))), past_turns[-1])
         slot = 1 if source is not None or project_details else 0
         questions[slot] = grounded_followup(
-            turn["answer"], request.scenario, 1, turn.get("content_analysis"), previous_session=True,
+            turn["answer"], request.scenario, 1, turn.get("content_analysis"),
+            previous_session=True, difficulty=request.difficulty,
         )
         question_ids[slot] = None
         memory_ref = {"memory_id": request.memory_id, "interview_id": past["interview_id"],
@@ -4274,6 +4275,7 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
             and index + 1 != memory_question_index):
         next_question = grounded_followup(
             request.answer.strip(), interview["scenario"], index + 1, evaluation.get("content_analysis"),
+            difficulty=interview["difficulty"],
         )
     try:
         updated = _storage.save_interview_turn(
