@@ -35,7 +35,7 @@
         <label>生成方式<select v-model="mode" aria-label="生成方式"><option value="local">直接排版全部事实</option><option value="llm">AI 按目标岗位选材排序</option></select></label>
         <label v-if="mode === 'llm'" class="consent"><input v-model="consent" type="checkbox">同意将教育、技能、项目事实及目标岗位发送给已配置模型；姓名和联系方式字段不发送，项目描述请自行去除敏感信息。</label>
         <button class="primary" type="button" :disabled="busy || dirty || !profile.revision || (mode === 'llm' && !consent)" @click="generate">生成简历</button>
-        <div v-if="document" class="resume-preview"><p>{{ document.mode === 'llm' ? 'AI 选材' : '直接排版' }} · 事实版本 {{ document.profile_revision }}</p><pre>{{ document.markdown }}</pre><p class="notice">{{ document.fact_policy }}关联判题记录为生成时快照。</p><div class="actions"><button type="button" @click="download('markdown')">导出 Markdown</button><button type="button" @click="download('json')">导出 JSON</button></div></div>
+        <div v-if="document" class="resume-preview"><p>{{ document.mode === 'llm' ? 'AI 选材' : '直接排版' }} · 事实版本 {{ document.profile_revision }}</p><pre>{{ document.markdown }}</pre><p class="notice">{{ document.fact_policy }}关联判题记录为生成时快照。</p><div class="actions"><button type="button" :disabled="busy" @click="download('pdf')">下载 PDF</button><button type="button" :disabled="busy" @click="download('docx')">下载 Word</button><button type="button" :disabled="busy" @click="download('markdown')">Markdown</button><button type="button" :disabled="busy" @click="download('json')">JSON</button></div></div>
         <p v-else class="notice">还没有简历。保存个人事实后即可生成；模型失败时不会覆盖旧简历。</p>
         <h3>最近30份简历</h3><ul class="document-list"><li v-for="item in history" :key="item.artifact_id"><button type="button" :disabled="busy" @click="open(item.artifact_id)">{{ item.title }} · {{ item.created_at.slice(0,10) }}</button></li></ul><p v-if="!history.length">暂无保存记录。</p>
       </section>
@@ -61,7 +61,7 @@ async function perform(action: () => Promise<void>) { busy.value = true; actionE
 const save = () => perform(async () => { profile.value = await saveResumeProfile(edited.value); skillsText.value = profile.value.skills.join('\n'); baseline.value = JSON.stringify(edited.value); savedMessage.value = '个人事实已保存' })
 const generate = () => perform(async () => { document.value = await generateResume(profile.value.revision, mode.value, consent.value); history.value = await getResumes(); savedMessage.value = '简历已保存' })
 const open = (id: string) => perform(async () => { document.value = await getResume(id) })
-const download = (format: 'markdown' | 'json') => perform(async () => { if (!document.value) return; const blob = await exportResume(document.value.artifact_id, format); const url = URL.createObjectURL(blob as unknown as Blob); const link = window.document.createElement('a'); link.href = url; link.download = `resume.${format === 'markdown' ? 'md' : 'json'}`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000) })
+const download = (format: 'markdown' | 'json' | 'pdf' | 'docx') => perform(async () => { if (!document.value) return; const blob = await exportResume(document.value.artifact_id, format); const url = URL.createObjectURL(blob as unknown as Blob); const link = window.document.createElement('a'); link.href = url; link.download = `resume.${format === 'markdown' ? 'md' : format}`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000) })
 onMounted(load)
 </script>
 <style src="../styles/portfolio.css"></style>

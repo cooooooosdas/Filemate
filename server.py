@@ -3373,8 +3373,17 @@ def growth_report_evidence(identifier: str, offset: int = Query(0, ge=0, le=1000
 
 
 @app.get('/api/growth/reports/{identifier}/export')
-def export_growth_report(identifier: str, format: Literal['json', 'markdown'] = 'markdown'):
+def export_growth_report(identifier: str, format: Literal['json', 'markdown', 'pdf'] = 'markdown'):
     result = _get_growth_report(identifier)
+    if format == 'pdf':
+        from filemate.portfolio.document_export import document_pdf
+        try:
+            content = document_pdf(result['markdown'], title='FileMate 成长报告')
+        except ValueError as exc:
+            raise HTTPException(413, str(exc)) from exc
+        except (OSError, ImportError) as exc:
+            raise HTTPException(503, 'PDF导出暂不可用，已保存报告保留，可先导出Markdown或JSON') from exc
+        return Response(content, media_type='application/pdf', headers={'Content-Disposition': 'attachment; filename="growth-report.pdf"', 'Cache-Control': 'no-store'})
     content = result['markdown'] if format == 'markdown' else json.dumps(result, ensure_ascii=False, indent=2)
     return Response(content, media_type='text/markdown' if format == 'markdown' else 'application/json', headers={'Content-Disposition': 'attachment; filename="growth-report.' + ('md' if format == 'markdown' else 'json') + '"', 'Cache-Control': 'no-store'})
 
@@ -3479,8 +3488,19 @@ def get_resume(identifier: str):
 
 
 @app.get("/api/resume/{identifier}/export")
-def export_resume(identifier: str, format: Literal["markdown", "json"] = "markdown"):
+def export_resume(identifier: str, format: Literal["markdown", "json", "pdf", "docx"] = "markdown"):
     result = get_resume(identifier).data
+    if format in {'pdf', 'docx'}:
+        from filemate.portfolio.document_export import document_docx, document_pdf
+        try:
+            content = (document_pdf(result['markdown'], title='FileMate 简历') if format == 'pdf'
+                       else document_docx(result['markdown'], title='FileMate 简历'))
+        except ValueError as exc:
+            raise HTTPException(413, str(exc)) from exc
+        except (OSError, ImportError) as exc:
+            raise HTTPException(503, '文档导出暂不可用，已保存简历保留，可先导出Markdown或JSON') from exc
+        media = 'application/pdf' if format == 'pdf' else 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        return Response(content, media_type=media, headers={'Content-Disposition': f'attachment; filename="resume.{format}"', 'Cache-Control': 'no-store'})
     content = result["markdown"] if format == "markdown" else json.dumps(result, ensure_ascii=False, indent=2)
     return Response(content, media_type="text/markdown" if format == "markdown" else "application/json",
                     headers={"Content-Disposition": 'attachment; filename="resume.' + ("md" if format == "markdown" else "json") + '"', "Cache-Control": "no-store"})

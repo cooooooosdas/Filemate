@@ -27,8 +27,8 @@
         <p class="notice">{{ voiceBoundary }}</p>
         <div class="progress-track" role="progressbar" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100" aria-label="讲解进度"><span :style="{ width: `${progress}%` }" /></div>
         <div class="settings-grid">
-          <label>语速 <strong>{{ rate.toFixed(1) }}×</strong><input v-model.number="rate" type="range" min="0.7" max="1.5" step="0.1" @change="restartIfActive" /></label>
-          <label>音量 <strong>{{ Math.round(volume * 100) }}%</strong><input v-model.number="volume" type="range" min="0" max="1" step="0.1" @change="restartIfActive" /></label>
+          <label>语速 <strong>{{ rate.toFixed(1) }}×</strong><input v-model.number="rate" type="range" min="0.7" max="1.5" step="0.1" @input="updatePlayback" /></label>
+          <label>音量 <strong>{{ Math.round(volume * 100) }}%</strong><input v-model.number="volume" type="range" min="0" max="1" step="0.1" @input="updatePlayback" /></label>
           <label class="select-setting">声音<select v-model="voiceId" aria-label="声音" @change="restartIfActive"><option v-for="voice in voices" :key="voice.voiceURI" :value="voice.voiceURI">{{ voice.name }}</option></select></label>
           <label class="select-setting">形象<select v-model="avatarId" aria-label="形象"><option v-for="avatar in AVATARS" :key="avatar.avatarId" :value="avatar.avatarId">{{ avatar.avatarName }}</option></select></label>
         </div>
@@ -37,18 +37,19 @@
 
       <section ref="stage" class="mentor-stage" aria-label="数字人舞台">
         <div class="stage-top"><div><span class="section-index">03 / 数字人</span><h2>你的学习搭子</h2></div><span class="provider-chip"><span />Microsoft 自然语音</span></div>
-        <div class="stage-copy"><p>每次讲解，都按你的节奏来。</p><small>拖动右下角卡片，或把它收起，学习内容始终可见。人物使用连续讲解动画，口型为节奏示意。</small></div>
+        <div class="stage-copy"><p>听讲解，也看清重点。</p><small>口型跟随声音节奏，停顿时收起。你也可以关闭动画，专心听讲。</small></div>
         <div class="stage-watermark" aria-hidden="true">FM</div>
         <button v-if="collapsed" class="collapsed-mentor" @click="collapsed = false"><el-icon><Microphone /></el-icon>展开导师</button>
         <div v-else ref="mentorPanel" class="mentor-panel" :style="{ width: `${panelWidth}px`, transform: `translate(${offset.x}px, ${offset.y}px)` }">
           <div class="mentor-handle" @pointerdown="startDrag"><span class="drag-mark" aria-hidden="true">···</span><strong>{{ currentAvatar.avatarName }}</strong><span class="mentor-actions"><button type="button" title="缩小" aria-label="缩小数字人" @pointerdown.stop @click="panelWidth = Math.max(250, panelWidth - 40)"><el-icon><Minus /></el-icon></button><button type="button" title="放大" aria-label="放大数字人" @pointerdown.stop @click="panelWidth = Math.min(390, panelWidth + 40)"><el-icon><Plus /></el-icon></button><button type="button" title="收起" aria-label="收起数字人" @pointerdown.stop @click="collapsed = true"><el-icon><ArrowDown /></el-icon></button></span></div>
-          <div class="mentor-art" :class="[currentAvatar.style, { talking: state === 'playing', muted: state !== 'playing' }]" :style="{ '--speech-cycle': `${0.56 / rate}s`, '--body-cycle': `${3.5 / rate}s` }">
-            <div v-if="currentAvatar.style === 'portrait'" class="portrait-image" :style="{ backgroundImage: `url(${currentAvatar.image})` }" role="img" aria-label="FileMate 近景导师"><svg class="animated-mouth" viewBox="0 0 40 30" aria-hidden="true"><ellipse class="lip-mask" cx="20" cy="15" rx="19" ry="14" /><g class="lip-motion"><path d="M7 12 Q20 22 33 12 Q32 27 20 27 Q8 27 7 12Z" fill="#743f47" stroke="#a66368" stroke-width="1.5" /><path d="M9 14 Q20 20 31 14 L29 18 Q20 21 11 18Z" fill="#fff4e9" /></g></svg></div>
-            <div v-else class="campus-image"><img :src="currentAvatar.image" alt="FileMate 校园导师" /><svg class="animated-mouth" viewBox="0 0 40 30" aria-hidden="true"><ellipse class="lip-mask" cx="20" cy="15" rx="19" ry="14" /><g class="lip-motion"><path d="M7 12 Q20 22 33 12 Q32 27 20 27 Q8 27 7 12Z" fill="#743f47" stroke="#a66368" stroke-width="1.5" /><path d="M9 14 Q20 20 31 14 L29 18 Q20 21 11 18Z" fill="#fff4e9" /></g></svg></div>
-            <div v-if="state === 'playing'" class="voice-bars" aria-hidden="true"><i /><i /><i /><i /><i /></div>
+          <div ref="motionLayer" class="mentor-art" :class="currentAvatar.style" aria-label="导师动画区域">
+            <template v-if="animationEnabled && motionAvailable">
+              <div v-if="currentAvatar.style === 'portrait'" class="portrait-image" :style="{ backgroundImage: `url(${currentAvatar.image})` }" role="img" aria-label="FileMate 近景导师"><svg class="animated-mouth" viewBox="0 0 40 30" aria-hidden="true"><ellipse class="lip-mask" cx="20" cy="15" rx="19" ry="14" /><g class="lip-motion"><path d="M7 12 Q20 22 33 12 Q32 27 20 27 Q8 27 7 12Z" fill="#743f47" stroke="#a66368" stroke-width="1.5" /><path d="M9 14 Q20 20 31 14 L29 18 Q20 21 11 18Z" fill="#fff4e9" /></g></svg></div>
+              <div v-else class="campus-image"><img :src="currentAvatar.image" alt="FileMate 校园导师" /><svg class="animated-mouth" viewBox="0 0 40 30" aria-hidden="true"><ellipse class="lip-mask" cx="20" cy="15" rx="19" ry="14" /><g class="lip-motion"><path d="M7 12 Q20 22 33 12 Q32 27 20 27 Q8 27 7 12Z" fill="#743f47" stroke="#a66368" stroke-width="1.5" /><path d="M9 14 Q20 20 31 14 L29 18 Q20 21 11 18Z" fill="#fff4e9" /></g></svg></div>
+            </template>
           </div>
           <div class="mentor-caption"><span>{{ stateLabel }}</span><p v-if="subtitles && text">{{ visibleSubtitle }}</p><p v-else-if="!subtitles">字幕已关闭</p><p v-else>输入讲解内容，导师就会为你读出来。</p></div>
-          <div class="mentor-footer"><label><input v-model="subtitles" type="checkbox" />显示字幕</label><button type="button" @click="toggleFullscreen"><el-icon><FullScreen /></el-icon>{{ fullscreen ? '退出全屏' : '全屏' }}</button></div>
+          <div class="mentor-footer"><label><input v-model="animationEnabled" type="checkbox" />导师动画</label><label><input v-model="subtitles" type="checkbox" />字幕</label><button type="button" @click="toggleFullscreen"><el-icon><FullScreen /></el-icon>{{ fullscreen ? '退出全屏' : '全屏' }}</button></div>
         </div>
       </section>
     </div>
@@ -93,6 +94,11 @@ const panelWidth = ref(290)
 const offset = ref({ x: 0, y: 0 })
 const stage = ref<HTMLElement | null>(null)
 const mentorPanel = ref<HTMLElement | null>(null)
+const motionLayer = ref<HTMLElement | null>(null)
+const animationEnabled = ref(!window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+const motionAvailable = ref(false)
+let mouthLevel = 0
+let previousMotionTime = 0
 const fullscreen = ref(false)
 const sourceLabel = ref('')
 const sourceReference = ref<{ contextId: string; messageIndex: number; content: string } | null>(null)
@@ -113,6 +119,27 @@ let historyOperation = 0
 let disposed = false
 let endDrag: (() => void) | undefined
 let stageObserver: ResizeObserver | undefined
+
+function animateMouth(level: number, activeFrame: boolean): void {
+  const layer = motionLayer.value
+  if (!layer || !animationEnabled.value || collapsed.value) return
+  if (!activeFrame) {
+    mouthLevel = 0
+    layer.style.setProperty('--mouth-open', '0.14')
+    layer.style.setProperty('--mouth-wide', '0.86')
+    return
+  }
+  const now = performance.now()
+  const delta = Math.min(100, Math.max(1, now - previousMotionTime || 16))
+  previousMotionTime = now
+  const target = state.value === 'playing' ? level : 0
+  const smoothing = target > mouthLevel ? 42 : 95
+  mouthLevel += (target - mouthLevel) * (1 - Math.exp(-delta / smoothing))
+  // 逐帧只写两个合成属性，避免整页响应式重渲染引起人物顿挫。
+  layer.style.setProperty('--mouth-open', (0.14 + mouthLevel * 0.82).toFixed(3))
+  layer.style.setProperty('--mouth-wide', (0.86 + mouthLevel * 0.13).toFixed(3))
+}
+function updatePlayback(): void { provider.updatePlayback(rate.value, volume.value) }
 
 function markManual(): void {
   voiceConsent.value = false
@@ -153,6 +180,9 @@ async function finish(status: FinishStatus, code = ''): Promise<void> {
 function stop(): Promise<void> {
   operation++
   provider.stop()
+  motionAvailable.value = false
+  mouthLevel = 0
+  previousMotionTime = 0
   spokenText.value = ''
   if (active.value) { state.value = 'stopped'; return finish('stopped') }
   return Promise.resolve()
@@ -186,6 +216,8 @@ async function play(): Promise<void> {
     onBoundary: index => { if (current !== operation) return; characterIndex.value = index; progress.value = Math.round(index / script.length * 100) },
     onEnd: () => { if (current !== operation) return; state.value = 'completed'; progress.value = 100; void finish('completed') },
     onError: reason => { if (current !== operation) return; state.value = 'failed'; error.value = reason; void finish('failed', 'speech_error') },
+    onMotionReady: available => { if (current === operation && !disposed) motionAvailable.value = available },
+    onMotionFrame: (level, _time, activeFrame) => { if (current === operation && !disposed) animateMouth(level, activeFrame) },
   })
 }
 function pause(): void { if (state.value !== 'playing') return; provider.pause(); if (state.value === 'playing') state.value = 'paused' }
@@ -269,6 +301,11 @@ onUnmounted(() => {
   document.removeEventListener('fullscreenchange', syncFullscreen)
 })
 watch([avatarId, panelWidth], () => { endDrag?.(); offset.value = { x: 0, y: 0 } })
+watch([animationEnabled, collapsed], ([enabled, hidden]) => {
+  provider.setMotionEnabled(enabled && !hidden)
+  mouthLevel = 0
+  previousMotionTime = 0
+}, { immediate: true })
 watch(() => [route.query.ctx, route.query.message], () => { void loadSelectedAnswer() }, { immediate: true })
 </script>
 
@@ -278,9 +315,7 @@ watch(() => [route.query.ctx, route.query.message], () => { void loadSelectedAns
 
 .portrait-image{position:relative;transform-origin:50% 80%}.campus-image{transform-origin:50% 85%}
 .animated-mouth{position:absolute;pointer-events:none;overflow:visible}.portrait-image .animated-mouth{left:49%;top:49%;width:11%;height:7%}.campus-image .animated-mouth{left:58.5%;top:16.1%;width:15%;height:7%}
-.lip-mask{fill:#f0c5af}.lip-motion{transform-box:fill-box;transform-origin:center top;transform:scale(.82,.16);transition:transform .16s ease}
-.talking .lip-motion{animation:speech-lips var(--speech-cycle) ease-in-out infinite}.talking .portrait-image,.talking .campus-image{animation:speech-posture var(--body-cycle) ease-in-out infinite}
-@keyframes speech-lips{0%,100%{transform:scale(.86,.18)}18%{transform:scale(.92,.58)}38%{transform:scale(.73,.9)}55%{transform:scale(.86,.24)}73%{transform:scale(1,.68)}87%{transform:scale(.8,.38)}}
-@keyframes speech-posture{0%,100%{transform:translateY(0) rotate(0deg)}32%{transform:translateY(-1.8px) rotate(.45deg)}68%{transform:translateY(-.7px) rotate(-.3deg)}}
-@media(prefers-reduced-motion:reduce){.talking .lip-motion,.talking .portrait-image,.talking .campus-image{animation:none}}
+.lip-mask{fill:#f0c5af}.lip-motion{transform-box:fill-box;transform-origin:center top;transform:scale(var(--mouth-wide,.86),var(--mouth-open,.14));will-change:transform}
+.mentor-art{--mouth-wide:.86;--mouth-open:.14;contain:paint}
+.mentor-footer{flex-wrap:wrap}
 </style>

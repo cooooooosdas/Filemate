@@ -259,7 +259,17 @@ class BudgetStore:
         with self._init_lock:
             self.path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             with closing(sqlite3.connect(self.path, timeout=5)) as connection, connection:
-                connection.execute('PRAGMA journal_mode=WAL')
+                deadline = time.monotonic() + 5
+                while True:
+                    try:
+                        if connection.execute('PRAGMA journal_mode').fetchone()[0].lower() != 'wal':
+                            connection.execute('PRAGMA journal_mode=WAL')
+                        break
+                    except sqlite3.OperationalError as exc:
+                        if getattr(exc, 'sqlite_errorcode', None) not in {sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED} or time.monotonic() >= deadline:
+                            raise
+                        # 新账本并发创建时只对journal-mode争用作有界重试，不重发业务或模型调用。
+                        time.sleep(0.025)
                 connection.execute('BEGIN IMMEDIATE')
                 tables = {row[0] for row in connection.execute(
                     "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}
