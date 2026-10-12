@@ -2350,8 +2350,10 @@ class SQLiteStorage:
             if expression_review is not None and not completed:
                 raise ValueError("只能在最后一题保存表达回看")
             questions = list(interview["questions"])
+            question_ids = list(interview["question_ids"])
             if next_question is not None:
                 questions[next_index] = next_question
+                question_ids[next_index] = None
             scores = [
                 float(turn["score"])
                 for turn in interview["turns"]
@@ -2377,13 +2379,14 @@ class SQLiteStorage:
             )
             connection.execute(
                 """UPDATE interview_sessions SET current_index=?, status=?,
-                   overall_score=?, questions=?, expression_review=?,
+                   overall_score=?, questions=?, question_ids=?, expression_review=?,
                    updated_at=? WHERE interview_id=?""",
                 (
                     next_index,
                     "completed" if completed else "active",
                     round(sum(scores) / len(scores), 2) if scores else 0,
                     self._dump_json(questions),
+                    self._dump_json(question_ids),
                     self._dump_json(expression_review or interview["expression_review"]),
                     _now_iso(),
                     interview_id,
@@ -2977,6 +2980,7 @@ class SQLiteStorage:
         summary: str,
         allowed_agents: list[str],
         expires_at: str | None = None,
+        commit: bool = True,
     ) -> dict[str, Any]:
         """保存带来源和使用范围的摘要记忆。"""
         if memory_type not in {"session", "knowledge", "growth", "operation"}:
@@ -3003,7 +3007,8 @@ class SQLiteStorage:
                     expires_at,
                 ),
             )
-            self._conn().commit()
+            if commit:
+                self._conn().commit()
         row = self._conn().execute(
             "SELECT * FROM agent_memories WHERE memory_id=?",
             (memory_id,),

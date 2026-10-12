@@ -981,6 +981,8 @@ export async function testLLMConnection(): Promise<{ verified: boolean; latency_
 export interface InterviewFluencyMetrics {
   duration_seconds: number
   chars_per_minute?: number
+  words_per_minute?: number
+  language?: 'en-US'
   filler_count: number
   long_pause_count: number
   reference_score?: number
@@ -1021,6 +1023,14 @@ export interface InterviewSession {
   assessed_turn_count: number
   turns: InterviewTurn[]
   latest_evaluation?: InterviewEvaluation
+  practice_context?: {
+    mode: 'standard' | 'continuous'
+    project: { name: string; details: string; source: 'user_input' } | null
+    remember_for_future: boolean
+    memory_id: string | null
+    memory_ref: { memory_id: string; interview_id: string; turn_id: string; question_index: number; target_question_index: number } | null
+    memory_available: boolean
+  }
   source_context?: {
     source_id: string | null
     source_name: string | null
@@ -1038,7 +1048,8 @@ export async function startInterview(
   sourceId?: string,
   focusWrongId?: string,
   goalId?: string,
-  allowExternalAnalysis?: boolean
+  allowExternalAnalysis?: boolean,
+  practice?: { projectName: string; projectDetails: string; rememberForFuture: boolean; memoryId: string | null }
 ): Promise<InterviewSession> {
   const response = await api.post<any, ApiResponse<InterviewSession>>('/interviews', {
     target_role: targetRole,
@@ -1047,10 +1058,45 @@ export async function startInterview(
     source_id: sourceId || null,
     focus_wrong_id: focusWrongId || null,
     goal_id: goalId || null,
-    allow_external_analysis: allowExternalAnalysis
+    allow_external_analysis: allowExternalAnalysis,
+    project_name: practice?.projectName || '',
+    project_details: practice?.projectDetails || '',
+    remember_for_future: practice?.rememberForFuture || false,
+    memory_id: practice?.memoryId || null
   })
   if (response.success && response.data) return response.data
   throw new Error(response.error || '创建模拟面试失败')
+}
+
+export interface InterviewPracticeMemory {
+  memory_id: string
+  interview_id: string
+  target_role: string
+  scenario: string
+  answer_count: number
+  created_at: string
+}
+
+export async function getInterviewPracticeMemories(): Promise<InterviewPracticeMemory[]> {
+  const result = await api.get<any, ApiResponse<InterviewPracticeMemory[]>>('/interview/practice/memories', { timeout: 15000 })
+  if (result.success && result.data) return result.data
+  throw new Error(result.error || '练习记忆读取失败')
+}
+
+export async function previewInterviewMemoryForget(memoryId: string): Promise<{ confirmation_token: string; scope: string; target_role: string }> {
+  const result = await api.get<any, ApiResponse<{ confirmation_token: string; scope: string; target_role: string }>>(
+    `/interview/practice/memories/${encodeURIComponent(memoryId)}/forget-preview`, { timeout: 10000 }
+  )
+  if (result.success && result.data) return result.data
+  throw new Error(result.error || '遗忘影响读取失败')
+}
+
+export async function forgetInterviewMemory(memoryId: string, confirmationToken: string): Promise<void> {
+  const result = await api.delete<any, ApiResponse<{ forgotten: boolean }>>(
+    `/interview/practice/memories/${encodeURIComponent(memoryId)}`,
+    { data: { confirmed: true, confirmation_token: confirmationToken }, timeout: 15000 }
+  )
+  if (!result.success) throw new Error(result.error || '遗忘练习记忆失败')
 }
 
 export async function getInterview(interviewId: string): Promise<InterviewSession> {

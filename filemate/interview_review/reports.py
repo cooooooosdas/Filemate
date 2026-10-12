@@ -29,6 +29,7 @@ def build_report(interview: dict[str, Any]) -> dict[str, Any]:
     """合并内容、节奏和视觉观察，不生成无样本的能力判断。"""
     turns, timeline, concerns = [], [], []
     durations, paces, fillers, pauses = [], [], 0, 0
+    english_durations, english_paces = [], []
     visual_samples, face_samples, dim_samples = 0, 0, 0
     for turn in interview["turns"]:
         fluency = turn.get("fluency_metrics") or {}
@@ -38,6 +39,9 @@ def build_report(interview: dict[str, Any]) -> dict[str, Any]:
         if metrics.get("duration_seconds", 0) >= 2:
             durations.append(metrics["duration_seconds"])
             paces.append(metrics.get("chars_per_minute", 0))
+            if metrics.get("language") == "en-US" and "words_per_minute" in metrics:
+                english_durations.append(metrics["duration_seconds"])
+                english_paces.append(metrics["words_per_minute"])
             fillers += metrics.get("filler_count", 0)
             pauses += metrics.get("long_pause_count", 0)
         visual_valid = visual.get("source") == "mediapipe_local_v1"
@@ -90,6 +94,9 @@ def build_report(interview: dict[str, Any]) -> dict[str, Any]:
             "chars_per_minute": round(sum(
                 duration * pace for duration, pace in zip(durations, paces, strict=True)
             ) / sum(durations), 2) if durations else None,
+            "words_per_minute": round(sum(
+                duration * pace for duration, pace in zip(english_durations, english_paces, strict=True)
+            ) / sum(english_durations), 2) if english_durations else None,
             "filler_count": fillers if durations else None,
             "long_pause_count": pauses if durations else None,
             "method": "浏览器识别回调间隔和文本口头语计数；不是音频静音检测或医学卡顿诊断。",
@@ -116,12 +123,17 @@ def build_report(interview: dict[str, Any]) -> dict[str, Any]:
 
 def report_markdown(report: dict[str, Any]) -> str:
     """导出保留原句、数据来源和缺失说明的Markdown。"""
+    expression = report["expression"]
+    pace = (f"{expression['words_per_minute']} 词/分钟"
+            if expression.get("words_per_minute") is not None
+            else f"{expression['chars_per_minute']} 字/分钟"
+            if expression["chars_per_minute"] is not None else "待评测")
     lines = ["# FileMate 面试复盘报告", "", f"方向：{report['target_role']}",
              f"场景：{report['scenario']}", f"已回答：{report['answered']} / {report['total']}",
              f"内容已评估：{report['assessed']}题", f"校准状态：{report['calibration']}",
              "", report["purpose"], "", "## 表达与停顿", "",
              f"有语音证据：{report['expression']['speech_turns']}题",
-             f"语速：{report['expression']['chars_per_minute'] if report['expression']['chars_per_minute'] is not None else '待评测'} 字/分钟",
+             f"语速：{pace}",
              f"口头语：{report['expression']['filler_count'] if report['expression']['filler_count'] is not None else '待评测'}",
              f"较长回调间隔：{report['expression']['long_pause_count'] if report['expression']['long_pause_count'] is not None else '待评测'}",
              report["expression"]["method"], "", "## 面部可观察行为", "",

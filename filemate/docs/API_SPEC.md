@@ -671,6 +671,18 @@ Linux适配层使用独立受限Unix socket代理，Web进程不持有Docker权�
 
 `POST /interviews/{id}/answers` 增加可选 `question_index`（0–100）、`request_key`（16–80 位字母/数字/下划线/短横线）与 `visual_metrics`。同场同键且正文、题号和指标一致，重复提交返回现有记录；同键不同请求或过期题号返回 409，不推进第二题。旧客户端可省略这些字段。空回答仍为 422。
 
+2026-10-13开发候选：`POST /interviews`的`scenario`兼容原四场景，并增加`技术面|项目面|算法面|HR面|压力面|英语面`。可选`project_name`（≤120）、`project_details`（≤6000）、`remember_for_future`（默认false）、`memory_id`（≤64）。项目面缺项目或只填一项返回422；无有效回答、资料已删除或撤销的所选记忆返回409。新专项或记忆训练不传`allow_external_analysis`时按false处理，旧四场景未传字段的行为兼容保留。专项五题为规则脚本；下一问题按本次真实回答与已校验分析组织，不新增模型请求。原题库CRUD的场景限制未在本轮扩展。
+
+创建、恢复、回答响应增加`practice_context:{mode,project,remember_for_future,memory_id,memory_ref,memory_available}`；project为用户填写的`{name,details,source:'user_input'}`或null。memory_ref含历史memory/interview/turn/question引用及本轮`target_question_index`。remember_for_future反映当前有效许可，不把已撤销的初始勾选当成许可。英语`fluency_metrics`增加`language:'en-US'`、`words_per_minute`；英语不产生未校准的节奏分，报告expression的words_per_minute可缺省/null以兼容旧报告。
+
+| 方法 | 路径 | 面试记忆合同 |
+|---|---|---|
+| GET | `/interview/practice/memories?limit=30` | 1–100；按近期会话列本空间已授权且已回答记录的memory_id/interview_id/target_role/scenario/answer_count/created_at，不返回回答正文 |
+| GET | `/interview/practice/memories/{id}/forget-preview` | 返回作用范围与绑定该许可的confirmation_token；不存在404 |
+| DELETE | `/interview/practice/memories/{id}` | `{confirmed:true,confirmation_token}`；未确认422、令牌不匹配409、不存在404；成功`{forgotten:true}`，重复同令牌幂等；只停止未来复用，原会话/报告与已生成问题保留 |
+
+编程`GET /api/programming/problems`增加`knowledge_nodes:[{id,label,kind:'catalog_concept'}]`、`source`、`source_url`。目录概念不等于个人已确认图谱节点。`GET /api/programming/overview`增加`recommendations:[{problem_id,title,difficulty,stage,reason,basis_submission_ids,knowledge_nodes,method:'local_evidence_rules_v1'}]`，默认三条；统计全部有效完成提交，规则选择且不调用LLM/创建任务。依据ID可用原提交读取接口核对。题目版本与Judge请求格式不变。
+
 视觉摘要合同如下，额外字段、非有限数、计数不一致或超出时段的事件返回 422：
 
 ```json

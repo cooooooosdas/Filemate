@@ -12,6 +12,9 @@ def _problem(identifier: str, title: str, difficulty: str, tags: list[str], stat
     return {
         "id": identifier, "version": 1, "title": title, "difficulty": difficulty,
         "tags": tags, "statement": statement, "examples": examples,
+        "knowledge_nodes": [{"id": f"programming:{tag}", "label": tag, "kind": "catalog_concept"} for tag in tags],
+        "source": "FileMate原创题库",
+        "source_url": "https://github.com/cooooooosdas/Filemate/blob/main/filemate/programming/problems.py",
         "tests": [{"name": name, "input": data, "expected": expected}
                   for name, data, expected in tests],
         "hint": hint, "starter": STARTER, "language": "cpp17",

@@ -19,7 +19,7 @@
       <p>{{ report.purpose }}</p>
       <div class="report-facts"><span>已回答 <b>{{ report.answered }} / {{ report.total }}</b></span><span>内容评估 <b>{{ report.assessed }} 题</b></span><span>语音证据 <b>{{ report.expression.speech_turns }} 题</b></span><span>视觉采样 <b>{{ report.visual.sample_count }}</b></span></div>
       <h3>表达与停顿</h3>
-      <p>语速：{{ report.expression.chars_per_minute == null ? '待评测' : `${report.expression.chars_per_minute} 字/分钟` }}；口头语：{{ report.expression.filler_count ?? '待评测' }}；较长识别间隔：{{ report.expression.long_pause_count ?? '待评测' }}。</p>
+      <p>语速：{{ report.expression.words_per_minute != null ? `${report.expression.words_per_minute} 词/分钟` : report.expression.chars_per_minute == null ? '待评测' : `${report.expression.chars_per_minute} 字/分钟` }}；口头语：{{ report.expression.filler_count ?? '待评测' }}；较长识别间隔：{{ report.expression.long_pause_count ?? '待评测' }}。</p>
       <small>{{ report.expression.method }}</small>
       <h3>面部可观察行为</h3>
       <p>人脸采样检出比例：{{ ratio(report.visual.face_observed_ratio) }}；低亮度采样比例：{{ ratio(report.visual.low_light_ratio) }}。</p>
@@ -63,7 +63,7 @@ let disposed = false
 const formats = [{ value: 'pdf' as const, label: 'PDF' }, { value: 'json' as const, label: 'JSON' }, { value: 'markdown' as const, label: 'Markdown' }]
 const areaLabels: Record<string, string> = { completeness: '回答完整度', logic: '逻辑结构', technical_coverage: '专业知识覆盖', technical_expression: '技术表达', relevance: '问题相关性', star: 'STAR结构' }
 const statusLabels = { covered: '有覆盖证据', partial: '部分覆盖', missing: '建议补充', not_applicable: '不适用' }
-const actionLabels: Record<string, string> = { created: '创建练习', answer: '提交回答', report_generated: '生成报告', report_exported: '导出报告', content_analyzed: '内容分析', analysis_cancelled: '取消分析', analysis_cleared: '清空分析' }
+const actionLabels: Record<string, string> = { created: '创建练习', answer: '提交回答', report_generated: '生成报告', report_exported: '导出报告', content_analyzed: '内容分析', analysis_cancelled: '取消分析', analysis_cleared: '清空分析', practice_memory_forgotten: '停止后续复用本场回答' }
 const ratio = (value: number | null) => value == null ? '待评测' : `${(value * 100).toFixed(1)}%`
 const time = (second: number) => `${Math.floor(second / 60).toString().padStart(2, '0')}:${Math.floor(second % 60).toString().padStart(2, '0')}`
 const message = (e: unknown) => e instanceof Error ? e.message : '操作未完成，请重试'

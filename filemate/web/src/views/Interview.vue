@@ -31,19 +31,53 @@
       </div>
       <div class="form-grid">
         <label>训练主题或目标方向<input v-model="form.targetRole" name="target_role" autocomplete="off" placeholder="例如：数据库索引 / Java 后端开发" /></label>
-        <label>训练场景<select v-model="form.scenario" name="interview_scenario"><option>知识讲解</option><option>求职面试</option><option>竞赛答辩</option><option>保研复试</option></select></label>
         <label>难度<select v-model="form.difficulty" name="interview_difficulty"><option>入门</option><option>标准</option><option>压力面</option></select></label>
         <label class="source-field">训练依据（可选）<select v-model="form.sourceId" name="interview_source" @change="focusWrongId = ''; originGoalId = ''"><option value="">不使用资料，按题库训练</option><option v-for="source in knowledgeSources" :key="source.source_id" :value="source.source_id">{{ source.original_name }}</option></select><small>主动选择后才会使用；授权未确认时只用资料名按规则组织问题。</small></label>
       </div>
+      <fieldset class="mode-picker">
+        <legend>训练场景</legend>
+        <button v-for="mode in interviewModes" :key="mode" type="button" :aria-pressed="form.scenario === mode" :disabled="loading" @click="form.scenario = mode">{{ mode === 'HR面' ? 'HR 面' : mode }}</button>
+      </fieldset>
+      <p v-if="form.scenario === '压力面'" class="focus-note">通过质疑依据、反例和取舍练习临场回应；不会使用羞辱性提问。</p>
+      <p v-if="form.scenario === '英语面'" class="focus-note">问题播报与语音识别切换到英语；也可以直接输入英文回答。</p>
+      <fieldset v-if="form.scenario === '项目面'" class="project-input">
+        <legend>你实际参与的项目</legend>
+        <label>项目名称<input v-model="projectName" maxlength="120" placeholder="例如：课程项目或比赛作品" :disabled="loading" /></label>
+        <label>你负责并完成的内容<textarea v-model="projectDetails" maxlength="6000" rows="4" :disabled="loading" placeholder="说明目标、你的职责、设计选择和实际结果。未做或未验证的部分请明确写出。" /></label>
+        <p>这段事实会随本场练习保存，只用于提问；不会自动修改简历或能力画像。</p>
+      </fieldset>
+      <label class="practice-consent"><input v-model="rememberForFuture" type="checkbox" :disabled="loading" />允许本场回答用于以后面试的连续追问（可随时遗忘）</label>
+      <details class="practice-memory">
+        <summary>选择一场已授权练习继续追问{{ selectedMemoryId ? ' · 已选择' : '' }}</summary>
+        <p>仅列出你主动允许复用的练习。外发分析仍需另行授权；遗忘保留原回答与报告。</p>
+        <button type="button" class="ghost" :disabled="memoryBusy || loading" @click="loadMemories">{{ memoryBusy ? '正在读取…' : '刷新可用练习' }}</button>
+        <DataState v-if="memoryError" :error="memoryError" @retry="loadMemories" />
+        <p v-else-if="!memoryBusy && !practiceMemories.length">还没有允许复用的已答练习，可以先完成本场训练。</p>
+        <div v-for="item in practiceMemories" :key="item.memory_id" class="memory-row">
+          <button type="button" :aria-pressed="selectedMemoryId === item.memory_id" :disabled="memoryBusy || loading" @click="selectedMemoryId = selectedMemoryId === item.memory_id ? null : item.memory_id">
+            <strong>{{ item.target_role }}</strong><span>{{ item.scenario }} · 已答 {{ item.answer_count }} 题{{ selectedMemoryId === item.memory_id ? ' · 将继续追问' : '' }}</span>
+          </button>
+          <button type="button" class="ghost" :disabled="memoryBusy || loading" @click="forgetPractice(item.memory_id)">遗忘</button>
+        </div>
+        <button v-if="selectedMemoryId" type="button" class="ghost" :disabled="loading" @click="selectedMemoryId = null">本场不复用历史</button>
+      </details>
       <p v-if="focusWrongId && form.sourceId" class="focus-note">本轮首题会依据该资料中的一条待纠错练习组织；参考答案不会放进题目。</p>
       <p v-if="form.scenario === '知识讲解'" class="focus-note">讲解会保存为练习记录；当前内容准确性待评估，语音节奏仅作参考。</p>
       <p v-if="reviewEnabled" class="focus-note">本轮先按规则选题，回答保存到学习空间。提交后可在复盘区主动授权内容分析；录像和视觉观察不会发给模型。</p>
       <label v-else class="legacy-consent"><input v-model="legacyExternalConsent" type="checkbox" />授权已配置模型对问题和回答提供四维参考评分；不发送本地录像。</label>
-      <button class="primary" :disabled="loading || !form.targetRole.trim()" @click="begin">{{ loading ? '正在创建…' : '开始模拟面试' }}</button>
+      <button class="primary" :disabled="loading || memoryBusy || !form.targetRole.trim() || (form.scenario === '项目面' && (!projectName.trim() || !projectDetails.trim()))" @click="begin">{{ loading ? '正在创建…' : '开始模拟面试' }}</button>
       <DataState v-if="error" :error="error" @retry="begin" />
     </section>
 
     <template v-else>
+      <section v-if="session.practice_context && (session.practice_context.mode === 'continuous' || session.practice_context.remember_for_future)" class="practice-session" aria-live="polite">
+        <strong>{{ session.scenario }}{{ session.practice_context.mode === 'continuous' ? ' · 连续追问' : '' }}</strong>
+        <span v-if="session.practice_context.project">项目：{{ session.practice_context.project.name }}</span>
+        <span v-if="session.practice_context.memory_ref">{{ session.practice_context.memory_available ? '本轮已引用一场你授权的练习' : '历史复用已停止；已生成问题保留' }}</span>
+        <span>{{ session.practice_context.remember_for_future ? '本场允许后续复用' : '本场不会用于后续追问' }}</span>
+        <button v-if="session.practice_context.remember_for_future" type="button" class="ghost" :disabled="loading || memoryBusy || recording || videoRecording || videoStopping" @click="forgetCurrentPractice">停止复用本场</button>
+        <DataState v-if="memoryError" :error="memoryError" />
+      </section>
       <section class="studio">
         <div class="interviewer-panel">
           <div class="avatar-stage" :class="{ speaking }">
@@ -51,7 +85,7 @@
             <div class="avatar-face"><img :src="mascotUrl" alt="FileMate 形象伙伴" /></div>
             <div class="voice-bars" aria-hidden="true"><i v-for="n in 7" :key="n"></i></div>
           </div>
-          <div><p class="role">FileMate 面试伙伴</p><p class="online"><i></i>在线 · 中文普通话</p></div>
+          <div><p class="role">FileMate 面试伙伴</p><p class="online"><i></i>在线 · {{ session.scenario === '英语面' ? '英语训练' : '中文普通话' }}</p></div>
           <button class="ghost" :disabled="!session.current_question" @click="speakQuestion">重新播报问题</button>
           <div class="camera-dock" :class="{ active: cameraActive }">
             <div class="camera-preview">
@@ -113,10 +147,10 @@
             <small class="speech-privacy">语音识别由浏览器提供，可能使用浏览器厂商的在线服务；也可直接输入文字。</small>
             <div v-if="recording || fluencyMetrics" class="fluency-strip" aria-live="polite">
               <span><b>{{ recordingDuration }}</b> 秒回答时长</span>
-              <span><b>{{ liveCharsPerMinute }}</b> 字/分钟</span>
+              <span><b>{{ session.scenario === '英语面' ? liveWordsPerMinute : liveCharsPerMinute }}</b> {{ session.scenario === '英语面' ? '词/分钟' : '字/分钟' }}</span>
               <span><b>{{ fillerCount }}</b> 个口头语</span>
               <span><b>{{ longPauseCount }}</b> 次较长停顿</span>
-              <small>仅语音回答生成流畅度参考；有内容评估时计入总分的 15%</small>
+              <small>{{ session.scenario === '英语面' ? '英语只记录识别节奏；节奏评分尚未校准，不计入内容分。' : '仅语音回答生成流畅度参考；有内容评估时计入总分的 15%' }}</small>
             </div>
             <div v-if="fluencyMarkers.length" class="live-timeline" aria-label="当前回答表达时间轴">
               <div class="timeline-track"><i v-for="marker in fluencyMarkers" :key="`${marker.kind}-${marker.second}`" :class="marker.kind" :style="{ left: markerPosition(marker.second, recordingDuration) }" /></div>
@@ -186,10 +220,14 @@ import {
   getInterview,
   getLearningAnalytics,
   getInterviewReviewStatus,
+  getInterviewPracticeMemories,
+  previewInterviewMemoryForget,
+  forgetInterviewMemory,
   startInterview,
   type InterviewFluencyMarker,
   type InterviewFluencyMetrics,
   type InterviewSession,
+  type InterviewPracticeMemory,
   type KnowledgeSource,
   type LearningAnalytics
 } from '../services/api'
@@ -200,8 +238,18 @@ import { useInterviewVision } from '../interview/useInterviewVision'
 import { visualLabels } from '../interview/observations'
 import { publishCompanionEvent, type CompanionMood } from '../composables/useCompanion'
 import mascotUrl from '../assets/filemate-mascot.png'
+import '../styles/interview-practice.css'
 
 const form = ref({ targetRole: '', scenario: '知识讲解', difficulty: '标准', sourceId: '' })
+const specialistModes = ['技术面', '项目面', '算法面', 'HR面', '压力面', '英语面']
+const interviewModes = ['知识讲解', ...specialistModes, '求职面试', '竞赛答辩', '保研复试']
+const projectName = ref('')
+const projectDetails = ref('')
+const rememberForFuture = ref(false)
+const selectedMemoryId = ref<string | null>(null)
+const practiceMemories = ref<InterviewPracticeMemory[]>([])
+const memoryBusy = ref(false)
+const memoryError = ref('')
 const route = useRoute()
 const router = useRouter()
 const focusWrongId = ref(typeof route.query.focus === 'string' ? route.query.focus : '')
@@ -279,6 +327,8 @@ const liveCharsPerMinute = computed(() => {
   if (!recordingDuration.value) return 0
   return Math.round(answer.value.replace(/\s+/g, '').length * 60 / recordingDuration.value)
 })
+const liveWordsPerMinute = computed(() => recordingDuration.value
+  ? Math.round((answer.value.match(/[A-Za-z]+(?:['’-][A-Za-z]+)*/g)?.length || 0) * 60 / recordingDuration.value) : 0)
 
 const markerPosition = (second: number, duration: number) => {
   if (!duration) return '0%'
@@ -331,17 +381,25 @@ const speakQuestion = () => {
   if (!text || !('speechSynthesis' in window)) return
   window.speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(text)
-  utterance.lang = 'zh-CN'; utterance.rate = .95
+  utterance.lang = session.value?.scenario === '英语面' ? 'en-US' : 'zh-CN'; utterance.rate = .95
   utterance.onstart = () => { speaking.value = true }
   utterance.onend = () => { speaking.value = false }
+  utterance.onerror = () => { speaking.value = false }
   window.speechSynthesis.speak(utterance)
 }
 
 const begin = async () => {
+  if (loading.value || memoryBusy.value) return
   loading.value = true
   error.value = ''
+  memoryError.value = ''
   try {
-    const created = await startInterview(form.value.targetRole, form.value.scenario, form.value.difficulty, form.value.sourceId || undefined, focusWrongId.value || undefined, originGoalId.value || undefined, reviewEnabled.value ? false : legacyExternalConsent.value)
+    const created = await startInterview(form.value.targetRole, form.value.scenario, form.value.difficulty, form.value.sourceId || undefined, focusWrongId.value || undefined, originGoalId.value || undefined, reviewEnabled.value ? false : legacyExternalConsent.value, {
+      projectName: form.value.scenario === '项目面' ? projectName.value : '',
+      projectDetails: form.value.scenario === '项目面' ? projectDetails.value : '',
+      rememberForFuture: rememberForFuture.value,
+      memoryId: selectedMemoryId.value
+    })
     if (disposed) return
     session.value = created
     resumeError.value = ''
@@ -399,6 +457,53 @@ const loadRecent = async () => {
   finally { historyLoading.value = false }
 }
 
+const loadMemories = async () => {
+  if (memoryBusy.value || disposed) return
+  memoryBusy.value = true
+  memoryError.value = ''
+  try {
+    const items = await getInterviewPracticeMemories()
+    if (disposed) return
+    practiceMemories.value = items
+    if (selectedMemoryId.value && !items.some(item => item.memory_id === selectedMemoryId.value)) selectedMemoryId.value = null
+  } catch (e: any) {
+    if (!disposed) memoryError.value = e?.message || '练习记忆暂时无法读取，可以不复用历史继续训练。'
+  } finally { memoryBusy.value = false }
+}
+
+const forgetPractice = async (memoryId: string) => {
+  if (memoryBusy.value || loading.value) return
+  memoryBusy.value = true
+  memoryError.value = ''
+  let confirmed = false
+  try {
+    const preview = await previewInterviewMemoryForget(memoryId)
+    if (disposed) return
+    try {
+      await ElMessageBox.confirm(`“${preview.target_role}”：${preview.scope}`, '遗忘练习记忆', { confirmButtonText: '确认停止复用', cancelButtonText: '保留复用' })
+    } catch { return }
+    if (disposed) return
+    await forgetInterviewMemory(memoryId, preview.confirmation_token)
+    if (disposed) return
+    confirmed = true
+    if (selectedMemoryId.value === memoryId) selectedMemoryId.value = null
+    const context = session.value?.practice_context
+    if (context?.memory_id === memoryId) { context.remember_for_future = false; context.memory_id = null }
+    if (context?.memory_ref?.memory_id === memoryId) context.memory_available = false
+    ElMessage.success('已停止复用，原回答与报告保留')
+  } catch (e: any) {
+    if (!disposed) { memoryError.value = e?.message || '遗忘未完成，请重试'; ElMessage.error(memoryError.value) }
+  } finally {
+    memoryBusy.value = false
+    if (confirmed && !disposed) void loadMemories()
+  }
+}
+
+const forgetCurrentPractice = () => {
+  const memoryId = session.value?.practice_context?.memory_id
+  if (memoryId) void forgetPractice(memoryId)
+}
+
 const restoreInterview = async (interviewId: string) => {
   if (!interviewId || loading.value) return
   requestedInterviewId.value = interviewId
@@ -409,6 +514,10 @@ const restoreInterview = async (interviewId: string) => {
     if (disposed) return
     session.value = restored
     form.value = { targetRole: restored.target_role, scenario: restored.scenario, difficulty: restored.difficulty, sourceId: restored.source_context?.source_id || '' }
+    projectName.value = restored.practice_context?.project?.name || ''
+    projectDetails.value = restored.practice_context?.project?.details || ''
+    rememberForFuture.value = false
+    selectedMemoryId.value = null
     focusWrongId.value = restored.source_context?.focus_wrong_id || ''
     originGoalId.value = restored.source_context?.goal_id || ''
     answer.value = ''
@@ -439,7 +548,7 @@ const toggleRecording = () => {
   if (recognition) return
   const Recognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
   if (!Recognition) { ElMessage.info('当前浏览器不支持语音识别，请使用文字回答'); return }
-  recognition = new Recognition(); recognition.lang = 'zh-CN'; recognition.continuous = true; recognition.interimResults = true
+  recognition = new Recognition(); recognition.lang = session.value?.scenario === '英语面' ? 'en-US' : 'zh-CN'; recognition.continuous = true; recognition.interimResults = true
   const generation = ++recognitionGeneration
   const isCurrent = () => !disposed && generation === recognitionGeneration
   recognition.onstart = () => {
@@ -468,8 +577,9 @@ const toggleRecording = () => {
       if (fluencyMarkers.value.length < 100) fluencyMarkers.value.push({ second: elapsed, kind: 'long_pause', label: '较长停顿' })
     }
     lastSpeechAt = now
-    answer.value = Array.from(event.results).map((result: any) => result[0].transcript).join('')
-    const detectedFillers = answer.value.match(/嗯|呃|那个|就是说|然后呢|就是/g)?.length || 0
+    const english = session.value?.scenario === '英语面'
+    answer.value = Array.from(event.results).map((result: any) => result[0].transcript).join(english ? ' ' : '')
+    const detectedFillers = answer.value.match(english ? /\b(?:um|uh|erm|you know)\b/gi : /嗯|呃|那个|就是说|然后呢|就是/g)?.length || 0
     if (detectedFillers > fillerCount.value) {
       for (let index = fillerCount.value; index < detectedFillers; index += 1) {
         if (fluencyMarkers.value.length < 100) fluencyMarkers.value.push({ second: elapsed, kind: 'filler', label: '出现口头语' })
@@ -694,6 +804,7 @@ const reset = () => {
   resumeError.value = ''
   void router.replace({ query: {} })
   void loadRecent()
+  void loadMemories()
 }
 onBeforeUnmount(() => {
   disposed = true
@@ -707,13 +818,14 @@ onBeforeUnmount(() => {
 onMounted(async () => {
   if (reviewEnabled.value) { try { reviewEnabled.value = (await getInterviewReviewStatus()).enabled } catch { reviewEnabled.value = false } }
   void loadRecent()
+  void loadMemories()
   if (typeof route.query.interview === 'string') void restoreInterview(route.query.interview)
   try { knowledgeSources.value = await getKnowledgeSources(100) }
   catch { knowledgeSources.value = [] }
   if (typeof route.query.source === 'string' && knowledgeSources.value.some(source => source.source_id === route.query.source)) {
     form.value.sourceId = route.query.source
   }
-  if (['知识讲解', '求职面试', '竞赛答辩', '保研复试'].includes(String(route.query.scenario))) {
+  if (interviewModes.includes(String(route.query.scenario))) {
     form.value.scenario = String(route.query.scenario)
   }
   if (typeof route.query.target === 'string') form.value.targetRole = route.query.target.slice(0, 120)

@@ -1,0 +1,8 @@
+.coding-page .next-practice { margin-bottom: 20px; }
+.coding-page .recommendation-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.coding-page .recommendation-list article { min-width: 0; padding: 20px; border: 1px solid var(--border-subtle); border-radius: 14px; background: var(--bg-elevated); }
+.coding-page .recommendation-list h3 { font-size: 21px; line-height: 1.5; margin: 10px 0; }
+.coding-page .recommendation-list p { font-size: 16px; line-height: 1.7; overflow-wrap: anywhere; }
+.coding-page .recommendation-list span { color: var(--accent); font-size: 15px; }
+.coding-page .recommendation-list button { min-height: 44px; font-size: 16px; }
+@media (max-width: 900px) { .coding-page .recommendation-list { grid-template-columns: 1fr; } }

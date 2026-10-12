@@ -50,6 +50,13 @@ from filemate.execution.confirmation_executor import (
 )
 from filemate.execution.storage import QuestionRevisionConflict, SQLiteStorage
 from filemate.interview_review.models import VisualMetrics
+from filemate.understanding.interview_practice import (
+    InterviewPracticeRepository,
+    InterviewScenario,
+    SPECIALIST_QUESTIONS,
+    grounded_followup,
+    project_questions,
+)
 from filemate.llm_client.credential_store import (
     CredentialStoreError,
     delete_stored_api_key,
@@ -1493,14 +1500,18 @@ def programming_problems():
 @app.get("/api/programming/overview", response_model=ApiResponse)
 def programming_overview():
     from filemate.programming.feedback import evidence_profile
+    from filemate.programming.recommendations import recommend_problems
     from filemate.programming.service import recover
 
     _require_programming_enabled()
     repository = _coding_repository()
     recover(repository)
     submissions = repository.list(100)
+    evidence = repository.evidence()
+    profile = evidence_profile(evidence)
     return ApiResponse(success=True, data={"submissions": submissions[:100],
-                                          "profile": evidence_profile(repository.evidence()),
+                                          "profile": profile,
+                                          "recommendations": recommend_problems(evidence, profile),
                                           "evidence_scope": "all_active_completed_submissions",
                                           "events": repository.events()})
 
@@ -2601,12 +2612,16 @@ class QuizAttemptRequest(BaseModel):
 
 class InterviewStartRequest(BaseModel):
     target_role: str = Field(max_length=120)
-    scenario: Literal["求职面试", "竞赛答辩", "保研复试", "知识讲解"] = "求职面试"
+    scenario: InterviewScenario = "求职面试"
     difficulty: Literal["入门", "标准", "压力面"] = "标准"
     source_id: str | None = Field(default=None, max_length=64)
     focus_wrong_id: str | None = Field(default=None, max_length=64)
     goal_id: str | None = Field(default=None, max_length=64)
     allow_external_analysis: bool | None = None
+    project_name: str = Field(default="", max_length=120)
+    project_details: str = Field(default="", max_length=6000)
+    remember_for_future: bool = False
+    memory_id: str | None = Field(default=None, min_length=1, max_length=64)
 
 
 class InterviewFluencyMarker(BaseModel):
@@ -3893,6 +3908,35 @@ def delete_interview_question(question_id: str):
     return ApiResponse(success=True, data={"deleted": True})
 
 
+@app.get("/interview/practice/memories", response_model=ApiResponse)
+def interview_practice_memories(limit: int = Query(30, ge=1, le=100)):
+    """只列出用户主动开放复用且已有回答的本空间练习。"""
+    return ApiResponse(success=True, data=InterviewPracticeRepository(_storage).list(limit=limit))
+
+
+@app.get("/interview/practice/memories/{memory_id}/forget-preview", response_model=ApiResponse)
+def interview_practice_forget_preview(memory_id: str):
+    """预览遗忘影响，原面试记录不删除。"""
+    try:
+        return ApiResponse(success=True, data=InterviewPracticeRepository(_storage).preview(memory_id))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.delete("/interview/practice/memories/{memory_id}", response_model=ApiResponse)
+def forget_interview_practice(memory_id: str, request: InterviewPrivacyRequest):
+    """确认撤销跨次复用，重复确认保持幂等。"""
+    if not request.confirmed:
+        raise HTTPException(status_code=422, detail="请先预览并确认遗忘影响")
+    try:
+        result = InterviewPracticeRepository(_storage).forget(memory_id, request.confirmation_token)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return ApiResponse(success=True, data=result)
+
+
 @app.post("/interviews", response_model=ApiResponse)
 def start_interview(request: InterviewStartRequest):
     """创建一场可持续复盘的模拟面试。"""
@@ -3904,6 +3948,20 @@ def start_interview(request: InterviewStartRequest):
     )
 
 
+    project_name = request.project_name.strip()
+    project_details = request.project_details.strip()
+    if bool(project_name) != bool(project_details):
+        raise HTTPException(status_code=422, detail="请同时填写项目名称和你实际完成的内容")
+    if request.scenario == "项目面" and not project_details:
+        raise HTTPException(status_code=422, detail="项目面需要你先填写真实项目，不能由系统编造经历")
+    practice = InterviewPracticeRepository(_storage)
+    remembered = practice.get(request.memory_id) if request.memory_id else None
+    if request.memory_id and (remembered is None or not remembered["interview"]["turns"]):
+        raise HTTPException(status_code=409, detail="所选练习记忆已撤销或没有有效回答，请重新选择")
+    memory_ref = None
+    allow_external_analysis = request.allow_external_analysis
+    if allow_external_analysis is None and (request.scenario in SPECIALIST_QUESTIONS or request.memory_id):
+        allow_external_analysis = False
     source = None
     context_excerpt = ""
     source_context_mode = "none"
@@ -3958,7 +4016,7 @@ def start_interview(request: InterviewStartRequest):
         )
 
     try:
-        if os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") == "1" or request.allow_external_analysis is False:
+        if os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") == "1" or allow_external_analysis is False:
             raise RuntimeError("本地选题模式")
         llm = LLMClient(LLMConfig.from_env())
     except Exception:  # noqa: BLE001 - 未配置 LLM 时使用确定性选题
@@ -3995,45 +4053,75 @@ def start_interview(request: InterviewStartRequest):
         ][:4]
         questions = [grounded_question, *[item[0] for item in remaining]]
         question_ids = [None, *[item[1] for item in remaining]]
-    run = _storage.create_agent_run(
-        task_type="interview_session",
-        goal=f"围绕{target_role}完成可复盘的{request.scenario}",
-        selected_agents=select_agents("interview_session"),
-        context_refs={
-            "scenario": request.scenario,
-            "allow_external_analysis": request.allow_external_analysis,
-            "difficulty": request.difficulty,
-            "question_ids": question_ids,
-            "source_id": request.source_id,
-            "source_context_mode": source_context_mode,
-            "focus_wrong_id": request.focus_wrong_id,
-            "goal_id": request.goal_id,
-            "attempt_id": (
-                (linked_task.get("evidence_ref") or {}).get("attempt_id")
-                if request.goal_id else None
-            ),
-            "knowledge_key": (
-                linked_task.get("knowledge_key")
-                if request.goal_id else focus_wrong.get("knowledge_key") if focus_wrong else None
-            ),
-            "error_cause": (
-                linked_task.get("error_cause")
-                if request.goal_id else focus_wrong.get("error_cause") if focus_wrong else None
-            ),
-            "source_evidence": source_evidence,
-            "source_chunk_id": (
-                source_evidence.get("chunk_id") if source_evidence else None
-            ),
-        },
-    )
-    interview = _storage.create_interview(
-        target_role=target_role,
-        scenario=request.scenario,
-        difficulty=request.difficulty,
-        questions=questions,
-        question_ids=question_ids,
-        agent_run_id=run["run_id"],
-    )
+    if request.scenario == "项目面":
+        questions = project_questions(project_name, project_details)
+        question_ids = [None] * len(questions)
+    if remembered is not None:
+        past = remembered["interview"]
+        past_turns = past["turns"]
+        turn = next((item for item in reversed(past_turns)
+                     if any(area.get("status") in {"partial", "missing"}
+                            for area in (item.get("content_analysis", {}).get("areas", {}) or {}).values()
+                            if isinstance(area, dict))), past_turns[-1])
+        slot = 1 if source is not None or project_details else 0
+        questions[slot] = grounded_followup(
+            turn["answer"], request.scenario, 1, turn.get("content_analysis"), previous_session=True,
+        )
+        question_ids[slot] = None
+        memory_ref = {"memory_id": request.memory_id, "interview_id": past["interview_id"],
+                      "turn_id": turn["turn_id"], "question_index": turn["question_index"],
+                      "target_question_index": slot}
+    with _storage._write_lock, _storage._conn() as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        if request.memory_id and practice.get(request.memory_id) is None:
+            raise HTTPException(status_code=409, detail="所选练习记忆刚被撤销，请重新选择")
+        run = _storage.create_agent_run(
+            task_type="interview_session",
+            commit=False,
+            goal=f"围绕{target_role}完成可复盘的{request.scenario}",
+            selected_agents=select_agents("interview_session"),
+            context_refs={
+                "scenario": request.scenario,
+                "allow_external_analysis": allow_external_analysis,
+                "practice_mode": "continuous" if request.scenario in SPECIALIST_QUESTIONS or remembered else "standard",
+                "practice_project": {"name": project_name, "details": project_details, "source": "user_input"} if project_details else None,
+                "remember_for_future": request.remember_for_future,
+                "practice_memory_ref": memory_ref,
+                "difficulty": request.difficulty,
+                "question_ids": question_ids,
+                "source_id": request.source_id,
+                "source_context_mode": source_context_mode,
+                "focus_wrong_id": request.focus_wrong_id,
+                "goal_id": request.goal_id,
+                "attempt_id": (
+                    (linked_task.get("evidence_ref") or {}).get("attempt_id")
+                    if request.goal_id else None
+                ),
+                "knowledge_key": (
+                    linked_task.get("knowledge_key")
+                    if request.goal_id else focus_wrong.get("knowledge_key") if focus_wrong else None
+                ),
+                "error_cause": (
+                    linked_task.get("error_cause")
+                    if request.goal_id else focus_wrong.get("error_cause") if focus_wrong else None
+                ),
+                "source_evidence": source_evidence,
+                "source_chunk_id": (
+                    source_evidence.get("chunk_id") if source_evidence else None
+                ),
+            },
+        )
+        interview = _storage.create_interview(
+            target_role=target_role,
+            scenario=request.scenario,
+            difficulty=request.difficulty,
+            questions=questions,
+            question_ids=question_ids,
+            agent_run_id=run["run_id"],
+            commit=False,
+        )
+        if request.remember_for_future:
+            practice.remember(interview, commit=False)
     _storage.append_agent_step(
         run_id=run["run_id"],
         agent_name="面试 Agent",
@@ -4066,6 +4154,7 @@ def start_interview(request: InterviewStartRequest):
         allowed_agents=["面试 Agent", "评价 Agent"],
     )
     interview["current_question"] = interview["questions"][0]
+    _attach_interview_practice_context(interview, run["context_refs"])
     interview["source_context"] = {
         "source_id": request.source_id,
         "source_name": source["original_name"] if source is not None else None,
@@ -4077,11 +4166,27 @@ def start_interview(request: InterviewStartRequest):
     return ApiResponse(success=True, data=interview)
 
 
+def _attach_interview_practice_context(interview: dict[str, Any], refs: dict[str, Any]) -> None:
+    """恢复项目事实与当前有效的复用授权，不复制历史回答。"""
+    practice = InterviewPracticeRepository(_storage)
+    memory_ref = refs.get("practice_memory_ref")
+    own_memory = practice.for_session(interview["interview_id"])
+    interview["practice_context"] = {
+        "mode": refs.get("practice_mode", "standard"),
+        "project": refs.get("practice_project"),
+        "remember_for_future": own_memory is not None,
+        "memory_id": own_memory["memory_id"] if own_memory else None,
+        "memory_ref": memory_ref,
+        "memory_available": bool(memory_ref and practice.get(memory_ref["memory_id"])),
+    }
+
+
 def _attach_interview_source_context(interview: dict[str, Any]) -> None:
     """从 Agent 运行记录恢复面试资料来源，不复制资料正文。"""
     run_id = interview.get("agent_run_id")
     run = _storage.get_agent_run(run_id) if run_id else None
     refs = run.get("context_refs", {}) if run else {}
+    _attach_interview_practice_context(interview, refs)
     source_id = refs.get("source_id")
     source = _storage.get_source(source_id) if source_id else None
     interview["source_context"] = {
@@ -4160,7 +4265,16 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
         request.answer,
         interview["target_role"],
         request.fluency_metrics.model_dump() if request.fluency_metrics else None,
+        speech_language="en-US" if interview["scenario"] == "英语面" else "zh-CN",
     )
+    next_question = None
+    memory_question_index = (context_refs.get("practice_memory_ref") or {}).get("target_question_index")
+    if (context_refs.get("practice_mode") == "continuous"
+            and index + 1 < len(interview["questions"])
+            and index + 1 != memory_question_index):
+        next_question = grounded_followup(
+            request.answer.strip(), interview["scenario"], index + 1, evaluation.get("content_analysis"),
+        )
     try:
         updated = _storage.save_interview_turn(
             interview_id=interview_id,
@@ -4176,6 +4290,7 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
             visual_metrics=request.visual_metrics.model_dump() if request.visual_metrics else None,
             content_analysis=evaluation.get("content_analysis"),
             answer_key=request.request_key, answer_digest=digest,
+            next_question=next_question,
         )
     except ValueError as exc:
         detail = str(exc)

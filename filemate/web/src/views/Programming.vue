@@ -12,11 +12,21 @@
       <button v-for="item in tabs" :key="item.id" role="tab" :aria-selected="tab === item.id" :class="{ active: tab === item.id }" @click="tab = item.id">{{ item.label }}</button>
     </nav>
 
+    <section v-if="tab === 'practice' && overview?.recommendations?.length" class="panel next-practice" aria-labelledby="next-practice-title">
+      <h2 id="next-practice-title">接下来练什么</h2>
+      <p class="muted">按你的有效提交、待复习错误和已练分类排序；每条建议都能查看依据。</p>
+      <div class="recommendation-list">
+        <article v-for="item in overview.recommendations" :key="item.problem_id">
+          <span>{{ item.stage }} · {{ item.difficulty }}</span><h3>{{ item.title }}</h3><p>{{ item.reason }}</p>
+          <div class="row-actions"><button class="primary" :disabled="!!busy || loading" @click="practiceProblem(item.problem_id)">练这一题</button><button v-if="item.basis_submission_ids.length" :disabled="!!busy || loading" @click="openSubmission(item.basis_submission_ids[0]!)">查看提交依据</button></div>
+        </article>
+      </div>
+    </section>
     <section v-if="tab === 'practice'" class="practice-grid">
       <aside class="panel problem-panel">
         <div class="filters"><label>题目难度<select v-model="difficulty" aria-label="题目难度" :disabled="!!busy"><option value="">全部难度</option><option>简单</option><option>中等</option><option>困难</option></select></label><label>知识分类<select v-model="category" aria-label="知识分类" :disabled="!!busy"><option value="">全部分类</option><option v-for="tag in tags" :key="tag">{{ tag }}</option></select></label></div>
         <label>选择题目<select :value="problemId" aria-label="选择题目" :disabled="!!busy" @change="chooseProblem(($event.target as HTMLSelectElement).value)"><option v-for="p in filteredProblems" :key="p.id" :value="p.id">{{ p.difficulty }} · {{ p.title }}</option><option v-if="!filteredProblems.length" value="">没有符合条件的题目</option></select></label>
-        <template v-if="problem"><div class="problem-title"><span>{{ problem.difficulty }} · {{ problem.test_count }} 个测试点</span><h2>{{ problem.title }}</h2></div><div class="tags"><span v-for="tag in problem.tags" :key="tag">{{ tag }}</span></div><p class="statement">{{ problem.statement }}</p><h3>输入输出示例</h3><div v-for="(example, i) in problem.examples" :key="i" class="example"><span>输入</span><pre>{{ example.input }}</pre><span>输出</span><pre>{{ example.output }}</pre></div><details><summary>查看解题提示</summary><p>{{ problem.hint }}</p></details><p class="attribution">{{ problem.attribution }}</p></template>
+        <template v-if="problem"><div class="problem-title"><span>{{ problem.difficulty }} · {{ problem.test_count }} 个测试点</span><h2>{{ problem.title }}</h2></div><div class="tags"><span v-for="tag in problem.tags" :key="tag">{{ tag }}</span></div><p class="statement">{{ problem.statement }}</p><h3>输入输出示例</h3><div v-for="(example, i) in problem.examples" :key="i" class="example"><span>输入</span><pre>{{ example.input }}</pre><span>输出</span><pre>{{ example.output }}</pre></div><details><summary>查看解题提示</summary><p>{{ problem.hint }}</p></details><p class="attribution">{{ problem.attribution }} <a v-if="problem.source_url" :href="problem.source_url" target="_blank" rel="noopener noreferrer">查看原创题库来源</a></p></template>
       </aside>
       <section class="panel code-panel" aria-label="C++ 编辑与提交">
         <div class="panel-title"><h2>C++ 编辑器</h2><span>{{ environment?.provider?.includes('Linux') ? 'GCC' : 'MSVC' }} · 标准 C++17</span></div><p class="muted">使用标准头文件（如 &lt;iostream&gt;、&lt;vector&gt;），便于跨平台练习。代码与判题结果会保存在当前学习空间。</p>
@@ -64,6 +74,7 @@
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
+import '../styles/programming-coach.css'
 import CodeEditor from '../components/CodeEditor.vue'
 import { getProgrammingProblems, getProgrammingStatus, setupProgramming, getCodingOverview, getCodingSubmission, createCodingSubmission, runCodingSubmission, changeCodingSubmission, reviewCodingSubmission, saveCodingNotes, previewCodingDeletion, deleteCodingSubmission } from '../services/api'
 import type { CodingOverview, CodingProblem, CodingSubmission, ProgrammingStatus } from '../types/programming'
