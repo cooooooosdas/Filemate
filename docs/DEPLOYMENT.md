@@ -218,3 +218,7 @@ alpha.2 桌面壳将 C++ 工具链缓存设置为应用数据目录的 `cpp-tool
 ## 2026-10-04既有网站发布补充
 
 现役 `1.3.0-alpha.4` / schema v25 / `270ee4f1` 已在原systemd＋Nginx Proxy Manager拓扑部署。完整备份/恢复、包指纹、原子切换、公网实际模型与浏览器证据见[发布总记录](UNIFIED_INTAKE_LINUX_RELEASE_2026-10-04.md)。Linux判题通过独立root代理与受限Unix socket连接，GCC/gVisor/固定镜像/单并发，Web用户不持有Docker权限，安装与故障边界见[scripts/judge/README.md](../scripts/judge/README.md)。不把本次既有服务器验收推及尚未测试的Compose拓扑、桌面安装、长期容量或其他主机。
+# 2026-10-13 发布依赖补充
+
+资源治理模块在启动时使用 psutil 检查跨进程准入。桌面运行依赖和生产哈希锁已同步固定为 7.2.2，哈希来自 uv.lock；仅安装旧生产锁会出现启动导入失败。实际发布必须先通过隔离候选服务健康检查，再备份并切换，不在运行中的环境临时补包。本次不修改功能、接口或业务 schema。
+

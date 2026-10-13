@@ -19,6 +19,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import ProxyHandler, Request, build_opener
 
 import pytest
+import tomllib
 from packaging.version import Version
 
 from filemate import __version__
@@ -27,6 +28,20 @@ ROOT = Path(__file__).resolve().parents[2]
 TEST_PASSWORD = secrets.token_urlsafe(24)
 AUTHORIZATION = "Basic " + base64.b64encode(f"release-test:{TEST_PASSWORD}".encode()).decode()
 HTTP_CLIENT = build_opener(ProxyHandler({}))
+
+
+def test_resource_governance_dependency_in_production_bundle() -> None:
+    """生产隔离环境必须安装治理模块的进程检查依赖。"""
+    packages = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))["package"]
+    package = next(item for item in packages if item["name"] == "psutil")
+    version = package["version"]
+    requirements = (ROOT / "requirements-desktop.txt").read_text(encoding="utf-8")
+    assert f"psutil=={version}" in requirements.splitlines()
+    lock = (ROOT / "deploy/requirements-production.lock").read_text(encoding="utf-8")
+    block = re.search(rf"(?m)^psutil=={re.escape(version)}[^\n]*\n(?:[ \t]+[^\n]*\n)+", lock)
+    assert block is not None
+    hashes = {package["sdist"]["hash"], *(item["hash"] for item in package["wheels"])}
+    assert hashes.issubset(set(re.findall(r"--hash=(sha256:[0-9a-f]{64})", block.group())))
 
 
 def _json_file(relative_path: str) -> dict[str, Any]:
