@@ -74,7 +74,7 @@ export const saveResumeProfile = async (profile: import('../types/portfolio').Re
 export const generateResume = async (revision: number, mode: 'local' | 'llm', consent: boolean) => (await api.post<unknown, ApiResponse<import('../types/portfolio').ResumeDocument>>('/api/resume/generate', { profile_revision: revision, mode, allow_external_model: consent }, { timeout: 65000 })).data!
 export const getResumes = async () => (await api.get<unknown, ApiResponse<import('../types/portfolio').SavedDocument[]>>('/api/resume')).data!
 export const getResume = async (id: string) => (await api.get<unknown, ApiResponse<import('../types/portfolio').ResumeDocument>>(`/api/resume/${encodeURIComponent(id)}`)).data!
-export const exportResume = async (id: string, format: 'markdown' | 'json') => api.get(`/api/resume/${encodeURIComponent(id)}/export`, { params: { format }, responseType: 'blob' })
+export const exportResume = async (id: string, format: 'markdown' | 'json' | 'pdf' | 'docx') => api.get(`/api/resume/${encodeURIComponent(id)}/export`, { params: { format }, responseType: 'blob', timeout: 60000 })
 export const getSemester = async () => (await api.get<unknown, ApiResponse<import('../types/portfolio').SemesterState | null>>('/api/semester')).data ?? null
 export const previewSemester = async (config: import('../types/portfolio').SemesterConfig) => (await api.post<unknown, ApiResponse<import('../types/portfolio').SemesterPreview>>('/api/semester/preview', config)).data!
 export const confirmSemester = async (config: import('../types/portfolio').SemesterConfig, token: string) => api.post('/api/semester/confirm', { config, confirmed: true, confirmation_token: token })
@@ -83,7 +83,7 @@ export const getGrowthReports = async () => (await api.get<unknown, ApiResponse<
 export const generateGrowthReport = async (start: string, end: string) => (await api.post<unknown, ApiResponse<import('../types/portfolio').GrowthReport>>('/api/growth/reports', { start_date: start, end_date: end, time_zone: 'Asia/Shanghai' })).data!
 export const getGrowthReport = async (id: string) => (await api.get<unknown, ApiResponse<import('../types/portfolio').GrowthReport>>(`/api/growth/reports/${encodeURIComponent(id)}`)).data!
 export const getGrowthEvidence = async (id: string, offset: number) => (await api.get<unknown, ApiResponse<{ items: import('../types/portfolio').GrowthRecord[]; total: number }>>(`/api/growth/reports/${encodeURIComponent(id)}/evidence`, { params: { offset, limit: 20 } })).data!
-export const exportGrowthReport = async (id: string, format: 'markdown' | 'json') => api.get(`/api/growth/reports/${encodeURIComponent(id)}/export`, { params: { format }, responseType: 'blob' })
+export const exportGrowthReport = async (id: string, format: 'markdown' | 'json' | 'pdf') => api.get(`/api/growth/reports/${encodeURIComponent(id)}/export`, { params: { format }, responseType: 'blob', timeout: 60000 })
 export interface PersonalRestorePreview { backup_id: string; confirmation_token: string; backup_created_at: string; restored_counts: Record<string, number>; current_counts: Record<string, number>; file_count: number; current_file_count: number; notice: string }
 export const exportPersonalData = async (format: 'backup' | 'json') => api.get('/api/privacy/export', { params: { format }, responseType: 'blob', timeout: 120000 })
 export const previewPersonalRestore = async (file: File) => { const body = new FormData(); body.append('file', file); return (await api.post<unknown, ApiResponse<PersonalRestorePreview>>('/api/privacy/restore-preview', body, { timeout: 120000, headers: { 'Content-Type': 'multipart/form-data' } })).data! }
@@ -981,6 +981,8 @@ export async function testLLMConnection(): Promise<{ verified: boolean; latency_
 export interface InterviewFluencyMetrics {
   duration_seconds: number
   chars_per_minute?: number
+  words_per_minute?: number
+  language?: 'en-US'
   filler_count: number
   long_pause_count: number
   reference_score?: number
@@ -1021,6 +1023,14 @@ export interface InterviewSession {
   assessed_turn_count: number
   turns: InterviewTurn[]
   latest_evaluation?: InterviewEvaluation
+  practice_context?: {
+    mode: 'standard' | 'continuous'
+    project: { name: string; details: string; source: 'user_input' } | null
+    remember_for_future: boolean
+    memory_id: string | null
+    memory_ref: { memory_id: string; interview_id: string; turn_id: string; question_index: number; target_question_index: number } | null
+    memory_available: boolean
+  }
   source_context?: {
     source_id: string | null
     source_name: string | null
@@ -1038,7 +1048,8 @@ export async function startInterview(
   sourceId?: string,
   focusWrongId?: string,
   goalId?: string,
-  allowExternalAnalysis?: boolean
+  allowExternalAnalysis?: boolean,
+  practice?: { projectName: string; projectDetails: string; rememberForFuture: boolean; memoryId: string | null }
 ): Promise<InterviewSession> {
   const response = await api.post<any, ApiResponse<InterviewSession>>('/interviews', {
     target_role: targetRole,
@@ -1047,10 +1058,45 @@ export async function startInterview(
     source_id: sourceId || null,
     focus_wrong_id: focusWrongId || null,
     goal_id: goalId || null,
-    allow_external_analysis: allowExternalAnalysis
+    allow_external_analysis: allowExternalAnalysis,
+    project_name: practice?.projectName || '',
+    project_details: practice?.projectDetails || '',
+    remember_for_future: practice?.rememberForFuture || false,
+    memory_id: practice?.memoryId || null
   })
   if (response.success && response.data) return response.data
   throw new Error(response.error || '创建模拟面试失败')
+}
+
+export interface InterviewPracticeMemory {
+  memory_id: string
+  interview_id: string
+  target_role: string
+  scenario: string
+  answer_count: number
+  created_at: string
+}
+
+export async function getInterviewPracticeMemories(): Promise<InterviewPracticeMemory[]> {
+  const result = await api.get<any, ApiResponse<InterviewPracticeMemory[]>>('/interview/practice/memories', { timeout: 15000 })
+  if (result.success && result.data) return result.data
+  throw new Error(result.error || '练习记忆读取失败')
+}
+
+export async function previewInterviewMemoryForget(memoryId: string): Promise<{ confirmation_token: string; scope: string; target_role: string }> {
+  const result = await api.get<any, ApiResponse<{ confirmation_token: string; scope: string; target_role: string }>>(
+    `/interview/practice/memories/${encodeURIComponent(memoryId)}/forget-preview`, { timeout: 10000 }
+  )
+  if (result.success && result.data) return result.data
+  throw new Error(result.error || '遗忘影响读取失败')
+}
+
+export async function forgetInterviewMemory(memoryId: string, confirmationToken: string): Promise<void> {
+  const result = await api.delete<any, ApiResponse<{ forgotten: boolean }>>(
+    `/interview/practice/memories/${encodeURIComponent(memoryId)}`,
+    { data: { confirmed: true, confirmation_token: confirmationToken }, timeout: 15000 }
+  )
+  if (!result.success) throw new Error(result.error || '遗忘练习记忆失败')
 }
 
 export async function getInterview(interviewId: string): Promise<InterviewSession> {

@@ -65,7 +65,7 @@ def _relative(value: str) -> PurePosixPath:
 
 def _database_path(relative: str) -> bool:
     """识别现役主库和匿名分库。"""
-    return relative == "filemate.db" or bool(
+    return relative in {"filemate.db", 'control/resource-governance.db'} or bool(
         re.fullmatch(r"users/u_[0-9a-f]{32}/filemate\.db", relative)
     )
 
@@ -73,6 +73,10 @@ def _database_path(relative: str) -> bool:
 def _managed_path(relative: str, directory: bool) -> bool:
     """限定现役网站数据卷布局。"""
     parts = _relative(relative).parts
+    if parts[0] == 'control':
+        return (directory and len(parts) == 1) or (not directory and len(parts) == 2 and
+                parts[1] in {'resource-governance.db', 'resource-governance.db-wal',
+                             'resource-governance.db-shm', 'resource-governance.db-journal'})
     if parts[0] in {'privacy-tombstones', 'privacy-activity'}:
         return (directory and len(parts) == 1) or (not directory and len(parts) == 2 and bool(re.fullmatch(r'[0-9a-f]{64}\.json', parts[1])))
     if parts[0] in {"inbox", "archive"}:
@@ -165,7 +169,15 @@ def _database_facts(path: Path) -> dict[str, Any]:
             )
         ]
         if "schema_migrations" not in tables:
-            raise ValueError("数据库缺少FileMate迁移记录")
+            from filemate.runtime_governance import GovernanceUnavailable, resource_schema_version
+
+            try:
+                resource_version = resource_schema_version(conn)
+            except GovernanceUnavailable as exc:
+                raise ValueError('数据库缺少FileMate迁移记录或治理版本不兼容') from exc
+            return {'database_kind': 'resource_governance', 'schema_version': resource_version,
+                    'table_counts': {name: conn.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0]
+                                     for name in sorted(tables)}, 'path_references': []}
         versions = [
             row[0] for row in conn.execute("SELECT version FROM schema_migrations ORDER BY version")
         ]
@@ -578,9 +590,11 @@ def _summary(report: dict[str, Any]) -> dict[str, Any]:
             {
                 entry["database"]["schema_version"]
                 for entry in entries
-                if entry["kind"] == "database"
+                if entry["kind"] == "database" and entry['database'].get('database_kind') != 'resource_governance'
             }
         ),
+        "resource_schema_versions": sorted({entry['database']['schema_version'] for entry in entries
+                                           if entry['kind'] == 'database' and entry['database'].get('database_kind') == 'resource_governance'}),
         "identity_origin": manifest["identity_origin"],
         "consistency": manifest["consistency"],
     }

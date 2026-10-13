@@ -1,6 +1,8 @@
 export interface CodingProblem {
   id: string; version: number; title: string; difficulty: string; tags: string[]
   statement: string; hint: string; starter: string; language: string; attribution: string
+  knowledge_nodes?: { id: string; label: string; kind: 'catalog_concept' }[]
+  source?: string; source_url?: string
   examples: { input: string; output: string }[]; test_count: number; time_limit_ms: number; memory_limit_mb: number
 }
 export interface CodingTest {
@@ -26,6 +28,9 @@ export interface ProgrammingStatus {
 }
 export interface CodingOverview {
   submissions: CodingSubmission[]; evidence_scope: string
+  recommendations?: { problem_id: string; title: string; difficulty: string; stage: string; reason: string
+    basis_submission_ids: string[]; knowledge_nodes: { id: string; label: string; kind: 'catalog_concept' }[]
+    method: 'local_evidence_rules_v1' }[]
   events: { event_id: number; submission_id: string | null; action: string; created_at: string }[]
   profile: {
     attempt_count: number; accepted_count: number; rule: string

@@ -359,14 +359,14 @@ async function undoExecution(row: HistoryItem) {
 }
 
 .card-filename {
-  font-size: 14px;
+  font-size: var(--type-copy);
   font-weight: 600;
   color: var(--text-primary);
   word-break: break-all;
 }
 
 .card-suggest {
-  font-size: 12px;
+  font-size: var(--type-meta);
   color: var(--text-muted);
   word-break: break-all;
 }
@@ -386,7 +386,7 @@ async function undoExecution(row: HistoryItem) {
   justify-content: space-between;
   gap: 10px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-meta);
 }
 
 .card-id {

@@ -273,7 +273,7 @@ onUnmounted(() => { epoch++; window.removeEventListener('filemate:before-refresh
 .conversation-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 24px; border-bottom: 1px solid var(--border-subtle); }
 .conversation-heading small { font-size: 15px; color: var(--text-secondary); }
 .conversation-heading h2 { font-size: 23px; margin: 8px 0 0; line-height: 1.5; overflow-wrap: anywhere; }
-.saved-indicator { font-size: 14px; color: var(--accent); white-space: nowrap; }
+.saved-indicator { font-size: var(--type-copy); color: var(--accent); white-space: nowrap; }
 .conversation-scroll { flex: 1; overflow: auto; padding: 26px; min-height: 160px; }
 .conversation-intro { padding: 10px 0; }
 .intro-line { display: block; width: 50px; height: 4px; background: var(--accent); margin-bottom: 22px; }
@@ -294,7 +294,7 @@ onUnmounted(() => { epoch++; window.removeEventListener('filemate:before-refresh
 .composer { border: 1px solid var(--border-strong); border-radius: 12px; padding: 16px; }
 .composer textarea { border: 0; width: 100%; resize: vertical; min-height: 85px; max-height: 180px; box-sizing: border-box; font: inherit; font-size: 18px; line-height: 1.8; color: inherit; }
 .composer > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.composer small { font-size: 14px; color: var(--text-secondary); }
+.composer small { font-size: var(--type-copy); color: var(--text-secondary); }
 .resource-pane { background: var(--bg-reading); border-left: 1px solid var(--border-subtle); display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 .resource-tabs { display: flex; gap: 22px; padding: 16px 24px 0; border-bottom: 1px solid var(--border-subtle); }
 .resource-tabs button { border: 0; border-bottom: 3px solid transparent; background: none; border-radius: 0; font-size: 19px; padding: 10px 0 16px; }
@@ -325,7 +325,7 @@ onUnmounted(() => { epoch++; window.removeEventListener('filemate:before-refresh
 .artifact-picker button { flex: 0 0 190px; max-width: 85%; text-align: left; padding: 12px 14px; line-height: 1.6; }
 .artifact-picker button[aria-pressed=true] { background: var(--accent-soft); border-color: var(--accent); }
 .artifact-picker strong { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-size: 18px; margin: 6px 0; }
-.artifact-picker span, .artifact-picker time { font-size: 14px; color: var(--text-secondary); }
+.artifact-picker span, .artifact-picker time { font-size: var(--type-copy); color: var(--text-secondary); }
 .resource-empty, .blank-state { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 34px 28px; line-height: 1.85; color: var(--text-secondary); flex: 1; }
 .resource-empty > .el-icon, .blank-state > .el-icon { font-size: 44px; color: var(--accent); margin-bottom: 22px; }
 .resource-empty h3, .blank-state h3 { font-size: 28px; line-height: 1.6; color: var(--text-primary); font-weight: 650; margin: 0 0 18px; }

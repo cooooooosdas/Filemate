@@ -8,6 +8,7 @@ import uuid
 from typing import Any
 
 from filemate.execution.storage import SQLiteStorage, _now_iso
+from filemate.task_resources import admit_tasks
 
 from .problems import get_problem
 
@@ -79,8 +80,8 @@ class CodingRepository:
 
     def create(self, problem: dict[str, Any], code: str, request_key: str) -> dict[str, Any]:
         """相同请求键只创建一次，键复用不同内容时报冲突。"""
-        with self.storage._write_lock:
-            conn = self.storage._conn()
+        with self.storage._write_lock, self.storage._conn() as conn:
+            conn.execute('BEGIN IMMEDIATE')
             old = conn.execute("SELECT submission_id FROM coding_submissions WHERE request_key=?",
                                (request_key,)).fetchone()
             if old:
@@ -88,6 +89,7 @@ class CodingRepository:
                 if result["problem_id"] != problem["id"] or result["code"] != code:
                     raise ValueError("提交键已用于其他代码，请创建新的提交")
                 return result
+            admit_tasks(self.storage.db_path, 1)
             identifier, artifact = uuid.uuid4().hex, uuid.uuid4().hex
             now = _now_iso()
             payload = {"code": code, "language": "cpp17", "result": {}, "review": None,
@@ -142,7 +144,8 @@ class CodingRepository:
 
     def start(self, identifier: str) -> tuple[dict[str, Any], bool]:
         """只允许一个执行者认领 queued 提交。"""
-        with self.storage._write_lock:
+        with self.storage._write_lock, self.storage._conn() as connection:
+            connection.execute('BEGIN IMMEDIATE')
             row = self.get(identifier)
             if row["data_error"] or not row["active"]:
                 raise ValueError("提交已撤销或数据损坏，无法执行")

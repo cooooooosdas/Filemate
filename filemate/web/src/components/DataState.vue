@@ -62,7 +62,7 @@ defineEmits<{ retry: [] }>()
 }
 
 .data-state.is-error span {
-  font-size: 13px;
+  font-size: var(--type-meta);
   color: var(--text-muted);
 }
 

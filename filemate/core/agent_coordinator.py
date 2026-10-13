@@ -18,6 +18,7 @@ import asyncio
 import logging
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextvars import copy_context
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Callable, Optional
@@ -196,7 +197,7 @@ class AgentCoordinator:
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
-                executor.submit(agent, session, context): agent
+                executor.submit(copy_context().run, agent, session, context): agent
                 for agent in self._agents
             }
 
@@ -346,7 +347,7 @@ class AgentCoordinator:
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
-                executor.submit(agent, session, context): agent
+                executor.submit(copy_context().run, agent, session, context): agent
                 for agent in parallel_agents
             }
 

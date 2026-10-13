@@ -1,0 +1,16 @@
+{
+  "passed": false,
+  "exit_code": 1,
+  "passed_tests": 150,
+  "failed_tests": 8,
+  "duration_seconds": 114.13,
+  "cause": "Trusted local DB path used configuration instead of actual resolved storage; regression fixtures replace storage.",
+  "raw_output": "Initial tool output was truncated; no full byte stream retained. This summary is not a full raw log.",
+  "failed_files": [
+    "test_programming.py",
+    "test_p1_semester.py",
+    "test_career.py",
+    "test_career_planning.py"
+  ],
+  "fixed": "Middleware binds current storage.db_path; foreign bound DB paths remain denied."
+}

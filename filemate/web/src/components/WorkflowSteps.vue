@@ -96,7 +96,7 @@ const steps = ['导入资料', '分类与命名', '查看日程']
     gap: 12px;
   }
 
-  .workflow-steps li { flex-direction: column; text-align: center; font-size: 14px; }
+  .workflow-steps li { flex-direction: column; text-align: center; font-size: var(--type-copy); }
   .workflow-steps li > strong { white-space: normal; }
 
   .workflow-steps li::after {

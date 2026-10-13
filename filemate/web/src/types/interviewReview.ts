@@ -26,7 +26,7 @@ export interface InterviewReport {
   version: string; artifact_id: string; generated_at: string; interview_id: string
   target_role: string; scenario: string; status: string; answered: number; total: number; assessed: number
   overall_score: number | null; calibration: string; purpose: string
-  expression: { speech_turns: number; duration_seconds: number; chars_per_minute: number | null; filler_count: number | null; long_pause_count: number | null; method: string }
+  expression: { speech_turns: number; duration_seconds: number; chars_per_minute: number | null; words_per_minute?: number | null; filler_count: number | null; long_pause_count: number | null; method: string }
   visual: { sample_count: number; face_observed_ratio: number | null; low_light_ratio: number | null; method: string }
   turns: { turn_id: string; question_index: number; question: string; answer: string; score: number | null; scoring_mode: string; feedback: string; content_analysis: ContentAnalysis; structure: { cues: string[]; character_count: number }; data_error: boolean }[]
   timeline: InterviewTimeline[]

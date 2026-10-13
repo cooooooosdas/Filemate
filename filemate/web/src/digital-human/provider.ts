@@ -9,6 +9,8 @@ export interface SpeechEvents {
   onBoundary: (characterIndex: number) => void
   onEnd: () => void
   onError: (reason: string) => void
+  onMotionReady?: (available: boolean) => void
+  onMotionFrame?: (level: number, mediaTime: number, active: boolean) => void
 }
 
 export interface DigitalHumanProvider {

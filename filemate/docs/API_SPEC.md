@@ -1,5 +1,18 @@
 # API 规范
 
+2026-10-11 本地任务/执行候选：治理追加migration2，业务schema26不变。Session/Agent/目标与学习任务/图谱及岗位计划/岗位训练/学期确认写入前校验空间和全站日额度。默认日任务/执行账号4000/100、游客1500/20、本地10000/500、全站30000/1000，执行并发2/1/2/2，UTC+08:00午夜重置。新增 FILEMATE_RESOURCE_{ACCOUNT,GUEST,LOCAL,GLOBAL}_{DAILY_TASKS,DAILY_EXECUTIONS,EXECUTION_CONCURRENT}，前两项1–100000、并发1–16，不能为0。计数为准入工作量，失败不退款，不是学习统计。Windows实际编译自检计数，缓存命中不计；Linux固定自检保持原代理十分钟缓存/单槽。
+
+执行在认领/编译前拒绝超额429或账本故障503，保留queued与代码。完成/取消/重复确认不创建新工作，资料授权/记忆撤销审计免于预算；读取/完成/取消/隐私动作保留。HTTP绑定实际服务端数据库，生产缺可信Scope/绑定时拒绝新资源。GET /api/llm/usage追加resources计数/限额/独立coverage_started_at，offset改0–1000000（超大整数422），原字段/no-store保留。个人导出增加resource_events，恢复不回写额度；注销清本人资源记录，匿名全站累计保留。管理员备份/部署只读兼容治理schema1/2，M1应用不直接支持M2，回滚须配套完整备份/兼容工具。存储/费用/完整Trace及AUD-09未关闭；见[资源准入子卡](../../docs/TASK_EXECUTION_BUDGET_2026-10-11.md)，未上线。
+
+
+2026-10-11 本地模型准入候选：统一LLM每次供应商尝试（含重试）及明确授权后的Microsoft语音使用独立持久账本，原子校验当前学习空间/全站的每日次数、准入单位和跨进程并发。次数/单位默认账号300/2000000、游客60/250000、本地1000/10000000、全站3000/20000000；单空间4路/全站16路，UTC+08:00午夜重置。准入单位是消息UTF-8字节＋最大输出token＋消息开销，不是实际token或账单；未知token和费用为NULL。账本故障拒绝新的外部调用，读取/健康/核心导出继续可用。模型连接测试的预算拒绝429、账本故障503，不作为无效密钥502处理。
+
+新增 `GET /api/llm/usage?limit=50&offset=0`，limit1–100/offset非负，归属只来自服务端会话，不接受owner选择；返回日计数/上限/重置时间、coverage_started_at、分页attempt/trace/provider/model/duration/status/error_code/request_id及真实usage。partial汇总带每字段已知记录数，cost.status=`not_available`且amount/currency=NULL；响应no-store。个人JSON导出增加model_usage，ZIP新增签名保护的model-usage.json；恢复不安装该文件到数据库，不改变额度或恢复预览。用量导出故障/32MiB上限明确available:false，核心导出保留。注销/到期删除清理本人元数据，保留匿名全站累计；失败cleanup_pending:true由维护重试。
+
+独立 `FILEMATE_DATA_DIR/control/resource-governance.db` 为治理schema1，业务schema26和已发布迁移不变，管理员完整备份/部署工具识别两种数据库。环境配置新增 `FILEMATE_AI_{ACCOUNT,GUEST,LOCAL,GLOBAL}_{DAILY_ATTEMPTS,DAILY_BUDGET_UNITS,CONCURRENT}`、`FILEMATE_AI_RETENTION_DAYS`；只接受有界正整数，默认保留30天。直接依赖psutil锁定7.2.2。真实费用、任务/存储预算、完整统一Trace、HTTP下载硬截止及AUD-08/09仍未完成；详见[本地模型累计准入子卡](../../docs/MODEL_BUDGET_AUDIT_2026-10-11.md)，尚未部署。
+
+2026-10-11 本地候选的 LLM 模块合同：`call()`/供应商 `chat()` 保持纯文本；新增适配层 `chat_with_metadata()` 返回文本、供应商实际 token 计数及有界请求标识。`get_usage()` 按当前请求/线程隔离，仅包含供应商返回的合法字段，未知或`call()`失败为 `{}`，不会补写0；HTTP成功后的上层解析失败仍保留已知消耗。默认 timeout/retry 读取 `LLMConfig`，单次1–3次尝试共享递减的重试时间预算；Requests 的 socket 超时仍不是整个下载的硬截止。没有新增 HTTP API、环境变量或迁移，累计预算、持久化和成本仍未完成；详见[用量与调用隔离子卡](../../docs/LLM_USAGE_FOUNDATION_2026-10-11.md)。上线状态以该交付回执为准。
+
 2026-10-10 自然语音合同：`POST /api/digital-human/speech` 接收 `{text, voice_id, allow_external_voice}`。正文1–5000字，默认 `zh-CN-XiaoxiaoNeural`，另允许 Yunxia/Yunxi/Xiaoyi Neural；必须明确传入布尔 `true` 授权正文经当前 FileMate 服务转交 Microsoft。响应为 `audio/mpeg`、`Cache-Control:no-store`，不保存请求正文或音频。每空间每分钟6次、每进程并发2次、55秒总超时、8MiB音频上限；无授权403，非法参数422，繁忙429，供应商失败502，功能关闭503。`FILEMATE_ENABLE_NATURAL_VOICE=0` 可独立关闭，数字人总开关同时生效。元数据 provider 新增 `microsoft_edge`，旧 `web_speech` 记录兼容；无需数据库迁移。完整边界见[自然语音交付](../../docs/MICROSOFT_NATURAL_VOICE_2026-10-10.md)。
 
 > 核心 Python 模块与现役 HTTP API 的输入输出契约。
@@ -658,6 +671,18 @@ Linux适配层使用独立受限Unix socket代理，Web进程不持有Docker权�
 
 `POST /interviews/{id}/answers` 增加可选 `question_index`（0–100）、`request_key`（16–80 位字母/数字/下划线/短横线）与 `visual_metrics`。同场同键且正文、题号和指标一致，重复提交返回现有记录；同键不同请求或过期题号返回 409，不推进第二题。旧客户端可省略这些字段。空回答仍为 422。
 
+2026-10-13开发候选：`POST /interviews`的`scenario`兼容原四场景，并增加`技术面|项目面|算法面|HR面|压力面|英语面`。可选`project_name`（≤120）、`project_details`（≤6000）、`remember_for_future`（默认false）、`memory_id`（≤64）。项目面缺项目或只填一项返回422；无有效回答、资料已删除或撤销的所选记忆返回409。新专项或记忆训练不传`allow_external_analysis`时按false处理，旧四场景未传字段的行为兼容保留。专项五题为规则脚本；下一问题按本次真实回答与已校验分析组织，不新增模型请求。原题库CRUD的场景限制未在本轮扩展。
+
+创建、恢复、回答响应增加`practice_context:{mode,project,remember_for_future,memory_id,memory_ref,memory_available}`；project为用户填写的`{name,details,source:'user_input'}`或null。memory_ref含历史memory/interview/turn/question引用及本轮`target_question_index`。remember_for_future反映当前有效许可，不把已撤销的初始勾选当成许可。英语`fluency_metrics`增加`language:'en-US'`、`words_per_minute`；英语不产生未校准的节奏分，报告expression的words_per_minute可缺省/null以兼容旧报告。
+
+| 方法 | 路径 | 面试记忆合同 |
+|---|---|---|
+| GET | `/interview/practice/memories?limit=30` | 1–100；按近期会话列本空间已授权且已回答记录的memory_id/interview_id/target_role/scenario/answer_count/created_at，不返回回答正文 |
+| GET | `/interview/practice/memories/{id}/forget-preview` | 返回作用范围与绑定该许可的confirmation_token；不存在404 |
+| DELETE | `/interview/practice/memories/{id}` | `{confirmed:true,confirmation_token}`；未确认422、令牌不匹配409、不存在404；成功`{forgotten:true}`，重复同令牌幂等；只停止未来复用，原会话/报告与已生成问题保留 |
+
+编程`GET /api/programming/problems`增加`knowledge_nodes:[{id,label,kind:'catalog_concept'}]`、`source`、`source_url`。目录概念不等于个人已确认图谱节点。`GET /api/programming/overview`增加`recommendations:[{problem_id,title,difficulty,stage,reason,basis_submission_ids,knowledge_nodes,method:'local_evidence_rules_v1'}]`，默认三条；统计全部有效完成提交，规则选择且不调用LLM/创建任务。依据ID可用原提交读取接口核对。题目版本与Judge请求格式不变。
+
 视觉摘要合同如下，额外字段、非有限数、计数不一致或超出时段的事件返回 422：
 
 ```json
@@ -830,7 +855,7 @@ GET /api/resume/profile 返回当前私有空间的事实或 null；PUT 接受 s
 
 POST /api/resume/generate：profile_revision、mode=local|llm、allow_external_model。local 不调用模型；llm 必须显式同意，发送教育/技能/项目及目标岗位，姓名/联系方式字段不发送（自由文本须自行去敏）。模型仅返回合法且唯一的事实ID，不能增加正文。结构错误/资料版本变化409，模型故障502；旧事实/简历保留。45秒模型超时、最多一次调用尝试；复用可替换LLM适配器与单请求凭据。
 
-GET /api/resume 列最近30份；GET /api/resume/{id} 返回不可由通用Artifact编辑器修改的快照；GET /api/resume/{id}/export?format=markdown|json 导出事实快照。关联判题仅证明生成时该次结果，教育/技能/经历属于用户声明，不能作为专业能力或岗位录用认证。缺失404、损坏409，不覆盖损坏内容。FILEMATE_ENABLE_RESUME=0 返回503，VITE_ENABLE_RESUME=false隐藏入口，数据保留。
+GET /api/resume 列最近30份；GET /api/resume/{id} 返回不可由通用Artifact编辑器修改的快照；GET /api/resume/{id}/export?format=markdown|json|pdf|docx 导出事实快照。2026-10-12新增PDF/DOCX本地排版，不调用模型；PDF嵌入仓库OFL中文字体，DOCX为可编辑正文；正文超过2MB/20000行返回413，不静默截断，依赖/字体暂不可用503。关联判题仅证明生成时该次结果，教育/技能/经历属于用户声明，不能作为专业能力或岗位录用认证。缺失404、损坏409，不覆盖损坏内容。FILEMATE_ENABLE_RESUME=0 返回503，VITE_ENABLE_RESUME=false隐藏入口，数据保留。
 
 ## 学期模式（AUD-05c）
 
@@ -840,7 +865,7 @@ GET /api/semester 返回当前课程/任务或null。POST /api/semester/preview 
 
 POST /api/growth/reports 接受start_date、end_date、time_zone=Asia/Shanghai（UTC+8日期边界，最多366天，不能选未来）。在一致只读快照中汇总有效题目对应的客观作答、当前有效编译器完成事件、实际面试回答和学期任务完成时间。坏题/修订前不适用证据/已撤销编程结果不进入统计；面试分数要求有效模型分析引用，不计本地回退。每类记录保留ID、时间、回读入口，5条只是摘要展示门槛。旧学习计划没有逐日完成时间，仅报告生成时的完成快照，不把更新时间当作实际完成时间。无记录为待评测，不造提升幅度、时长、准确率、能力或岗位评价。
 
-GET /api/growth/reports 返回最近30份；GET /api/growth/reports/{id} 返回持久历史快照及前20条依据；GET /{id}/evidence?offset=0&limit=20 完整分页（limit≤100）；GET /{id}/export?format=markdown|json 包含全部依据。历史报告是当时快照，后续删除不重写过去统计；彻底隐私删除应一并移除有关报告。损坏409、跨空间/缺失404，通用Artifact编辑器禁止修改这些报告。FILEMATE_ENABLE_GROWTH_REPORT=0独立503、VITE_ENABLE_GROWTH_REPORT=false隐藏组件。
+GET /api/growth/reports 返回最近30份；GET /api/growth/reports/{id} 返回持久历史快照及前20条依据；GET /{id}/evidence?offset=0&limit=20 完整分页（limit≤100）；GET /{id}/export?format=markdown|json|pdf 包含全部依据。2026-10-12新增PDF沿用保存快照，本地中文排版不调用模型；2MB/20000行以上明确413，建议缩小期间或使用原格式，字体/依赖不可用503。历史报告是当时快照，后续删除不重写过去统计；彻底隐私删除应一并移除有关报告。损坏409、跨空间/缺失404，通用Artifact编辑器禁止修改这些报告。FILEMATE_ENABLE_GROWTH_REPORT=0独立503、VITE_ENABLE_GROWTH_REPORT=false隐藏组件。
 
 ### 连续复练日期边界修复
 

@@ -49,10 +49,26 @@ class MicrosoftSpeech:
                 while len(self._requests) > 1000:
                     self._requests.popitem(last=False)
             try:
-                return await asyncio.wait_for(self._collect(text, voice), timeout=55)
+                from filemate.runtime_governance import default_scope
+
+                resource = default_scope()
+                admission = await asyncio.to_thread(
+                    resource.store.reserve, resource, provider='microsoft_edge', model=voice, budget_units=0,
+                )
+                try:
+                    audio = await asyncio.wait_for(self._collect(text, voice), timeout=55)
+                except BaseException:
+                    await asyncio.shield(asyncio.to_thread(admission.finish, status='failed', error_code='speech_error'))
+                    raise
+                await asyncio.to_thread(admission.finish, status='success')
+                return audio
             except (TimeoutError, OSError, edge_tts.exceptions.EdgeTTSException) as exc:
                 raise SpeechUnavailable("Microsoft 自然语音暂不可用，请稍后重试") from exc
             except Exception as exc:
+                from filemate.runtime_governance import BudgetExceeded, GovernanceUnavailable
+
+                if isinstance(exc, (BudgetExceeded, GovernanceUnavailable)):
+                    raise
                 # 供应商异常可能包含请求细节，只向调用方提供固定的安全消息。
                 raise SpeechUnavailable("Microsoft 自然语音暂不可用，请稍后重试") from exc
         finally:

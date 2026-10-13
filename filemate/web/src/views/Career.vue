@@ -1159,11 +1159,11 @@ onBeforeUnmount(() => {
   line-height: 1.7;
 }
 .eyebrow {
-  font-size: 12px;
+  font-size: var(--type-meta);
   color: var(--accent) !important;
 }
 .boundary {
-  font-size: 13px;
+  font-size: var(--type-meta);
   line-height: 1.8;
   color: var(--text-secondary);
   padding: 14px 0;
@@ -1200,7 +1200,7 @@ onBeforeUnmount(() => {
 }
 .muted,
 small {
-  font-size: 12px;
+  font-size: var(--type-meta);
   color: var(--text-secondary);
   line-height: 1.7;
 }
@@ -1215,7 +1215,7 @@ input,
 select,
 textarea {
   font: inherit;
-  font-size: 13px;
+  font-size: var(--type-action);
 }
 button {
   min-height: 44px;
@@ -1269,7 +1269,7 @@ button:disabled {
 .operation-log summary {
   cursor: pointer;
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--type-action);
   min-height: 44px;
 }
 .catalog-row {
@@ -1277,7 +1277,7 @@ button:disabled {
   gap: 8px;
   padding: 16px 0;
   border-top: 1px solid var(--border-subtle);
-  font-size: 13px;
+  font-size: var(--type-meta);
 }
 .catalog-row strong {
   font-size: 15px;
@@ -1288,7 +1288,7 @@ button:disabled {
 label {
   display: grid;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--type-meta);
   margin: 12px 0;
 }
 input:not([type="radio"]),
@@ -1355,12 +1355,12 @@ textarea:read-only {
 }
 .requirements strong {
   display: block;
-  font-size: 14px;
+  font-size: var(--type-copy);
   color: var(--accent);
 }
 q {
   display: block;
-  font-size: 13px;
+  font-size: var(--type-meta);
   color: var(--text-secondary);
   margin-top: 8px;
 }
@@ -1377,7 +1377,7 @@ q {
   gap: 12px;
 }
 .training-path span {
-  font-size: 12px;
+  font-size: var(--type-meta);
   color: var(--text-secondary);
 }
 .evidence-row {
@@ -1392,11 +1392,11 @@ q {
 }
 .evidence-row span {
   color: var(--accent);
-  font-size: 12px;
+  font-size: var(--type-meta);
 }
 .evidence-row p,
 .evidence-row li {
-  font-size: 13px;
+  font-size: var(--type-meta);
 }
 .evidence-row ul {
   padding-left: 18px;
@@ -1409,7 +1409,7 @@ q {
   line-height: 1.6;
   min-height: 20px;
   border-bottom: 1px solid var(--border-subtle);
-  font-size: 13px;
+  font-size: var(--type-meta);
   color: var(--accent);
   overflow-wrap: anywhere;
 }
@@ -1470,7 +1470,7 @@ summary:focus-visible {
 }
 .operation-log li {
   line-height: 2;
-  font-size: 13px;
+  font-size: var(--type-meta);
 }
 @media (max-width: 1050px) {
   .career-layout {

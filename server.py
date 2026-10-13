@@ -64,9 +64,23 @@ from filemate.perception.parsers import PLAIN_TEXT_SUFFIXES
 from filemate.portfolio.growth import GrowthRepository, ReportRequest
 from filemate.portfolio.resume import Profile as ResumeProfile
 from filemate.portfolio.resume import ResumeRepository, ResumeRequest
+from filemate.runtime_governance import (
+    BudgetExceeded,
+    BudgetStore,
+    GovernanceUnavailable,
+    default_scope,
+    resource_scope,
+)
 from filemate.speech import MicrosoftSpeech, SpeechBusy, SpeechUnavailable
 from filemate.study.semester import ConfirmSemester, SemesterConfig, SemesterRepository, TaskUpdate
 from filemate.understanding.interview_bank_seed import SEED_QUESTIONS
+from filemate.understanding.interview_practice import (
+    SPECIALIST_QUESTIONS,
+    InterviewPracticeRepository,
+    InterviewScenario,
+    grounded_followup,
+    project_questions,
+)
 
 # 加载 .env 文件
 env_path = Path(__file__).parent / ".env"
@@ -348,7 +362,12 @@ _local_storage = SQLiteStorage(DATABASE_PATH)
 _local_storage.init_schema()
 _local_storage.ensure_interview_questions(SEED_QUESTIONS)
 _accounts = AccountStore(DATABASE_PATH) if IDENTITY_MODE == "anonymous" else None
-_workspace_deletion = WorkspaceDeletion(DATA_DIR, _identity_secret) if _accounts else None
+_model_budget = BudgetStore(DATA_DIR / 'control' / 'resource-governance.db')
+try:
+    _model_budget.initialize()
+except (sqlite3.Error, OSError, GovernanceUnavailable) as exc:
+    logger.warning('模型治理初始化暂不可用: %s', type(exc).__name__)
+_workspace_deletion = WorkspaceDeletion(DATA_DIR, _identity_secret, _model_budget.purge_owner_hash, _model_budget.owner_hashes) if _accounts else None
 if _workspace_deletion:
     _workspace_deletion.recover(_accounts)
     _accounts.denied_workspace = _workspace_deletion.blocked
@@ -427,6 +446,10 @@ class NaturalSpeechRequest(BaseModel):
 # =============== App ===============
 
 def _maintain_private_data():
+    try:
+        _model_budget.maintain()
+    except GovernanceUnavailable:
+        logger.warning('模型审计维护暂不可用，将在下一轮重试')
     with _tenant_storage_lock:
         if _retention:
             result = _retention.run(_tenant_storages, _active_tenants, _exclusive_tenants, _tenant_storage)
@@ -535,7 +558,8 @@ async def isolate_anonymous_workspace(request: Request, call_next):
                 return JSONResponse(status_code=409, content={'success': False, 'error': '个人数据维护中，请稍后重试'})
             _active_tenants['local'] = _active_tenants.get('local', 0) + 1
         try:
-            return await call_next(request)
+            with resource_scope(_model_budget, 'local', 'local', f'http.{request.method.lower()}', managed_db_path=_storage.db_path):
+                return await call_next(request)
         finally:
             with _tenant_storage_lock:
                 _active_tenants['local'] -= 1
@@ -579,7 +603,9 @@ async def isolate_anonymous_workspace(request: Request, call_next):
                 return JSONResponse(status_code=503, content={
                     'success': False, 'data': None, 'error': '学习空间维护记录暂不可用，请稍后重试',
                 })
-        response = await call_next(request)
+        with resource_scope(_model_budget, identity_id, 'account' if account else 'guest', f'http.{request.method.lower()}',
+                            managed_db_path=tenant_root / 'filemate.db'):
+            response = await call_next(request)
     finally:
         _tenant_context.reset(token)
         with _tenant_storage_lock:
@@ -608,6 +634,15 @@ class AccountRegisterRequest(BaseModel):
     password: SecretStr = Field(max_length=128)
     keep_guest_data: bool = True
     remember: bool = True
+
+
+@app.exception_handler(BudgetExceeded)
+@app.exception_handler(GovernanceUnavailable)
+async def model_budget_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    del request
+    return JSONResponse(status_code=429 if isinstance(exc, BudgetExceeded) else 503,
+                        content={'success': False, 'data': None, 'error': str(exc)},
+                        headers={'Cache-Control': 'no-store'})
 
 
 class AccountLoginRequest(BaseModel):
@@ -962,6 +997,14 @@ def public_llm_status():
     })
 
 
+@app.get('/api/llm/usage', response_model=ApiResponse)
+def own_model_usage(response: Response, limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0, le=1_000_000)):
+    """仅返回会话绑定的当前空间用量，不接受他人空间参数。"""
+    scope = default_scope()
+    response.headers['Cache-Control'] = 'no-store'
+    return ApiResponse(success=True, data=scope.store.view(scope, limit, offset))
+
+
 @app.post("/api/llm/test", response_model=ApiResponse)
 def test_llm_connection(request: Request):
     """主动发起小额模型请求，验证鉴权与实际响应。"""
@@ -981,6 +1024,8 @@ def test_llm_connection(request: Request):
         )
         if not isinstance(reply, str) or not reply.strip():
             raise HTTPException(status_code=502, detail="模型返回空内容，请稍后重试")
+    except (BudgetExceeded, GovernanceUnavailable):
+        raise
     except LLMError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return ApiResponse(success=True, data={
@@ -1455,14 +1500,18 @@ def programming_problems():
 @app.get("/api/programming/overview", response_model=ApiResponse)
 def programming_overview():
     from filemate.programming.feedback import evidence_profile
+    from filemate.programming.recommendations import recommend_problems
     from filemate.programming.service import recover
 
     _require_programming_enabled()
     repository = _coding_repository()
     recover(repository)
     submissions = repository.list(100)
+    evidence = repository.evidence()
+    profile = evidence_profile(evidence)
     return ApiResponse(success=True, data={"submissions": submissions[:100],
-                                          "profile": evidence_profile(repository.evidence()),
+                                          "profile": profile,
+                                          "recommendations": recommend_problems(evidence, profile),
                                           "evidence_scope": "all_active_completed_submissions",
                                           "events": repository.events()})
 
@@ -2563,12 +2612,16 @@ class QuizAttemptRequest(BaseModel):
 
 class InterviewStartRequest(BaseModel):
     target_role: str = Field(max_length=120)
-    scenario: Literal["求职面试", "竞赛答辩", "保研复试", "知识讲解"] = "求职面试"
+    scenario: InterviewScenario = "求职面试"
     difficulty: Literal["入门", "标准", "压力面"] = "标准"
     source_id: str | None = Field(default=None, max_length=64)
     focus_wrong_id: str | None = Field(default=None, max_length=64)
     goal_id: str | None = Field(default=None, max_length=64)
     allow_external_analysis: bool | None = None
+    project_name: str = Field(default="", max_length=120)
+    project_details: str = Field(default="", max_length=6000)
+    remember_for_future: bool = False
+    memory_id: str | None = Field(default=None, min_length=1, max_length=64)
 
 
 class InterviewFluencyMarker(BaseModel):
@@ -3203,7 +3256,8 @@ class PersonalRestoreRequest(BaseModel):
 def _personal_backup():
     if os.getenv('FILEMATE_ENABLE_PERSONAL_DATA', '1').lower() in {'0', 'false', 'off'}:
         raise HTTPException(status_code=503, detail='个人导出恢复已关闭，原数据保留')
-    return PersonalBackup(_storage, _current_identity_id(), _current_upload_root(), _current_archive_dir())
+    return PersonalBackup(_storage, _current_identity_id(), _current_upload_root(), _current_archive_dir(),
+                          usage_export=lambda: _model_budget.export(default_scope()))
 
 
 @app.get('/api/privacy/export')
@@ -3334,8 +3388,17 @@ def growth_report_evidence(identifier: str, offset: int = Query(0, ge=0, le=1000
 
 
 @app.get('/api/growth/reports/{identifier}/export')
-def export_growth_report(identifier: str, format: Literal['json', 'markdown'] = 'markdown'):
+def export_growth_report(identifier: str, format: Literal['json', 'markdown', 'pdf'] = 'markdown'):
     result = _get_growth_report(identifier)
+    if format == 'pdf':
+        from filemate.portfolio.document_export import document_pdf
+        try:
+            content = document_pdf(result['markdown'], title='FileMate 成长报告')
+        except ValueError as exc:
+            raise HTTPException(413, str(exc)) from exc
+        except (OSError, ImportError) as exc:
+            raise HTTPException(503, 'PDF导出暂不可用，已保存报告保留，可先导出Markdown或JSON') from exc
+        return Response(content, media_type='application/pdf', headers={'Content-Disposition': 'attachment; filename="growth-report.pdf"', 'Cache-Control': 'no-store'})
     content = result['markdown'] if format == 'markdown' else json.dumps(result, ensure_ascii=False, indent=2)
     return Response(content, media_type='text/markdown' if format == 'markdown' else 'application/json', headers={'Content-Disposition': 'attachment; filename="growth-report.' + ('md' if format == 'markdown' else 'json') + '"', 'Cache-Control': 'no-store'})
 
@@ -3440,8 +3503,19 @@ def get_resume(identifier: str):
 
 
 @app.get("/api/resume/{identifier}/export")
-def export_resume(identifier: str, format: Literal["markdown", "json"] = "markdown"):
+def export_resume(identifier: str, format: Literal["markdown", "json", "pdf", "docx"] = "markdown"):
     result = get_resume(identifier).data
+    if format in {'pdf', 'docx'}:
+        from filemate.portfolio.document_export import document_docx, document_pdf
+        try:
+            content = (document_pdf(result['markdown'], title='FileMate 简历') if format == 'pdf'
+                       else document_docx(result['markdown'], title='FileMate 简历'))
+        except ValueError as exc:
+            raise HTTPException(413, str(exc)) from exc
+        except (OSError, ImportError) as exc:
+            raise HTTPException(503, '文档导出暂不可用，已保存简历保留，可先导出Markdown或JSON') from exc
+        media = 'application/pdf' if format == 'pdf' else 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        return Response(content, media_type=media, headers={'Content-Disposition': f'attachment; filename="resume.{format}"', 'Cache-Control': 'no-store'})
     content = result["markdown"] if format == "markdown" else json.dumps(result, ensure_ascii=False, indent=2)
     return Response(content, media_type="text/markdown" if format == "markdown" else "application/json",
                     headers={"Content-Disposition": 'attachment; filename="resume.' + ("md" if format == "markdown" else "json") + '"', "Cache-Control": "no-store"})
@@ -3834,6 +3908,35 @@ def delete_interview_question(question_id: str):
     return ApiResponse(success=True, data={"deleted": True})
 
 
+@app.get("/interview/practice/memories", response_model=ApiResponse)
+def interview_practice_memories(limit: int = Query(30, ge=1, le=100)):
+    """只列出用户主动开放复用且已有回答的本空间练习。"""
+    return ApiResponse(success=True, data=InterviewPracticeRepository(_storage).list(limit=limit))
+
+
+@app.get("/interview/practice/memories/{memory_id}/forget-preview", response_model=ApiResponse)
+def interview_practice_forget_preview(memory_id: str):
+    """预览遗忘影响，原面试记录不删除。"""
+    try:
+        return ApiResponse(success=True, data=InterviewPracticeRepository(_storage).preview(memory_id))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.delete("/interview/practice/memories/{memory_id}", response_model=ApiResponse)
+def forget_interview_practice(memory_id: str, request: InterviewPrivacyRequest):
+    """确认撤销跨次复用，重复确认保持幂等。"""
+    if not request.confirmed:
+        raise HTTPException(status_code=422, detail="请先预览并确认遗忘影响")
+    try:
+        result = InterviewPracticeRepository(_storage).forget(memory_id, request.confirmation_token)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return ApiResponse(success=True, data=result)
+
+
 @app.post("/interviews", response_model=ApiResponse)
 def start_interview(request: InterviewStartRequest):
     """创建一场可持续复盘的模拟面试。"""
@@ -3845,6 +3948,20 @@ def start_interview(request: InterviewStartRequest):
     )
 
 
+    project_name = request.project_name.strip()
+    project_details = request.project_details.strip()
+    if bool(project_name) != bool(project_details):
+        raise HTTPException(status_code=422, detail="请同时填写项目名称和你实际完成的内容")
+    if request.scenario == "项目面" and not project_details:
+        raise HTTPException(status_code=422, detail="项目面需要你先填写真实项目，不能由系统编造经历")
+    practice = InterviewPracticeRepository(_storage)
+    remembered = practice.get(request.memory_id) if request.memory_id else None
+    if request.memory_id and (remembered is None or not remembered["interview"]["turns"]):
+        raise HTTPException(status_code=409, detail="所选练习记忆已撤销或没有有效回答，请重新选择")
+    memory_ref = None
+    allow_external_analysis = request.allow_external_analysis
+    if allow_external_analysis is None and (request.scenario in SPECIALIST_QUESTIONS or request.memory_id):
+        allow_external_analysis = False
     source = None
     context_excerpt = ""
     source_context_mode = "none"
@@ -3899,7 +4016,7 @@ def start_interview(request: InterviewStartRequest):
         )
 
     try:
-        if os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") == "1" or request.allow_external_analysis is False:
+        if os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") == "1" or allow_external_analysis is False:
             raise RuntimeError("本地选题模式")
         llm = LLMClient(LLMConfig.from_env())
     except Exception:  # noqa: BLE001 - 未配置 LLM 时使用确定性选题
@@ -3936,45 +4053,76 @@ def start_interview(request: InterviewStartRequest):
         ][:4]
         questions = [grounded_question, *[item[0] for item in remaining]]
         question_ids = [None, *[item[1] for item in remaining]]
-    run = _storage.create_agent_run(
-        task_type="interview_session",
-        goal=f"围绕{target_role}完成可复盘的{request.scenario}",
-        selected_agents=select_agents("interview_session"),
-        context_refs={
-            "scenario": request.scenario,
-            "allow_external_analysis": request.allow_external_analysis,
-            "difficulty": request.difficulty,
-            "question_ids": question_ids,
-            "source_id": request.source_id,
-            "source_context_mode": source_context_mode,
-            "focus_wrong_id": request.focus_wrong_id,
-            "goal_id": request.goal_id,
-            "attempt_id": (
-                (linked_task.get("evidence_ref") or {}).get("attempt_id")
-                if request.goal_id else None
-            ),
-            "knowledge_key": (
-                linked_task.get("knowledge_key")
-                if request.goal_id else focus_wrong.get("knowledge_key") if focus_wrong else None
-            ),
-            "error_cause": (
-                linked_task.get("error_cause")
-                if request.goal_id else focus_wrong.get("error_cause") if focus_wrong else None
-            ),
-            "source_evidence": source_evidence,
-            "source_chunk_id": (
-                source_evidence.get("chunk_id") if source_evidence else None
-            ),
-        },
-    )
-    interview = _storage.create_interview(
-        target_role=target_role,
-        scenario=request.scenario,
-        difficulty=request.difficulty,
-        questions=questions,
-        question_ids=question_ids,
-        agent_run_id=run["run_id"],
-    )
+    if request.scenario == "项目面":
+        questions = project_questions(project_name, project_details, difficulty=request.difficulty)
+        question_ids = [None] * len(questions)
+    if remembered is not None:
+        past = remembered["interview"]
+        past_turns = past["turns"]
+        turn = next((item for item in reversed(past_turns)
+                     if any(area.get("status") in {"partial", "missing"}
+                            for area in (item.get("content_analysis", {}).get("areas", {}) or {}).values()
+                            if isinstance(area, dict))), past_turns[-1])
+        slot = 1 if source is not None or project_details else 0
+        questions[slot] = grounded_followup(
+            turn["answer"], request.scenario, 1, turn.get("content_analysis"),
+            previous_session=True, difficulty=request.difficulty,
+        )
+        question_ids[slot] = None
+        memory_ref = {"memory_id": request.memory_id, "interview_id": past["interview_id"],
+                      "turn_id": turn["turn_id"], "question_index": turn["question_index"],
+                      "target_question_index": slot}
+    with _storage._write_lock, _storage._conn() as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        if request.memory_id and practice.get(request.memory_id) is None:
+            raise HTTPException(status_code=409, detail="所选练习记忆刚被撤销，请重新选择")
+        run = _storage.create_agent_run(
+            task_type="interview_session",
+            commit=False,
+            goal=f"围绕{target_role}完成可复盘的{request.scenario}",
+            selected_agents=select_agents("interview_session"),
+            context_refs={
+                "scenario": request.scenario,
+                "allow_external_analysis": allow_external_analysis,
+                "practice_mode": "continuous" if request.scenario in SPECIALIST_QUESTIONS or remembered else "standard",
+                "practice_project": {"name": project_name, "details": project_details, "source": "user_input"} if project_details else None,
+                "remember_for_future": request.remember_for_future,
+                "practice_memory_ref": memory_ref,
+                "difficulty": request.difficulty,
+                "question_ids": question_ids,
+                "source_id": request.source_id,
+                "source_context_mode": source_context_mode,
+                "focus_wrong_id": request.focus_wrong_id,
+                "goal_id": request.goal_id,
+                "attempt_id": (
+                    (linked_task.get("evidence_ref") or {}).get("attempt_id")
+                    if request.goal_id else None
+                ),
+                "knowledge_key": (
+                    linked_task.get("knowledge_key")
+                    if request.goal_id else focus_wrong.get("knowledge_key") if focus_wrong else None
+                ),
+                "error_cause": (
+                    linked_task.get("error_cause")
+                    if request.goal_id else focus_wrong.get("error_cause") if focus_wrong else None
+                ),
+                "source_evidence": source_evidence,
+                "source_chunk_id": (
+                    source_evidence.get("chunk_id") if source_evidence else None
+                ),
+            },
+        )
+        interview = _storage.create_interview(
+            target_role=target_role,
+            scenario=request.scenario,
+            difficulty=request.difficulty,
+            questions=questions,
+            question_ids=question_ids,
+            agent_run_id=run["run_id"],
+            commit=False,
+        )
+        if request.remember_for_future:
+            practice.remember(interview, commit=False)
     _storage.append_agent_step(
         run_id=run["run_id"],
         agent_name="面试 Agent",
@@ -4007,6 +4155,7 @@ def start_interview(request: InterviewStartRequest):
         allowed_agents=["面试 Agent", "评价 Agent"],
     )
     interview["current_question"] = interview["questions"][0]
+    _attach_interview_practice_context(interview, run["context_refs"])
     interview["source_context"] = {
         "source_id": request.source_id,
         "source_name": source["original_name"] if source is not None else None,
@@ -4018,11 +4167,27 @@ def start_interview(request: InterviewStartRequest):
     return ApiResponse(success=True, data=interview)
 
 
+def _attach_interview_practice_context(interview: dict[str, Any], refs: dict[str, Any]) -> None:
+    """恢复项目事实与当前有效的复用授权，不复制历史回答。"""
+    practice = InterviewPracticeRepository(_storage)
+    memory_ref = refs.get("practice_memory_ref")
+    own_memory = practice.for_session(interview["interview_id"])
+    interview["practice_context"] = {
+        "mode": refs.get("practice_mode", "standard"),
+        "project": refs.get("practice_project"),
+        "remember_for_future": own_memory is not None,
+        "memory_id": own_memory["memory_id"] if own_memory else None,
+        "memory_ref": memory_ref,
+        "memory_available": bool(memory_ref and practice.get(memory_ref["memory_id"])),
+    }
+
+
 def _attach_interview_source_context(interview: dict[str, Any]) -> None:
     """从 Agent 运行记录恢复面试资料来源，不复制资料正文。"""
     run_id = interview.get("agent_run_id")
     run = _storage.get_agent_run(run_id) if run_id else None
     refs = run.get("context_refs", {}) if run else {}
+    _attach_interview_practice_context(interview, refs)
     source_id = refs.get("source_id")
     source = _storage.get_source(source_id) if source_id else None
     interview["source_context"] = {
@@ -4101,7 +4266,17 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
         request.answer,
         interview["target_role"],
         request.fluency_metrics.model_dump() if request.fluency_metrics else None,
+        speech_language="en-US" if interview["scenario"] == "英语面" else "zh-CN",
     )
+    next_question = None
+    memory_question_index = (context_refs.get("practice_memory_ref") or {}).get("target_question_index")
+    if (context_refs.get("practice_mode") == "continuous"
+            and index + 1 < len(interview["questions"])
+            and index + 1 != memory_question_index):
+        next_question = grounded_followup(
+            request.answer.strip(), interview["scenario"], index + 1, evaluation.get("content_analysis"),
+            difficulty=interview["difficulty"],
+        )
     try:
         updated = _storage.save_interview_turn(
             interview_id=interview_id,
@@ -4117,6 +4292,7 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
             visual_metrics=request.visual_metrics.model_dump() if request.visual_metrics else None,
             content_analysis=evaluation.get("content_analysis"),
             answer_key=request.request_key, answer_digest=digest,
+            next_question=next_question,
         )
     except ValueError as exc:
         detail = str(exc)

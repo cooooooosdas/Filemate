@@ -1,0 +1,15 @@
+{
+  "sample_kind": "synthetic loopback HTTP fixture; no external LLM or billing",
+  "baseline_only": true,
+  "provider_usage": {
+    "prompt_tokens": 7,
+    "completion_tokens": 3
+  },
+  "client_usage": {
+    "prompt_tokens": 0,
+    "completion_tokens": 0
+  },
+  "usage_preserved": false,
+  "status": "FAIL",
+  "next_card": "AUD-08 actual usage and cumulative budgets; not fixed by frontend delivery"
+}

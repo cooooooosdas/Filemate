@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "sample_kind": "synthetic loopback HTTP fixture; no external LLM or billing",
+  "base_commit": "4119ec2308dd23eeaf4663cd2334ace58e36c025",
+  "client_file_sha256": "26aea97a5c1ec7e9524e029a2499e27bd94025259ae7dab8f6448d50e13222e3",
+  "returned_usage": {
+    "prompt_tokens": 7,
+    "completion_tokens": 3,
+    "total_tokens": 10
+  },
+  "usage_when_unknown": {},
+  "usage_after_failure": {},
+  "cumulative_budget_verified": false,
+  "production_deployment_verified": false
+}

@@ -184,7 +184,7 @@ async function confirmName() {
   display: block;
   margin-bottom: 8px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--type-meta);
   font-weight: 700;
 }
 

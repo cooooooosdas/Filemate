@@ -1,0 +1,31 @@
+{
+  "passed": true,
+  "verified_commit": "7320eb83108875e97ebc60e1e18c11fcf9f7b001",
+  "run_id": 38147446243,
+  "url": "https://github.com/cooooooosdas/Filemate/actions/runs/38147446243",
+  "backend_passed": 1031,
+  "backend_skipped": 18,
+  "backend_deselected": 5,
+  "backend_warnings": 3,
+  "frontend_passed": 51,
+  "main_unchanged": "4119ec2308dd23eeaf4663cd2334ace58e36c025",
+  "pr_draft": true,
+  "deployed": false,
+  "jobs": [
+    {
+      "name": "Frontend · Node 24",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Backend · Python 3.11",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Desktop · Windows installer",
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  ]
+}

@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from filemate.execution import data_actions
+from filemate.task_resources import admit_plan, admit_tasks
 
 logger = logging.getLogger(__name__)
 
@@ -834,8 +835,11 @@ class SQLiteStorage:
     # ------------------------------------------------------------------
 
     def create_session(self, session_id: str, source_path: str) -> None:
-        with self._write_lock:
-            conn = self._conn()
+        with self._write_lock, self._conn() as conn:
+            conn.execute('BEGIN IMMEDIATE')
+            if conn.execute('SELECT 1 FROM sessions WHERE session_id=?', (session_id,)).fetchone() is not None:
+                return
+            admit_tasks(self.db_path, 1)
             conn.execute(
                 "INSERT OR IGNORE INTO sessions (session_id, source_path) VALUES (?, ?)",
                 (session_id, str(source_path)),
@@ -1504,6 +1508,8 @@ class SQLiteStorage:
                 artifact_type != "questions" or existing["content"] != content
             ):
                 raise ValueError("题集正文请通过 update_artifact 修订以保留学习历史")
+            admit_plan(self.db_path, artifact_type, content,
+                       existing['content'] if existing and existing['artifact_type'] == artifact_type else None)
             self._conn().execute(
                 """INSERT INTO artifacts
                    (artifact_id, workspace_id, source_id, artifact_type,
@@ -1571,6 +1577,7 @@ class SQLiteStorage:
                 metadata = dict(metadata) if isinstance(metadata, dict) else {}
                 if metadata.get("read_only_snapshot"):
                     raise ValueError("历史题集是只读证据，不能修改")
+                admit_plan(self.db_path, artifact['artifact_type'], content, artifact['content'])
                 if artifact["artifact_type"] == "questions":
                     # 历史库没有正文修订记录时，冻结原边界，避免标题更新时间改变证据归属。
                     if "graph_attempt_cutoff" not in metadata and "question_evidence_since" not in metadata:
@@ -2343,8 +2350,10 @@ class SQLiteStorage:
             if expression_review is not None and not completed:
                 raise ValueError("只能在最后一题保存表达回看")
             questions = list(interview["questions"])
+            question_ids = list(interview["question_ids"])
             if next_question is not None:
                 questions[next_index] = next_question
+                question_ids[next_index] = None
             scores = [
                 float(turn["score"])
                 for turn in interview["turns"]
@@ -2370,13 +2379,14 @@ class SQLiteStorage:
             )
             connection.execute(
                 """UPDATE interview_sessions SET current_index=?, status=?,
-                   overall_score=?, questions=?, expression_review=?,
+                   overall_score=?, questions=?, question_ids=?, expression_review=?,
                    updated_at=? WHERE interview_id=?""",
                 (
                     next_index,
                     "completed" if completed else "active",
                     round(sum(scores) / len(scores), 2) if scores else 0,
                     self._dump_json(questions),
+                    self._dump_json(question_ids),
                     self._dump_json(expression_review or interview["expression_review"]),
                     _now_iso(),
                     interview_id,
@@ -2589,6 +2599,9 @@ class SQLiteStorage:
                     return saved
 
             plan_id = uuid.uuid4().hex
+            artifact = self.get_artifact(artifact_id)
+            admit_plan(self.db_path, 'study_plan', plan,
+                       artifact['content'] if artifact and artifact['artifact_type'] == 'study_plan' else None)
             connection.execute(
                 """INSERT INTO study_plans
                    (plan_id, artifact_id, source_id, title, exam_date,
@@ -2839,6 +2852,8 @@ class SQLiteStorage:
         run_id = uuid.uuid4().hex
         with self._write_lock:
             connection = self._conn()
+            if task_type.strip() not in {'source_rights', 'memory_deletion'}:
+                admit_tasks(self.db_path, 1)
             connection.execute(
                 """INSERT INTO agent_runs
                    (run_id, task_type, goal, selected_agents, context_refs)
@@ -2965,6 +2980,7 @@ class SQLiteStorage:
         summary: str,
         allowed_agents: list[str],
         expires_at: str | None = None,
+        commit: bool = True,
     ) -> dict[str, Any]:
         """保存带来源和使用范围的摘要记忆。"""
         if memory_type not in {"session", "knowledge", "growth", "operation"}:
@@ -2991,7 +3007,8 @@ class SQLiteStorage:
                     expires_at,
                 ),
             )
-            self._conn().commit()
+            if commit:
+                self._conn().commit()
         row = self._conn().execute(
             "SELECT * FROM agent_memories WHERE memory_id=?",
             (memory_id,),
@@ -3749,6 +3766,7 @@ class SQLiteStorage:
                 if existing is not None:
                     conn.commit()
                     return result
+                admit_plan(self.db_path, 'study_plan', plan)
                 conn.execute(
                     """INSERT INTO artifacts
                        (artifact_id, workspace_id, source_id, artifact_type, title, content, metadata)

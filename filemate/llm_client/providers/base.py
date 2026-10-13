@@ -5,6 +5,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
+from ..models.response import LLMResponse
+
 
 class BaseLLMProvider(ABC):
     """所有供应商必须实现 chat()。"""
@@ -21,3 +23,11 @@ class BaseLLMProvider(ABC):
     ) -> str:
         """返回纯文本回复。"""
         ...
+
+    def chat_with_metadata(
+        self,
+        messages: list[dict[str, str]],
+        **kwargs: Any,
+    ) -> LLMResponse:
+        """兼容只返回文本的适配器，其用量保持未知。"""
+        return LLMResponse(text=self.chat(messages, **kwargs))

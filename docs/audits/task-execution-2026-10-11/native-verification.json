@@ -1,0 +1,27 @@
+{
+  "passed": true,
+  "kind": "real_windows_appcontainer_msvc",
+  "phases": [
+    {
+      "name": "actual_windows_isolation_selftest",
+      "passed": true
+    },
+    {
+      "name": "actual_compiler_ac_and_idempotence",
+      "passed": true,
+      "verdict": "AC"
+    },
+    {
+      "name": "actual_compile_error_isolated",
+      "passed": true,
+      "verdict": "CE"
+    },
+    {
+      "name": "budget_refusal_keeps_code_and_cancel",
+      "passed": true
+    }
+  ],
+  "external_model_calls": 0,
+  "real_student_data": false,
+  "duration_seconds": 12.163110971450806
+}

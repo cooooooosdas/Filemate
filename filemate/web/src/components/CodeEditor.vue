@@ -31,7 +31,7 @@ onMounted(async () => {
     const scope = self as typeof self & { MonacoEnvironment?: Monaco.Environment }
     scope.MonacoEnvironment = { getWorker: () => new worker.default() }
     monaco.editor.defineTheme('filemate-light', {
-      base: 'vs', inherit: true, rules: [], colors: { 'editor.background': '#fbfcf9', 'editor.lineHighlightBackground': '#f0f5ec' },
+      base: 'vs', inherit: true, rules: [], colors: { 'editor.background': '#f6f8fe', 'editor.lineHighlightBackground': '#e4ecfc' },
     })
     model = monaco.editor.createModel(props.modelValue, 'cpp')
     editor = monaco.editor.create(host.value, {

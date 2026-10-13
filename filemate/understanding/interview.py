@@ -6,6 +6,8 @@ import json
 import re
 from typing import Any
 
+from .interview_practice import SPECIALIST_QUESTIONS, apply_interview_difficulty
+
 QUESTION_BANK = {
     "知识讲解": [
         "请用自己的话解释今天复习的核心概念，并给出一个具体例子。",
@@ -40,9 +42,11 @@ QUESTION_BANK = {
 
 def build_questions(scenario: str, target_role: str) -> list[str]:
     """生成一组稳定可演示的问题。"""
-    questions = list(QUESTION_BANK.get(scenario, QUESTION_BANK["求职面试"]))
-    if target_role.strip() and scenario != "知识讲解":
+    questions = list(SPECIALIST_QUESTIONS.get(scenario, QUESTION_BANK.get(scenario, QUESTION_BANK["求职面试"])))
+    if target_role.strip() and scenario in {"求职面试", "竞赛答辩", "保研复试", "HR面"}:
         questions[0] = f"请用一分钟做自我介绍，并说明你为什么适合{target_role.strip()}。"
+    if scenario == "英语面" and target_role.strip():
+        questions[0] = f"Please introduce yourself and explain your interest in the role: {target_role.strip()}."
     return questions
 
 
@@ -162,6 +166,10 @@ def build_interview_questions(
     context_excerpt: str = "",
 ) -> tuple[list[str], list[str | None]]:
     """AI 选题 + AI 补题 + 确定性回退，返回 (题目列表, 题库题目 ID 列表)。"""
+    if scenario in SPECIALIST_QUESTIONS:
+        questions = [apply_interview_difficulty(question, scenario, difficulty)
+                     for question in build_questions(scenario, target_role)[:limit]]
+        return questions, [None] * len(questions)
     candidates = storage.list_interview_questions(
         scenario=scenario,
         difficulty=difficulty,
@@ -235,6 +243,12 @@ def build_source_grounded_question(
     safe_name = source_name.strip()[:80] or "所选资料"
     target = target_role.strip() or "目标方向"
     templates = {
+        "技术面": f"依据《{safe_name}》，请解释一项与你目标方向相关的技术原理和适用边界。",
+        "项目面": f"依据《{safe_name}》，请区分项目目标、你的职责、实际完成的部分和未验证的设想。",
+        "算法面": f"依据《{safe_name}》，选一个材料中的算法，说明输入输出、复杂度和边界测试。",
+        "HR面": f"依据《{safe_name}》，介绍一段真实经历，说明你的行动、合作过程和结果。",
+        "压力面": f"依据《{safe_name}》，提出一个可核验的结论，并说明反例和限制。",
+        "英语面": f"Using the selected material “{safe_name}”, explain one verified fact and its limitations in English.",
         "知识讲解": (
             f"请依据《{safe_name}》，用自己的话解释一个关键概念，"
             "给出例子并说明你如何核对自己的解释。"
@@ -300,6 +314,8 @@ class InterviewEvaluator:
         answer: str,
         target_role: str,
         fluency_metrics: dict[str, Any] | None = None,
+        *,
+        speech_language: str = "zh-CN",
     ) -> dict[str, Any]:
         """返回总分、维度分和改进建议。"""
         from filemate.interview_review.content import analysis_failure, analyze_content
@@ -314,13 +330,15 @@ class InterviewEvaluator:
                 "scoring_mode": "local_fallback",
                 "analysis_error": analysis_failure(exc),
             }
-        return self._with_fluency(result, answer, fluency_metrics)
+        return self._with_fluency(result, answer, fluency_metrics, speech_language=speech_language)
 
     @staticmethod
     def _with_fluency(
         evaluation: dict[str, Any],
         answer: str,
         metrics: dict[str, Any] | None,
+        *,
+        speech_language: str = "zh-CN",
     ) -> dict[str, Any]:
         """把浏览器语音节奏转成透明、低权重的流畅性参考分。"""
         if not metrics or metrics.get("source") != "speech_recognition":
@@ -347,6 +365,23 @@ class InterviewEvaluator:
                     "label": marker_labels[marker["kind"]],
                 }
             )
+
+        if speech_language == "en-US":
+            words = len(re.findall(r"[A-Za-z]+(?:['’-][A-Za-z]+)*", answer))
+            words_per_minute = round(words * 60 / duration, 2)
+            evaluation["fluency"] = {
+                "duration_seconds": round(duration, 2), "chars_per_minute": chars_per_minute,
+                "words_per_minute": words_per_minute, "language": "en-US",
+                "filler_count": filler_count, "long_pause_count": long_pause_count,
+                "source": "speech_recognition", "markers": markers,
+                **({"recording_offset_seconds": metrics["recording_offset_seconds"]}
+                   if metrics.get("recording_offset_seconds") is not None else {}),
+            }
+            evaluation["feedback"] = (
+                f"{evaluation.get('feedback', '')} 英语识别节奏：约{words_per_minute:.0f}词/分钟，"
+                f"{filler_count}个口头语、{long_pause_count}次较长识别间隔；尚未校准英语节奏评分。"
+            ).strip()
+            return evaluation
 
         if 120 <= chars_per_minute <= 260:
             pace_score = 100.0

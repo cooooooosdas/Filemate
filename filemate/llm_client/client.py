@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import time
+import weakref
+from contextvars import ContextVar
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -15,10 +18,14 @@ from .exceptions import (
     LLMRateLimitError,
     LLMTimeoutError,
 )
+from .models.response import validated_usage
 from .providers.base import BaseLLMProvider
 from .providers.openai_compatible import OpenAICompatibleProvider
 
 logger = logging.getLogger(__name__)
+_USAGE: ContextVar[dict[weakref.ReferenceType[Any], tuple[tuple[str, int], ...]] | None] = ContextVar(
+    'filemate_llm_usage', default=None,
+)
 
 
 class LLMClient:
@@ -35,7 +42,13 @@ class LLMClient:
             config = LLMConfig.from_env()
         self.config = config
         self._provider: BaseLLMProvider = self._build(config)
-        self._last_usage: dict[str, int] = {}
+        self._usage_ref = weakref.ref(self)
+
+    def _remember_usage(self, usage: dict[str, int]) -> None:
+        """复制上下文状态，避免共享客户端在并发请求间泄漏用量。"""
+        retained = {key: value for key, value in (_USAGE.get() or {}).items() if key() is not None}
+        retained[self._usage_ref] = tuple(usage.items())
+        _USAGE.set(retained)
 
     # ------------------------------------------------------------------
     # 供应商路由
@@ -91,45 +104,79 @@ class LLMClient:
         temperature: float = 0.2,
         max_tokens: int = 1024,
         response_format: dict[str, Any] | None = None,
-        retry: int = 3,
-        timeout: float = 60.0,
+        retry: int | None = None,
+        timeout: float | None = None,
     ) -> str:
         """调用 LLM 并返回纯文本回复。只对可恢复错误（限流/超时）重试。"""
+        self._remember_usage({})
+        retry = self.config.max_retries if retry is None else retry
+        timeout = self.config.timeout if timeout is None else timeout
+        if type(retry) is not int or not 1 <= retry <= 3:
+            raise LLMConfigError("模型调用次数必须为1至3次")
+        if (
+            isinstance(timeout, bool) or not isinstance(timeout, (int, float))
+            or not math.isfinite(timeout) or not 0 < timeout <= 300
+        ):
+            raise LLMConfigError("模型调用超时必须为0至300秒之间的有限值")
+        if type(max_tokens) is not int or not 1 <= max_tokens <= 65536:
+            raise LLMConfigError("模型输出上限必须为1至65536个token")
         if messages is None:
             messages = []
         if prompt:
             messages = [{"role": "system", "content": prompt}] + messages
 
+        from filemate.runtime_governance import default_scope, input_budget_units
+
+        scope = default_scope()
+        units = input_budget_units(messages, max_tokens)
+
         last_exc: Exception | None = None
+        deadline = time.monotonic() + timeout
         for attempt in range(1, retry + 1):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise LLMTimeoutError("模型调用重试预算已耗尽，请稍后重试") from last_exc
+            admission = scope.store.reserve(
+                scope, provider=self.config.provider, model=self.config.model,
+                budget_units=units, secret=self.config.api_key,
+            )
             try:
-                text = self._provider.chat(
+                response = self._provider.chat_with_metadata(
                     messages,
                     temperature=temperature,
                     max_tokens=max_tokens,
                     response_format=response_format,
-                    timeout=timeout,
+                    timeout=remaining,
                 )
-                self._last_usage = {"prompt_tokens": 0, "completion_tokens": 0}
-                return text
             except LLMRateLimitError as exc:
+                admission.finish(status='failed', error_code='rate_limit')
                 # 只对限流错误重试
-                wait = min(2 ** attempt, 30)
-                logger.warning("限流，%ds 后重试 (%d/%d)", wait, attempt, retry)
-                time.sleep(wait)
                 last_exc = exc
+                if attempt < retry:
+                    wait = min(2 ** attempt, 30)
+                    if time.monotonic() + wait >= deadline:
+                        raise LLMTimeoutError("模型调用重试预算已耗尽，请稍后重试") from exc
+                    logger.warning("模型限流，%ds 后重试 (%d/%d)", wait, attempt, retry)
+                    time.sleep(wait)
             except LLMTimeoutError as exc:
+                admission.finish(status='failed', error_code='timeout')
                 # 只对超时错误重试
                 logger.warning("超时，%d/%d 次重试", attempt, retry)
                 last_exc = exc
             except LLMAPIError as exc:
+                admission.finish(status='failed', error_code='provider_error')
                 # 不对业务层面错误（配置错误、无效请求等）重试
-                logger.error("API 错误（不重试）: %s", exc)
+                logger.error("模型API错误（不重试）: %s", type(exc).__name__)
                 raise
+            except BaseException:
+                admission.finish(status='failed', error_code='interrupted')
+                raise
+            else:
+                admission.finish(status='success', usage=response.usage, request_id=response.request_id)
+                self._remember_usage(validated_usage(response.usage))
+                return response.text
 
-        raise LLMAPIError(
-            f"LLM 调用在 {retry} 次重试后仍失败: {last_exc}"
-        ) from last_exc
+        raise LLMAPIError(f"模型调用在{retry}次尝试后仍失败，请稍后重试") from last_exc
 
     def call_structured(
         self,
@@ -173,5 +220,5 @@ class LLMClient:
             ) from exc
 
     def get_usage(self) -> dict[str, int]:
-        """返回最近一次调用的 token 用量。"""
-        return dict(self._last_usage)
+        """返回当前上下文最近成功调用的真实计数，未知字段缺省。"""
+        return dict((_USAGE.get() or {}).get(self._usage_ref, ()))

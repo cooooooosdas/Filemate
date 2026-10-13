@@ -131,6 +131,8 @@ class SemesterRepository:
             current = self.read()
             config = request.config.model_copy(update={'revision': request.config.revision + 1})
             content = {'config': config.model_dump(mode='json'), 'tasks': self.tasks(config), 'created_at': _now_iso()}
+            from filemate.task_resources import admit_tasks
+            admit_tasks(self.storage.db_path, len(content['tasks']))
             if current:
                 conn.execute("INSERT INTO artifacts(artifact_id,artifact_type,title,content,metadata) VALUES(?,'semester_history',?,?,?)",
                              ('semester-' + uuid.uuid4().hex, current['config']['title'], json.dumps(current, ensure_ascii=False), '{"schema_version":1,"origin":"semester"}'))

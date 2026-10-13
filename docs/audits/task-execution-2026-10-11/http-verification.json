@@ -1,0 +1,46 @@
+{
+  "passed": true,
+  "kind": "actual_loopback_http_registered_synthetic_account_and_windows_compiler",
+  "phases": [
+    {
+      "name": "actual_http_registration",
+      "passed": true
+    },
+    {
+      "name": "atomic_semester_refusal",
+      "passed": true
+    },
+    {
+      "name": "idempotent_confirmation_and_completion",
+      "passed": true
+    },
+    {
+      "name": "actual_http_windows_isolation_selftest",
+      "passed": true
+    },
+    {
+      "name": "actual_http_windows_ac_and_replay",
+      "passed": true
+    },
+    {
+      "name": "daily_counter_and_large_parameter_validation",
+      "passed": true
+    },
+    {
+      "name": "signed_export_restore_does_not_refill_budget",
+      "passed": true
+    },
+    {
+      "name": "ledger_outage_isolated_from_core_reads_and_export",
+      "passed": true
+    },
+    {
+      "name": "account_erasure_keeps_anonymous_global_usage",
+      "passed": true
+    }
+  ],
+  "external_model_calls": 0,
+  "real_student_data": false,
+  "task_admissions_before_erasure": 6,
+  "execution_admissions_before_erasure": 2
+}

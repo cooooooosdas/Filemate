@@ -300,7 +300,7 @@ function updateChart() {
 
 .confidence {
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--type-copy);
 }
 
 .empty-action :deep(.data-state) {
@@ -330,7 +330,7 @@ function updateChart() {
   gap: 10px;
   text-align: center;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-meta);
   background: var(--bg-surface);
 }
 </style>
