@@ -10,7 +10,6 @@ import shutil
 import subprocess
 import threading
 import time
-import tomllib
 from collections.abc import Iterator
 from http.client import HTTPResponse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -20,6 +19,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import ProxyHandler, Request, build_opener
 
 import pytest
+import tomllib
 from packaging.version import Version
 
 from filemate import __version__
