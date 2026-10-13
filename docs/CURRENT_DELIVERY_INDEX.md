@@ -1,5 +1,7 @@
 # FileMate 当前交付资源索引
 
+2026-10-13冻结交付：[全量上线回执](FROZEN_RELEASE_2026-10-13.md)、[5分钟录制包](demo/2026-10-13/README.md)。运行a376de83，Web/API/Judge/schema26及治理2已联合部署，精确CI1075后端/55前端通过，备份恢复通过；Microsoft自然语音当日403暂不可用，主稿有文字替代段。原始需求缺项仍保留。下列批次是历史证据；当前上线状态以此回执和站点release.json为准。
+
 2026-10-13当前批次：[可读性与前端回归](FRONTEND_READABILITY_2026-10-13.md)。用户要求开始测试与美化，替代下方此前“不测试、先补功能”的顺序；1061后端/55前端与类型/构建/体积通过，78组页面及三尺寸修正确认，合成账号与原生C++流程通过。开发候选保存，未部署；原功能缺项与真实第三方服务/设备边界保留。
 
 2026-10-13：继续先补原功能，再集中优化前端。本批[面试与编程教练功能](FUNCTION_DEVELOPMENT_2026-10-13.md)实现六模式、用户项目、跨次复用/遗忘和真实记录推荐；只构建保存，不运行全量审计、不部署、不将其余缺项写成完成。原功能缺项以[逐项账本](FEATURE_07_13_REQUIREMENTS_LEDGER.md)为准。
@@ -45,7 +47,7 @@
 
 - 最新：[布局、动效与图标交付](UI_LAYOUT_CLOSEOUT_2026-10-03.md)、[开发流程v2](DEVELOPMENT_WORKFLOW_V2.md)、[知识库](../filemate/web/src/views/Knowledge.vue)、[任务内导航](../filemate/web/src/components/TaskNavigation.vue)、[入场/指针反馈](../filemate/web/src/components/MotionSurface.vue)、[18项专项](../scripts/acceptance/knowledge_layout.mjs)。本地视觉基线`UI-2026.10.03-r1`固定最终副本与文件哈希；46项TLS父级/91路径、12视觉/17归档/23工作区/18知识库通过，线上未更新。
 
-核对日期：2026-10-04。此索引指向现役源码、合同、测试和阶段报告；五模块历史实测见[总验收](INTEGRATED_AUDIT_2026-10-02.md)，B2/B3工程状态见[收口交付](B2_B3_ENGINEERING_CLOSEOUT_2026-10-02.md)，完整后续要求见[执行账本](FULL_PROJECT_EXECUTION_PLAN.md)。历史报告保留当时结果，不等同于当前线上版本。
+核对日期：2026-10-13。此索引指向现役源码、合同、测试和阶段报告；五模块历史实测见[总验收](INTEGRATED_AUDIT_2026-10-02.md)，B2/B3工程状态见[收口交付](B2_B3_ENGINEERING_CLOSEOUT_2026-10-02.md)，完整后续要求见[执行账本](FULL_PROJECT_EXECUTION_PLAN.md)。历史报告保留当时结果，不等同于当前线上版本。
 
 ## 权威合同与运行
 
