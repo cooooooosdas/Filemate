@@ -57,6 +57,8 @@ try {
         filemate/operations `
         filemate/speech.py filemate/tests/test_natural_speech.py `
         filemate/understanding/interview.py `
+        filemate/understanding/interview_practice.py `
+        filemate/tests/test_feature_closeout.py `
         filemate/understanding/retrieval.py `
         evaluation/run_evaluation.py `
         evaluation/calibrate_interview.py `

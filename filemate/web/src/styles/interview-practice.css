@@ -22,6 +22,34 @@
   cursor: pointer;
 }
 
+.interview-page .mode-picker button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  text-align: left;
+}
+
+.interview-page .mode-picker button[aria-pressed='true'] { font-weight: 650; }
+.interview-page .setup-copy h2 { font-size: var(--type-section); }
+.interview-page .setup-copy p { font-size: var(--type-body); line-height: 1.75; max-width: 60ch; }
+.interview-page .form-grid { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; padding-block: 24px; border-block: 1px solid var(--border-subtle); }
+.interview-page .form-grid label { font-size: var(--type-action); font-weight: 600; }
+.interview-page .source-field { grid-column: 1 / -1; }
+.interview-page .source-field small { font-weight: 400; font-size: var(--type-meta); }
+.interview-page .difficulty-picker { display: flex; align-items: center; gap: 8px; border: 0; min-width: 0; padding: 0; margin: 0; }
+.interview-page .difficulty-picker legend { font-size: var(--type-action); font-weight: 600; margin-bottom: 8px; }
+.interview-page .difficulty-picker button { min-height: 48px; flex: 1; padding: 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-control); font: inherit; background: var(--bg-elevated); color: var(--text-primary); cursor: pointer; }
+.interview-page .difficulty-picker button[aria-pressed='true'] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.interview-page .start-practice { display: inline-flex; align-items: center; justify-content: center; gap: 14px; min-height: 54px; font-size: 18px; padding-inline: 24px; }
+.interview-page .focus-note { font-size: var(--type-copy); line-height: 1.75; }
+.interview-page button { min-height: 44px; }
+.interview-page .question-block h2 { font-size: 26px; line-height: 1.6; }
+.interview-page .resume-list { max-height: 280px; overflow-y: auto; scrollbar-gutter: stable; }
+.interview-page .resume-summary { display: flex; align-items: center; gap: 12px; min-height: 48px; cursor: pointer; font-size: 19px; }
+.interview-page .resume-summary span { margin-left: auto; font-size: var(--type-meta); color: var(--text-secondary); }
+.interview-page .resume-panel:not([open]) { padding-block: 12px; }
+
 .interview-page .mode-picker button[aria-pressed='true'],
 .interview-page .memory-row > button[aria-pressed='true'] {
   border-color: var(--accent);
@@ -155,4 +183,9 @@
   .interview-page .mode-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .interview-page .project-input { padding: 16px; min-width: 0; }
   .interview-page .practice-session { padding: 16px; }
+  .interview-page .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .interview-page .mode-picker button { gap: 8px; padding: 12px; }
+  .interview-page .start-practice { width: 100%; }
+  .interview-page .page-head h1 { font-size: var(--type-title); }
+  .interview-page .page-head { padding: 20px; }
 }

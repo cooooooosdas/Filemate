@@ -74,9 +74,9 @@ try {
     assert.equal(data.result.passed, 0)
     await page.locator('.test-list details').first().locator('summary').click()
     assert.match(await page.locator('.test-list details').first().innerText(), /15/)
-    await page.getByRole('tab', { name: '编程错题', exact: true }).click()
+    await page.getByRole('button', { name: '编程错题', exact: true }).click()
     assert.match(await page.locator('.wrong-row').innerText(), /1 次错误/)
-    await page.getByRole('tab', { name: '题目练习', exact: true }).click()
+    await page.getByRole('button', { name: '题目练习', exact: true }).click()
     return { submission_id: wrongId, verdict: data.result.verdict, test_count: 6 }
   })
   await check('successful code passes all normal and maximum boundary tests', 'real_cpp_ui_api', async () => {
@@ -92,10 +92,10 @@ try {
     const data = await submit(solutions['array-sum'], 'AC')
     assert.notEqual(data.submission_id, acceptedId)
     acceptedId = data.submission_id
-    await page.getByRole('tab', { name: '编程错题', exact: true }).click()
+    await page.getByRole('button', { name: '编程错题', exact: true }).click()
     assert.match(await page.locator('.wrong-row').innerText(), /已复习/)
     assert.match(await page.locator('.wrong-row').innerText(), /连续通过 2 次/)
-    await page.getByRole('tab', { name: '题目练习', exact: true }).click()
+    await page.getByRole('button', { name: '题目练习', exact: true }).click()
   })
   await check('local review notes persist across page reload', 'real_ui_api', async () => {
     assert.equal(await button('AI 代码复盘').isDisabled(), true)
@@ -105,7 +105,7 @@ try {
     await button('保存复盘笔记').click()
     await page.getByText('复盘笔记已保存。', { exact: true }).waitFor()
     await open()
-    await page.getByRole('tab', { name: '提交记录', exact: true }).click()
+    await page.getByRole('button', { name: '提交记录', exact: true }).click()
     await page.locator('.history-row').first().getByRole('button', { name: '查看提交', exact: true }).click()
     assert.equal(await page.getByRole('textbox', { name: '我的复盘笔记', exact: true }).inputValue(), '用 long long，检查 n=0 与 64 位总和。')
     assert.match(await page.locator('.feedback').innerText(), /规则提示/)
@@ -123,7 +123,7 @@ try {
     assert.equal(after.submissions.find(s => s.submission_id === acceptedId).code, solutions['array-sum'])
   })
   await check('syntax error is CE with real compiler diagnostics', 'real_cpp_ui_api', async () => {
-    await page.getByRole('tab', { name: '题目练习', exact: true }).click()
+    await page.getByRole('button', { name: '题目练习', exact: true }).click()
     const row = await submit('int main() { missing syntax; }\n', 'CE')
     assert.ok(!row.result.compile_log.includes('\ufffd'), 'compiler diagnostics must decode the installed MSVC language')
     assert.ok(row.result.compile_log.includes('error'))
@@ -154,7 +154,7 @@ try {
     return { same_submission: first.submission_id }
   })
   await check('weekly and category statistics use all active completed evidence', 'real_ui_api', async () => {
-    await page.getByRole('tab', { name: '练习证据', exact: true }).click()
+    await page.getByRole('button', { name: '练习证据', exact: true }).click()
     const data = await overview()
     assert.equal(data.profile.attempt_count, 4)
     assert.equal(data.profile.weekly.submissions, 4)
@@ -166,7 +166,7 @@ try {
     return { count: data.profile.attempt_count, weekly: data.profile.weekly }
   })
   await check('model failure preserves accepted verdict and existing local review', 'injected_model_failure', async () => {
-    await page.getByRole('tab', { name: '提交记录', exact: true }).click()
+    await page.getByRole('button', { name: '提交记录', exact: true }).click()
     await page.locator('.history-row').filter({ has: page.locator('.verdict.accepted') }).first().getByRole('button', { name: '查看提交', exact: true }).click()
     assert.equal(await button('AI 代码复盘').isDisabled(), true)
     await page.locator('.consent input').check()
@@ -190,7 +190,7 @@ try {
     assert.equal((await overview()).submissions.length, before)
   })
   await check('responsive layouts and editor disposal on navigation', 'real_ui', async () => {
-    await page.getByRole('tab', { name: '题目练习', exact: true }).click()
+    await page.getByRole('button', { name: '题目练习', exact: true }).click()
     for (const width of [375, 768, 1024, 1440]) {
       await page.setViewportSize({ width, height: 1000 })
       await page.waitForTimeout(350)

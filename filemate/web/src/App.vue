@@ -481,7 +481,7 @@ function isAuthPath(path: string): boolean {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 11px;
+  font-size: var(--type-meta);
   color: var(--text-secondary);
 }
 
@@ -505,13 +505,13 @@ function isAuthPath(path: string): boolean {
 }
 
 .state-copy strong {
-  font-size: 12px;
+  font-size: var(--type-meta);
   font-weight: 600;
 }
 
 .state-copy span {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-meta);
   white-space: nowrap;
 }
 
@@ -528,7 +528,7 @@ function isAuthPath(path: string): boolean {
 .nav-group-label {
   margin: 0 10px 7px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-meta);
   font-weight: 600;
   letter-spacing: 0.06em;
 }
@@ -588,9 +588,9 @@ function isAuthPath(path: string): boolean {
 .space-switch:hover { border-color: var(--accent-border); }
 .space-icon { display: grid; place-items: center; width: 32px; height: 36px; flex-shrink: 0; color: var(--accent); background: var(--accent-soft); border-radius: 6px; font-size: 20px; }
 .space-copy { display: grid; gap: 5px; }
-.space-copy strong { font-size: 12px; font-weight: 600; }
-.space-copy small { font-size: 10px; color: var(--text-muted); }
-.space-arrow { margin-left: auto; color: var(--text-muted); font-size: 12px; }
+.space-copy strong { font-size: var(--type-meta); font-weight: 600; }
+.space-copy small { font-size: var(--type-meta); color: var(--text-muted); }
+.space-arrow { margin-left: auto; color: var(--text-muted); font-size: var(--type-meta); }
 .sidebar-collapsed .space-switch { display: none; }
 
 .nav-item .el-icon {
@@ -609,7 +609,7 @@ function isAuthPath(path: string): boolean {
   color: var(--brand-blue-strong);
   background: rgba(219, 233, 255, 0.82);
   border-radius: 5px;
-  font-size: 10px;
+  font-size: var(--type-meta);
   font-weight: 600;
 }
 
@@ -627,7 +627,7 @@ function isAuthPath(path: string): boolean {
   align-items: center;
   gap: 8px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-meta);
 }
 
 .today-summary strong {
@@ -638,7 +638,7 @@ function isAuthPath(path: string): boolean {
 .version-label {
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--type-meta);
 }
 
 .workspace {
@@ -658,7 +658,7 @@ function isAuthPath(path: string): boolean {
   color: var(--text-primary);
   background: #fff8eb;
   border-bottom: 1px solid #ead5ad;
-  font-size: 12px;
+  font-size: var(--type-meta);
 }
 
 .service-banner > .el-icon {
@@ -674,7 +674,7 @@ function isAuthPath(path: string): boolean {
 }
 
 .service-banner strong {
-  font-size: 13px;
+  font-size: var(--type-meta);
 }
 
 .service-banner span {
@@ -726,7 +726,7 @@ function isAuthPath(path: string): boolean {
 .topbar-title p {
   margin: 0 0 3px;
   color: var(--brand-blue-strong);
-  font-size: 11px;
+  font-size: var(--type-meta);
 }
 
 .topbar-title h1 {
@@ -752,7 +752,7 @@ function isAuthPath(path: string): boolean {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-control);
-  font-size: 12px;
+  font-size: var(--type-meta);
   font-weight: 600;
   text-decoration: none;
   transition: color var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast);
@@ -801,7 +801,7 @@ function isAuthPath(path: string): boolean {
   gap: 8px 18px;
   border-top: 1px solid var(--border-subtle);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-meta);
   line-height: 1.6;
   text-align: center;
 }
@@ -855,7 +855,7 @@ function isAuthPath(path: string): boolean {
 
 .setting-row span {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-meta);
 }
 
 .sidebar-collapsed .sidebar-head {
@@ -989,14 +989,14 @@ function isAuthPath(path: string): boolean {
   }
 }
 
-.workspace-label { color: var(--text-muted); font-size: 12px; }
+.workspace-label { color: var(--text-muted); font-size: var(--type-meta); }
 .breadcrumb-divider { color: var(--border-strong); margin: 0 14px; }
-.page-title { font-size: 13px; font-weight: 500; }
+.page-title { font-size: var(--type-meta); font-weight: 500; }
 .version-label { min-height: 44px; border: 0; background: transparent; }
 .service-state.checking .state-indicator { background: var(--text-muted); }
-.finder-trigger { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; margin-right: 8px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--bg-surface); color: var(--text-muted); font-size: 12px; }
+.finder-trigger { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; margin-right: 8px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--bg-surface); color: var(--text-muted); font-size: var(--type-meta); }
 .finder-trigger:hover { border-color: var(--accent-border); color: var(--accent); }
-.finder-trigger kbd { margin-left: 24px; padding: 3px 5px; border: 1px solid var(--border-subtle); border-radius: 4px; font: 10px var(--font-mono); }
+.finder-trigger kbd { margin-left: 24px; padding: 3px 5px; border: 1px solid var(--border-subtle); border-radius: 4px; font: var(--type-meta) var(--font-mono); }
 @media(max-width: 1100px) { .finder-trigger kbd { display: none; } }
 @media(max-width: 900px) {
   .sidebar-collapsed .brand-link { display: block; }
@@ -1012,7 +1012,7 @@ function isAuthPath(path: string): boolean {
   .topbar-actions { gap: 0; }
   .topbar { gap: 6px; padding: 0 12px; }
   .topbar-title { gap: 4px; }
-  .page-title { font-size: 12px; }
+  .page-title { font-size: var(--type-meta); }
 }
 
 .nav-item { min-height:50px; font-size:17px; gap:12px; }

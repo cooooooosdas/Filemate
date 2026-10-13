@@ -42,8 +42,8 @@
         </el-table-column>
         <el-table-column label="操作" width="160">
           <template #default="{ row }">
-            <el-button size="small" :disabled="isPending(row.id)" @click="openEdit(row)">编辑</el-button>
-            <el-button size="small" type="danger" plain :loading="isPending(row.id)" @click="remove(row)">删除</el-button>
+            <el-button :disabled="isPending(row.id)" @click="openEdit(row)">编辑</el-button>
+            <el-button type="danger" plain :loading="isPending(row.id)" @click="remove(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -273,7 +273,7 @@ onMounted(load)
 .result-count {
   margin: 0 0 10px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-meta);
 }
 .bank-table {
   background: var(--bg-surface);
@@ -326,7 +326,7 @@ onMounted(load)
     display: flex;
     gap: 8px;
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: var(--type-meta);
   }
   .question-card header b {
     color: var(--accent);

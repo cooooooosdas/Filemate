@@ -117,21 +117,21 @@ const portraitStyle = computed(() => ({
   border-radius: 6px;
   background: var(--accent);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--type-meta);
   font-weight: 800;
 
 }
 .companion-copy { position: relative; z-index: 1; min-width: 0; }
-.companion-copy p { margin: 0 0 8px; color: var(--text-muted); font-size: 11px; font-weight: 500; letter-spacing: .02em; }
+.companion-copy p { margin: 0 0 8px; color: var(--text-muted); font-size: var(--type-meta); font-weight: 500; letter-spacing: .02em; }
 .companion-copy h2 { margin: 0 0 8px; color: var(--text-primary); font-weight: 500; font-size: clamp(18px, 2vw, 22px); line-height: 1.3; }
 .companion-copy > span { display: block; color: #526a80; line-height: 1.65; }
 .companion-copy small { display: inline-block; margin-top: 10px; padding: 5px 9px; border-radius: 8px; background: rgba(37, 99, 235, .07); color: #48627a; }
 .growth-progress { max-width: 600px; margin-top: 13px; }
-.growth-progress > div { display: flex; justify-content: space-between; gap: 14px; color: #36566f; font-size: 11px; }
+.growth-progress > div { display: flex; justify-content: space-between; gap: 14px; color: #36566f; font-size: var(--type-meta); }
 .growth-progress > div b { color: #176f52; }
 .growth-progress > i { display: block; height: 6px; margin-top: 6px; overflow: hidden; border-radius: 99px; background: rgba(41, 92, 125, .12); }
 .growth-progress > i em { display: block; height: 100%; border-radius: inherit; background: var(--accent);  }
-.growth-progress > p { margin: 5px 0 0; color: var(--text-muted); font-size: 10px; }
+.growth-progress > p { margin: 5px 0 0; color: var(--text-muted); font-size: var(--type-meta); }
 .companion-action {
   position: relative;
   z-index: 1;

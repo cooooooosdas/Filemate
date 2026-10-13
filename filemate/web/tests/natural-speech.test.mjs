@@ -58,3 +58,18 @@ test('upstream failure is visible and never falls back to device speech', async 
   provider.speak('学习', options, events); await flush()
   assert.match(log.at(-1), /暂不可用/); assert.equal(audios.length, 0)
 })
+
+test('rate and volume changes preserve the current audio and do not resynthesize', async t => {
+  let calls = 0
+  const { provider, audios, events, options } = setup(t, async () => {
+    calls++; return new Blob(['synthetic-audio'], { type: 'audio/mpeg' })
+  })
+  provider.speak('学习', options, events); await flush()
+  audios[0].currentTime = 2
+  provider.updatePlayback(1.2, 0.4)
+  assert.equal(audios.length, 1); assert.equal(calls, 1)
+  assert.equal(audios[0].currentTime, 2)
+  assert.equal(audios[0].playbackRate, 1.2); assert.equal(audios[0].volume, 0.4)
+  provider.updatePlayback(NaN, -1)
+  assert.equal(audios[0].playbackRate, 1.2)
+})

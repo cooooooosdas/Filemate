@@ -280,7 +280,7 @@ function updateChart() {
 
 .empty-copy span {
   color: var(--accent);
-  font-size: 12px;
+  font-size: var(--type-meta);
   font-weight: 700;
 }
 
@@ -333,7 +333,7 @@ function updateChart() {
 }
 
 .empty-schedule p {
-  font-size: 14px;
+  font-size: var(--type-copy);
   color: var(--text-muted);
   margin: 0 0 20px;
   max-width: 320px;

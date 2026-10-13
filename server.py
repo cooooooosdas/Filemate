@@ -50,13 +50,6 @@ from filemate.execution.confirmation_executor import (
 )
 from filemate.execution.storage import QuestionRevisionConflict, SQLiteStorage
 from filemate.interview_review.models import VisualMetrics
-from filemate.understanding.interview_practice import (
-    InterviewPracticeRepository,
-    InterviewScenario,
-    SPECIALIST_QUESTIONS,
-    grounded_followup,
-    project_questions,
-)
 from filemate.llm_client.credential_store import (
     CredentialStoreError,
     delete_stored_api_key,
@@ -81,6 +74,13 @@ from filemate.runtime_governance import (
 from filemate.speech import MicrosoftSpeech, SpeechBusy, SpeechUnavailable
 from filemate.study.semester import ConfirmSemester, SemesterConfig, SemesterRepository, TaskUpdate
 from filemate.understanding.interview_bank_seed import SEED_QUESTIONS
+from filemate.understanding.interview_practice import (
+    SPECIALIST_QUESTIONS,
+    InterviewPracticeRepository,
+    InterviewScenario,
+    grounded_followup,
+    project_questions,
+)
 
 # 加载 .env 文件
 env_path = Path(__file__).parent / ".env"

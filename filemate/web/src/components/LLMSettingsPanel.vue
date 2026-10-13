@@ -194,7 +194,7 @@ watch(
 
 .eyebrow {
   color: var(--accent);
-  font-size: 13px;
+  font-size: var(--type-meta);
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -208,7 +208,7 @@ h3 {
 .privacy-note {
   margin: 0;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--type-copy);
   line-height: 1.65;
 }
 
@@ -223,7 +223,7 @@ h3 {
   background: #fff8eb;
   border: 1px solid #ead5ad;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: var(--type-meta);
   font-weight: 700;
 }
 
@@ -258,14 +258,14 @@ h3 {
 
 .model-meta dt {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-meta);
 }
 
 .model-meta dd {
   margin: 4px 0 0;
   overflow: hidden;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--type-meta);
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -275,7 +275,7 @@ h3 {
   display: grid;
   gap: 8px;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-copy);
   font-weight: 650;
 }
 
@@ -296,7 +296,7 @@ h3 {
 
 .model-message {
   margin: 12px 0 0;
-  font-size: 12px;
+  font-size: var(--type-meta);
 }
 
 .model-message.warning { color: var(--warning); }

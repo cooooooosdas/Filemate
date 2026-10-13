@@ -68,10 +68,10 @@ defineExpose({ focus, reset })
 .finder-results button[aria-selected="true"] { background:var(--accent-soft); outline:1px solid var(--accent-border); outline-offset:-1px; }
 .finder-results span { min-width:0; overflow-wrap:anywhere; }
 .finder-results svg { flex-shrink:0; color:var(--accent); }
-.finder-results small { margin-left:auto; color:var(--text-secondary); font-size:14px; white-space:nowrap; }
+.finder-results small { margin-left:auto; color:var(--text-secondary); font-size: var(--type-copy); white-space:nowrap; }
 .result-arrow { opacity:0; }
 [aria-selected="true"] .result-arrow { opacity:1; }
-.finder-hint,.finder-empty { margin:16px 0 0; color:var(--text-muted); font-size:14px; line-height:1.6; }
+.finder-hint,.finder-empty { margin:16px 0 0; color:var(--text-muted); font-size: var(--type-copy); line-height:1.6; }
 .finder-hint { border-top:1px solid var(--border-subtle); padding-top:16px; }
-@media(max-width:560px) { .finder-results button { font-size:16px; gap:10px; padding-inline:8px; } .finder-results small { font-size:13px; } .result-arrow { display:none; } }
+@media(max-width:560px) { .finder-results button { font-size:16px; gap:10px; padding-inline:8px; } .finder-results small { font-size: var(--type-meta); } .result-arrow { display:none; } }
 </style>

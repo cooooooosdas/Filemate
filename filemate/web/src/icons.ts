@@ -12,5 +12,10 @@ export {
   IconTrash as Trash, IconX as Close, IconChevronDown as ChevronDown,
   IconFileText as Document, IconArrowUpRight as ArrowUpRight,
   IconEye as View, IconEyeOff as Hide, IconKey as Key,
-  IconMail as Message, IconArrowRight as Right
+  IconMail as Message, IconArrowRight as Right,
+  IconCode as Code, IconTerminal2 as Terminal, IconBriefcase as Briefcase,
+  IconLanguage as Language, IconSchool as School, IconTrophy as Trophy,
+  IconMessageCircle as Conversation, IconShieldCheck as ShieldCheck,
+  IconMinus as Minus, IconArrowDown as ArrowDown,
+  IconRefresh as RefreshRight, IconPlayerPause as VideoPause
 } from '@tabler/icons-vue'

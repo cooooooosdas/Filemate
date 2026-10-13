@@ -41,6 +41,12 @@
   --z-sidebar: 30;
   --font-sans: "MiSans", "HarmonyOS Sans SC", "Alibaba PuHuiTi 3", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --type-title: clamp(32px, 3vw, 42px);
+  --type-section: 24px;
+  --type-body: 17px;
+  --type-action: 17px;
+  --type-copy: 16px;
+  --type-meta: 15px;
   --el-color-primary: var(--accent);
   --el-color-success: var(--success);
   --el-color-warning: var(--warning);
@@ -68,7 +74,9 @@
   --el-border-color-light: #bdcdeb;
   --el-border-color-lighter: #dbe5f7;
   --el-border-radius-base: 10px;
-  --el-font-size-base: 16px;
+  --el-font-size-base: var(--type-body);
+  --el-font-size-small: var(--type-meta);
+  --el-font-size-extra-small: var(--type-meta);
 }
 
 * {
@@ -84,7 +92,7 @@ body,
 }
 
 body {
-  font-size: 16px;
+  font-size: var(--type-body);
   font-family: var(--font-sans);
   color: var(--text-primary);
   background: var(--bg-base);
@@ -101,6 +109,20 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+small {
+  font-size: var(--type-meta);
+  line-height: 1.65;
+}
+
+h1, h2, h3 {
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+button svg, a svg {
+  flex-shrink: 0;
 }
 
 a,
@@ -162,6 +184,13 @@ textarea:focus-visible,
     color var(--motion-fast),
     background-color var(--motion-fast),
     border-color var(--motion-fast);
+}
+
+.el-button.el-button--small {
+  --el-button-font-size: var(--type-action);
+  font-size: var(--type-action);
+  height: auto;
+  padding: 10px 12px;
 }
 
 .el-button--primary {

@@ -121,7 +121,7 @@ export default defineConfig({
           }
         },
       },
-      '^/interview/questions': {
+      '^/interview/': {
         target: apiTarget,
         changeOrigin: true,
       },
