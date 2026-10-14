@@ -14,6 +14,7 @@ import pytest
 
 from filemate.perception import FileParser
 from filemate.perception import bounded_parse as boundary
+from filemate.tests.test_server_persistence import server_module  # noqa: F401
 
 
 def test_real_office_and_pdf_enrichment(tmp_path: Path) -> None:
@@ -111,18 +112,24 @@ def test_busy_worker_returns_without_creating_another(tmp_path):
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Linux worker address-space limit')
 def test_compressed_pdf_expansion_cannot_kill_parent(tmp_path):
+    import zlib
+
     from PyPDF2 import PdfWriter
-    from PyPDF2.generic import DecodedStreamObject, NameObject
+    from PyPDF2.generic import DictionaryObject, EncodedStreamObject, NameObject
 
     path = tmp_path / 'expansion.pdf'
     writer = PdfWriter()
-    page = writer.add_blank_page(width=100, height=100)
-    stream = DecodedStreamObject()
-    stream.set_data(b' ' * (160 * 1024 * 1024))
-    page[NameObject('/Contents')] = writer._add_object(stream.flate_encode())
+    writer.add_blank_page(width=100, height=100)
+    page = writer.pages[0]
+    page[NameObject('/Resources')] = DictionaryObject({NameObject('/Font'): DictionaryObject()})
+    compressor = zlib.compressobj()
+    blocks = [compressor.compress(b' ' * (1024 * 1024)) for _ in range(400)]
+    stream = EncodedStreamObject()
+    stream._data = b''.join(blocks) + compressor.flush()
+    stream[NameObject('/Filter')] = NameObject('/FlateDecode')
+    page[NameObject('/Contents')] = writer._add_object(stream)
     with path.open('wb') as output:
         writer.write(output)
-    del stream, writer, page
     result = FileParser().parse(path)
     assert result.get('error')
     assert os.getpid() > 0
@@ -152,3 +159,36 @@ def test_processing_stage_keeps_loop_responsive_and_request_context(tmp_path, mo
 
     asyncio.run(scenario())
     assert entered.is_set()
+
+
+def test_process_timeout_does_not_block_health(server_module, monkeypatch):  # noqa: F811
+    from concurrent.futures import ThreadPoolExecutor
+
+    from fastapi.testclient import TestClient
+
+    import main
+
+    module, _ = server_module
+    original = subprocess.Popen
+    monkeypatch.setattr(main, 'LLMClient', lambda config: object())
+    monkeypatch.setattr(boundary, 'WALL_SECONDS', 0.8)
+
+    def launch(command, **kwargs):
+        return original([sys.executable, '-c',
+                         'import sys,time;sys.stdin.buffer.read();time.sleep(60)'], **kwargs)
+
+    monkeypatch.setattr(boundary.subprocess, 'Popen', launch)
+    with TestClient(module.app) as client, ThreadPoolExecutor(max_workers=1) as executor:
+        pending = executor.submit(client.post, '/process',
+                                  files={'file': ('synthetic.pdf', b'%PDF-synthetic')})
+        time.sleep(0.15)
+        assert not pending.done()
+        start = time.monotonic()
+        response = client.get('/api/health')
+        assert response.status_code == 200
+        assert time.monotonic() - start < 0.6
+        result = pending.result(timeout=8)
+    assert result.status_code == 200
+    assert result.json()['success'] is False
+    assert '解析超时' in result.json()['error']
+    assert result.json()['data']['status'] == 'failed'
