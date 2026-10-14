@@ -60,7 +60,7 @@ def health(provider: DockerCppJudge, cancel: threading.Event) -> dict[str, Any]:
     with _HEALTH_LOCK:
         if getattr(provider, "quarantined", False):
             _HEALTH = (time.monotonic(), False)
-        if time.monotonic() - _HEALTH[0] >= 600:
+        if _HEALTH[0] == 0 or time.monotonic() - _HEALTH[0] >= 600:
             if not _SLOT.acquire(blocking=False):
                 raise SandboxUnavailable("判题器正在使用")
             try:
