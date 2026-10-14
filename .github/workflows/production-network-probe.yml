@@ -1,0 +1,33 @@
+name: Production network probe
+on:
+  push:
+    branches: [codex/deploy-connectivity-20261014]
+permissions:
+  contents: read
+jobs:
+  connectivity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read-only public connectivity
+        shell: python
+        run: |
+          import json, socket, urllib.request
+          results = []
+          for port in (22, 443, 80):
+              record = {'target': '47.104.156.235', 'port': port}
+              try:
+                  with socket.create_connection(('47.104.156.235', port), timeout=10) as stream:
+                      record['tcp_connected'] = True
+                      if port == 22:
+                          stream.settimeout(10)
+                          record['ssh_banner_present'] = stream.recv(256).startswith(b'SSH-')
+              except (OSError, TimeoutError) as error:
+                  record['error_type'] = type(error).__name__
+              results.append(record)
+          try:
+              with urllib.request.urlopen('https://filemate.asia/api/health', timeout=15) as response:
+                  results.append({'https_health_status': response.status})
+          except (OSError, TimeoutError) as error:
+              results.append({'https_health_error_type': type(error).__name__})
+          print(json.dumps({'public_read_only_probe': True, 'results': results}, indent=2))
