@@ -18,6 +18,43 @@ from filemate.programming.linux_docker import DockerCppJudge, container_argument
 from filemate.programming.windows_sandbox import ProcessResult, SandboxUnavailable
 
 
+@pytest.mark.parametrize("uptime", [1.0, 599.0, 601.0])
+def test_broker_probes_before_caching_during_first_ten_minutes_after_boot(monkeypatch, uptime):
+    calls = []
+
+    class Provider:
+        def judge(self, code, problem, cancel, progress):
+            calls.append(code)
+            return {"verdict": "AC"}
+
+    monkeypatch.setattr(linux_broker, "_HEALTH", (0, False))
+    monkeypatch.setattr(linux_broker.time, "monotonic", lambda: uptime)
+    provider = Provider()
+    assert linux_broker.health(provider, threading.Event())["ready"] is True
+    assert linux_broker.health(provider, threading.Event())["ready"] is True
+    assert calls == [linux_broker.PROBE_CODE]
+
+
+def test_broker_failed_probe_remains_closed_and_retries_only_after_cache_expires(monkeypatch):
+    calls = []
+    clock = [1.0]
+
+    class Provider:
+        def judge(self, code, problem, cancel, progress):
+            calls.append(code)
+            return {"verdict": "CE" if len(calls) == 1 else "AC"}
+
+    monkeypatch.setattr(linux_broker, "_HEALTH", (0, False))
+    monkeypatch.setattr(linux_broker.time, "monotonic", lambda: clock[0])
+    provider = Provider()
+    assert linux_broker.health(provider, threading.Event())["ready"] is False
+    clock[0] = 600.0
+    assert linux_broker.health(provider, threading.Event())["ready"] is False
+    clock[0] = 601.0
+    assert linux_broker.health(provider, threading.Event())["ready"] is True
+    assert len(calls) == 2
+
+
 @pytest.mark.parametrize("value", [[], {"operation": "shell", "command": "id"},
                                  {"operation": "health", "image": "attacker"},
                                  {"operation": "judge", "problem_id": "array-sum", "code": " "},
