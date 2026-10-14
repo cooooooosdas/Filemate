@@ -2,47 +2,70 @@
 
 ## 结论
 
-**READY TO DEPLOY / CONNECTION BLOCKED，尚未上线。** 用户已授权本轮发布，但当前缺少可用的生产管理连接。没有执行 stage、activate、维护模式、服务重启或生产数据库写入；本轮生产备份和恢复演练也未执行。
+**DEPLOYED / 本轮更新已上线，产品整体仍为 CONDITIONAL PASS。**
 
-修复运行候选为 `bfa080765a5e876b98c011c58cd8b64e04c22165`，经 [PR #56](https://github.com/cooooooosdas/Filemate/pull/56) 合入主分支 `0c90d49e030936148378a3256591b69b032bea03`。二者 Git 树一致。保留版本 `1.3.0-alpha.4`、业务 schema26、治理 schema2；通过 `/release.json` 的完整提交号区分批次。总体产品评估仍为 CONDITIONAL PASS，完整功能缺项不由本轮修复自动关闭。
+2026-10-14 22:43（UTC+8）完成 Web/API 备份、恢复演练和切换，22:55完成独立Judge启动修复。正式地址为 [filemate.asia](https://filemate.asia/)。公网就绪、主要接口、两种自然语音和专用合成账户业务流程均实测通过。本轮不是新的完整产品审计，原始功能缺项和真实用户研究仍按既有账本保留。
 
-## 已完成的发布准备
+| 组成 | 实际运行提交 | 主分支记录 |
+|---|---|---|
+| Web / API | `bfa080765a5e876b98c011c58cd8b64e04c22165` | [PR56](https://github.com/cooooooosdas/Filemate/pull/56)，合并 `0c90d49e030936148378a3256591b69b032bea03` |
+| 独立 Judge | `78396339b83ed6bd2eba2d3c9f96a06a857507d5` | [PR58](https://github.com/cooooooosdas/Filemate/pull/58)，合并 `7f8993f206bb16ccee14fdc6c4c4a58547a35286` |
 
-- [四项缺陷修复](KNOWN_BUG_FIXES_2026-10-14.md)：自然语音上游握手、上传文件名与失败清理、AI Schema 校验、数据库就绪门禁。
-- [候选 CI](https://github.com/cooooooosdas/Filemate/actions/runs/38511781681) 与 [主分支 CI](https://github.com/cooooooosdas/Filemate/actions/runs/38512137309) 均成功：Linux 后端1115通过、18跳过、5排除；前端55项及类型、生产构建、体积预算通过。Windows 回归1099通过、20跳过。桌面安装器未纳入网站发布。
-- 晓晓、云夏在本地真实合成请求返回200且MP3解码通过；没有生产网络上的语音验证。
-- 对已测试前端副本的123个源文件逐项核对，打包Web与API并记录SHA256；源码来自精确Git提交，不使用旧工作区。Judge实现和部署合同没有变化，本轮不更新独立Judge。
-- 已准备保留旧哈希静态资源、同批部署、候选隔离验收及备份/恢复演练的现役执行入口，没有绕过就绪门禁。
+版本保持1.3.0-alpha.4，业务schema26、治理schema2不变。通过 /release.json 完整提交号识别Web/API批次；Judge使用独立发布链接，其镜像、gVisor、安全限制和题库没有改变。
+
+## 发布内容与工程验证
+
+- [四项修复](KNOWN_BUG_FIXES_2026-10-14.md)：Microsoft自然语音协议、上传文件名及失败清理、AI Schema校验、只读数据库就绪门禁。
+- Web/API [候选CI](https://github.com/cooooooosdas/Filemate/actions/runs/38511781681)和[主分支CI](https://github.com/cooooooosdas/Filemate/actions/runs/38512137309)成功：Linux后端1115通过、18跳过、5排除，前端55项、类型、构建和预算通过；Windows后端1099通过、20跳过。
+- 本次重启后发现Judge初始缓存时间戳0被当作已完成自检，导致开机不足600秒时跳过探针。现改为首次立即真实自检，之后再缓存；失败仍关闭评测。新增开机1/599/601秒和失败重试回归，本机23通过、1项Linux分支跳过；[完整Linux CI](https://github.com/cooooooosdas/Filemate/actions/runs/38584123416)后端1119通过、18跳过、5排除，前端55项及构建通过。
+- 核对123个前端源文件，使用测试通过的构建；保留386个旧哈希资源，支持已打开页面继续加载。
 
 | 包 | SHA256 |
 |---|---|
 | web.tar.gz | `105ff70f3217ad6fe39db4107df8fcba5d04e4d1307f27ee77c00eac96322b5e` |
 | backend.tar.gz | `b226f828a5782c972091495f443824e18006f41baab80d7f5512585906281de9` |
+| Judge启动修复包 | `ca1325e7026e226ba9bc7d1dbebae0986bf1b0520b64155f209964cba7ef589b` |
 
-## 连接阻断的证据
+## 备份与恢复
 
-2026-10-14 12:41（UTC+8）[独立云端只读诊断](https://github.com/cooooooosdas/Filemate/actions/runs/38512673824)显示22、80、443的TCP可以建立，但22端口等待SSH banner超时，HTTPS健康请求返回URLError。该诊断作业的success仅表示诊断程序执行完毕，不表示网站健康或部署成功。
+Web/API备份：
 
-本机更换网络前后也出现SSH握手超时与HTTPS连接超时；用户确认实例运行、地址未变。这些事实不能单独区分服务无响应、主机资源耗尽、防火墙/代理或公网链路故障，不能据此声明数据库损坏或网站已全网宕机。
+`/var/backups/filemate/alpha4-bfa080765a5e876b98c011c58cd8b64e04c22165-20261014T144346Z`
 
-最初桌面控制工具曾因本地组件错误无法读取控制台；18:48复核时浏览器通道已可使用，但阿里云为未登录状态。没有读取浏览器Cookie、创建云平台凭据或上传SSH私钥作为替代通道。已打开官方登录页作为备用管理入口，等待负责人完成正常登录。
+停写后以SQLite backup API和附件快照保存222个数据库、509个文件，独立恢复演练、完整性和权限验证通过。历史空间存在业务schema15/24/25/26，治理schema2；这些历史分区不表示当前迁移版本降低。旧发布和备份保留；公众恢复写入后不得用旧快照覆盖新增用户资料。
 
-## 恢复连接后的执行顺序
+Judge旧配置与链接备份：
 
-1. 在阿里云控制台只读检查负载、内存、磁盘、SSH/API/Judge服务和22/443/8001监听，修复实际发现的连接原因。
-2. 核对现役发布链接、配置拓扑、磁盘余量与身份/数据根目录；不要修改或打印生产密钥。
-3. 按 [部署手册4.4节](DEPLOYMENT.md)和 `scripts/deploy_existing.py stage` 隔离安装本批指纹匹配的包，检查候选数据库就绪和业务接口；保留旧静态资源。
-4. 执行 `activate` 的停写、全数据快照及独立恢复演练，成功后原子切换；保存实际生成的备份目录和回执。
-5. 从公网核对精确提交号、health、ready、HTML与静态资源，并用专用合成数据验证主要接口和两种自然语音。只有这些实测通过后才记录本轮“已上线”。
+`/var/backups/filemate/judge-bootfix-20261014T145529Z`
 
-旧发布及备份应保留；公众恢复写入后不能用旧快照覆盖新用户资料。此前10月13日的成功发布与备份是历史记录，不能当成本轮已经备份或部署的证据。
+首次Judge激活验收在服务启动后过早读取socket，触发自动回退，已确认旧链接和服务恢复。部署助手补上有界socket等待后再次切换成功，以正式filemate用户访问受限socket并完成真实隔离自检。没有放宽安全策略或回写用户数据快照。
 
-本轮运行证据保存在忽略目录 `_working/deploy-20261014/`；发布包标注“待上线”，不含生产.env、数据库、登录状态或私钥。
+## 公网实测
 
-## 18:48追加复核（UTC+8）
+22:50公网检查通过，22:57在更新后的Judge上完成合成账户业务流程：
 
-按用户要求重新寻找现有可用发布方式：Windows OpenSSH 9.5跳过本机配置、Git OpenSSH 10.3、Python标准库TCP/TLS、curl直接IP/SNI及固定TLS1.2均未恢复连接。AliDNS HTTPS解析返回现役IP；本机可访问阿里云控制台和GitHub API，不能将故障概括为本机全面断网。
+- /release.json精确匹配bfa08076；health与ready均200，数据库、账号、治理账本均ready，探针不签发Cookie。
+- 首页、全部入口静态资源及缓存合同通过；实际浏览器首页正常显示，服务已连接。
+- 账号查询、知识图谱、岗位状态、判题状态、导师记录、资料列表、分析概览、隐私边界均200且success；判题ready和network_isolation_ready为true。
+- 超长上传文件名400；未授权语音403。晓晓、云夏均200，约1.41/1.52秒，46656/47376字节，MP3完整解码通过；仅外发原创合成句。
+- 临时合成账户使用9位字母数字混合密码注册、退出、重新登录通过；会话Cookie有HttpOnly/Secure/SameSite。
+- 中文合成课程上传解析成功。真实C++判题AC、WA、CE与预期一致，分别约5.42/5.33/0.66秒。
+- 完成后先预览，再注销临时合成账户及其空间；重新查询确认未登录。不涉及既有演示账户或真实用户资料。
 
-独立云端第二次诊断中22和80连接超时，443能建立TCP但HTTPS健康请求失败。不同阶段表现有变化，仍不足以认定具体是主机资源、服务、边界代理或防火墙问题。失败发生在SSH密钥认证前，尚未验证生产凭据。
+本轮没有读取真实用户模型密钥或用其调用LLM。结构化输出有工程回归，不能写成所有供应商和真实学习效果已经验证。
 
-正常云管理通道仍需要负责人完成登录；在没有SSH或已授权云账号会话时，发布执行无法继续。发布包和主分支验证结果不变，生产尚未改动。本机新增证据为transport-recheck.json、tls12-probe.log和network-probe-attempt2.log。
+## 连接故障经过
+
+12:41及18:48，本机多种客户端、两条网络和[独立云端诊断](https://github.com/cooooooosdas/Filemate/actions/runs/38512673824)均遇到SSH握手或HTTPS超时。当时没有部署、维护标记或生产备份；早先标注“待上线”的ZIP反映当时状态。
+
+用户随后完成阿里云登录。控制台确认实例运行、IP正确，最初CPU约95%–97%。监控随后回落，SSH恢复时系统uptime约4分钟，HTTPS也恢复。本轮自动化没有执行实例重启；证据不足以将连接故障断定为某进程、OOM或云网络。恢复后可用内存约1GiB、根盘余量约15GiB，当前启动周期未发现OOM记录。
+
+连接恢复后才执行stage、activate及Judge修正。未修改安全组、创建云凭据、上传私钥或关闭TLS/主机密钥校验。
+
+## 交付与保留限制
+
+最新包为 `FileMate-20261014-已上线完整发布包.zip`，包含源码、编译前端、原始部署包、Judge补丁和脱敏回执；不含生产.env、数据库、Cookie、密码或私钥。生产备份留在服务器受限目录。
+
+证据位于忽略目录 `_working/deploy-20261014/`：stage/activate日志、CI、public-smoke、workflow-smoke、Judge回执及首页截图。失败记录保留。
+
+完整FEATURE07–13缺项、细粒度开关、解析隔离/展开预算、邮箱归属验证、评分/检索校准和真实学生研究仍按[需求账本](FEATURE_07_13_REQUIREMENTS_LEDGER.md)与[最终审计](FINAL_PRODUCT_AUDIT_REPORT_2026-10-10.md)保留。桌面安装器未纳入本次网站发布。
