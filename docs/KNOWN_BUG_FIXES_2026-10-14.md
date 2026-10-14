@@ -4,7 +4,7 @@
 
 按用户“修复目前已知的项目bug”指令，在现役发布工作区修复已确认缺陷，不扩展新业务功能。旧七项P1以各关闭记录为准，本轮不重复声明。
 
-当前为本地修复候选，尚未部署。业务schema26、治理schema2及已发布迁移均不变；源码与依赖应作为同一批交付。
+修复已通过PR56合入主分支0c90d49e，运行候选bfa08076尚未部署；候选及main的Linux CI均为1115后端/55前端通过。生产连接阻断及后续步骤见[发布执行回执](RELEASE_ATTEMPT_2026-10-14.md)。业务schema26、治理schema2及已发布迁移均不变；源码与依赖应作为同一批交付。
 
 ## 修复内容
 
@@ -35,7 +35,7 @@ $env:PYTHONUTF8 = '1'
 uv run --no-sync --with pytest-xdist pytest filemate/tests -q -m 'not e2e' -n 4 --dist loadfile
 ```
 
-本轮修复验证通过；这不是一次新的全产品审计或生产部署。已保存本地修复，未推送或切换线上版本。
+本轮修复验证通过，随后已推送并合入主分支；这不是一次新的全产品审计。生产SSH及HTTPS连接失败，未切换线上版本，也未执行本轮生产备份。
 
 临时证据位于`_working/bugfix-20261014/`，包括首次`verify.log`、最终`backend-final.log`、`frontend.log`、`speech-result.json`、两段合成MP3与`deployment-gate.json`，不提交运行数据库和音频。新测试不代表真实学生学习效果。
 
