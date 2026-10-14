@@ -39,14 +39,9 @@ from filemate.execution.scheduler import CalendarBuilder, CalendarEvent
 from filemate.execution.storage import SQLiteStorage
 from filemate.llm_client import LLMClient, LLMConfig
 from filemate.perception import FileParser
-from filemate.perception.chart_parser import ChartParser
-from filemate.perception.ocr import OCRBackend
-from filemate.perception.table_reader import TableReader
 from filemate.understanding import Classifier, EntityExtractor, MilestoneDetector, Namer
 
 logger = logging.getLogger(__name__)
-
-_MAX_PARSED_CHARS = 500_000
 
 
 # ──────────────────────────────────────────────
@@ -70,76 +65,17 @@ def _make_stages(
     """构造阶段链，每个阶段是 (ProcessingSession) -> ProcessingSession。"""
     stages: list = []
 
-    # 阶段 1：解析文件（图片型 PDF 自动 OCR 回退）
-    _ocr = OCRBackend()  # 全局单例，懒加载
-    _table_reader = TableReader()
-    _chart_parser = ChartParser()
-
+    # 富文档解析与结构提取共享子进程预算，避免拖垮 API。
     def parse(session: ProcessingSession) -> ProcessingSession:
         source = session.source_path
-        parsed = parser.parse(source)
+        parsed = parser.parse_enriched(source)
         raw_text = parsed.get("raw_text", "")
         meta = parsed.get("metadata", {})
-
-        # 解析失败（损坏文件/加密 PDF）→ 直接中断，不浪费 LLM 调用
         if parsed.get("error"):
             session.entities["raw_text"] = raw_text
             session.entities["metadata"] = meta
             storage.log_operation(session.session_id, "parse", f"FAILED: {parsed['error']}")
             raise ValueError(parsed["error"])
-
-        # 空文本 + 图片型 PDF → 尝试 OCR
-        if not raw_text.strip() and meta.get("suffix") == "pdf" and meta.get("text_pages", 1) == 0:
-            if _ocr.available:
-                logger.info("[%s] 图片型 PDF，启动 OCR: %s", session.session_id, Path(source).name)
-                raw_text = _ocr.recognize(source)
-                if raw_text.strip():
-                    logger.info("[%s] OCR 成功，识别 %d 字", session.session_id, len(raw_text))
-                else:
-                    logger.warning("[%s] OCR 未识别到文字", session.session_id)
-            else:
-                logger.info(
-                    "[%s] 图片型 PDF，OCR 不可用（PaddleOCR 未安装），跳过", session.session_id
-                )
-
-        # 提取表格 → Markdown 追加到 raw_text
-        try:
-            tables = _table_reader.extract_tables(source)
-            if tables:
-                table_md = "\n\n".join(t.to_markdown() for t in tables if t.to_markdown())
-                if table_md:
-                    raw_text += f"\n\n--- 表格数据 ---\n{table_md}"
-                    meta["tables"] = len(tables)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("[%s] 表格提取失败: %s", session.session_id, exc)
-
-        # 提取图表 → 文本追加到 raw_text
-        try:
-            charts = _chart_parser.extract_charts(source)
-            if charts:
-                chart_lines = []
-                for ch in charts:
-                    if ch.title:
-                        chart_lines.append(f"图表: {ch.title}")
-                    if ch.description:
-                        chart_lines.append(f"说明: {ch.description}")
-                    for el in ch.to_task_elements():
-                        if el.get("text"):
-                            chart_lines.append(f"  - {el['text']}")
-                if chart_lines:
-                    raw_text += "\n\n--- 图表数据 ---\n" + "\n".join(chart_lines)
-                    meta["charts"] = len(charts)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("[%s] 图表提取失败: %s", session.session_id, exc)
-
-        if len(raw_text) > _MAX_PARSED_CHARS:
-            raw_text = raw_text[:_MAX_PARSED_CHARS]
-            meta["truncated"] = True
-            logger.info(
-                "[%s] 结构化内容追加后已截断到 %d 字",
-                session.session_id,
-                _MAX_PARSED_CHARS,
-            )
 
         session.entities["raw_text"] = raw_text
         session.entities["metadata"] = meta
@@ -341,7 +277,7 @@ async def process_single(
     )
     for stage in stages:
         try:
-            session = stage(session)
+            session = await asyncio.to_thread(stage, session)
         except Exception as exc:  # noqa: BLE001 - 阶段边界必须收敛第三方异常
             session.error = f"{getattr(stage, '__name__', 'unknown')} 失败: {exc}"
             session.transition(SessionStatus.FAILED)

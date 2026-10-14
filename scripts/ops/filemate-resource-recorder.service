@@ -1,0 +1,23 @@
+[Unit]
+Description=FileMate bounded host resource evidence
+After=local-fs.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3.11 /opt/filemate-ops/resource_recorder.py
+User=root
+UMask=0077
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+RestrictAddressFamilies=AF_UNIX
+ReadWritePaths=/var/log/filemate-resources
+MemoryMax=48M
+CPUQuota=5%
+TasksMax=8
+
+[Install]
+WantedBy=multi-user.target

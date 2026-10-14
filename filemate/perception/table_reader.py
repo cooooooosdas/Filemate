@@ -202,16 +202,19 @@ class TableReader:
 
             with pdfplumber.open(str(path)) as pdf:
                 for page_idx, page in enumerate(pdf.pages):
-                    page_tables = page.extract_tables()
-                    if page_tables:
-                        for table_idx, table_data in enumerate(page_tables):
-                            table = self._convert_pdf_table(
-                                table_data,
-                                page_idx,
-                                table_idx,
-                            )
-                            if table.cells:
-                                tables.append(table)
+                    try:
+                        page_tables = page.extract_tables()
+                        if page_tables:
+                            for table_idx, table_data in enumerate(page_tables):
+                                table = self._convert_pdf_table(
+                                    table_data,
+                                    page_idx,
+                                    table_idx,
+                                )
+                                if table.cells:
+                                    tables.append(table)
+                    finally:
+                        page.close()
 
             logger.info("从 PDF 提取 %d 个表格: %s", len(tables), path.name)
         except ImportError:

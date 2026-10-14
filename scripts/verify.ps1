@@ -72,6 +72,7 @@ try {
         scripts/acceptance/backup_restore.py `
         scripts/acceptance/gateway_preflight.py `
         scripts/deploy_existing.py `
+        scripts/ops/resource_recorder.py filemate/tests/test_resource_recorder.py filemate/perception/bounded_parse.py filemate/perception/parse_worker.py filemate/tests/test_bounded_parse.py `
         scripts/acceptance/workspace_model_fixture.py `
         evaluation/analyze_feedback.py
     Assert-LastExitCode "Ruff"
