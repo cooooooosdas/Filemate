@@ -2322,7 +2322,7 @@ async def ai_summarize(
         # 解析文件获取文本
         from filemate.perception import FileParser
         parser = FileParser()
-        parsed = parser.parse(str(file_path))
+        parsed = await run_in_threadpool(parser.parse, str(file_path))
         text = parsed.get("raw_text", "")
 
         if not text.strip():
@@ -2381,7 +2381,7 @@ async def ai_knowledge_cards(
         # 解析文件获取文本
         from filemate.perception import FileParser
         parser = FileParser()
-        parsed = parser.parse(str(file_path))
+        parsed = await run_in_threadpool(parser.parse, str(file_path))
         text = parsed.get("raw_text", "")
 
         if not text.strip():
@@ -2440,7 +2440,7 @@ async def ai_questions(
         # 解析文件获取文本
         from filemate.perception import FileParser
         parser = FileParser()
-        parsed = parser.parse(str(file_path))
+        parsed = await run_in_threadpool(parser.parse, str(file_path))
         if parsed.get("error"):
             raise HTTPException(status_code=422, detail=str(parsed["error"]))
         text = parsed.get("raw_text", "")
@@ -2554,7 +2554,7 @@ async def ai_notes(
         # 解析文件获取文本
         from filemate.perception import FileParser
         parser = FileParser()
-        parsed = parser.parse(str(file_path))
+        parsed = await run_in_threadpool(parser.parse, str(file_path))
         text = parsed.get("raw_text", "")
 
         if not text.strip():
@@ -2613,7 +2613,7 @@ async def ai_study_plan(
     try:
         from filemate.perception import FileParser
 
-        parsed = FileParser().parse(str(file_path))
+        parsed = await run_in_threadpool(FileParser().parse, str(file_path))
         text = parsed.get("raw_text", "")
         if not text.strip():
             raise HTTPException(status_code=422, detail="无法从文件中提取文本内容")

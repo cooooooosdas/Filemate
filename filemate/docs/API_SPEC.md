@@ -1,5 +1,7 @@
 # API 规范
 
+2026-10-15 上传故障修复候选：PDF/Office 解码和 `/process` 富提取使用单槽子进程，384 MiB、40 秒墙钟、Linux 25 秒 CPU、8 MiB 输出上限。忙碌、超时、资源超限及失败沿用 `{raw_text,metadata,error}`；`/process` 为 success:false 的失败会话，`/knowledge/import` 沿用解析失败响应。超过 500 页 PDF 要求拆分，文本上限 500,000 字，metadata.truncated 标注截断；超过 50 页保留正文，metadata.enrichment_incomplete=true 和 note 明示未做表格／图表几何提取。API/阶段线程池保留租户及模型授权上下文；子进程不传模型密钥，不执行 LLM 或数据库写入。没有新环境变量、路由或迁移；Windows RSS 巡检不等同于 Linux 地址空间硬限制。见 [故障记录](../../docs/INCIDENT_2026-10-15.md)。
+
 2026-10-14 缺陷修复候选：新增`GET /api/ready`，核心业务库/公网账号库/资源账本可读且版本符合当前实现时200，否则503；响应`{success,data:{version,status,checks},error}`，status为`ready`或`not_ready`，checks各项为`ready`或`unavailable`。响应no-store，不返回路径、异常原文、用户计数或密钥，不解析会话、不创建游客、不触发迁移或外部AI/语音/OJ调用。只读连接每库busy timeout 0.5秒；不是完整性扫描或全功能验收。`GET /api/health`继续仅报告进程存活和版本，数据库故障时仍可用。既有部署脚本同时校验存活、就绪和候选版本；维护及备份探测不会创建匿名空间。
 
 上传`/process`和`/knowledge/import`在读取正文/落盘前校验文件名：统一剥离浏览器携带的Windows/Unix路径，UTF-8文件名最多255字节，拒绝控制字符、Windows非法字符、保留设备名与尾随空格/点，非法名称400。落盘故障503，清理本次新建目录内的部分文件，保留用户原件和已有同名文件；原25MiB/空内容/格式限制保留。

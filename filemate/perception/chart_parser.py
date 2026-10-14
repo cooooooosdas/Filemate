@@ -223,25 +223,28 @@ class ChartParser:
 
             with pdfplumber.open(str(path)) as pdf:
                 for page_idx, page in enumerate(pdf.pages):
-                    # 提取图片（图表可能以图片形式存在）
-                    images = page.images
-                    if images:
-                        chart = Chart(
-                            chart_id=f"pdf_img_{page_idx}",
-                            chart_type=ChartType.DIAGRAM,
-                            title=f"图片图表（第 {page_idx + 1} 页）",
-                            metadata={"type": "image", "count": len(images)},
-                        )
-                        charts.append(chart)
+                    try:
+                        # 提取图片（图表可能以图片形式存在）
+                        images = page.images
+                        if images:
+                            chart = Chart(
+                                chart_id=f"pdf_img_{page_idx}",
+                                chart_type=ChartType.DIAGRAM,
+                                title=f"图片图表（第 {page_idx + 1} 页）",
+                                metadata={"type": "image", "count": len(images)},
+                            )
+                            charts.append(chart)
 
-                    # 从文本推断
-                    text = page.extract_text()
-                    if text:
-                        text_charts = self._infer_charts_from_text(
-                            text,
-                            f"pdf_text_{page_idx}",
-                        )
-                        charts.extend(text_charts)
+                        # 从文本推断
+                        text = page.extract_text()
+                        if text:
+                            text_charts = self._infer_charts_from_text(
+                                text,
+                                f"pdf_text_{page_idx}",
+                            )
+                            charts.extend(text_charts)
+                    finally:
+                        page.close()
 
             logger.info("从 PDF 提取 %d 个图表: %s", len(charts), path.name)
         except ImportError:

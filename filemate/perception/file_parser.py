@@ -35,6 +35,28 @@ class FileParser:
     def parse(self, path: str | Path) -> dict:
         """解析文件。"""
         p = Path(path)
+        if p.is_file() and p.stat().st_size and p.suffix.lower() in {
+            '.pdf', '.docx', '.pptx', '.doc', '.ppt',
+        }:
+            from .bounded_parse import parse_bounded
+
+            return parse_bounded(p)
+        return self._parse_local(p)
+
+    def parse_enriched(self, path: str | Path) -> dict:
+        """Keep rich document extraction inside one bounded worker."""
+        p = Path(path)
+        if p.is_file() and p.stat().st_size and p.suffix.lower() in {
+            '.pdf', '.docx', '.pptx', '.doc', '.ppt',
+        }:
+            from .bounded_parse import parse_bounded
+
+            return parse_bounded(p, enriched=True)
+        return self._parse_local(p)
+
+    def _parse_local(self, path: str | Path) -> dict:
+        """Decode locally only for plain text or inside the private worker."""
+        p = Path(path)
 
         # 前置检查
         if not p.exists():

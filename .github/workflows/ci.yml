@@ -81,7 +81,7 @@ jobs:
           scripts/acceptance/backup_restore.py
           scripts/acceptance/gateway_preflight.py
           scripts/deploy_existing.py
-          scripts/ops/resource_recorder.py filemate/tests/test_resource_recorder.py
+          scripts/ops/resource_recorder.py filemate/tests/test_resource_recorder.py filemate/perception/bounded_parse.py filemate/perception/parse_worker.py filemate/tests/test_bounded_parse.py
           evaluation/analyze_feedback.py
       - name: Unit and integration tests
         run: uv run pytest filemate/tests -q -m "not e2e"
