@@ -110,6 +110,35 @@ def test_preflight_reads_existing_public_get_routes() -> None:
     assert set(deploy.PREFLIGHT_PATHS) <= routes
 
 
+def test_health_requires_matching_version_and_database_readiness(monkeypatch) -> None:
+    calls = []
+
+    def probe(base, path):
+        calls.append(path)
+        return json.dumps({"success": True, "data": {
+            "version": "candidate", "status": "ready",
+        }}).encode(), {}
+
+    monkeypatch.setattr(deploy, "probe", probe)
+    deploy.health("http://synthetic.invalid", "candidate")
+    assert calls == ["/api/health", "/api/ready"]
+
+
+@pytest.mark.parametrize("response", [
+    {"success": False, "data": {"version": "candidate", "status": "not_ready"}},
+    {"success": True, "data": {"version": "previous", "status": "ready"}},
+])
+def test_health_rejects_broken_database_and_stale_readiness(monkeypatch, response) -> None:
+    def probe(base, path):
+        body = {"data": {"version": "candidate"}} if path == "/api/health" else response
+        return json.dumps(body).encode(), {}
+
+    monkeypatch.setattr(deploy, "probe", probe)
+    monkeypatch.setattr(deploy.time, "sleep", lambda _: None)
+    with pytest.raises(RuntimeError, match="数据库就绪"):
+        deploy.health("http://synthetic.invalid", "candidate")
+
+
 def test_upgrade_allows_append_but_rejects_changed_referenced_sql(tmp_path) -> None:
     old = tmp_path / 'old.py'
     new = tmp_path / 'new.py'

@@ -1,5 +1,11 @@
 # API 规范
 
+2026-10-14 缺陷修复候选：新增`GET /api/ready`，核心业务库/公网账号库/资源账本可读且版本符合当前实现时200，否则503；响应`{success,data:{version,status,checks},error}`，status为`ready`或`not_ready`，checks各项为`ready`或`unavailable`。响应no-store，不返回路径、异常原文、用户计数或密钥，不解析会话、不创建游客、不触发迁移或外部AI/语音/OJ调用。只读连接每库busy timeout 0.5秒；不是完整性扫描或全功能验收。`GET /api/health`继续仅报告进程存活和版本，数据库故障时仍可用。既有部署脚本同时校验存活、就绪和候选版本；维护及备份探测不会创建匿名空间。
+
+上传`/process`和`/knowledge/import`在读取正文/落盘前校验文件名：统一剥离浏览器携带的Windows/Unix路径，UTF-8文件名最多255字节，拒绝控制字符、Windows非法字符、保留设备名与尾随空格/点，非法名称400。落盘故障503，清理本次新建目录内的部分文件，保留用户原件和已有同名文件；原25MiB/空内容/格式限制保留。
+
+`LLMClient.call_structured()`保留返回对象或数组的历史合同；显式提供Schema时先校验配置，使用jsonschema执行结构验证（包括嵌套/必填/类型/枚举/内部引用），禁用网络和文件引用解析。非法Schema为LLMConfigError；无效JSON、非对象/数组根、NaN/Infinity/浮点溢出或不符合结构为LLMAPIError。错误不包含模型原文且不展示底层解析异常；已成功供应商调用的真实usage仍保留，不因解析失败清零，也不额外触发自动模型重试。未提供Schema的历史调用仍须执行各模块业务验证，此修改不代表所有AI结果均已完成事实校准。语音依赖锁更新为edge-tts 7.3.1，无路由、声线或授权规则变更。详见[本轮修复记录](../../docs/KNOWN_BUG_FIXES_2026-10-14.md)。
+
 2026-10-11 本地任务/执行候选：治理追加migration2，业务schema26不变。Session/Agent/目标与学习任务/图谱及岗位计划/岗位训练/学期确认写入前校验空间和全站日额度。默认日任务/执行账号4000/100、游客1500/20、本地10000/500、全站30000/1000，执行并发2/1/2/2，UTC+08:00午夜重置。新增 FILEMATE_RESOURCE_{ACCOUNT,GUEST,LOCAL,GLOBAL}_{DAILY_TASKS,DAILY_EXECUTIONS,EXECUTION_CONCURRENT}，前两项1–100000、并发1–16，不能为0。计数为准入工作量，失败不退款，不是学习统计。Windows实际编译自检计数，缓存命中不计；Linux固定自检保持原代理十分钟缓存/单槽。
 
 执行在认领/编译前拒绝超额429或账本故障503，保留queued与代码。完成/取消/重复确认不创建新工作，资料授权/记忆撤销审计免于预算；读取/完成/取消/隐私动作保留。HTTP绑定实际服务端数据库，生产缺可信Scope/绑定时拒绝新资源。GET /api/llm/usage追加resources计数/限额/独立coverage_started_at，offset改0–1000000（超大整数422），原字段/no-store保留。个人导出增加resource_events，恢复不回写额度；注销清本人资源记录，匿名全站累计保留。管理员备份/部署只读兼容治理schema1/2，M1应用不直接支持M2，回滚须配套完整备份/兼容工具。存储/费用/完整Trace及AUD-09未关闭；见[资源准入子卡](../../docs/TASK_EXECUTION_BUDGET_2026-10-11.md)，未上线。

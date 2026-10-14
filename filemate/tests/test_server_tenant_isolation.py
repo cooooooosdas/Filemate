@@ -160,7 +160,7 @@ def test_invalid_or_forged_identity_cookie_cannot_select_another_tenant(
     module = isolated_server
     with TestClient(module.app) as client:
         response = client.get(
-            "/api/health",
+            "/api/auth/me",
             cookies={module.IDENTITY_COOKIE_NAME: "u_" + "a" * 32 + ".forged"},
         )
         assert response.status_code == 200
@@ -170,16 +170,18 @@ def test_invalid_or_forged_identity_cookie_cannot_select_another_tenant(
         assert module._verify_identity_cookie(issued) is not None
 
 
-def test_health_issues_identity_without_creating_tenant_database(
+@pytest.mark.parametrize("path", ["/api/health", "/api/ready"])
+def test_probes_do_not_issue_identity_or_create_tenant_database(
     isolated_server: ModuleType,
+    path: str,
 ) -> None:
     """健康检查不应被无 cookie 请求滥用来批量创建数据库。"""
     module = isolated_server
     for _ in range(20):
         with TestClient(module.app) as client:
-            response = client.get("/api/health")
+            response = client.get(path)
             assert response.status_code == 200
-            assert response.cookies.get(module.IDENTITY_COOKIE_NAME)
+            assert not response.cookies.get(module.IDENTITY_COOKIE_NAME)
 
     users_root = module.DATA_DIR / "users"
     assert not users_root.exists()
