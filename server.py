@@ -296,9 +296,21 @@ def _current_archive_dir() -> Path:
 
 async def _save_upload(file: UploadFile, *, learning_source: bool = False) -> tuple[Path, int]:
     """校验并保存上传文件，隔离同名文件与路径穿越。"""
-    filename = Path(file.filename or "").name
+    filename = (file.filename or "").replace("\\", "/").rsplit("/", 1)[-1]
     if not filename:
         raise HTTPException(status_code=400, detail="文件名不能为空")
+    try:
+        encoded_length = len(filename.encode("utf-8"))
+    except UnicodeEncodeError:
+        raise HTTPException(status_code=400, detail="文件名包含无效字符") from None
+    if encoded_length > 255:
+        raise HTTPException(status_code=400, detail="文件名过长，请缩短至 255 字节以内后重试")
+    if (
+        re.search(r'[\x00-\x1f<>:"|?*]', filename)
+        or filename.endswith((".", " "))
+        or re.fullmatch(r"(?i:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?", filename)
+    ):
+        raise HTTPException(status_code=400, detail="文件名包含不支持的字符或系统保留名称，请重命名后重试")
     supported = LEARNING_UPLOAD_SUFFIXES if learning_source else ALLOWED_UPLOAD_SUFFIXES
     if Path(filename).suffix.lower() not in supported:
         raise HTTPException(status_code=400, detail="不支持的文件格式")
@@ -310,9 +322,21 @@ async def _save_upload(file: UploadFile, *, learning_source: bool = False) -> tu
         raise HTTPException(status_code=400, detail="文件内容为空")
 
     upload_dir = _current_upload_root() / uuid.uuid4().hex
-    upload_dir.mkdir(parents=True, exist_ok=True)
     file_path = upload_dir / filename
-    file_path.write_bytes(content)
+    created = False
+    try:
+        upload_dir.mkdir(parents=True, exist_ok=False)
+        created = True
+        with file_path.open("xb") as stream:
+            stream.write(content)
+    except OSError:
+        if created:
+            with suppress(OSError):
+                file_path.unlink(missing_ok=True)
+            with suppress(OSError):
+                upload_dir.rmdir()
+        logger.warning("上传存储暂不可用")
+        raise HTTPException(status_code=503, detail="文件暂时无法保存，请稍后重试") from None
     return file_path, len(content)
 
 
@@ -552,6 +576,8 @@ async def reject_untrusted_browser_origins(request: Request, call_next):
 @app.middleware("http")
 async def isolate_anonymous_workspace(request: Request, call_next):
     """在公网模式下把每个匿名浏览器路由到独立数据目录。"""
+    if request.method in {"GET", "HEAD"} and request.url.path in {"/api/health", "/api/ready"}:
+        return await call_next(request)
     if IDENTITY_MODE == "local":
         with _tenant_storage_lock:
             if 'local' in _exclusive_tenants:
@@ -1044,6 +1070,52 @@ def root():
 def health_check():
     """供 Web 与桌面壳检测本地服务状态。"""
     return ApiResponse(success=True, data={"version": __version__})
+
+
+@app.get("/api/ready")
+def readiness_check():
+    """只读探测核心数据库，故障返回 503，不创建游客或调用外部供应商。"""
+    from contextlib import closing
+
+    from filemate.execution.storage import _MIGRATIONS
+    from filemate.runtime_governance import SCHEMA_VERSION, resource_schema_version
+
+    checks: dict[str, str] = {}
+    database = _storage.local_storage if isinstance(_storage, _StorageRouter) else _storage
+    probes = [("database", database.db_path)]
+    if IDENTITY_MODE == "anonymous":
+        probes.append(("accounts", _accounts.db_path))
+    probes.append(("governance", _model_budget.path))
+    for name, path in probes:
+        try:
+            with closing(sqlite3.connect(Path(path).resolve().as_uri() + "?mode=ro", uri=True,
+                                        timeout=0.5)) as connection:
+                connection.execute("PRAGMA query_only=ON")
+                connection.execute("BEGIN")
+                if name == "governance":
+                    if resource_schema_version(connection) != SCHEMA_VERSION:
+                        raise ValueError
+                    connection.execute("SELECT task_admissions FROM resource_daily LIMIT 1").fetchone()
+                    connection.execute("SELECT attempt_id FROM ai_attempts LIMIT 1").fetchone()
+                    connection.execute("SELECT event_id FROM resource_events LIMIT 1").fetchone()
+                elif name == "accounts":
+                    connection.execute("SELECT account_id FROM accounts LIMIT 1").fetchone()
+                    connection.execute("SELECT token_hash FROM account_sessions LIMIT 1").fetchone()
+                else:
+                    version = connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
+                    if version != _MIGRATIONS[-1][0]:
+                        raise ValueError
+                    connection.execute("SELECT source_id FROM sources LIMIT 1").fetchone()
+                    connection.execute("SELECT session_id FROM sessions LIMIT 1").fetchone()
+            checks[name] = "ready"
+        except (sqlite3.Error, OSError, ValueError, GovernanceUnavailable):
+            checks[name] = "unavailable"
+    ready = all(value == "ready" for value in checks.values())
+    return JSONResponse(status_code=200 if ready else 503, headers={"Cache-Control": "no-store"}, content={
+        "success": ready,
+        "data": {"version": __version__, "status": "ready" if ready else "not_ready", "checks": checks},
+        "error": None if ready else "核心数据服务暂不可用，请稍后重试",
+    })
 
 
 def _require_digital_human_enabled() -> None:

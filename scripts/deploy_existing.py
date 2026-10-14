@@ -88,10 +88,14 @@ def health(base: str, version: str) -> None:
         try:
             body, _ = probe(base, '/api/health')
             assert json.loads(body)['data']['version'] == version
+            ready_body, _ = probe(base, '/api/ready')
+            ready = json.loads(ready_body)
+            assert ready['success'] and ready['data']['status'] == 'ready'
+            assert ready['data']['version'] == version
             return
         except (OSError, AssertionError, ValueError):
             if attempt == 44:
-                raise RuntimeError('候选服务未通过版本健康检查') from None
+                raise RuntimeError('候选服务未通过版本和数据库就绪检查') from None
             time.sleep(1)
 
 

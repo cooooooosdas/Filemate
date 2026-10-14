@@ -11,6 +11,11 @@ from contextvars import ContextVar
 from typing import Any
 from urllib.parse import urlsplit
 
+from jsonschema import Draft202012Validator, SchemaError, ValidationError
+from jsonschema.validators import validator_for
+from referencing import Registry
+from referencing.exceptions import Unresolvable
+
 from .config import LLMConfig
 from .exceptions import (
     LLMAPIError,
@@ -184,8 +189,25 @@ class LLMClient:
         messages: list[dict[str, str]] | None = None,
         schema: dict[str, Any] | None = None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
-        """调用 LLM 并把回复解析为 JSON 对象。"""
+    ) -> dict[str, Any] | list[Any]:
+        """解析有限 JSON 对象或数组，并在提供 Schema 时执行离线结构校验。"""
+        self._remember_usage({})
+        validator = None
+        if schema is not None:
+            try:
+                if not isinstance(schema, dict):
+                    raise TypeError
+                validator_type = (
+                    validator_for(schema, default=None)
+                    if "$schema" in schema else Draft202012Validator
+                )
+                if validator_type is None:
+                    raise ValueError
+                validator_type.check_schema(schema)
+                # 显式空注册表禁止 Schema 引用触发网络或文件访问。
+                validator = validator_type(schema, registry=Registry())
+            except (SchemaError, ValueError, TypeError, RecursionError):
+                raise LLMConfigError("模型输出 JSON Schema 配置无效") from None
         json_instruction = (
             "请仅返回严格 JSON，不要额外解释。"
             if schema is None
@@ -212,12 +234,29 @@ class LLMClient:
             cleaned = "\n".join(cleaned.splitlines()[:-1])
         cleaned = cleaned.strip()
 
+        def finite_float(value: str) -> float:
+            parsed = float(value)
+            if not math.isfinite(parsed):
+                raise ValueError
+            return parsed
+
+        def invalid_constant(value: str) -> Any:
+            raise ValueError
+
         try:
-            return json.loads(cleaned)
-        except json.JSONDecodeError as exc:
-            raise LLMAPIError(
-                f"LLM 返回内容无法解析为 JSON: {cleaned[:200]!r}"
-            ) from exc
+            result = json.loads(
+                cleaned, parse_float=finite_float, parse_constant=invalid_constant,
+            )
+        except (ValueError, TypeError, RecursionError):
+            raise LLMAPIError("模型返回内容无法解析为有效 JSON，请重试") from None
+        if not isinstance(result, (dict, list)):
+            raise LLMAPIError("模型返回内容必须为 JSON 对象或数组，请重试")
+        if validator is not None:
+            try:
+                validator.validate(result)
+            except (ValidationError, Unresolvable, RecursionError):
+                raise LLMAPIError("模型返回内容不符合所需数据结构，请重试") from None
+        return result
 
     def get_usage(self) -> dict[str, int]:
         """返回当前上下文最近成功调用的真实计数，未知字段缺省。"""
