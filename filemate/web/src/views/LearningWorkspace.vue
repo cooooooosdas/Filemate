@@ -35,7 +35,7 @@
       <aside class="resource-pane" aria-label="学习内容与原文">
         <nav class="resource-tabs" aria-label="阅读内容"><button :aria-pressed="resourceTab === 'artifacts'" @click="resourceTab = 'artifacts'">学习内容 <span>{{ artifacts.length }}</span></button><button :aria-pressed="resourceTab === 'source'" @click="resourceTab = 'source'">原文</button></nav>
         <div v-if="!source" class="resource-empty"><el-icon><Notebook /></el-icon><h3>把思考留在旁边</h3><p>笔记、卡片和练习会在这里打开，阅读时不必离开对话。</p></div>
-        <div v-if="source" v-show="resourceTab === 'source'" ref="sourceReader" class="source-reader"><div v-if="citation" class="citation-focus"><button aria-label="关闭引用片段" @click="citation = null">关闭片段</button><strong>引用 {{ citation.id }} · {{ citation.source_name }}</strong><p>{{ citation.excerpt }}</p></div><h3>解析正文</h3><small>按文件解析顺序展示；图片与复杂排版可能不保留。</small><pre>{{ source.raw_text }}</pre></div>
+        <div v-if="source" v-show="resourceTab === 'source'" ref="sourceReader" class="source-reader"><div v-if="citation" class="citation-focus"><button aria-label="关闭引用片段" @click="citation = null">关闭片段</button><strong>引用 {{ citation.id }} · {{ citation.source_name }}</strong><p>{{ citation.excerpt }}</p></div><h3>解析正文</h3><AnalysisWarnings :messages="source.metadata?.parse_warnings" /><small>按文件解析顺序展示；图片与复杂排版可能不保留。</small><pre>{{ source.raw_text }}</pre></div>
         <div v-if="source" v-show="resourceTab === 'artifacts'" class="artifact-workbench">
           <div v-if="artifacts.length && !creatingContent" class="reading-toolbar"><strong>继续读，接着想。</strong><button @click="creatingContent = true"><el-icon aria-hidden="true"><Plus /></el-icon>创建学习内容</button></div>
           <section v-if="creatingContent || !artifacts.length" class="generation-controls" aria-label="创建学习内容">
@@ -60,6 +60,7 @@
 </template>
 
 <script setup lang="ts">
+import AnalysisWarnings from '../components/AnalysisWarnings.vue'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'

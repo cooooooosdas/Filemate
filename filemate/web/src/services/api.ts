@@ -369,6 +369,7 @@ export interface AISummaryRequest {
 }
 
 export interface AISummaryResponse {
+  warnings?: string[]
   ctx_id: string
   filename: string
   summary: string
@@ -412,6 +413,7 @@ export interface AIKnowledgeCardsRequest {
 }
 
 export interface AIKnowledgeCardsResponse {
+  warnings?: string[]
   ctx_id: string
   filename: string
   cards: KnowledgeCard[]
@@ -461,6 +463,7 @@ export interface AIQuestionsRequest {
 }
 
 export interface AIQuestionsResponse {
+  warnings?: string[]
   ctx_id: string
   filename: string
   questions: AIQuestion[]
@@ -547,6 +550,7 @@ export interface AINotesRequest {
 }
 
 export interface AINotesResponse {
+  warnings?: string[]
   ctx_id: string
   filename: string
   notes: AINotes
@@ -1737,6 +1741,7 @@ export interface StudyCheckpoint {
 }
 
 export interface StudyPlan {
+  warnings?: string[]
   title: string
   exam_date: string
   total_days: number

@@ -1,7 +1,8 @@
 <template>
   <article class="learning-artifact">
     <header><div><small>{{ label }}</small><h3>{{ artifact.title }}</h3></div><button type="button" @click="download">导出</button></header>
-    <p v-if="artifact.metadata?.source_truncated" class="notice">本次内容依据资料前 {{ artifact.metadata.input_characters }} 字生成，未覆盖全文。</p>
+    <AnalysisWarnings :messages="artifact.metadata?.warnings" />
+    <p v-if="artifact.metadata?.source_truncated && !artifact.metadata?.warnings" class="notice">本次内容依据资料前 {{ artifact.metadata.input_characters }} 字生成，未覆盖全文。</p>
     <p v-if="artifact.metadata?.read_only_snapshot" class="notice">这是修改前的历史题集，正文只读。复练仍保存到这份旧题证据，不影响新版题目的成绩。</p>
     <template v-if="artifact.artifact_type === 'knowledge_cards' && cards.length">
       <div class="pager"><span>知识卡 {{ index + 1 }} / {{ cards.length }}</span><div><button :disabled="index === 0" aria-label="上一张卡片" @click="move(-1)">上一张</button><button :disabled="index === cards.length - 1" aria-label="下一张卡片" @click="move(1)">下一张</button></div></div>
@@ -26,6 +27,7 @@
 </template>
 
 <script setup lang="ts">
+import AnalysisWarnings from './AnalysisWarnings.vue'
 import { computed, ref, watch } from 'vue'
 import { submitQuizAttempt, type KnowledgeArtifact, type QuizAttemptResult } from '../services/api'
 const props = defineProps<{ artifact: KnowledgeArtifact }>()

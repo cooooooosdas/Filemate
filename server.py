@@ -1890,9 +1890,7 @@ async def import_learning_source(file: Annotated[UploadFile, File()]):
     retained = False
     try:
         parsed = await run_in_threadpool(FileParser().parse, str(path))
-        text = parsed.get("raw_text", "")
-        if parsed.get("error") or not text.strip():
-            raise HTTPException(status_code=422, detail="无法提取正文，请使用包含文字的资料")
+        text = _parsed_text(parsed)
         file_hash = hashlib.sha256(path.read_bytes()).hexdigest()
         stable_id = uuid.uuid5(uuid.NAMESPACE_URL, f"filemate:local:{file_hash}").hex
         source = _storage.get_source(stable_id)
@@ -1900,7 +1898,7 @@ async def import_learning_source(file: Annotated[UploadFile, File()]):
             source_id = _storage.save_source(
                 original_name=path.name, source_path=str(path), raw_text=text,
                 media_type=mimetypes.guess_type(path.name)[0] or "",
-                file_hash=file_hash, metadata={"size_bytes": size},
+                file_hash=file_hash, metadata={**_parse_metadata(parsed), "size_bytes": size},
             )
             retained = True
             _storage.replace_source_chunks(source_id, split_document(text))
@@ -1956,15 +1954,19 @@ def generate_source_artifact(source_id: str, request: WorkspaceArtifactRequest):
             LLMClient(LLMConfig.from_env()), text=source["raw_text"],
             title=source["original_name"], kind=request.artifact_type, count=request.count,
         )
+    except (BudgetExceeded, GovernanceUnavailable):
+        raise
     except Exception as exc:
         logger.warning("学习产物生成失败 (%s)", type(exc).__name__)
         raise HTTPException(status_code=502, detail="生成失败，未保存无效内容，请稍后重试") from exc
     labels = {"summary": "摘要", "notes": "笔记", "knowledge_cards": "知识卡", "questions": "练习题"}
     input_limit = 2500 if request.artifact_type == "questions" else 12000
+    warnings = _analysis_warnings({"metadata": source.get("metadata", {})}, source["raw_text"], input_limit)
     artifact = _storage.save_source_artifact(
         source_id=source_id, artifact_type=request.artifact_type, content=content,
         title=f"{source['original_name']} · {labels[request.artifact_type]}",
         metadata={"origin": "learning_workspace", "external_model_authorized": True,
+                  "warnings": warnings,
                   "input_characters": min(len(source["raw_text"]), input_limit),
                   "source_truncated": len(source["raw_text"]) > input_limit},
     )
@@ -2265,6 +2267,40 @@ def delete_knowledge_source(source_id: str, request: DataDeleteRequest | None = 
 
 # =============== AI 工具箱 API ===============
 
+def _parsed_text(parsed: dict[str, Any]) -> str:
+    """Expose actionable decoder errors without returning internal exceptions."""
+    if parsed.get("error"):
+        message = str(parsed["error"])
+        public_errors = {
+            "资料解析正在进行，请稍后再试", "资料解析超时，请拆分文件后重试",
+            "资料解析结果过大，请拆分文件后重试", "资料解析超过内存上限，请拆分文件后重试",
+            "资料解析失败或超过资源上限，请拆分文件后重试", "资料解析结果无效",
+            "资料解析服务暂不可用，请稍后重试", "PDF 超过 500 页，请拆分文件后重试",
+            "PDF 已加密，请先解密后重新上传",
+        }
+        raise HTTPException(status_code=422, detail=message if message in public_errors else
+                            "资料解析失败，请检查文件是否损坏或加密，或拆分后重试")
+    text = parsed.get("raw_text", "")
+    if not isinstance(text, str) or not text.strip():
+        raise HTTPException(status_code=422, detail="无法提取正文，请使用包含文字的资料")
+    return text
+
+
+def _parse_metadata(parsed: dict[str, Any]) -> dict[str, Any]:
+    """Keep supported parser evidence and limitations with the source."""
+    from filemate.perception.diagnostics import parse_metadata
+
+    return parse_metadata(parsed)
+
+
+def _analysis_warnings(parsed: dict[str, Any], text: str, limit: int | None = None) -> list[str]:
+    """Describe the actual analysis scope instead of claiming full coverage."""
+    warnings = list(_parse_metadata(parsed)["parse_warnings"])
+    if limit is not None and len(text) > limit:
+        warnings.append(f"本次AI使用正文前{limit}字，其余已解析正文保留；可按章节拆分后分别生成。")
+    return warnings
+
+
 def _persist_ai_context(
     *,
     file_path: Path,
@@ -2273,6 +2309,7 @@ def _persist_ai_context(
     content: Any,
     title: str = "",
     metadata: dict[str, Any] | None = None,
+    parse_metadata: dict[str, Any] | None = None,
 ) -> tuple[str, str, str]:
     """持久化资料源、AI 产物与可恢复问答上下文。"""
     file_hash = hashlib.sha256(file_path.read_bytes()).hexdigest()
@@ -2282,7 +2319,7 @@ def _persist_ai_context(
         raw_text=text,
         media_type=mimetypes.guess_type(file_path.name)[0] or "",
         file_hash=file_hash,
-        metadata={"size_bytes": file_path.stat().st_size},
+        metadata={**(parse_metadata or {}), "size_bytes": file_path.stat().st_size},
     )
     from filemate.understanding.retrieval import split_document
 
@@ -2303,6 +2340,7 @@ def _persist_ai_context(
         metadata={
             "filename": file_path.name,
             "artifact_type": artifact_type,
+            "warnings": (metadata or {}).get("warnings", []),
         },
     )
     return ctx_id, source_id, artifact_id
@@ -2311,7 +2349,7 @@ def _persist_ai_context(
 @app.post("/ai/summarize", response_model=ApiResponse)
 async def ai_summarize(
     file: Annotated[UploadFile, File()],
-    max_length: Annotated[int, Form()] = 500,
+    max_length: Annotated[int, Form(ge=1, le=10000)] = 500,
 ):
     """AI摘要生成：上传PDF/文档，生成AI摘要笔记。"""
     file_path, _ = await _save_upload(file)
@@ -2323,10 +2361,8 @@ async def ai_summarize(
         from filemate.perception import FileParser
         parser = FileParser()
         parsed = await run_in_threadpool(parser.parse, str(file_path))
-        text = parsed.get("raw_text", "")
-
-        if not text.strip():
-            raise HTTPException(status_code=422, detail="无法从文件中提取文本内容")
+        text = _parsed_text(parsed)
+        warnings = _analysis_warnings(parsed, text, 8000)
 
         # 生成摘要
         from filemate.llm_client import LLMClient, LLMConfig
@@ -2334,19 +2370,21 @@ async def ai_summarize(
         llm = LLMClient(llm_config)
         from filemate.understanding import AISummarizer
         summarizer = AISummarizer(llm)
-        summary = summarizer.summarize(text, max_length=max_length)
+        summary = await run_in_threadpool(summarizer.summarize, text, max_length=max_length)
 
         ctx_id, source_id, artifact_id = _persist_ai_context(
             file_path=file_path,
             text=text,
+            parse_metadata=_parse_metadata(parsed),
             artifact_type="summary",
             content=summary,
             title=f"{file_path.stem} · 摘要",
-            metadata={"max_length": max_length},
+            metadata={"warnings": warnings, "max_length": max_length},
         )
         retained = True
 
         result = {
+            "warnings": warnings,
             "ctx_id": ctx_id,
             "filename": file.filename,
             "summary": summary,
@@ -2357,9 +2395,9 @@ async def ai_summarize(
 
         return ApiResponse(success=True, data=result)
     except Exception as exc:
-        if isinstance(exc, HTTPException):
+        if isinstance(exc, (HTTPException, BudgetExceeded, GovernanceUnavailable)):
             raise
-        logger.exception("AI摘要生成失败: %s", file.filename)
+        logger.warning("AI upload failed (%s)", type(exc).__name__)
         raise HTTPException(status_code=502, detail="AI 摘要生成失败") from exc
     finally:
         if not retained:
@@ -2369,8 +2407,8 @@ async def ai_summarize(
 @app.post("/ai/knowledge-cards", response_model=ApiResponse)
 async def ai_knowledge_cards(
     file: Annotated[UploadFile, File()],
-    num_cards: Annotated[int, Form()] = 10,
-    card_format: Annotated[str, Form()] = "front_back",
+    num_cards: Annotated[int, Form(ge=1, le=50)] = 10,
+    card_format: Annotated[Literal["front_back", "qa"], Form()] = "front_back",
 ):
     """AI知识卡生成：上传PDF/文档，生成AI知识卡片。"""
     file_path, _ = await _save_upload(file)
@@ -2382,10 +2420,8 @@ async def ai_knowledge_cards(
         from filemate.perception import FileParser
         parser = FileParser()
         parsed = await run_in_threadpool(parser.parse, str(file_path))
-        text = parsed.get("raw_text", "")
-
-        if not text.strip():
-            raise HTTPException(status_code=422, detail="无法从文件中提取文本内容")
+        text = _parsed_text(parsed)
+        warnings = _analysis_warnings(parsed, text, 8000)
 
         # 生成知识卡
         from filemate.llm_client import LLMClient, LLMConfig
@@ -2393,19 +2429,21 @@ async def ai_knowledge_cards(
         llm = LLMClient(llm_config)
         from filemate.understanding import KnowledgeCardGenerator
         generator = KnowledgeCardGenerator(llm)
-        cards = generator.generate_cards(text, num_cards=num_cards, card_format=card_format)
+        cards = await run_in_threadpool(generator.generate_cards, text, num_cards=num_cards, card_format=card_format)
 
         ctx_id, source_id, artifact_id = _persist_ai_context(
             file_path=file_path,
             text=text,
+            parse_metadata=_parse_metadata(parsed),
             artifact_type="knowledge_cards",
             content=cards,
             title=f"{file_path.stem} · 知识卡",
-            metadata={"count": len(cards), "card_format": card_format},
+            metadata={"warnings": warnings, "count": len(cards), "card_format": card_format},
         )
         retained = True
 
         result = {
+            "warnings": warnings,
             "ctx_id": ctx_id,
             "filename": file.filename,
             "cards": cards,
@@ -2416,9 +2454,9 @@ async def ai_knowledge_cards(
 
         return ApiResponse(success=True, data=result)
     except Exception as exc:
-        if isinstance(exc, HTTPException):
+        if isinstance(exc, (HTTPException, BudgetExceeded, GovernanceUnavailable)):
             raise
-        logger.exception("AI知识卡生成失败: %s", file.filename)
+        logger.warning("AI upload failed (%s)", type(exc).__name__)
         raise HTTPException(status_code=502, detail="AI 知识卡生成失败") from exc
     finally:
         if not retained:
@@ -2441,12 +2479,8 @@ async def ai_questions(
         from filemate.perception import FileParser
         parser = FileParser()
         parsed = await run_in_threadpool(parser.parse, str(file_path))
-        if parsed.get("error"):
-            raise HTTPException(status_code=422, detail=str(parsed["error"]))
-        text = parsed.get("raw_text", "")
-
-        if not text.strip():
-            raise HTTPException(status_code=422, detail="无法从文件中提取文本内容")
+        text = _parsed_text(parsed)
+        warnings = _analysis_warnings(parsed, text, None)
 
         # 解析题目类型
         types_list = None
@@ -2481,6 +2515,8 @@ async def ai_questions(
         subject = file_path.stem[:20] or "综合"
         knowledge_point = text[:60].replace("\n", " ") if text else "核心内容"
         chunks = chunk_text(text, chunk_size=800, overlap=100)
+        if len(text) > 500:
+            warnings.append("本次出题使用前5个资料片段，每片段最多500字；可按章节拆分以覆盖其余内容。")
 
         all_questions: list[dict[str, Any]] = []
         requested_types = [_map_type(t) for t in types_list] if types_list else ["choice"]
@@ -2492,7 +2528,8 @@ async def ai_questions(
             if requested_count == 0:
                 continue
             try:
-                batch = generate_questions_with_llm(
+                batch = await run_in_threadpool(
+                    generate_questions_with_llm,
                     llm=llm,
                     subject=subject,
                     knowledge_point=knowledge_point,
@@ -2501,8 +2538,10 @@ async def ai_questions(
                     context=chunks,
                 )
                 all_questions.extend(batch)
+            except (BudgetExceeded, GovernanceUnavailable):
+                raise
             except RuntimeError as exc:
-                generation_errors.append(str(exc))
+                generation_errors.append(type(exc).__name__)
                 continue
 
         if not all_questions:
@@ -2513,14 +2552,16 @@ async def ai_questions(
         ctx_id, source_id, artifact_id = _persist_ai_context(
             file_path=file_path,
             text=text,
+            parse_metadata=_parse_metadata(parsed),
             artifact_type="questions",
             content=questions,
             title=f"{file_path.stem} · 练习题",
-            metadata={"count": len(questions), "types": types_list or []},
+            metadata={"warnings": warnings, "count": len(questions), "types": types_list or []},
         )
         retained = True
 
         result = {
+            "warnings": warnings,
             "ctx_id": ctx_id,
             "filename": file.filename,
             "questions": questions,
@@ -2531,9 +2572,9 @@ async def ai_questions(
 
         return ApiResponse(success=True, data=result)
     except Exception as exc:
-        if isinstance(exc, HTTPException):
+        if isinstance(exc, (HTTPException, BudgetExceeded, GovernanceUnavailable)):
             raise
-        logger.exception("AI题目提取失败: %s", file.filename)
+        logger.warning("AI upload failed (%s)", type(exc).__name__)
         raise HTTPException(status_code=502, detail="AI 题目生成失败") from exc
     finally:
         if not retained:
@@ -2543,7 +2584,7 @@ async def ai_questions(
 @app.post("/ai/notes", response_model=ApiResponse)
 async def ai_notes(
     file: Annotated[UploadFile, File()],
-    format: Annotated[str, Form()] = "outline",
+    format: Annotated[Literal["outline", "markdown", "mindmap"], Form()] = "outline",
 ):
     """AI笔记提取：上传PDF/文档，提取结构化笔记。"""
     file_path, _ = await _save_upload(file)
@@ -2555,10 +2596,8 @@ async def ai_notes(
         from filemate.perception import FileParser
         parser = FileParser()
         parsed = await run_in_threadpool(parser.parse, str(file_path))
-        text = parsed.get("raw_text", "")
-
-        if not text.strip():
-            raise HTTPException(status_code=422, detail="无法从文件中提取文本内容")
+        text = _parsed_text(parsed)
+        warnings = _analysis_warnings(parsed, text, 8000)
 
         # 提取笔记
         from filemate.llm_client import LLMClient, LLMConfig
@@ -2566,19 +2605,21 @@ async def ai_notes(
         llm = LLMClient(llm_config)
         from filemate.understanding import NoteExtractor
         extractor = NoteExtractor(llm)
-        notes = extractor.extract_notes(text, format=format)
+        notes = await run_in_threadpool(extractor.extract_notes, text, format=format)
 
         ctx_id, source_id, artifact_id = _persist_ai_context(
             file_path=file_path,
             text=text,
+            parse_metadata=_parse_metadata(parsed),
             artifact_type="notes",
             content=notes,
             title=f"{file_path.stem} · 结构化笔记",
-            metadata={"format": format},
+            metadata={"warnings": warnings, "format": format},
         )
         retained = True
 
         result = {
+            "warnings": warnings,
             "ctx_id": ctx_id,
             "filename": file.filename,
             "notes": notes,
@@ -2588,9 +2629,9 @@ async def ai_notes(
 
         return ApiResponse(success=True, data=result)
     except Exception as exc:
-        if isinstance(exc, HTTPException):
+        if isinstance(exc, (HTTPException, BudgetExceeded, GovernanceUnavailable)):
             raise
-        logger.exception("AI笔记提取失败: %s", file.filename)
+        logger.warning("AI upload failed (%s)", type(exc).__name__)
         raise HTTPException(status_code=502, detail="AI 笔记生成失败") from exc
     finally:
         if not retained:
@@ -2614,9 +2655,8 @@ async def ai_study_plan(
         from filemate.perception import FileParser
 
         parsed = await run_in_threadpool(FileParser().parse, str(file_path))
-        text = parsed.get("raw_text", "")
-        if not text.strip():
-            raise HTTPException(status_code=422, detail="无法从文件中提取文本内容")
+        text = _parsed_text(parsed)
+        warnings = _analysis_warnings(parsed, text, 12000)
 
         from filemate.llm_client import LLMClient, LLMConfig
         from filemate.understanding import StudyPlanGenerator
@@ -2624,21 +2664,24 @@ async def ai_study_plan(
         topics = None
         if weak_topics:
             topics = [item.strip() for item in weak_topics.split(",") if item.strip()]
-        plan = StudyPlanGenerator(LLMClient(LLMConfig.from_env())).generate(
+        plan = await run_in_threadpool(
+            StudyPlanGenerator(LLMClient(LLMConfig.from_env())).generate,
             text=text,
             exam_date=exam_date,
             daily_minutes=daily_minutes,
             goal=goal.strip(),
             weak_topics=topics,
         )
+        plan["warnings"] = warnings
 
         ctx_id, source_id, artifact_id = _persist_ai_context(
             file_path=file_path,
             text=text,
+            parse_metadata=_parse_metadata(parsed),
             artifact_type="study_plan",
             content=plan,
             title=plan.get("title", f"{file_path.stem} · 学习计划"),
-            metadata={"exam_date": exam_date, "daily_minutes": daily_minutes},
+            metadata={"warnings": warnings, "exam_date": exam_date, "daily_minutes": daily_minutes},
         )
         retained = True
         saved_plan = _storage.create_study_plan(
@@ -2649,6 +2692,7 @@ async def ai_study_plan(
         return ApiResponse(
             success=True,
             data={
+                "warnings": warnings,
                 "ctx_id": ctx_id,
                 "filename": file_path.name,
                 "plan": plan,
@@ -2659,9 +2703,9 @@ async def ai_study_plan(
             },
         )
     except Exception as exc:
-        if isinstance(exc, HTTPException):
+        if isinstance(exc, (HTTPException, BudgetExceeded, GovernanceUnavailable)):
             raise
-        logger.exception("AI学习计划生成失败: %s", file_path.name)
+        logger.warning("AI upload failed (%s)", type(exc).__name__)
         raise HTTPException(status_code=502, detail="AI 学习计划生成失败") from exc
     finally:
         if not retained:

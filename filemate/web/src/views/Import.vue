@@ -21,7 +21,7 @@
           <div class="queue-heading"><h2>{{ isUploading ? '正在处理资料' : '这次添加的资料' }}</h2><span>{{ completedCount }} / {{ uploadQueue.length }} 份就绪</span></div>
           <p v-if="failedCount" class="queue-error" role="alert">{{ failedCount }} 份未完成，可用原文件重试。<button :disabled="isUploading" @click="retryAllFailed">重试未完成资料</button></p>
           <article v-for="(item, index) in uploadQueue" :key="item.id" class="queue-item">
-            <span class="file-mark" aria-hidden="true"><el-icon><Document /></el-icon></span><div class="queue-info"><strong>{{ item.name }}</strong><p>{{ formatSize(item.size) }} · {{ statusText[item.status] }}</p><p v-if="item.error" class="queue-error">{{ item.error }}</p></div>
+            <span class="file-mark" aria-hidden="true"><el-icon><Document /></el-icon></span><div class="queue-info"><strong>{{ item.name }}</strong><p>{{ formatSize(item.size) }} · {{ statusText[item.status] }}</p><p v-if="item.error" class="queue-error">{{ item.error }}</p><AnalysisWarnings :messages="item.source?.metadata?.parse_warnings || item.session?.entities?.metadata?.parse_warnings" /></div>
             <router-link v-if="item.source" class="next-action" :to="{ path: '/ai-tools', query: { source: item.source.source_id } }">开始学习 <el-icon><ArrowRight /></el-icon></router-link>
             <button v-else-if="item.session" class="next-action" @click="reviewResult(item.session)">核对并归档 <el-icon><ArrowRight /></el-icon></button>
             <button v-if="item.status === 'error'" :disabled="isUploading" @click="retryUpload(index)">重试</button><button v-if="item.status !== 'uploading' && item.status !== 'pending'" class="dismiss" :disabled="isUploading" :aria-label="`移除列表中的 ${item.name}`" @click="uploadQueue.splice(index, 1)"><el-icon><Close /></el-icon></button>
@@ -34,6 +34,7 @@
 </template>
 
 <script setup lang="ts">
+import AnalysisWarnings from '../components/AnalysisWarnings.vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'

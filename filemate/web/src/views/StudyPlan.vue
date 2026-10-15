@@ -70,6 +70,7 @@
     </p>
 
     <section v-if="plan" class="plan-results">
+      <AnalysisWarnings :messages="plan.warnings" />
       <div class="plan-summary">
         <div class="summary-copy">
           <span class="eyebrow">你的学习路径</span>
@@ -142,6 +143,7 @@
 </template>
 
 <script setup lang="ts">
+import AnalysisWarnings from '../components/AnalysisWarnings.vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'

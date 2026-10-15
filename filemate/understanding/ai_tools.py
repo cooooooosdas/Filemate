@@ -5,8 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import date
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +17,15 @@ def _parse_json_result(result: Any) -> Any:
         content = content[7:]
     elif content.startswith("```"):
         content = content[3:]
-    if content.endswith("```"):
-        content = content[:-3]
+    content = content.removesuffix("```")
     return json.loads(content.strip())
+
+
+def _required_text(value: Any) -> str:
+    """Reject empty or non-text model fields before persistence."""
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("模型未返回有效内容，请重试")
+    return value.strip()
 
 
 class AISummarizer:
@@ -62,14 +67,8 @@ class AISummarizer:
 
 请直接输出摘要，不要添加任何前缀或解释："""
 
-        try:
-            # 使用messages而不是prompt，避免云知声API的兼容性问题
-            messages = [{"role": "user", "content": prompt}]
-            result = self.llm.call(messages=messages, max_tokens=2000)
-            return str(result).strip() if result else ""
-        except Exception as exc:
-            logger.error("摘要生成失败: %s", exc)
-            return f"摘要生成失败: {exc}"
+        result = self.llm.call(messages=[{"role": "user", "content": prompt}], max_tokens=2000)
+        return _required_text(getattr(result, "content", result))
 
 
 class KnowledgeCardGenerator:
@@ -134,46 +133,19 @@ class KnowledgeCardGenerator:
 
 请直接返回JSON数组："""
 
-        try:
-            result = self.llm.call(messages=[{"role": "user", "content": prompt}], max_tokens=4000)
-            content = getattr(result, "content", str(result))
-
-            # 尝试解析JSON
-            content = content.strip()
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.startswith("```"):
-                content = content[3:]
-            if content.endswith("```"):
-                content = content[:-3]
-
-            cards = json.loads(content.strip())
-
-            # 规范化字段名
-            normalized = []
-            for card in cards:
-                if isinstance(card, dict):
-                    if "question" in card and "answer" in card:
-                        normalized.append({"front": card["question"], "back": card["answer"]})
-                    elif "front" in card and "back" in card:
-                        normalized.append({"front": card["front"], "back": card["back"]})
-                    elif "front" in card:
-                        normalized.append({"front": card["front"], "back": card.get("back", "")})
-                    else:
-                        # 尝试从其他字段推断
-                        keys = list(card.keys())
-                        if len(keys) >= 2:
-                            normalized.append({"front": str(card[keys[0]]), "back": str(card[keys[1]])})
-                        elif len(keys) == 1:
-                            normalized.append({"front": str(card[keys[0]]), "back": ""})
-
-            return normalized[:num_cards]
-        except json.JSONDecodeError as exc:
-            logger.error("知识卡JSON解析失败: %s, content: %s", exc, content[:200])
-            return []
-        except Exception as exc:
-            logger.error("知识卡生成失败: %s", exc)
-            return []
+        result = self.llm.call(messages=[{"role": "user", "content": prompt}], max_tokens=4000)
+        cards = _parse_json_result(result)
+        if not isinstance(cards, list) or not cards:
+            raise ValueError("模型未返回有效知识卡，请重试")
+        normalized = []
+        for card in cards[:num_cards]:
+            if not isinstance(card, dict) or card.get("error"):
+                raise ValueError("知识卡格式无效，请重试")
+            normalized.append({
+                "front": _required_text(card.get("front", card.get("question"))),
+                "back": _required_text(card.get("back", card.get("answer"))),
+            })
+        return normalized
 
 
 class QuestionExtractor:
@@ -185,7 +157,7 @@ class QuestionExtractor:
     def extract_questions(
         self,
         text: str,
-        question_types: Optional[list[str]] = None,
+        question_types: list[str] | None = None,
         num_questions: int = 10,
     ) -> list[dict[str, Any]]:
         """从文档中提取练习题目。
@@ -236,12 +208,9 @@ class QuestionExtractor:
 
             # 清理JSON格式
             content = content.strip()
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.startswith("```"):
-                content = content[3:]
-            if content.endswith("```"):
-                content = content[:-3]
+            content = content.removeprefix("```json")
+            content = content.removeprefix("```")
+            content = content.removesuffix("```")
 
             questions = json.loads(content.strip())
 
@@ -251,7 +220,7 @@ class QuestionExtractor:
             return [{"type": {"choice": "选择题", "fill": "填空题", "short_answer": "简答题"}[q["question_type"]],
                      "question": q["stem"], "options": q["options"], "answer": q["answer"],
                      "explanation": q["analysis"]} for q in normalized]
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - legacy optional extraction API
             logger.warning("题目提取校验或调用失败 (%s)", type(exc).__name__)
             return []
 
@@ -301,28 +270,27 @@ class NoteExtractor:
 
 请直接返回JSON对象："""
 
-        try:
-            result = self.llm.call(messages=[{"role": "user", "content": prompt}], max_tokens=4000)
-            content = getattr(result, "content", str(result))
-
-            # 清理JSON格式
-            content = content.strip()
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.startswith("```"):
-                content = content[3:]
-            if content.endswith("```"):
-                content = content[:-3]
-
-            notes = json.loads(content.strip())
-            notes["format"] = format
-            return notes
-        except json.JSONDecodeError as exc:
-            logger.error("笔记JSON解析失败: %s, content: %s", exc, content[:200])
-            return {"title": "", "sections": [], "format": format, "error": str(exc)}
-        except Exception as exc:
-            logger.error("笔记提取失败: %s", exc)
-            return {"title": "", "sections": [], "format": format, "error": str(exc)}
+        result = self.llm.call(messages=[{"role": "user", "content": prompt}], max_tokens=4000)
+        notes = _parse_json_result(result)
+        if not isinstance(notes, dict) or notes.get("error"):
+            raise ValueError("笔记格式无效，请重试")
+        title = _required_text(notes.get("title"))
+        sections = notes.get("sections")
+        if not isinstance(sections, list) or not sections:
+            raise ValueError("模型未返回有效笔记章节，请重试")
+        normalized = []
+        for section in sections:
+            if not isinstance(section, dict):
+                raise TypeError("笔记章节格式无效，请重试")
+            content = section.get("content")
+            if isinstance(content, list):
+                if not content:
+                    raise ValueError("笔记章节内容为空，请重试")
+                content = [_required_text(item) for item in content]
+            else:
+                content = _required_text(content)
+            normalized.append({"title": _required_text(section.get("title")), "content": content})
+        return {"title": title, "sections": normalized, "format": format}
 
 
 class AIChatbot:
@@ -427,7 +395,7 @@ class StudyPlanGenerator:
         exam_date: str,
         daily_minutes: int = 60,
         goal: str = "掌握核心知识并通过考试",
-        weak_topics: Optional[list[str]] = None,
+        weak_topics: list[str] | None = None,
     ) -> dict[str, Any]:
         """生成按天拆解、带检查点的个性化学习计划。"""
         if not text or not text.strip():
@@ -438,7 +406,9 @@ class StudyPlanGenerator:
         except ValueError as exc:
             raise ValueError("考试日期必须使用 YYYY-MM-DD 格式") from exc
 
-        today = date.today()
+        from datetime import datetime
+
+        today = datetime.now().astimezone().date()
         total_days = (target_date - today).days
         if total_days < 1:
             raise ValueError("考试日期必须晚于今天")
@@ -488,7 +458,7 @@ class StudyPlanGenerator:
         )
         plan = _parse_json_result(result)
         if not isinstance(plan, dict):
-            raise ValueError("模型返回的学习计划不是 JSON 对象")
+            raise TypeError("模型返回的学习计划不是 JSON 对象")
 
         daily_plan = plan.get("daily_plan")
         if not isinstance(daily_plan, list) or not daily_plan:
