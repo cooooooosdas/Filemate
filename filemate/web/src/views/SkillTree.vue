@@ -1,8 +1,8 @@
 <template>
   <div class="skills-page">
-    <header><div><p class="eyebrow">把能力目标落在证据上</p><h1>我的技能树</h1><p>自定义能力目标与前置条件，用课程练习、编程和面试记录核对进度。</p></div><button :disabled="loading || saving" @click="load">刷新证据</button></header>
+    <header><div><h1>我的技能树</h1><p>自定义能力目标与前置条件，用课程练习、编程和面试记录核对进度。</p></div><button :disabled="loading || saving" @click="load">刷新证据</button></header>
     <DataState v-if="error" :error="error" @retry="load" />
-    <p v-if="loading" role="status">正在读取技能与验收证据…</p>
+    <p v-if="loading" role="status">正在读取技能与练习记录…</p>
     <template v-else-if="tree">
       <p class="rule">{{ tree.rule }}</p>
       <form class="skill-form" @submit.prevent="addSkill">

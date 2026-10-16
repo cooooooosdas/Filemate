@@ -1,6 +1,6 @@
 <template>
   <div class="import-page">
-    <header class="intake-heading"><div><p class="eyebrow">资料入口</p><h1>放进资料，<span>接着学。</span></h1><p>选择这份资料的下一步，其他操作留在学习中完成。</p></div><router-link to="/knowledge">打开已有资料 <el-icon><ArrowRight /></el-icon></router-link></header>
+    <header class="intake-heading"><div><p class="eyebrow">资料入口</p><h1>添加<span>资料</span></h1><p>先选用途，再选择文件。已有资料可直接打开。</p></div><router-link to="/knowledge">打开已有资料 <el-icon><ArrowRight /></el-icon></router-link></header>
     <div class="intake-layout">
       <section class="intake-main" aria-label="添加资料">
         <PrivacyBoundaryNotice @ready="boundaryReady = $event" />
@@ -11,7 +11,7 @@
         <section class="upload-zone" :class="{ 'is-dragover': isDragover, 'is-uploading': isUploading }" aria-label="文件投放区" @dragover.prevent="isDragover = true" @dragleave.prevent="isDragover = false" @drop.prevent="handleDrop">
           <input id="primary-file-upload" ref="fileInput" name="course_files" type="file" :disabled="!canUpload" multiple :accept="acceptedExtensions" @change="handleFileSelect" hidden />
           <div class="paper-stack" aria-hidden="true"><span /><span /><div><el-icon><DocumentAdd /></el-icon></div></div>
-          <h2>{{ isUploading ? '资料正在就位' : '把课件或笔记放到这里' }}</h2>
+          <h2>{{ isUploading ? '正在解析资料' : '把课件或笔记放到这里' }}</h2>
           <p>{{ isUploading ? uploadingFileName : '拖入文件，或从设备中选择。每份最多 25 MB。' }}</p>
           <button class="btn-primary" type="button" :disabled="!canUpload" @click="fileInput?.click()"><el-icon><Plus /></el-icon>{{ isUploading ? '正在处理…' : '选择资料' }}</button>
           <p class="format-note">{{ intent === 'study' ? 'PDF · Word · PPT · 文本 · Markdown · 代码' : 'PDF · Word · PPT · TXT' }}</p>
@@ -28,7 +28,7 @@
           </article>
         </section>
       </section>
-      <aside class="next-step" aria-label="下一步指引"><span class="guide-label">{{ intent === 'study' ? '从阅读到理解' : '从散乱到有序' }}</span><h2>{{ intent === 'study' ? '一份资料，一条学习路径。' : '先核对，再放到正确的位置。' }}</h2><ol><li v-for="(step, index) in currentSteps" :key="step.title"><span>{{ index + 1 }}</span><div><strong>{{ step.title }}</strong><p>{{ step.description }}</p></div></li></ol><p class="boundary-note"><el-icon><Lock /></el-icon>{{ intent === 'study' ? '导入与阅读不调用模型。讲解、笔记与练习由你在学习时授权。' : '生成建议后集中核对。归档前可预览，确认后执行，执行后可撤销。' }}</p></aside>
+      <aside class="next-step" aria-label="下一步指引"><span class="guide-label">{{ intent === 'study' ? '导入后可以做什么' : '归档前需要确认什么' }}</span><h2>{{ intent === 'study' ? '读原文，再按需生成笔记或练习。' : '先核对，再放到正确的位置。' }}</h2><ol><li v-for="(step, index) in currentSteps" :key="step.title"><span>{{ index + 1 }}</span><div><strong>{{ step.title }}</strong><p>{{ step.description }}</p></div></li></ol><p class="boundary-note"><el-icon><Lock /></el-icon>{{ intent === 'study' ? '导入与阅读不调用模型。讲解、笔记与练习由你在学习时授权。' : '生成建议后集中核对。归档前可预览，确认后执行，执行后可撤销。' }}</p></aside>
     </div>
   </div>
 </template>
@@ -49,7 +49,7 @@ type QueueItem = { id: number; file: File; name: string; size: number; intent: I
 const route = useRoute(), router = useRouter(), fileStore = useFileStore()
 const intent = computed<Intent>(() => route.query.intent === 'archive' ? 'archive' : 'study')
 const purposes = [{ id: 'study' as const, title: '阅读与学习', description: '读原文，继续讲解、笔记与练习', icon: Reading }, { id: 'archive' as const, title: '整理与归档', description: '核对分类、名称和日程，一次确认', icon: FolderOpened }]
-const studySteps = [{ title: '添加一份资料', description: '解析正文，保存到你的学习空间。' }, { title: '打开资料，开始理解', description: '读原文，带着问题获得讲解与引用。' }, { title: '留下笔记，练习巩固', description: '学习结果自动保存，下次接着学。' }]
+const studySteps = [{ title: '添加一份资料', description: '解析正文，保存到你的学习空间。' }, { title: '打开原文或提问', description: '读原文，带着问题获得讲解与引用。' }, { title: '留下笔记，练习巩固', description: '学习结果自动保存，下次接着学。' }]
 const archiveSteps = [{ title: '添加待整理文件', description: '模型生成分类、命名与日程建议。' }, { title: '在一屏中集中核对', description: '修改建议，预览目标位置与操作。' }, { title: '确认归档', description: '执行记录可查看，也可以撤销。' }]
 const currentSteps = computed(() => intent.value === 'study' ? studySteps : archiveSteps)
 const fileInput = ref<HTMLInputElement>(), isDragover = ref(false), isUploading = ref(false), uploadingFileName = ref(''), archiveConsent = ref(false)

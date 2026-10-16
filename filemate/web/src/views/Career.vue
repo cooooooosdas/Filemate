@@ -2,9 +2,8 @@
   <div class="career-page">
     <header class="page-heading">
       <div>
-        <p class="eyebrow">岗位 · 证据 · 下一步训练</p>
         <h1>求职训练中心</h1>
-        <p>从岗位要求出发，把知识练习、编程和口头表达接成一条训练路径。</p>
+        <p>查看岗位要求，选择笔试或面试练习，再对照记录补足短板。</p>
       </div>
       <button :disabled="loading || !!busy" @click="load">刷新记录</button>
     </header>

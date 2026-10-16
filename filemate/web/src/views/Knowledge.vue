@@ -1,6 +1,6 @@
 <template>
   <div class="knowledge-page">
-    <header class="page-head"><div><h1>个人知识库</h1><p>从一份资料，到下一步学习。</p></div><router-link class="import-link" to="/ai-tools"><DocumentAdd :size="21" aria-hidden="true" />添加学习资料</router-link></header>
+    <header class="page-head"><div><h1>个人知识库</h1><p>查找原文、打开笔记，继续学习已有资料。</p></div><router-link class="import-link" to="/ai-tools"><Reading :size="21" aria-hidden="true" />打开学习工作区</router-link></header>
 
     <MotionSurface class="search-panel" aria-labelledby="search-heading">
       <h2 id="search-heading">想找什么知识？</h2>
@@ -39,7 +39,7 @@
           <div class="source-copy"><h3>{{ source.original_name }}</h3><p>{{ source.text_length.toLocaleString('zh-CN') }} 字 · {{ formatDate(source.created_at) }}</p></div>
           <div class="source-actions">
             <router-link :to="{ path: '/ai-tools', query: { source: source.source_id } }" class="import-link">进入学习<ArrowRight :size="19" aria-hidden="true" /></router-link>
-            <button type="button" :aria-expanded="expandedSource === source.source_id" @click="toggleArtifacts(source.source_id)">{{ expandedSource === source.source_id ? '收起学习链' : '学习链与产物' }}<ChevronDown :size="19" aria-hidden="true" /></button>
+            <button type="button" :aria-expanded="expandedSource === source.source_id" @click="toggleArtifacts(source.source_id)">{{ expandedSource === source.source_id ? '收起学习记录' : '笔记、练习与记录' }}<ChevronDown :size="19" aria-hidden="true" /></button>
             <button type="button" class="scope-action" :aria-pressed="selectedSource === source.source_id" :disabled="searching" @click="scopeTo(source.source_id)"><Search :size="18" aria-hidden="true" />检索此资料</button>
             <button type="button" class="delete" :aria-label="`删除资料：${source.original_name}`" :disabled="deletingSource === source.source_id" @click="confirmDelete(source)"><Trash :size="19" aria-hidden="true" />{{ deletingSource === source.source_id ? '删除中…' : '删除' }}</button>
           </div>
@@ -47,12 +47,12 @@
             <p v-if="artifactLoading">正在加载…</p>
             <div v-else-if="artifactError" class="artifact-error" role="alert"><p>{{ artifactError }}</p><button type="button" @click="loadArtifacts(source.source_id)">重新读取</button></div>
             <template v-else>
-              <div v-if="lineage" class="lineage-head"><div><strong>这份资料的学习链</strong><span>记录每一步，随时回到原始依据</span></div><b>{{ lineage.completed_stage_count }}/{{ lineage.total_stage_count }} 环已形成</b></div>
+              <div v-if="lineage" class="lineage-head"><div><strong>这份资料的学习记录</strong><span>查看已保存的内容与对应原文</span></div><b>{{ lineage.completed_stage_count }}/{{ lineage.total_stage_count }} 项已有记录</b></div>
               <div v-if="lineage" class="lineage-rail">
                 <article v-for="(stage,index) in lineage.stages" :key="stage.key" :class="stage.state"><span>{{ String(index + 1).padStart(2, '0') }}</span><strong>{{ stage.label }}</strong><p>{{ stage.primary }}</p><small>{{ stage.secondary }}</small></article>
               </div>
               <div v-if="artifacts.length" class="artifact-items"><button v-for="artifact in artifacts" :key="artifact.artifact_id" type="button" @click="openArtifact(artifact.artifact_id)"><span>{{ artifactLabel(artifact.artifact_type) }}</span><b>{{ artifact.title || '未命名产物' }}</b><em>打开</em></button></div>
-              <p v-else>还没有学习产物，点击“进入学习”创建笔记或练习。</p>
+              <p v-else>还没有笔记或练习，点击“进入学习”创建。</p>
             </template>
           </div>
         </article>
@@ -62,7 +62,7 @@
         <span class="empty-icon"><el-icon><FolderOpened /></el-icon></span>
         <strong>知识库还是空的</strong>
         <span>添加课件或笔记，随后阅读、提问、创建练习。</span>
-        <router-link to="/ai-tools"><el-icon><DocumentAdd /></el-icon>添加第一份资料</router-link>
+        <router-link to="/import?intent=study"><el-icon><DocumentAdd /></el-icon>添加第一份资料</router-link>
       </div>
     </section>
 

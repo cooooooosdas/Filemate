@@ -36,7 +36,7 @@
 
       <router-link class="space-switch" to="/knowledge" title="打开个人知识库" @click="finishMobileNavigation">
         <span class="space-icon"><el-icon><FolderOpened /></el-icon></span>
-        <span class="space-copy"><strong>个人学习空间</strong><small>资料 · 知识 · 成长</small></span>
+        <span class="space-copy"><strong>我的资料</strong><small>打开知识库</small></span>
         <el-icon class="space-arrow"><ArrowRight /></el-icon>
       </router-link>
 
@@ -100,7 +100,7 @@
             <el-icon><Menu /></el-icon>
           </button>
           <div>
-            <span class="workspace-label">我的空间</span><span class="breadcrumb-divider" aria-hidden="true">/</span><span class="page-title">{{ pageTitle }}</span>
+            <span class="page-title">{{ pageTitle }}</span>
           </div>
         </div>
 
@@ -110,7 +110,7 @@
           <router-link v-else class="account-entry" to="/login" aria-label="登录 FileMate"><el-icon><User /></el-icon><span>登录</span></router-link>
           <button class="finder-trigger" aria-label="查找功能" @click="showFinder = true"><el-icon><Search /></el-icon><span>查找功能</span><kbd>Ctrl K</kbd></button>
           <button
-            class="icon-button"
+            class="icon-button desktop-only"
             :class="{ spinning: refreshing }"
             aria-label="刷新当前页面"
             title="刷新当前页面"
@@ -169,17 +169,17 @@
           <el-icon><Monitor /></el-icon>
           <div>
             <strong>显示模式</strong>
-            <span>钴蓝光束主视觉与冰蓝阅读工作台</span>
+            <span>浅色阅读界面，沿用系统字体</span>
           </div>
           <el-tag effect="plain">浅色</el-tag>
         </div>
         <div class="setting-row">
           <el-icon><Lock /></el-icon>
           <div>
-            <strong>数据边界</strong>
+            <strong>保存位置</strong>
             <span>{{ accountState?.enabled ? '网站资料保存在服务器的独立私有空间' : '学习资料与执行记录默认保存在本机' }}</span>
           </div>
-          <el-tag type="success" effect="plain">本地优先</el-tag>
+          <el-tag type="success" effect="plain">{{ accountState?.enabled ? '账号空间' : '本机' }}</el-tag>
         </div>
         <div class="setting-row">
           <el-icon><Connection /></el-icon>
@@ -1016,12 +1016,12 @@ function isAuthPath(path: string): boolean {
 }
 
 .nav-item { min-height:50px; font-size:17px; gap:12px; }
-.nav-group-label { font-size:14px; letter-spacing:.03em; }
+.nav-group-label { font-size:15px; letter-spacing:.03em; }
 .nav-group + .nav-group { margin-top:18px; }
-.space-copy strong { font-size:16px; }.space-copy small { font-size:14px; }.space-switch { min-height:70px; }
+.space-copy strong { font-size:18px; }.space-copy small { display:none; }.space-switch { min-height:70px; }
 .page-title { font-size:18px; font-weight:600; }.workspace-label { font-size:14px; }
-.service-state,.version-label,.site-footer,.setting-row span { font-size:14px; }
-.setting-row strong { font-size:16px; }
+.service-state,.version-label,.site-footer,.setting-row span { font-size:16px; }
+.setting-row strong { font-size:18px; }
 .finder-trigger { font-size:15px; }
 .global-import { display:inline-flex; align-items:center; gap:9px; min-height:44px; padding:0 16px; margin-right:8px; border-radius:10px; background:var(--accent); color:white; font-size:16px; font-weight:600; text-decoration:none; }
 .global-import:hover { background:var(--accent-hover); }
@@ -1032,6 +1032,6 @@ function isAuthPath(path: string): boolean {
 .topbar-actions svg,.nav-item svg,.finder-results svg { stroke-width:1.8; }
 @media(prefers-reduced-motion:reduce) { .nav-item .el-icon { transition:none; } .nav-item:hover:not(.nav-selected) .el-icon { transform:none; } }
 @media(max-width:1100px) { .avatar { display:none; } }
-@media(max-width:560px) { .global-import { width:44px; padding:0; margin-right:0; flex-shrink:0; }.global-import span { display:none; }.topbar-actions>.icon-button { display:none; }.topbar-title { min-width:0; }.page-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } }
+@media(max-width:560px) { .global-import { width:44px; justify-content:center; padding:0; margin-right:0; flex-shrink:0; }.global-import span { display:none; }.topbar-actions>.icon-button { display:none; }.topbar-title { min-width:0; }.page-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } }
 @media(max-width:560px) { .page-title { font-size:16px; }.nav-item { font-size:18px; } }
 </style>

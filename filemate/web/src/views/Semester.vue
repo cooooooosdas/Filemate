@@ -1,6 +1,6 @@
 <template>
   <div class="portfolio-page semester-page">
-    <header><div><p class="eyebrow">让这一学期有节奏</p><h1>学期模式</h1><p>按课程安排每周任务与考试，进度由你确认。</p></div><button type="button" :disabled="busy" @click="load">刷新学期</button></header>
+    <header><div><h1>学期模式</h1><p>按课程安排每周任务与考试，进度由你确认。</p></div><button type="button" :disabled="busy" @click="load">刷新学期</button></header>
     <p v-if="loading" role="status">正在读取课程与进度…</p><DataState v-else-if="loadError" :error="loadError" @retry="load" />
     <template v-else>
       <p v-if="actionError" role="alert">{{ actionError }}</p>
