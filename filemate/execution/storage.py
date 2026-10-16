@@ -2309,6 +2309,14 @@ class SQLiteStorage:
                     key: value for key, value in turn["dimensions"].items()
                     if key == "流畅性" and turn["scoring_mode"] == "local_fallback" and not content_invalid
                 }
+        for turn in interview["turns"]:
+            version = self._conn().execute(
+                "SELECT attempt_id,version,created_at FROM interview_answer_attempts WHERE turn_id=? ORDER BY version DESC LIMIT 1",
+                (turn["turn_id"],),
+            ).fetchone()
+            if version:
+                turn.update(attempt_id=version["attempt_id"], attempt_version=version["version"],
+                            attempt_created_at=version["created_at"])
         assessed = [t["score"] for t in interview["turns"] if t["score"] is not None]
         interview["assessed_turn_count"] = len(assessed)
         interview["overall_score"] = round(sum(assessed) / len(assessed), 2) if assessed else None

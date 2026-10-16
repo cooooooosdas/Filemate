@@ -51,12 +51,39 @@ class Command(BaseModel):
     expected_revision: int = Field(ge=0)
 
 
+class FluencyMarker(BaseModel):
+    model_config = ConfigDict(extra='forbid', allow_inf_nan=False)
+    second: float = Field(ge=0, le=3600)
+    kind: Literal['long_pause', 'filler']
+    label: str = Field(min_length=1, max_length=80)
+
+
+class FluencyMetrics(BaseModel):
+    model_config = ConfigDict(extra='forbid', allow_inf_nan=False)
+    duration_seconds: float = Field(ge=0, le=3600)
+    filler_count: int = Field(default=0, ge=0, le=100)
+    long_pause_count: int = Field(default=0, ge=0, le=100)
+    source: Literal['speech_recognition'] = 'speech_recognition'
+    markers: list[FluencyMarker] = Field(default_factory=list, max_length=100)
+    recording_offset_seconds: float | None = Field(default=None, ge=0, le=1800)
+
+
 class SubmitAnswer(Command):
     answer: str = Field(min_length=1, max_length=12000)
     question_index: int = Field(ge=0, le=100)
     expected_attempt_id: str | None = None
     fluency_metrics: dict[str, Any] | None = None
     visual_metrics: dict[str, Any] | None = None
+
+    @field_validator('fluency_metrics', 'visual_metrics')
+    @classmethod
+    def validated_metrics(cls, value, info):
+        if value is None:
+            return None
+        from filemate.interview_review.models import VisualMetrics
+
+        schema = FluencyMetrics if info.field_name == 'fluency_metrics' else VisualMetrics
+        return schema.model_validate(value).model_dump()
 
     @field_validator('answer')
     @classmethod
