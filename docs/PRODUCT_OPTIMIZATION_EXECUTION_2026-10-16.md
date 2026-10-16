@@ -1,5 +1,7 @@
 # 产品优化执行合同
 
+2026-10-16 Q17已确认[三条训练主流程设计](superpowers/specs/2026-10-16-coach-workflows-design.md)，本轮交互优化顺序为面试→编程→岗位学习路径。先交付[面试实现计划](superpowers/plans/2026-10-16-interview-coach.md)（OPT-03的面试交互子卡）；计划已自审，待用户审阅和选择实施方式。未开始本子卡产品代码，不表示OPT-02～05或原始功能账本已经完成；下方保留此前各批范围和结果。
+
 ## 已确认目标
 
 用户显式调用本机 `grill-me`，经[上游 grilling 流程](https://github.com/mattpocock/skills/blob/main/skills/productivity/grilling/SKILL.md)核实事实并确认共同理解：**稳定性与功能性并重，同时补齐原需求未实现项**。不是只修现有功能，也不是新增无关方向。
