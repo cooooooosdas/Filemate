@@ -3,7 +3,7 @@
     <header class="welcome">
       <div class="welcome-copy"><div class="welcome-meta"><span>{{ greeting }}</span><time>{{ todayLabel }}</time></div><h1>今天，<br />让知识<span class="title-dot">成形。</span></h1><p>打开课件，读原文、记笔记、做练习。</p><router-link class="solid-link hero-start" to="/ai-tools"><el-icon><Reading /></el-icon>开始学习<el-icon><ArrowRight /></el-icon></router-link></div>
       <HeroEncouragement />
-      <KnowledgeBackdrop />
+      <StudyMotif class="welcome-motif" />
     </header>
     <div v-if="loading" class="load-state" role="status"><el-icon class="loading-icon"><Loading /></el-icon>正在读取你的学习记录…</div>
     <div v-else-if="errorMessage" class="load-state error" role="alert"><p>{{ errorMessage }}</p><el-button @click="loadDashboard">重新加载</el-button></div>
@@ -49,7 +49,7 @@
             <div v-if="reviewError" class="review-error" role="alert"><p>今日安排暂时无法读取。</p><button @click="loadReview" :disabled="reviewLoading">{{ reviewLoading ? '正在加载…' : '重试' }}</button></div>
             <template v-else-if="review">
               <p class="today-summary">{{ review.items.length ? `${review.items.length} 项待办 · 预计 ${review.recommended_minutes} 分钟` : '今天还没有待完成的安排' }}</p>
-              <ol v-if="review.items.length" class="task-list"><li v-for="item in review.items.slice(0, 3)" :key="item.item_id"><router-link :to="item.route"><span class="task-circle" /><span><strong>{{ item.title }}</strong><small>{{ item.kind === 'wrong_question' ? '错题复习' : '学习计划' }} · {{ item.duration_minutes }} 分钟</small></span></router-link></li></ol>
+              <ol v-if="review.items.length" class="task-list"><li v-for="item in review.items.slice(0, 3)" :key="item.item_id"><router-link :to="todayItemTarget(item)"><span class="task-circle" /><span><strong>{{ item.title }}</strong><small>{{ item.kind === 'wrong_question' ? '错题复习' : '学习计划' }} · {{ item.duration_minutes }} 分钟</small></span></router-link></li></ol>
               <div v-else class="today-empty"><el-icon><Calendar /></el-icon><p>给下次考试或复习留出时间，<br />安排会在这里提醒你。</p><router-link to="/study-plan">制定学习计划<el-icon><ArrowRight /></el-icon></router-link></div>
               <router-link v-if="review.items.length" class="solid-link today-start" to="/today">开始今日学习<el-icon><ArrowRight /></el-icon></router-link>
             </template>
@@ -65,7 +65,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { ArrowRight, Calendar, FolderOpened, Loading, Lock, Microphone, Reading } from '../icons'
-import KnowledgeBackdrop from '../components/KnowledgeBackdrop.vue'
+import StudyMotif from '../components/StudyMotif.vue'
+import { todayItemTarget } from '../navigation/route-state'
 import HeroEncouragement from '../components/HeroEncouragement.vue'
 import { getHistory, getTodayReview, type TodayReview } from '../services/api'
 import type { HistoryItem, SessionStatus } from '../types'
@@ -175,4 +176,17 @@ a { color:inherit; text-decoration:none; }
 @media(max-width:900px) { .welcome { grid-template-columns:1fr; gap:28px; min-height:0; }.welcome h1 { font-size:46px; } }
 @media(max-width:700px) { .welcome { padding:28px 24px; border-radius:18px; margin-bottom:24px; }.welcome h1 { font-size:44px; margin-top:20px; }.welcome p { font-size:18px; }.welcome-meta { font-size:16px; gap:8px 16px; }.overview { grid-template-columns:1fr 1fr; gap:20px 0; }.overview > :nth-child(3) { padding-left:0; }.overview > :nth-child(2) { border:0; }.desk-aside { display:block; }.focus-sheet { padding:22px 16px 6px; }.section-heading h2 { font-size:23px; }.section-hint { display:none; }.task-entry-main { padding:18px 0; gap:12px; }.task-entry-copy strong { font-size:22px; }.task-entry-copy > span { font-size:17px; }.task-entry-links { padding-left:0; gap:0 18px; }.file-row { grid-template-columns:36px minmax(0,1fr); gap:10px; }.file-status { grid-column:2; }.row-arrow,.file-list-head { display:none; }.partner-note { margin-top:20px; }.partner-note img { right:16px; } }
 @media(prefers-reduced-motion:reduce) { .task-entry-arrow { transition:none; }.task-entry-main:hover .task-entry-arrow { transform:none; } }
+</style>
+
+<style scoped>
+.welcome { --hero-ink: #15264a; --hero-copy: #405573; --hero-highlight: #2352d3; --quote-ink: #233d66; --quote-secondary: #405573; --quote-line: #a4c2ee; background: linear-gradient(115deg, #e6f0ff, #d5e6ff); border: 0; min-height: 340px; border-radius: 16px; }
+.welcome h1 { font-size: clamp(42px,4.4vw,62px); letter-spacing: -.03em; margin-block: 22px 16px; }
+.welcome-meta { color: #2352d3; }
+.welcome-motif { position: absolute; width: 260px; bottom: -35px; right: 10px; opacity: .28; z-index: 0; pointer-events: none; }
+.hero-start { background: var(--accent); color: #fff; }
+.hero-start:hover { background: var(--accent-hover); }
+.welcome :deep(.hero-encouragement) { padding-bottom: 40px; }
+.welcome :deep(.hero-encouragement::before) { bottom: 35px; }
+.focus-sheet, .today-sheet { background: #fff; border-color: transparent; border-radius: 16px; }
+@media(max-width: 700px) { .welcome { min-height: 0; padding: 28px 24px; } .welcome-motif { display: none; } .welcome :deep(.hero-encouragement) { padding-bottom: 0; } }
 </style>

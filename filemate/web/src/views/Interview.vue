@@ -1,5 +1,5 @@
 <template>
-  <div class="interview-page">
+  <div class="interview-page coach-surface">
     <header class="page-head">
       <div>
         <h1>口头讲解与模拟面试</h1>
@@ -8,6 +8,7 @@
       <span class="status-pill" aria-live="polite"><i></i>{{ session?.status === 'completed' ? '本轮已完成' : session ? '面试进行中' : '准备就绪' }}</span>
     </header>
 
+    <DataState v-if="resumeError && !session" :error="resumeError" @retry="restoreInterview(requestedInterviewId)" />
     <details v-if="!session" class="resume-panel">
       <summary class="resume-summary"><Document :size="24" aria-hidden="true" /><strong>接着上次练</strong><span>{{ historyLoading ? '正在读取…' : `${recentInterviews.length} 场已保存` }}</span></summary>
       <div class="resume-heading"><p>已提交的回答会保留；未提交文字和本地录像不会在刷新后恢复。</p><button class="ghost" :disabled="historyLoading || loading" @click="loadRecent">刷新记录</button></div>
@@ -21,7 +22,6 @@
       </div>
       <p v-else class="resume-empty">还没有练习记录，从下方创建第一场面试。</p>
       <p v-if="loading" role="status">正在准备面试…</p>
-      <DataState v-if="resumeError" :error="resumeError" @retry="restoreInterview(requestedInterviewId)" />
     </details>
 
     <section v-if="!session" class="setup-card">
@@ -79,6 +79,41 @@
         <DataState v-if="memoryError" :error="memoryError" />
       </section>
       <section class="studio">
+        <div class="conversation-panel">
+          <div class="progress-row"><span>第 {{ Math.min(session.current_index + 1, session.questions.length) }} / {{ session.questions.length }} 题</span><strong>{{ displayScore(session.overall_score) }}</strong></div>
+          <div class="progress"><i :style="{ width: `${session.current_index / session.questions.length * 100}%` }"></i></div>
+
+          <div v-if="session.status === 'active'" class="question-block">
+            <p>训练问题</p>
+            <span v-if="session.source_context?.source_name" class="source-evidence">依据：{{ session.source_context.source_name }} · {{ session.source_context.focus_wrong_id ? '待纠错练习首题' : session.source_context.mode === 'authorized_excerpt' ? '已授权片段' : '仅资料名' }}</span>
+            <span v-if="sourceEvidenceLabel" class="source-evidence source-location-evidence" :class="{ unavailable: session.source_context?.source_evidence?.status === 'unavailable' }">{{ sourceEvidenceLabel }}</span>
+            <h2>{{ session.current_question }}</h2>
+            <textarea v-model="answer" name="interview_answer" autocomplete="off" aria-label="当前训练回答" rows="7" maxlength="12000" :disabled="loading" :placeholder="session.scenario === '知识讲解' ? '先解释概念，再说明推理过程和一个例子…' : '建议用“情境—任务—行动—结果”结构回答…'"></textarea>
+            <div class="answer-actions">
+              <button class="voice" :class="{ recording }" :disabled="loading" @click="toggleRecording">{{ recording ? '停止录音' : '语音回答' }}</button>
+              <span>{{ answer.length }} 字</span>
+              <button class="primary" :disabled="loading || videoRecording || videoStopping || recording || answer.trim().length < 4" @click="submit">{{ loading ? '保存中…' : videoRecording || videoStopping ? '先停止本地录像' : recording ? '先停止语音回答' : '提交并进入下一题' }}</button>
+            </div>
+            <small class="speech-privacy">语音识别由浏览器提供，可能使用浏览器厂商的在线服务；也可直接输入文字。</small>
+            <div v-if="recording || fluencyMetrics" class="fluency-strip" aria-live="polite">
+              <span><b>{{ recordingDuration }}</b> 秒回答时长</span>
+              <span><b>{{ session.scenario === '英语面' ? liveWordsPerMinute : liveCharsPerMinute }}</b> {{ session.scenario === '英语面' ? '词/分钟' : '字/分钟' }}</span>
+              <span><b>{{ fillerCount }}</b> 个口头语</span>
+              <span><b>{{ longPauseCount }}</b> 次较长停顿</span>
+              <small>{{ session.scenario === '英语面' ? '英语只记录识别节奏；节奏评分尚未校准，不计入内容分。' : '仅语音回答生成流畅度参考；有内容评估时计入总分的 15%' }}</small>
+            </div>
+            <div v-if="fluencyMarkers.length" class="live-timeline" aria-label="当前回答表达时间轴">
+              <div class="timeline-track"><i v-for="marker in fluencyMarkers" :key="`${marker.kind}-${marker.second}`" :class="marker.kind" :style="{ left: markerPosition(marker.second, recordingDuration) }" /></div>
+              <p><span>表达时间轴</span><b>{{ fluencyMarkers.length }} 个可复盘位置</b></p>
+            </div>
+          </div>
+
+          <div v-else class="completion">
+            <span class="score-ring" :class="{ unassessed: session.overall_score == null }">{{ session.overall_score == null ? '已记录' : session.overall_score.toFixed(0) }}</span>
+            <div><p>本轮训练完成</p><h2>{{ scoreLabel }}</h2><button class="primary" @click="reset">再练一次</button><button v-if="session.source_context?.goal_id" class="ghost" @click="router.push({ path: '/goals', query: { goal: session.source_context.goal_id } })">返回目标复盘</button></div>
+          </div>
+        </div>
+
         <div class="interviewer-panel">
           <div class="avatar-stage" :class="{ speaking }">
             <div class="pulse pulse-one" aria-hidden="true"></div><div class="pulse pulse-two" aria-hidden="true"></div>
@@ -126,41 +161,6 @@
                 <small>0–100 为模型动作系数换算，不是开心、紧张或疑惑的概率；光线不足或无人脸时停止读数。实时系数不保存、不上传，不用于面试评分。</small>
               </section>
             </div>
-          </div>
-        </div>
-
-        <div class="conversation-panel">
-          <div class="progress-row"><span>第 {{ Math.min(session.current_index + 1, session.questions.length) }} / {{ session.questions.length }} 题</span><strong>{{ displayScore(session.overall_score) }}</strong></div>
-          <div class="progress"><i :style="{ width: `${session.current_index / session.questions.length * 100}%` }"></i></div>
-
-          <div v-if="session.status === 'active'" class="question-block">
-            <p>训练问题</p>
-            <span v-if="session.source_context?.source_name" class="source-evidence">依据：{{ session.source_context.source_name }} · {{ session.source_context.focus_wrong_id ? '待纠错练习首题' : session.source_context.mode === 'authorized_excerpt' ? '已授权片段' : '仅资料名' }}</span>
-            <span v-if="sourceEvidenceLabel" class="source-evidence source-location-evidence" :class="{ unavailable: session.source_context?.source_evidence?.status === 'unavailable' }">{{ sourceEvidenceLabel }}</span>
-            <h2>{{ session.current_question }}</h2>
-            <textarea v-model="answer" name="interview_answer" autocomplete="off" aria-label="当前训练回答" rows="7" maxlength="12000" :disabled="loading" :placeholder="session.scenario === '知识讲解' ? '先解释概念，再说明推理过程和一个例子…' : '建议用“情境—任务—行动—结果”结构回答…'"></textarea>
-            <div class="answer-actions">
-              <button class="voice" :class="{ recording }" :disabled="loading" @click="toggleRecording">{{ recording ? '停止录音' : '语音回答' }}</button>
-              <span>{{ answer.length }} 字</span>
-              <button class="primary" :disabled="loading || videoRecording || videoStopping || recording || answer.trim().length < 4" @click="submit">{{ loading ? '保存中…' : videoRecording || videoStopping ? '先停止本地录像' : recording ? '先停止语音回答' : '提交并进入下一题' }}</button>
-            </div>
-            <small class="speech-privacy">语音识别由浏览器提供，可能使用浏览器厂商的在线服务；也可直接输入文字。</small>
-            <div v-if="recording || fluencyMetrics" class="fluency-strip" aria-live="polite">
-              <span><b>{{ recordingDuration }}</b> 秒回答时长</span>
-              <span><b>{{ session.scenario === '英语面' ? liveWordsPerMinute : liveCharsPerMinute }}</b> {{ session.scenario === '英语面' ? '词/分钟' : '字/分钟' }}</span>
-              <span><b>{{ fillerCount }}</b> 个口头语</span>
-              <span><b>{{ longPauseCount }}</b> 次较长停顿</span>
-              <small>{{ session.scenario === '英语面' ? '英语只记录识别节奏；节奏评分尚未校准，不计入内容分。' : '仅语音回答生成流畅度参考；有内容评估时计入总分的 15%' }}</small>
-            </div>
-            <div v-if="fluencyMarkers.length" class="live-timeline" aria-label="当前回答表达时间轴">
-              <div class="timeline-track"><i v-for="marker in fluencyMarkers" :key="`${marker.kind}-${marker.second}`" :class="marker.kind" :style="{ left: markerPosition(marker.second, recordingDuration) }" /></div>
-              <p><span>表达时间轴</span><b>{{ fluencyMarkers.length }} 个可复盘位置</b></p>
-            </div>
-          </div>
-
-          <div v-else class="completion">
-            <span class="score-ring" :class="{ unassessed: session.overall_score == null }">{{ session.overall_score == null ? '已记录' : session.overall_score.toFixed(0) }}</span>
-            <div><p>本轮训练完成</p><h2>{{ scoreLabel }}</h2><button class="primary" @click="reset">再练一次</button><button v-if="session.source_context?.goal_id" class="ghost" @click="router.push({ path: '/goals', query: { goal: session.source_context.goal_id } })">返回目标复盘</button></div>
           </div>
         </div>
       </section>
@@ -211,8 +211,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   answerInterview,
@@ -239,6 +239,7 @@ import { visualLabels } from '../interview/observations'
 import { publishCompanionEvent, type CompanionMood } from '../composables/useCompanion'
 import mascotUrl from '../assets/filemate-mascot.png'
 import '../styles/interview-practice.css'
+import { hasInterviewDraft } from '../navigation/route-state'
 import { ArrowRight, Briefcase, Code, Collection, Conversation, Document, Language, Reading, School, ShieldCheck, Trophy, VideoPlay } from '../icons'
 
 const form = ref({ targetRole: '', scenario: '知识讲解', difficulty: '标准', sourceId: '' })
@@ -262,6 +263,7 @@ const historyError = ref('')
 const resumeError = ref('')
 const requestedInterviewId = ref('')
 let disposed = false
+let syncingSessionTarget: string | null = null
 const knowledgeSources = ref<KnowledgeSource[]>([])
 const session = ref<InterviewSession | null>(null)
 const sourceEvidenceLabel = computed(() => {
@@ -405,7 +407,7 @@ const begin = async () => {
     if (disposed) return
     session.value = created
     resumeError.value = ''
-    await router.replace({ query: { interview: created.interview_id } })
+    await syncSessionQuery(created.interview_id)
     speakQuestion()
   }
   catch (e: any) { error.value = e?.message || '创建失败'; ElMessage.error(error.value) }
@@ -506,8 +508,13 @@ const forgetCurrentPractice = () => {
   if (memoryId) void forgetPractice(memoryId)
 }
 
-const restoreInterview = async (interviewId: string) => {
+const restoreInterview = async (interviewId: string, fromRoute = false) => {
   if (!interviewId || loading.value) return
+  if (!fromRoute && !(await confirmLeave())) return
+  stopSpeechRecording(); stopVideoRecording(true); stopCamera(); clearLocalRecordings()
+  window.speechSynthesis?.cancel()
+  session.value = null
+  answer.value = ''
   requestedInterviewId.value = interviewId
   loading.value = true
   resumeError.value = ''
@@ -523,7 +530,7 @@ const restoreInterview = async (interviewId: string) => {
     focusWrongId.value = restored.source_context?.focus_wrong_id || ''
     originGoalId.value = restored.source_context?.goal_id || ''
     answer.value = ''
-    await router.replace({ query: { interview: restored.interview_id } })
+    await syncSessionQuery(restored.interview_id)
   } catch { resumeError.value = '这场面试暂时无法恢复。请确认后端已启动，或从下方新建面试。' }
   finally { loading.value = false }
 }
@@ -786,7 +793,8 @@ const clearLocalRecordings = () => {
   localRecordings.value = {}
 }
 
-const reset = () => {
+const reset = async () => {
+  if (!(await confirmLeave())) return
   window.speechSynthesis?.cancel()
   stopSpeechRecording()
   stopVideoRecording(true)
@@ -804,11 +812,69 @@ const reset = () => {
   speechOffset = undefined
   fluencyMarkers.value = []
   resumeError.value = ''
-  void router.replace({ query: {} })
+  initialPreparation.value = preparationSnapshot()
+  void syncSessionQuery()
   void loadRecent()
   void loadMemories()
 }
+
+async function syncSessionQuery(id?: string): Promise<void> {
+  const target = router.resolve({ path: '/interview', query: id ? { interview: id } : {} }).fullPath
+  syncingSessionTarget = target
+  try { await router.replace(target) }
+  finally { if (syncingSessionTarget === target) syncingSessionTarget = null }
+}
+
+
+function preparationSnapshot(): string {
+  return JSON.stringify([form.value, projectName.value, projectDetails.value, rememberForFuture.value, selectedMemoryId.value])
+}
+function applyPreparationRoute(): void {
+  form.value = { targetRole: typeof route.query.target === 'string' ? route.query.target.slice(0, 120) : '', scenario: interviewModes.includes(String(route.query.scenario)) ? String(route.query.scenario) : '知识讲解', difficulty: '标准', sourceId: typeof route.query.source === 'string' ? route.query.source : '' }
+  projectName.value = ''; projectDetails.value = ''; rememberForFuture.value = false; selectedMemoryId.value = null
+}
+applyPreparationRoute()
+const initialPreparation = ref(preparationSnapshot())
+
+const draftPresent = computed(() => hasInterviewDraft({
+  answer: answer.value, recording: recording.value, videoStarting: videoStarting.value,
+  videoRecording: videoRecording.value, videoStopping: videoStopping.value,
+  localRecordings: Object.keys(localRecordings.value).length,
+  preparation: !session.value && preparationSnapshot() !== initialPreparation.value
+}))
+
+async function confirmLeave(): Promise<boolean> {
+  if (loading.value || memoryBusy.value) { ElMessage.info('正在保存或读取面试，请稍候再切换。'); return false }
+  if (!draftPresent.value) return true
+  try {
+    await ElMessageBox.confirm('未提交的文字、准备输入和本地录像不会保留。已提交的回答仍会保存，确定离开吗？', '离开当前练习', { confirmButtonText: '离开', cancelButtonText: '继续练习', type: 'warning' })
+    return true
+  } catch { return false }
+}
+
+function protectBrowserExit(event: BeforeUnloadEvent): void {
+  if (loading.value || memoryBusy.value || draftPresent.value) { event.preventDefault(); event.returnValue = '' }
+}
+
+onBeforeRouteLeave(confirmLeave)
+onBeforeRouteUpdate(to => to.fullPath === syncingSessionTarget ? true : confirmLeave())
+watch(() => route.fullPath, fullPath => {
+  if (fullPath === syncingSessionTarget) return
+  const id = typeof route.query.interview === 'string' ? route.query.interview : ''
+  if (id === session.value?.interview_id) return
+  stopSpeechRecording(); stopVideoRecording(true); stopCamera(); clearLocalRecordings()
+  window.speechSynthesis?.cancel()
+  answer.value = ''
+  if (id) { void restoreInterview(id, true); return }
+  session.value = null
+  applyPreparationRoute()
+  initialPreparation.value = preparationSnapshot()
+  focusWrongId.value = typeof route.query.focus === 'string' ? route.query.focus : ''
+  originGoalId.value = typeof route.query.goal === 'string' ? route.query.goal : ''
+})
+
 onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', protectBrowserExit)
   disposed = true
   stopSpeechRecording()
   stopVideoRecording(true)
@@ -818,26 +884,20 @@ onBeforeUnmount(() => {
   window.speechSynthesis?.cancel()
 })
 onMounted(async () => {
+  window.addEventListener('beforeunload', protectBrowserExit)
   if (reviewEnabled.value) { try { reviewEnabled.value = (await getInterviewReviewStatus()).enabled } catch { reviewEnabled.value = false } }
   void loadRecent()
   void loadMemories()
-  if (typeof route.query.interview === 'string') void restoreInterview(route.query.interview)
+  if (typeof route.query.interview === 'string') void restoreInterview(route.query.interview, true)
   try { knowledgeSources.value = await getKnowledgeSources(100) }
   catch { knowledgeSources.value = [] }
-  if (typeof route.query.source === 'string' && knowledgeSources.value.some(source => source.source_id === route.query.source)) {
-    form.value.sourceId = route.query.source
-  }
-  if (interviewModes.includes(String(route.query.scenario))) {
-    form.value.scenario = String(route.query.scenario)
-  }
-  if (typeof route.query.target === 'string') form.value.targetRole = route.query.target.slice(0, 120)
   if (!form.value.sourceId) focusWrongId.value = ''
   if (!focusWrongId.value) originGoalId.value = ''
 })
 </script>
 
 <style scoped>
-.interview-page{max-width:1180px;margin:0 auto;padding:28px;color:var(--text-primary)}.page-head{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:26px}.eyebrow{margin:0;color:var(--accent);font-size: var(--type-meta);font-weight:800;letter-spacing:.15em}.page-head h1{font-size:32px;margin:0 0 7px}.page-head p{margin:0;color:var(--text-secondary)}.status-pill{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--accent-border);border-radius:999px;color:var(--accent);background:var(--accent-soft)}.status-pill i,.online i{width:7px;height:7px;border-radius:50%;background:#36a269}.setup-card,.studio,.evaluation,.review-list{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:18px}.setup-card{padding:30px}.setup-copy span{color:var(--accent);font-size: var(--type-meta);font-weight:700}.setup-copy h2{font-size:24px;margin:8px 0}.setup-copy p{color:var(--text-secondary)}.form-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin:26px 0}.form-grid label{font-size: var(--type-meta);color:var(--text-secondary)}input,select,textarea{box-sizing:border-box;width:100%;margin-top:7px;padding:12px;border:1px solid var(--border-default);border-radius:10px;background:var(--bg-elevated);color:var(--text-primary);font:inherit}textarea{resize:vertical;line-height:1.7}.primary,.ghost,.voice{border:0;border-radius:10px;padding:11px 17px;cursor:pointer}.primary{background:var(--accent);color:white;font-weight:700}.primary:disabled{opacity:.45}.studio{display:grid;grid-template-columns:310px 1fr;overflow:hidden}.interviewer-panel{padding:30px;background:var(--sidebar-bg);text-align:center;border-right:1px solid var(--border-subtle)}.avatar-stage{position:relative;width:180px;height:180px;margin:12px auto 24px;display:grid;place-items:center}.avatar-face{position:relative;z-index:2;width:124px;height:124px;display:grid;place-items:center;overflow:hidden;border:4px solid rgba(255,255,255,.9);border-radius:50%;background:linear-gradient(145deg,var(--brand-blue-soft),#e7f6ee);box-shadow:0 16px 35px rgba(37,99,235,.18)}.avatar-face img{width:100%;height:100%;object-fit:cover;object-position:50% 22%;transform:scale(1.08)}.pulse{position:absolute;border:1px solid var(--brand-blue-border);border-radius:50%}.pulse-one{inset:12px}.pulse-two{inset:0}.speaking .pulse{animation:pulse 1.3s infinite}.voice-bars{position:absolute;bottom:1px;display:flex;gap:3px}.voice-bars i{width:3px;height:8px;background:var(--accent);border-radius:3px}.speaking .voice-bars i{animation:bars .7s infinite alternate}.voice-bars i:nth-child(2n){animation-delay:.2s}.role{font-weight:700}.online{font-size: var(--type-meta);color:var(--text-secondary)}.online i{display:inline-block;margin-right:5px}.ghost{margin-top:18px;border:1px solid var(--accent-border);background:transparent;color:var(--accent)}.conversation-panel{padding:30px}.progress-row{display:flex;justify-content:space-between;color:var(--text-secondary);font-size: var(--type-meta)}.progress{height:5px;background:var(--bg-elevated);border-radius:5px;margin:10px 0 28px}.progress i{display:block;height:100%;background:var(--accent);border-radius:5px}.question-block>p{font-size: var(--type-meta);color:var(--accent)}.question-block h2{font-size:22px;line-height:1.5}.answer-actions{display:flex;gap:12px;align-items:center;margin-top:12px}.answer-actions span{color:var(--text-muted);font-size: var(--type-action);margin-right:auto}.voice{border:1px solid var(--accent-border);color:var(--accent);background:var(--accent-soft)}.voice.recording{background:#fff0ec;color:#b44b34}.evaluation,.review-list{margin-top:18px;padding:24px}.evaluation-head{display:flex;justify-content:space-between;gap:20px}.evaluation-head h2{font-size:17px}.evaluation-head>strong{font-size:42px;color:var(--accent)}.dimension-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.dimension-grid>div{display:grid;grid-template-columns:1fr auto;gap:8px}.dimension-grid i{grid-column:1/-1;height:5px;background:var(--bg-elevated);border-radius:5px}.dimension-grid em{display:block;height:100%;background:var(--accent);border-radius:5px}.review-list h2{font-size:18px}.review-list details{border-top:1px solid var(--border-subtle);padding:14px 0}.review-list summary{display:flex;justify-content:space-between;gap:18px;cursor:pointer}.review-list p,.review-list small{color:var(--text-secondary);line-height:1.7}.completion{display:flex;align-items:center;justify-content:center;gap:24px;padding:60px 20px}.score-ring{width:110px;height:110px;display:grid;place-items:center;border:8px solid var(--accent-soft);outline:2px solid var(--accent);border-radius:50%;font-size:34px;font-weight:800;color:var(--accent)}@keyframes pulse{50%{transform:scale(1.05);opacity:.45}}@keyframes bars{to{height:25px}}@media(max-width:800px){.studio{grid-template-columns:1fr}.interviewer-panel{border-right:0;border-bottom:1px solid var(--border-subtle)}.form-grid,.dimension-grid{grid-template-columns:1fr 1fr}.page-head{align-items:start;flex-direction:column}}@media(max-width:520px){.form-grid,.dimension-grid{grid-template-columns:1fr}.interview-page{padding:16px}.conversation-panel{padding:20px}.answer-actions{flex-wrap:wrap}.answer-actions .primary{width:100%}}
+.interview-page{max-width:1320px;margin:0 auto;padding:0;color:var(--text-primary)}.page-head{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:26px}.eyebrow{margin:0;color:var(--accent);font-size: var(--type-meta);font-weight:800;letter-spacing:.15em}.page-head h1{font-size:32px;margin:0 0 7px}.page-head p{margin:0;color:var(--text-secondary)}.status-pill{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--accent-border);border-radius:999px;color:var(--accent);background:var(--accent-soft)}.status-pill i,.online i{width:7px;height:7px;border-radius:50%;background:#36a269}.setup-card,.studio,.evaluation,.review-list{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:18px}.setup-card{padding:30px}.setup-copy span{color:var(--accent);font-size: var(--type-meta);font-weight:700}.setup-copy h2{font-size:24px;margin:8px 0}.setup-copy p{color:var(--text-secondary)}.form-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin:26px 0}.form-grid label{font-size: var(--type-meta);color:var(--text-secondary)}input,select,textarea{box-sizing:border-box;width:100%;margin-top:7px;padding:12px;border:1px solid var(--border-default);border-radius:10px;background:var(--bg-elevated);color:var(--text-primary);font:inherit}textarea{resize:vertical;line-height:1.7}.primary,.ghost,.voice{border:0;border-radius:10px;padding:11px 17px;cursor:pointer}.primary{background:var(--accent);color:white;font-weight:700}.primary:disabled{opacity:.45}.studio{display:grid;grid-template-columns:310px 1fr;overflow:hidden}.interviewer-panel{padding:30px;background:var(--sidebar-bg);text-align:center;border-right:1px solid var(--border-subtle)}.avatar-stage{position:relative;width:180px;height:180px;margin:12px auto 24px;display:grid;place-items:center}.avatar-face{position:relative;z-index:2;width:124px;height:124px;display:grid;place-items:center;overflow:hidden;border:4px solid rgba(255,255,255,.9);border-radius:50%;background:linear-gradient(145deg,var(--brand-blue-soft),#e7f6ee);box-shadow:0 16px 35px rgba(37,99,235,.18)}.avatar-face img{width:100%;height:100%;object-fit:cover;object-position:50% 22%;transform:scale(1.08)}.pulse{position:absolute;border:1px solid var(--brand-blue-border);border-radius:50%}.pulse-one{inset:12px}.pulse-two{inset:0}.speaking .pulse{animation:pulse 1.3s infinite}.voice-bars{position:absolute;bottom:1px;display:flex;gap:3px}.voice-bars i{width:3px;height:8px;background:var(--accent);border-radius:3px}.speaking .voice-bars i{animation:bars .7s infinite alternate}.voice-bars i:nth-child(2n){animation-delay:.2s}.role{font-weight:700}.online{font-size: var(--type-meta);color:var(--text-secondary)}.online i{display:inline-block;margin-right:5px}.ghost{margin-top:18px;border:1px solid var(--accent-border);background:transparent;color:var(--accent)}.conversation-panel{padding:30px}.progress-row{display:flex;justify-content:space-between;color:var(--text-secondary);font-size: var(--type-meta)}.progress{height:5px;background:var(--bg-elevated);border-radius:5px;margin:10px 0 28px}.progress i{display:block;height:100%;background:var(--accent);border-radius:5px}.question-block>p{font-size: var(--type-meta);color:var(--accent)}.question-block h2{font-size:22px;line-height:1.5}.answer-actions{display:flex;gap:12px;align-items:center;margin-top:12px}.answer-actions span{color:var(--text-muted);font-size: var(--type-action);margin-right:auto}.voice{border:1px solid var(--accent-border);color:var(--accent);background:var(--accent-soft)}.voice.recording{background:#fff0ec;color:#b44b34}.evaluation,.review-list{margin-top:18px;padding:24px}.evaluation-head{display:flex;justify-content:space-between;gap:20px}.evaluation-head h2{font-size:17px}.evaluation-head>strong{font-size:42px;color:var(--accent)}.dimension-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.dimension-grid>div{display:grid;grid-template-columns:1fr auto;gap:8px}.dimension-grid i{grid-column:1/-1;height:5px;background:var(--bg-elevated);border-radius:5px}.dimension-grid em{display:block;height:100%;background:var(--accent);border-radius:5px}.review-list h2{font-size:18px}.review-list details{border-top:1px solid var(--border-subtle);padding:14px 0}.review-list summary{display:flex;justify-content:space-between;gap:18px;cursor:pointer}.review-list p,.review-list small{color:var(--text-secondary);line-height:1.7}.completion{display:flex;align-items:center;justify-content:center;gap:24px;padding:60px 20px}.score-ring{width:110px;height:110px;display:grid;place-items:center;border:8px solid var(--accent-soft);outline:2px solid var(--accent);border-radius:50%;font-size:34px;font-weight:800;color:var(--accent)}@keyframes pulse{50%{transform:scale(1.05);opacity:.45}}@keyframes bars{to{height:25px}}@media(max-width:800px){.studio{grid-template-columns:1fr}.interviewer-panel{border-right:0;border-bottom:1px solid var(--border-subtle)}.form-grid,.dimension-grid{grid-template-columns:1fr 1fr}.page-head{align-items:start;flex-direction:column}}@media(max-width:520px){.form-grid,.dimension-grid{grid-template-columns:1fr}.interview-page{padding:16px}.conversation-panel{padding:20px}.answer-actions{flex-wrap:wrap}.answer-actions .primary{width:100%}}
 
 .live-face{border-top:1px solid var(--border-subtle);padding-top:12px}.live-face h3{font-size:18px;margin:0 0 10px}.live-face p{font-size: var(--type-copy);line-height:1.6}.face-reading{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:12px 0;font-size:15px}.face-reading strong{font-size:17px}.face-reading meter{grid-column:1/-1;width:100%;height:12px;accent-color:var(--accent)}.live-face small{font-size: var(--type-copy);line-height:1.7}
 </style>

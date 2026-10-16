@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { availableTools, primaryGroups, primaryPath, relatedTools, searchTools } from '../src/navigation/catalog.ts'
+import { availableTools, childrenTools, primaryGroups, primaryPath, relatedTools, searchTools } from '../src/navigation/catalog.ts'
 
 const tools = availableTools()
 
@@ -13,7 +13,7 @@ test('every available tool and legacy alias has a reachable primary destination'
   }
   assert.equal(primaryPath('/naming', tools), '/knowledge')
   assert.equal(primaryPath('/semester', tools), '/today')
-  assert.equal(primaryPath('/digital-human', tools), '/ai-tools')
+  assert.equal(primaryPath('/digital-human', tools), '/knowledge')
 })
 
 test('closed features disappear from search, primary and contextual navigation together', () => {
@@ -53,4 +53,14 @@ test('study and archival imports guide toward their own next steps without dupli
   assert.ok(!archive.includes('/import') && !archive.includes('/ai-tools'))
   assert.deepEqual(relatedTools('/naming', undefined, tools).map(tool => tool.path), archive)
   assert.ok(relatedTools('/semester', undefined, tools).some(tool => tool.path === '/goals'))
+})
+
+test('each tool appears once in a compact sidebar hierarchy', () => {
+  const roots = primaryGroups(tools).flatMap(group => group.items)
+  assert.deepEqual(roots.map(tool => tool.path), ['/', '/today', '/knowledge', '/programming', '/interview', '/growth', '/trust'])
+  const paths = roots.flatMap(root => [root.path, ...childrenTools(root.path, tools).map(child => child.path)])
+  assert.equal(new Set(paths).size, paths.length)
+  assert.deepEqual([...paths].sort(), tools.map(tool => tool.path).sort())
+  assert.ok(childrenTools('/interview', tools).some(tool => tool.path === '/resume'))
+  assert.ok(childrenTools('/today', tools).some(tool => tool.path === '/wrongbook'))
 })
