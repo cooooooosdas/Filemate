@@ -450,7 +450,8 @@ def test_api_model_failure_and_cancel_race_preserve_report(api, monkeypatch):
     monkeypatch.setattr(llm, "LLMClient", lambda _: FakeLLM(RuntimeError("secret API error")))
     failure = client.post(path, json={"external_consent": True})
     assert failure.status_code == 502 and "secret" not in failure.text
-    assert client.get(f"/interviews/{id}/review").json()["data"]["report"] == original
+    assert client.get(f"/interviews/{id}/review").json()["data"]["report"] is None
+    assert module._storage.get_artifact(original["artifact_id"])["content"] == original
 
 
     started, release = threading.Event(), threading.Event()
@@ -469,7 +470,8 @@ def test_api_model_failure_and_cancel_race_preserve_report(api, monkeypatch):
         release.set()
         assert task.result().status_code == 409
     assert module._storage.get_interview(id)["assessed_turn_count"] == 0
-    assert client.get(f"/interviews/{id}/review").json()["data"]["report"] == original
+    assert client.get(f"/interviews/{id}/review").json()["data"]["report"] is None
+    assert module._storage.get_artifact(original["artifact_id"])["content"] == original
 
 
 @pytest.mark.parametrize("failure,phrase", [
@@ -481,7 +483,7 @@ def test_api_analysis_failure_is_actionable_and_preserves_existing_evidence(api,
     import filemate.llm_client as llm
     from filemate.llm_client import exceptions
 
-    client, _ = api
+    client, module = api
     interview_id = create_api(client)
     turn = client.post(f"/interviews/{interview_id}/answers", json={"answer": ANSWER}).json()["data"]["turns"][0]
     original = client.post(f"/interviews/{interview_id}/review").json()["data"]
@@ -492,7 +494,8 @@ def test_api_analysis_failure_is_actionable_and_preserves_existing_evidence(api,
     response = client.post(path, json={"external_consent": True})
     assert response.status_code == 502 and phrase in response.json()["error"]
     assert "private-secret" not in response.text
-    assert client.get(f"/interviews/{interview_id}/review").json()["data"]["report"] == original
+    assert client.get(f"/interviews/{interview_id}/review").json()["data"]["report"] is None
+    assert module._storage.get_artifact(original["artifact_id"])["content"] == original
     assert client.get(f"/interviews/{interview_id}").json()["data"]["turns"][0]["answer"] == ANSWER
 
 

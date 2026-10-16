@@ -677,11 +677,11 @@ Linux适配层使用独立受限Unix socket代理，Web进程不持有Docker权�
 
 沿用 `/interviews` 原流程及现役本机/匿名设备分库。SQLite v23 仅追加迁移：回答新增 `visual_metrics`、`content_analysis`、`answer_key`、`answer_digest`；新增 `interview_review_state`、`interview_review_events`。报告复用 Artifact，类型为 `interview_report`，通用 Artifact 编辑返回 409，不能改写面试证据。
 
-`POST /interviews` 增加可选 `allow_external_analysis: boolean | null`，保存到 Agent 上下文引用。`false` 禁止该场出题及提交回答时自动外发；新前端默认 `false`，用户后续逐题确认分析。旧客户端不传/null 保持已有流程；`FILEMATE_INTERVIEW_LOCAL_ONLY=1` 优先强制本地。原知识讲解和未授权私有错题规则保留。
+`POST /interviews` 增加可选 `allow_external_analysis: boolean | null`，保存到 Agent 上下文引用。`false` 禁止该场出题及提交回答时自动外发；新前端默认 `false`，用户后续逐题确认分析。不传/null 一律不授权外发；`FILEMATE_INTERVIEW_LOCAL_ONLY=1` 优先强制本地。原知识讲解和未授权私有错题规则保留。
 
 `POST /interviews/{id}/answers` 增加可选 `question_index`（0–100）、`request_key`（16–80 位字母/数字/下划线/短横线）与 `visual_metrics`。同场同键且正文、题号和指标一致，重复提交返回现有记录；同键不同请求或过期题号返回 409，不推进第二题。旧客户端可省略这些字段。空回答仍为 422。
 
-2026-10-13开发候选：`POST /interviews`的`scenario`兼容原四场景，并增加`技术面|项目面|算法面|HR面|压力面|英语面`。可选`project_name`（≤120）、`project_details`（≤6000）、`remember_for_future`（默认false）、`memory_id`（≤64）。项目面缺项目或只填一项返回422；无有效回答、资料已删除或撤销的所选记忆返回409。新专项或记忆训练不传`allow_external_analysis`时按false处理，旧四场景未传字段的行为兼容保留。专项五题为规则脚本；下一问题按本次真实回答与已校验分析组织，不新增模型请求。原题库CRUD的场景限制未在本轮扩展。
+2026-10-13开发候选：`POST /interviews`的`scenario`兼容原四场景，并增加`技术面|项目面|算法面|HR面|压力面|英语面`。可选`project_name`（≤120）、`project_details`（≤6000）、`remember_for_future`（默认false）、`memory_id`（≤64）。项目面缺项目或只填一项返回422；无有效回答、资料已删除或撤销的所选记忆返回409。新专项或记忆训练不传`allow_external_analysis`时按false处理，旧四场景未传字段同样不授权外发。专项五题为规则脚本；下一问题按本次真实回答与已校验分析组织，不新增模型请求。原题库CRUD的场景限制未在本轮扩展。
 
 创建、恢复、回答响应增加`practice_context:{mode,project,remember_for_future,memory_id,memory_ref,memory_available}`；project为用户填写的`{name,details,source:'user_input'}`或null。memory_ref含历史memory/interview/turn/question引用及本轮`target_question_index`。remember_for_future反映当前有效许可，不把已撤销的初始勾选当成许可。英语`fluency_metrics`增加`language:'en-US'`、`words_per_minute`；英语不产生未校准的节奏分，报告expression的words_per_minute可缺省/null以兼容旧报告。
 
@@ -919,3 +919,21 @@ GET /api/llm/status新增credential_storage=browser|system，前端按该模式�
 
 
 2026-10-16 面试教练开发候选：业务 schema27 追加回答版本、已进入问题、场次授权、分析运行与幂等操作表；schema26回答启动时原文原时间回填，旧写入同步捕获版本。尚未完成本批整体验收，未部署；治理schema2不变。
+
+
+### 2026-10-17 逐题面试教练候选（默认关闭）
+
+业务 schema27；治理schema2不变。FILEMATE_ENABLE_INTERVIEW_COACH=1 开启新写入，默认0；VITE_ENABLE_INTERVIEW_COACH=true 开启新界面，默认false。关闭保留原训练和版本只读。REVIEW总开关、LOCAL_ONLY、知识讲解和私有资料限制优先；不默认外发任何音视频。POST /interviews 只有 allow_external_analysis=true 才授权该场外发，省略/null/false均不授权；旧 answers 先保存原文再可选分析，失败不丢回答。
+
+| 方法/路径 | 合同 |
+| --- | --- |
+| GET /interviews/{id}/coach | 兼容session、revision、displayed_index、phase(question/feedback/summary)、external_consent、consent_revision、provider_identity、current_attempt、active_run_id、pending_retries、data_error；过期运行仅标interrupted，不重放 |
+| POST /interviews/{id}/coach/answers | answer(1–12000非空白)、question_index(0–100)、request_key(16–80字母数字下划线短横线)、expected_revision、expected_attempt_id(null或当前版本ID)、可选既有fluency_metrics/visual_metrics；回答先保存，显示feedback，不自动切题 |
+| GET /interviews/{id}/turns/{turn_id}/attempts | limit=20(1–100)、before_version可选正整数；items版本倒序、next_before_version，不跨场次 |
+| POST /interviews/{id}/coach/consent | allowed、expected_revision、request_key；只授权当前场次及服务端提供商身份，撤销使在途结果失效 |
+| POST /interviews/{id}/coach/analysis | attempt_id、consent_revision、expected_revision、request_key；60秒截止、每次≤30秒，只有格式错误允许一次纠正；每场一个在途运行 |
+| POST /interviews/{id}/coach/advance | from_index、expected_attempt_id、expected_revision、request_key；进入下一题或summary，已进入题冻结 |
+
+写成功均返回 {snapshot,receipt}，receipt含kind/request_key及受限attempt_id/run_id/target_index。同键同操作返回原回执及最新快照；同键异文或异操作409，不重复保存或调用模型。末次回答是当前版本，失败时score=null，历史成功仅在历史中；显式分析重试使用新key。新分析使当前报告失效，原Artifact保留，需重新生成当前报告。旧 /analyze 的 external_consent=true 是单次授权，不升级为后续自动授权。
+
+错误信封沿用success/data/error；data可含error_code、retryable、run_id、attempt_id。参数422、跨空间404、修订/并发/授权冲突409、私有资料403、模型故障502、累计额度429、治理或关闭503。无供应商异常原文、正文或密钥。新接口不替代现有身份/CSRF写保护；密钥只在请求上下文使用，不写入上述五张表。

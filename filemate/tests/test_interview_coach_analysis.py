@@ -265,3 +265,17 @@ def test_explicit_retry_new_key_keeps_old_run_and_clears_current_score(setup):
             "SELECT status FROM interview_coach_analysis_runs ORDER BY attempt_seq"
         )
     ] == ["succeeded", "failed"]
+
+
+def test_one_shot_new_provider_does_not_grant_later_automatic_analysis(setup):
+    store, repo, sid = setup
+    provider = Provider()
+    state = authorize(repo, sid, provider)
+    provider.config.model = 'new-provider-model'
+    result = CoachAnalysisService(store, lambda: provider).analyze(sid, command(state), one_shot_consent=True)
+    assert result.snapshot.current_attempt.score == 80
+    assert result.snapshot.external_consent is False
+    with pytest.raises(CoachError) as exc:
+        CoachAnalysisService(store, lambda: provider).analyze(sid, command(result.snapshot, 'another_analysis1'))
+    assert exc.value.code == 'consent_required'
+    assert len(provider.calls) == 1

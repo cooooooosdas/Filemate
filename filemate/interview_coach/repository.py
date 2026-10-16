@@ -452,7 +452,11 @@ class CoachRepository:
 
         view = self.snapshot(interview_id)
         followup = None
-        if view.current_attempt:
+        run = self.storage.get_agent_run(view.session['agent_run_id']) if view.session.get('agent_run_id') else None
+        continuous = (run or {}).get('context_refs', {}).get('practice_mode') == 'continuous'
+        from filemate.understanding.interview_practice import SPECIALIST_QUESTIONS
+
+        if view.current_attempt and (continuous or view.session['scenario'] in SPECIALIST_QUESTIONS):
             followup = grounded_followup(
                 view.current_attempt.answer,
                 view.session["scenario"],
@@ -603,6 +607,10 @@ class CoachRepository:
                 )
             ):
                 raise CoachError("consent_required")
+            if one_shot_consent and state["provider_identity"] != provider_identity:
+                conn.execute("UPDATE interview_coach_state SET external_consent=0,consent_revision=consent_revision+1,provider_identity=? WHERE interview_id=?",
+                             (provider_identity, interview_id))
+                state = self._state(conn, interview_id)
             attempt = conn.execute(
                 "SELECT * FROM interview_answer_attempts WHERE interview_id=? AND attempt_id=?",
                 (interview_id, command.attempt_id),
@@ -648,7 +656,7 @@ class CoachRepository:
                     seq,
                     command.request_key,
                     attempt["input_digest"],
-                    command.consent_revision,
+                    state["consent_revision"],
                     review_revision,
                     provider_identity,
                     model,

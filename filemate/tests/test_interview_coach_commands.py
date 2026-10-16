@@ -20,7 +20,7 @@ def store(tmp_path):
 
 def start(store):
     return store.create_interview(
-        target_role="开发", scenario="求职面试", difficulty="标准", questions=["第一题", "第二题"]
+        target_role="开发", scenario="技术面", difficulty="标准", questions=["第一题", "第二题"]
     )["interview_id"]
 
 
@@ -222,3 +222,12 @@ def test_invalid_metrics_rejected_before_local_evaluation(metrics):
             expected_revision=0,
             fluency_metrics=metrics,
         )
+
+
+def test_standard_question_bank_keeps_existing_sequence(store):
+    repo = CoachRepository(store)
+    sid = store.create_interview(target_role='开发', scenario='求职面试', difficulty='标准', questions=['第一题','既有题库题'])['interview_id']
+    state = submit(repo, sid).snapshot
+    result = repo.advance(sid, AdvanceCommand(from_index=0, expected_attempt_id=state.current_attempt.attempt_id,
+                          expected_revision=state.revision, request_key='advance_standard'))
+    assert result.snapshot.session['questions'][1] == '既有题库题'
