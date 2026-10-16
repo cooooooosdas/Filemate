@@ -316,12 +316,13 @@ class InterviewEvaluator:
         fluency_metrics: dict[str, Any] | None = None,
         *,
         speech_language: str = "zh-CN",
+        analysis_budget_seconds: float = 45.0,
     ) -> dict[str, Any]:
         """返回总分、维度分和改进建议。"""
         from filemate.interview_review.content import analysis_failure, analyze_content
 
         try:
-            result = analyze_content(self.llm, question, answer, target_role)
+            result = analyze_content(self.llm, question, answer, target_role, budget_seconds=analysis_budget_seconds)
         except Exception as exc:  # noqa: BLE001 - 模型失败保留回答，不制造评分
             result = {
                 "score": None,

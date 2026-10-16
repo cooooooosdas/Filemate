@@ -126,6 +126,8 @@ class ReviewRepository:
         with self.storage._write_lock, conn:
             conn.execute("UPDATE interview_review_state SET revision=revision+1 WHERE interview_id=?",
                          (interview_id,))
+            conn.execute("UPDATE interview_coach_analysis_runs SET status='cancelling' WHERE interview_id=? AND status='running'", (interview_id,))
+            conn.execute("UPDATE interview_coach_state SET revision=revision+1,updated_at=? WHERE interview_id=?", (_now_iso(), interview_id))
             self._event(interview_id, "analysis_cancelled")
         return {"cancelled": True}
 
