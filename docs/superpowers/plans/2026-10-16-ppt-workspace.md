@@ -31,7 +31,7 @@ Files: navigation/catalog.ts; navigation/route-state.ts; App.vue; Interview.vue;
 ### Task 2: PPT-informed workspace
 
 Files: style.css; App.vue; Today.vue; Interview.vue; Home.vue; styles/interview-practice.css; styles/programming-coach.css; design-system/filemate/MASTER.md.
-- [x] 从第7/10页采用清亮工作台、任务列表、主次分栏和教练面板，保留业务逻辑。
+- [x] 从第6/10页采用清亮工作台、任务列表、主次分栏和教练面板，保留业务逻辑。
 - [x] 加入轻量原创SVG任务几何图，改进标题/操作/响应式，保持真实数值。
 - [x] 类型构建、体积门禁；桌面/窄屏一次批量检查，集中修正。
 
