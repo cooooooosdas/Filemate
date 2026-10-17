@@ -38,3 +38,9 @@ test('permission_can_be_revoked_during_analysis_and_old_snapshot_is_ignored',asy
  release({snapshot:{...current,revision:1,external_consent:true}});await pending
  assert.equal(c.state.snapshot.external_consent,false)
 })
+
+test('analysis_pending_never_shows_old_success_as_current',()=>{
+ const old=snapshot('one',{phase:'feedback',current_attempt:{attempt_id:'a',analysis_status:'succeeded',score:80,evaluation:{feedback:'旧反馈'}}})
+ const view=projectCoach(old,'analysis')
+ assert.equal(view.score,null);assert.equal(view.analysisStatus,'running')
+})

@@ -15,7 +15,7 @@
       </form>
       <section v-else class="coach-feedback" aria-live="polite">
         <div class="coach-feedback-heading"><h3>一起回看这一题</h3><span>{{ coach.score == null ? '待分析' : `${coach.score.toFixed(0)} 分 · 模型参考` }}</span></div>
-        <p v-if="coach.analysisStatus === 'running'">回答已保存，正在分析。可以撤销本场授权，阻止结果写入。</p>
+        <p v-if="coach.analysisStatus === 'running'">回答已保存，正在分析。可以撤销本场授权，阻止结果写入。<button type="button" :disabled="busy" @click="$emit('reload')">刷新分析状态</button></p>
         <p v-else-if="coach.analysisStatus !== 'succeeded'">{{ ['failed','interrupted','cancelled'].includes(coach.analysisStatus) ? '这次回答尚无有效分析；原文已保存，可以重试。' : '这次回答已保存，授权后可获取原句反馈。' }}</p>
         <p v-else>{{ coach.feedback }}</p>
         <div v-for="(area, name) in coach.analysis?.areas" :key="name" class="coach-evidence">
@@ -25,7 +25,7 @@
         <details><summary>本次回答原文</summary><blockquote>{{ currentAnswer }}</blockquote></details>
         <div class="coach-actions"><button type="button" :disabled="busy" @click="$emit('reanswer')">修改后再答</button><button v-if="coach.canRetry" type="button" :disabled="busy" @click="$emit('retry-analysis')">{{ coach.analysisStatus === 'succeeded' ? '重新分析本次回答' : '重试本次分析' }}</button><button class="primary" type="button" :disabled="busy || !coach.canAdvance" @click="$emit('advance')">{{ coach.questionIndex + 1 === total ? '完成并查看汇总' : '继续下一题' }}</button></div>
       </section>
-      <label class="coach-consent"><input type="checkbox" :checked="externalConsent" :disabled="busy && coach.analysisStatus !== 'running'" @change="$emit('consent-change', ($event.target as HTMLInputElement).checked)" /><span>本场提交后自动分析问题与文字回答；不发送音视频。可随时关闭。</span></label>
+      <label class="coach-consent"><input type="checkbox" :checked="externalConsent" :disabled="busy && !externalConsent" @change="$emit('consent-change', ($event.target as HTMLInputElement).checked)" /><span>本场提交后自动分析问题与文字回答；不发送音视频。可随时关闭。</span></label>
       <details v-if="coach.attemptId" class="coach-history" @toggle="historyToggle">
         <summary>查看重答历史与首末对照</summary>
         <p>每次回答独立保存。不同模型或规则的分数不计算进步幅度。</p>

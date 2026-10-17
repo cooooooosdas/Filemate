@@ -505,15 +505,15 @@ def test_feature_disable_leaves_original_practice_working(api, monkeypatch):
     id = create_api(client)
     monkeypatch.setenv("FILEMATE_ENABLE_INTERVIEW_REVIEW", "0")
     assert client.get("/interview/review/status").json()["data"]["enabled"] is False
-    for method, path, body in [
-        ("get", f"/interviews/{id}/review", None), ("post", f"/interviews/{id}/review", {}),
-        ("post", f"/interviews/{id}/turns/no/analyze", {}),
-        ("post", f"/interviews/{id}/analysis/cancel", {}),
-        ("post", f"/interviews/{id}/analysis/clear", {}),
-        ("get", f"/interviews/{id}/delete-preview", None),
-        ("delete", f"/interviews/{id}", {}), ("get", f"/interviews/{id}/review/export", None),
-    ]:
-        assert client.request(method, path, json=body).status_code == 503
+    for path in [f"/interviews/{id}/review", f"/interviews/{id}/turns/no/analyze"]:
+        assert client.post(path, json={}).status_code == 503
+    assert client.get(f"/interviews/{id}/review").status_code == 200
+    assert client.post(f"/interviews/{id}/analysis/cancel", json={}).status_code == 200
+    assert client.post(f"/interviews/{id}/analysis/clear", json={}).status_code == 422
+    assert client.post(f"/interviews/{id}/analysis/clear", json={"confirmed": True}).status_code == 200
+    assert client.get(f"/interviews/{id}/delete-preview").status_code == 200
+    assert client.delete(f"/interviews/{id}").status_code == 422
+    assert client.get(f"/interviews/{id}/review/export").status_code == 409
     assert client.post(f"/interviews/{id}/answers", json={"answer": ANSWER, "visual_metrics": visual()}).status_code == 503
     assert client.post(f"/interviews/{id}/answers", json={"answer": ANSWER}).status_code == 200
     assert client.get(f"/interviews/{id}").status_code == 200

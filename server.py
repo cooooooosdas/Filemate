@@ -4624,7 +4624,6 @@ def interview_review_status():
 
 @app.get("/interviews/{interview_id}/review", response_model=ApiResponse)
 def get_interview_report(interview_id: str):
-    _require_interview_review_enabled()
     try:
         repo = _interview_review_repository()
         return ApiResponse(success=True, data={"report": repo.report(interview_id),
@@ -4670,7 +4669,6 @@ def analyze_interview_turn(interview_id: str, turn_id: str, request: InterviewAn
 
 @app.post("/interviews/{interview_id}/analysis/cancel", response_model=ApiResponse)
 def cancel_interview_analysis(interview_id: str):
-    _require_interview_review_enabled()
     try:
         return ApiResponse(success=True, data=_interview_review_repository().cancel(interview_id))
     except (KeyError, ValueError) as exc:
@@ -4679,7 +4677,6 @@ def cancel_interview_analysis(interview_id: str):
 
 @app.post("/interviews/{interview_id}/analysis/clear", response_model=ApiResponse)
 def clear_interview_analysis(interview_id: str, request: InterviewPrivacyRequest):
-    _require_interview_review_enabled()
     if not request.confirmed:
         raise HTTPException(status_code=422, detail="请确认清空内容评分、视觉观察和报告；原回答与节奏保留")
     try:
@@ -4692,7 +4689,6 @@ def clear_interview_analysis(interview_id: str, request: InterviewPrivacyRequest
 
 @app.get("/interviews/{interview_id}/delete-preview", response_model=ApiResponse)
 def preview_interview_delete(interview_id: str):
-    _require_interview_review_enabled()
     try:
         return ApiResponse(success=True, data=_interview_review_repository().delete_preview(interview_id))
     except (KeyError, ValueError) as exc:
@@ -4701,7 +4697,6 @@ def preview_interview_delete(interview_id: str):
 
 @app.delete("/interviews/{interview_id}", response_model=ApiResponse)
 def delete_interview(interview_id: str, request: InterviewPrivacyRequest):
-    _require_interview_review_enabled()
     if not request.confirmed or len(request.confirmation_token) != 64:
         raise HTTPException(status_code=422, detail="请先预览并确认本场练习的删除影响")
     try:
@@ -4714,7 +4709,6 @@ def delete_interview(interview_id: str, request: InterviewPrivacyRequest):
 
 @app.get("/interviews/{interview_id}/review/export")
 def export_interview_report(interview_id: str, format: Literal["json", "markdown", "pdf"] = "json"):
-    _require_interview_review_enabled()
     from filemate.interview_review.reports import report_markdown, report_pdf
 
     repo = _interview_review_repository()

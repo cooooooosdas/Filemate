@@ -3,13 +3,13 @@
     <header><div><p>学习空间复盘 · V2.4</p><h2 id="interview-report-title">面试复盘报告</h2></div><span>专家校准：待校准</span></header>
     <p class="privacy-note">视频只在当前页面内存中，不上传，刷新后清除。回答、节奏和观察摘要保存在学习空间；模型建议仅供训练参考。</p>
     <div class="report-actions">
-      <button class="primary" :disabled="busy || !session.turns.length" @click="generate">{{ generating ? '正在生成…' : report ? '更新规则复盘报告' : '生成规则复盘报告' }}</button>
+      <button v-if="!readOnly" class="primary" :disabled="busy || !session.turns.length" @click="generate">{{ generating ? '正在生成…' : report ? '更新规则复盘报告' : '生成规则复盘报告' }}</button>
       <button v-for="format in formats" :key="format.value" :disabled="busy || !report" @click="download(format.value)">导出 {{ format.label }}</button>
       <button :disabled="busy" @click="load">刷新报告</button>
     </div>
     <p v-if="loadLoading" role="status">正在读取复盘报告…</p>
     <p v-if="error" role="alert" class="report-error">{{ error }}</p>
-    <div v-if="!coachMode" class="content-request">
+    <div v-if="!coachMode && !readOnly" class="content-request">
       <label>选择内容分析的回答<select v-model="selectedTurn" :disabled="busy" aria-label="选择内容分析的回答"><option v-for="turn in session.turns" :key="turn.turn_id" :value="turn.turn_id">第{{ turn.question_index + 1 }}题 · {{ turn.question.slice(0, 35) }}</option></select></label>
       <label class="consent"><input v-model="consent" type="checkbox" :disabled="busy" />确认向已配置模型发送这一题的问题、回答和目标方向；不发送音视频或视觉观察。</label>
       <small>模型供应商的数据保存策略需另行核对；规则复盘和导出无需发送给外部模型。</small>
@@ -46,7 +46,7 @@ import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { analyzeInterviewTurn, cancelInterviewAnalysis, clearInterviewAnalysis, deleteInterviewSession, exportInterviewReview, generateInterviewReview, getInterviewReview, previewInterviewDelete, type InterviewSession } from '../services/api'
 import type { InterviewReport, InterviewReviewEvent } from '../types/interviewReview'
-const props = defineProps<{ session: InterviewSession; recordingIndexes: number[]; mediaBusy: boolean; coachMode?: boolean }>()
+const props = defineProps<{ session: InterviewSession; recordingIndexes: number[]; mediaBusy: boolean; coachMode?: boolean; readOnly?: boolean }>()
 const emit = defineEmits<{ updated: [session: InterviewSession]; deleted: []; seek: [index: number, second: number]; cleared: [] }>()
 const report = shallowRef<InterviewReport | null>(null)
 const events = shallowRef<InterviewReviewEvent[]>([])

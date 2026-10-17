@@ -12,10 +12,10 @@ export function reduceCoach(state:CoachClientState,event:CoachEvent):CoachClient
 }
 export function projectCoach(snapshot:CoachSnapshot,pending:CoachClientState['pending']='idle'):CoachView {
  const a=snapshot.current_attempt
- const valid=a?.analysis_status==='succeeded' && !a.data_error && typeof a.score==='number' && Number.isFinite(a.score) && a.score>=0 && a.score<=100
+ const valid=pending!=='analysis' && a?.analysis_status==='succeeded' && !a.data_error && typeof a.score==='number' && Number.isFinite(a.score) && a.score>=0 && a.score<=100
  const free=pending==='idle' && !snapshot.data_error
  return {phase:snapshot.phase,questionIndex:snapshot.displayed_index,question:a?.question ?? snapshot.session.questions[snapshot.displayed_index] ?? '',attemptId:a?.attempt_id ?? null,
- analysisStatus:a?.analysis_status ?? 'unrequested',score:valid?a!.score:null,feedback:valid?(a?.evaluation.feedback || '已完成参考分析'):'回答保存后可主动分析；未分析内容不计分。',analysis:valid?(a?.evaluation.content_analysis ?? null):null,
+ analysisStatus:pending==='analysis'?'running':(a?.analysis_status ?? 'unrequested'),score:valid?a!.score:null,feedback:valid?(a?.evaluation.feedback || '已完成参考分析'):'回答保存后可主动分析；未分析内容不计分。',analysis:valid?(a?.evaluation.content_analysis ?? null):null,
  canSubmit:free && snapshot.phase!=='summary',canAdvance:free && snapshot.phase==='feedback' && !!a && !snapshot.active_run_id,canRetry:free && !!a && !snapshot.active_run_id && snapshot.external_consent}
 }
 export function createCoachController(api:CoachApi,key:()=>string=()=>crypto.randomUUID(),changed:(state:CoachClientState)=>void=()=>{}) {

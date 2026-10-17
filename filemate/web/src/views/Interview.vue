@@ -211,7 +211,7 @@
           </div>
         </details>
       </section>
-      <InterviewReviewPanel v-if="reviewEnabled" :session="session" :coach-mode="coachEnabled" :recording-indexes="Object.keys(localRecordings).map(Number)" :media-busy="videoRecording || videoStopping || recording || loading" @updated="reviewUpdated" @deleted="reset" @cleared="vision.reset()" @seek="seekRecording" />
+      <InterviewReviewPanel v-if="reviewEnabled || session.turns.length" :read-only="!reviewEnabled" :session="session" :coach-mode="coachEnabled" :recording-indexes="Object.keys(localRecordings).map(Number)" :media-busy="videoRecording || videoStopping || recording || loading" @updated="reviewUpdated" @deleted="deletedInterview" @cleared="vision.reset()" @seek="seekRecording" />
     </template>
   </div>
 </template>
@@ -876,6 +876,10 @@ const clearLocalRecordings = () => {
 
 const reset = async () => {
   if (!(await confirmLeave())) return
+  await resetInterviewState()
+}
+const deletedInterview = async () => { await resetInterviewState() }
+const resetInterviewState = async () => {
   window.speechSynthesis?.cancel()
   stopSpeechRecording()
   stopVideoRecording(true)

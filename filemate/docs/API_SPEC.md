@@ -937,3 +937,7 @@ GET /api/llm/status新增credential_storage=browser|system，前端按该模式�
 写成功均返回 {snapshot,receipt}，receipt含kind/request_key及受限attempt_id/run_id/target_index。同键同操作返回原回执及最新快照；同键异文或异操作409，不重复保存或调用模型。末次回答是当前版本，失败时score=null，历史成功仅在历史中；显式分析重试使用新key。新分析使当前报告失效，原Artifact保留，需重新生成当前报告。旧 /analyze 的 external_consent=true 是单次授权，不升级为后续自动授权。
 
 错误信封沿用success/data/error；data可含error_code、retryable、run_id、attempt_id。参数422、跨空间404、修订/并发/授权冲突409、私有资料403、模型故障502、累计额度429、治理或关闭503。无供应商异常原文、正文或密钥。新接口不替代现有身份/CSRF写保护；密钥只在请求上下文使用，不写入上述五张表。
+
+### 逐题面试隐私与恢复（2026-10-17 候选）
+
+删除预览增加`answer_attempts`、`analysis_runs`、`coach_actions`，`reports`计入全部历史报告；确认指纹绑定当前教练修订。清空覆盖全部版本的内容／视觉派生结果并撤销在途写资格，保留回答与语音节奏。关闭REVIEW后仍允许读取、导出、取消、清空和确认删除；禁止新增报告和外发分析。个人备份动态包含五张新表；有running/cancelling分析时拒绝覆盖恢复。恢复清除本场外发授权，将在途运行改为interrupted；管理员恢复先校验原哈希、库事实与删除账本，再对新目录的业务库事务规范化并检查外键，结果增加`normalized_coach_databases`，始终`activated=false`，不修改治理库及原备份。schema26管理员副本先保留原字节，首启追加迁移和回填。

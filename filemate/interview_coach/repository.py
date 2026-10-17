@@ -884,3 +884,16 @@ def record_legacy_analysis(conn: sqlite3.Connection, turn_id: str, evaluation: d
                  "VALUES (?,?,?,?,?,?,0,0,'legacy_unknown','legacy_unknown','legacy_unknown','legacy_unknown','succeeded',?,?,?)",
                  (uuid.uuid4().hex, attempt['interview_id'], attempt['attempt_id'], sequence, 'legacy_apply_' + uuid.uuid4().hex,
                   attempt['input_digest'], json.dumps(evaluation, ensure_ascii=False), now(), now()))
+
+
+def normalize_restored_coach(conn: sqlite3.Connection) -> None:
+    """Keep restored answers while revoking transport permissions and unfinished work."""
+    tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if 'interview_coach_state' not in tables:
+        return
+    if not conn.in_transaction:
+        raise RuntimeError('restore normalization requires an active transaction')
+    backfill_legacy_attempts(conn)
+    conn.execute("UPDATE interview_coach_state SET external_consent=0,consent_revision=consent_revision+1,revision=revision+1,updated_at=?", (now(),))
+    conn.execute("UPDATE interview_coach_analysis_runs SET status='interrupted',evaluation='{}',error_code='restored_interrupted',finished_at=? WHERE status IN ('running','cancelling')", (now(),))
+    conn.execute("UPDATE interview_review_state SET revision=revision+1,input_digest=''")
