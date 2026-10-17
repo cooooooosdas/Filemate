@@ -1250,26 +1250,17 @@ class SQLiteStorage:
         interview_average: float | None = None
         if linked_run_ids:
             placeholders = ",".join("?" for _ in linked_run_ids)
-            interview_row = connection.execute(
-                f"""SELECT COUNT(*) AS sessions,
-                           AVG(CASE WHEN current_index > 0
-                               THEN overall_score END) AS average
-                    FROM interview_sessions
-                    WHERE agent_run_id IN ({placeholders})""",
-                linked_run_ids,
-            ).fetchone()
-            turn_row = connection.execute(
-                f"""SELECT COUNT(*) AS turns FROM interview_turns
-                    WHERE interview_id IN (
-                        SELECT interview_id FROM interview_sessions
-                        WHERE agent_run_id IN ({placeholders})
-                    )""",
-                linked_run_ids,
-            ).fetchone()
-            interview_count = int(interview_row["sessions"] or 0)
-            interview_turn_count = int(turn_row["turns"] or 0)
-            if interview_row["average"] is not None:
-                interview_average = round(float(interview_row["average"]), 2)
+            linked = connection.execute(
+                f"SELECT interview_id FROM interview_sessions WHERE agent_run_id IN ({placeholders})", linked_run_ids,
+            ).fetchall()
+            interview_count = len(linked)
+            valid_scores = []
+            for linked_session in linked:
+                current = self.get_interview(linked_session['interview_id'])
+                interview_turn_count += len(current['turns'])
+                valid_scores.extend(t['score'] for t in current['turns'] if t['score'] is not None and not t.get('analysis_data_error'))
+            if valid_scores:
+                interview_average = round(sum(valid_scores) / len(valid_scores),2)
 
         attempt_count = int(attempt_row["total"] or 0)
         correct_count = int(attempt_row["correct"] or 0)
@@ -1332,7 +1323,7 @@ class SQLiteStorage:
                 "secondary": (
                     f"{interview_turn_count} 次回答 · 均分 {interview_average:.0f}"
                     if interview_average is not None
-                    else "尚无资料关联面试"
+                    else (f"{interview_turn_count} 次回答 · 内容待分析" if interview_turn_count else "尚无资料关联面试")
                 ),
             },
         ]
@@ -2275,48 +2266,9 @@ class SQLiteStorage:
             "SELECT * FROM interview_turns WHERE interview_id=? ORDER BY question_index",
             (interview_id,),
         ).fetchall()
-        interview["turns"] = [
-            self._decode_row(turn, ("dimensions", "fluency_metrics"))
-            for turn in turns
-        ]
-        for turn in interview["turns"]:
-            content_invalid = False
-            for key in ("visual_metrics", "content_analysis"):
-                try:
-                    decoded = json.loads(turn[key])
-                    if not isinstance(decoded, dict):
-                        raise TypeError("invalid analysis")
-                    if decoded:
-                        from filemate.interview_review.models import (
-                            VisualMetrics,
-                            validate_saved_analysis,
-                        )
+        from filemate.interview_coach.repository import current_attempt_projection
 
-                        if key == "visual_metrics":
-                            decoded = VisualMetrics.model_validate(decoded).model_dump()
-                        else:
-                            decoded = validate_saved_analysis(decoded, turn["answer"])
-                    turn[key] = decoded
-                except (ValueError, TypeError):
-                    turn[key] = {}
-                    turn["analysis_data_error"] = True
-                    content_invalid = content_invalid or key == "content_analysis"
-            if content_invalid:
-                turn["feedback"] = "部分内容分析数据异常，内容质量待评估；原回答与有效采集证据保留。"
-            if turn["scoring_mode"] != "llm" or content_invalid:
-                turn["score"] = None
-                turn["dimensions"] = {
-                    key: value for key, value in turn["dimensions"].items()
-                    if key == "流畅性" and turn["scoring_mode"] == "local_fallback" and not content_invalid
-                }
-        for turn in interview["turns"]:
-            version = self._conn().execute(
-                "SELECT attempt_id,version,created_at FROM interview_answer_attempts WHERE turn_id=? ORDER BY version DESC LIMIT 1",
-                (turn["turn_id"],),
-            ).fetchone()
-            if version:
-                turn.update(attempt_id=version["attempt_id"], attempt_version=version["version"],
-                            attempt_created_at=version["created_at"])
+        interview["turns"] = [current_attempt_projection(self._conn(), turn["turn_id"]) for turn in turns]
         assessed = [t["score"] for t in interview["turns"] if t["score"] is not None]
         interview["assessed_turn_count"] = len(assessed)
         interview["overall_score"] = round(sum(assessed) / len(assessed), 2) if assessed else None
@@ -2415,15 +2367,15 @@ class SQLiteStorage:
             """INSERT INTO interview_turns
                (turn_id, interview_id, question_index, question, answer,
                 score, dimensions, feedback, fluency_metrics, scoring_mode, scoring_version,
-                visual_metrics, content_analysis, answer_key, answer_digest)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                visual_metrics, content_analysis, answer_key, answer_digest, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 turn_id, interview_id, question_index, question, answer,
                 score if scoring_mode == "llm" else 0, self._dump_json(dimensions), feedback,
                 self._dump_json(fluency_metrics or {}),
                 scoring_mode, scoring_version,
                 self._dump_json(visual_metrics or {}),
-                self._dump_json(content_analysis or {}), answer_key, answer_digest,
+                self._dump_json(content_analysis or {}), answer_key, answer_digest, _now_iso(),
             ),
         )
         connection.execute(

@@ -64,6 +64,8 @@ def compare(storage: SQLiteStorage, position_id: str, position: dict, revision: 
                     "interview_id": row["interview_id"],
                     "answered": len(interview["turns"]),
                     "assessed": interview["assessed_turn_count"],
+                    "attempt_refs": [{key:turn.get(key) for key in ('turn_id','attempt_id','attempt_version','analysis_run_id','source_revision')}
+                                     for turn in interview['turns']],
                     "status": interview["status"],
                 }
             )

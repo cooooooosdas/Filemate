@@ -288,6 +288,10 @@ class CoachRepository:
             "AND r.status IN ('failed','cancelled','interrupted'))",
             (interview_id,),
         ).fetchall()
+        selected = attempt_view(conn, attempt) if attempt else None
+        projected = next((t for t in session['turns'] if t['question_index'] == index), None)
+        if selected and projected and projected.get('analysis_data_error'):
+            selected = selected.model_copy(update={'score':None,'evaluation':{},'data_error':True,'analysis_status':'failed'})
         return CoachSnapshot(
             session=session,
             revision=values["revision"],
@@ -296,7 +300,7 @@ class CoachRepository:
             external_consent=bool(values["external_consent"]) and not data_error,
             consent_revision=values["consent_revision"],
             provider_identity=values["provider_identity"],
-            current_attempt=attempt_view(conn, attempt) if attempt else None,
+            current_attempt=selected,
             active_run_id=active["run_id"] if active else None,
             pending_retries=[r[0] for r in retries],
             data_error=data_error,
@@ -439,13 +443,15 @@ class CoachRepository:
             return self._result(interview_id, receipt)
 
     def _sync_score(self, conn, sid):
-        values = [
-            t["score"] for t in self.storage.get_interview(sid)["turns"] if t["score"] is not None
-        ]
-        conn.execute(
-            "UPDATE interview_sessions SET overall_score=?,updated_at=? WHERE interview_id=?",
-            (round(sum(values) / len(values), 2) if values else 0, now(), sid),
-        )
+        session = self.storage.get_interview(sid)
+        values = [t['score'] for t in session['turns'] if t['score'] is not None]
+        conn.execute('UPDATE interview_sessions SET overall_score=?,updated_at=? WHERE interview_id=?',
+                     (round(sum(values) / len(values), 2) if values else 0, now(), sid))
+        for turn in session['turns']:
+            value = turn['score'] if turn['score'] is not None else '待分析'
+            summary = f"第{turn['question_index']+1}题第{turn.get('attempt_version',1)}版，模型参考分{value}"
+            conn.execute("UPDATE agent_memories SET summary=?,updated_at=? WHERE scope_id=? AND source_type='interview_turn' AND source_id=?",
+                         (summary,now(),sid,f"{sid}:{turn['question_index']}"))
 
     def advance(self, interview_id: str, command: AdvanceCommand) -> CoachMutationResult:
         from filemate.understanding.interview_practice import grounded_followup
@@ -800,3 +806,81 @@ class CoachRepository:
 
         ReviewRepository(self.storage).cancel(interview_id)
         return self.snapshot(interview_id)
+
+
+def _provenance(conn: sqlite3.Connection, run_id: str | None) -> dict[str, Any]:
+    row = conn.execute('SELECT provider_identity,model,prompt_version,rubric_version,created_at,finished_at '
+                       'FROM interview_coach_analysis_runs WHERE run_id=?', (run_id,)).fetchone()
+    return dict(row) if row else {}
+
+
+def current_attempt_projection(conn: sqlite3.Connection, turn_id: str) -> dict[str, Any]:
+    from filemate.interview_review.models import VisualMetrics, validate_saved_analysis
+
+    raw = conn.execute('SELECT * FROM interview_turns WHERE turn_id=?', (turn_id,)).fetchone()
+    if raw is None:
+        raise CoachError('turn_not_found', 404)
+    result = dict(raw)
+    row = conn.execute('SELECT * FROM interview_answer_attempts WHERE turn_id=? ORDER BY version DESC LIMIT 1', (turn_id,)).fetchone()
+    if row is None:
+        return {**result, 'dimensions': {}, 'fluency_metrics': {}, 'visual_metrics': {}, 'content_analysis': {},
+                'score': None, 'scoring_mode': 'unknown', 'analysis_status': 'unrequested', 'analysis_data_error': True}
+    view = attempt_view(conn, row)
+    broken = view.data_error
+    cached = {}
+    for key in ('dimensions', 'fluency_metrics', 'visual_metrics', 'content_analysis'):
+        try:
+            value = decode(raw[key])
+            if key == 'content_analysis' and value:
+                value = validate_saved_analysis(value, view.answer)
+            if key == 'visual_metrics' and value:
+                value = VisualMetrics.model_validate(value).model_dump()
+            cached[key] = value
+        except (ValueError, TypeError):
+            cached[key], broken = {}, True
+    if view.score is not None and cached['content_analysis'] != view.evaluation.get('content_analysis'):
+        broken = True
+    if raw['answer'] != view.answer or raw['question'] != view.question:
+        broken = True
+    score = view.score if not broken else None
+    result.update(question=view.question, answer=view.answer, score=score,
+                  dimensions=view.evaluation.get('dimensions', {}) if score is not None else
+                  {k: v for k, v in cached['dimensions'].items() if k == '流畅性' and not broken},
+                  fluency_metrics=view.fluency_metrics, visual_metrics=cached['visual_metrics'],
+                  content_analysis=view.evaluation.get('content_analysis', {}) if score is not None else {},
+                  scoring_mode='llm' if score is not None else (raw['scoring_mode'] if raw['scoring_mode'] != 'llm' else 'local_fallback'),
+                  feedback=view.evaluation.get('feedback', '') if score is not None else
+                  raw['feedback'] if raw['scoring_mode'] != 'llm' and not broken else '当前版本待分析，原回答保留。',
+                  attempt_id=view.attempt_id, attempt_version=view.version, attempt_created_at=view.created_at,
+                  analysis_status='failed' if broken else view.analysis_status, analysis_run_id=view.latest_run_id,
+                  source_revision=digest([view.attempt_id, view.latest_run_id, view.analysis_status]),
+                  analysis_provenance=_provenance(conn, view.latest_run_id), analysis_data_error=broken)
+    result['attempt_comparison'] = attempt_comparison(conn, turn_id)
+    return result
+
+
+def attempt_comparison(conn: sqlite3.Connection, turn_id: str) -> dict[str, Any]:
+    first = conn.execute('SELECT * FROM interview_answer_attempts WHERE turn_id=? ORDER BY version LIMIT 1', (turn_id,)).fetchone()
+    last = conn.execute('SELECT * FROM interview_answer_attempts WHERE turn_id=? ORDER BY version DESC LIMIT 1', (turn_id,)).fetchone()
+    if first is None:
+        return {'first': None, 'last': None, 'scores_comparable': False}
+    a, b = attempt_view(conn, first), attempt_view(conn, last)
+    pa, pb = _provenance(conn, a.latest_run_id), _provenance(conn, b.latest_run_id)
+    keys = ('provider_identity', 'model', 'prompt_version', 'rubric_version')
+    comparable = (a.score is not None and b.score is not None and not a.data_error and not b.data_error
+                  and all(pa.get(k) and pa.get(k) != 'legacy_unknown' and pa.get(k) == pb.get(k) for k in keys))
+    return {'first': {**a.model_dump(), 'provenance': pa}, 'last': {**b.model_dump(), 'provenance': pb},
+            'scores_comparable': comparable,
+            'notice': '仅比较各版原文与模型参考；来源不同或分析未完成时不比较分数，不推断能力进步。'}
+
+
+def record_legacy_analysis(conn: sqlite3.Connection, turn_id: str, evaluation: dict[str, Any]) -> None:
+    attempt = conn.execute('SELECT * FROM interview_answer_attempts WHERE turn_id=? ORDER BY version DESC LIMIT 1', (turn_id,)).fetchone()
+    if conn.execute("SELECT 1 FROM interview_coach_analysis_runs WHERE interview_id=? AND status IN ('running','cancelling')", (attempt['interview_id'],)).fetchone():
+        raise ValueError('本场已有分析正在结束')
+    sequence = conn.execute('SELECT COALESCE(MAX(attempt_seq),0)+1 FROM interview_coach_analysis_runs WHERE attempt_id=?', (attempt['attempt_id'],)).fetchone()[0]
+    conn.execute('INSERT INTO interview_coach_analysis_runs '
+                 '(run_id,interview_id,attempt_id,attempt_seq,request_key,input_digest,consent_revision,review_revision,provider_identity,model,prompt_version,rubric_version,status,evaluation,created_at,finished_at) '
+                 "VALUES (?,?,?,?,?,?,0,0,'legacy_unknown','legacy_unknown','legacy_unknown','legacy_unknown','succeeded',?,?,?)",
+                 (uuid.uuid4().hex, attempt['interview_id'], attempt['attempt_id'], sequence, 'legacy_apply_' + uuid.uuid4().hex,
+                  attempt['input_digest'], json.dumps(evaluation, ensure_ascii=False), now(), now()))

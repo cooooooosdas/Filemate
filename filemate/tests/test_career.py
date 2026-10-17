@@ -381,7 +381,7 @@ def test_v23_database_upgrades_without_rewriting_existing_interview(tmp_path):
     try:
         store.init_schema()
         store.init_schema()
-        assert store.get_schema_version() == 26 and store.get_interview("old")["questions"] == [
+        assert store.get_schema_version() == 27 and store.get_interview("old")["questions"] == [
             "旧问题"
         ]
         row = CareerRepository(store).create(imported(), "reopen_position_12345678")
@@ -635,7 +635,9 @@ def test_career_interview_model_failure_keeps_original_answer_and_snapshot(api, 
     tid = data["turns"][0]["turn_id"]
     failure = client.post(f"/interviews/{iid}/turns/{tid}/analyze", json={"external_consent": True})
     assert failure.status_code == 502 and "secret" not in failure.text
-    assert client.get(f"/interviews/{iid}").json()["data"]["turns"] == data["turns"]
+    current = client.get(f"/interviews/{iid}").json()["data"]["turns"][0]
+    assert {k: current[k] for k in ('turn_id','answer','question','created_at','fluency_metrics','visual_metrics','attempt_id')} == {k: data['turns'][0][k] for k in ('turn_id','answer','question','created_at','fluency_metrics','visual_metrics','attempt_id')}
+    assert current['score'] is None and current['analysis_status'] == 'failed'
     assert client.get(f"/api/career/trainings/{training['training_id']}").json()["data"] == snapshot
 
 

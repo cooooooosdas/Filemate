@@ -74,7 +74,7 @@ class ReviewRepository:
                         return previous
                 except ValueError:
                     pass
-            artifact_id = state["artifact_id"] or uuid.uuid4().hex
+            artifact_id = uuid.uuid4().hex
             report["artifact_id"] = artifact_id
             report["generated_at"] = _now_iso()
             with conn:
@@ -104,6 +104,9 @@ class ReviewRepository:
             ).fetchone()
             if not row:
                 raise KeyError(turn_id)
+            from filemate.interview_coach.repository import record_legacy_analysis
+
+            record_legacy_analysis(conn, turn_id, evaluation)
             conn.execute(
                 "UPDATE interview_turns SET score=?, dimensions=?, feedback=?, scoring_mode='llm', "
                 "scoring_version='v2.4', content_analysis=? WHERE turn_id=?",

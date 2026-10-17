@@ -237,7 +237,11 @@ def test_scoped_analytics_and_assessment_provenance(storage):
         storage.save_interview_turn(interview_id=session["interview_id"], question_index=index,
                                     question=f"题{index}", answer="回答", score=score,
                                     dimensions={"内容": 0} if mode == "llm" else {},
-                                    feedback="反馈", scoring_mode=mode)
+                                    feedback="反馈", scoring_mode=mode,
+                                    content_analysis={'source':'llm_reference','keywords':[],
+                                        'dimension_evidence':dict.fromkeys(['内容','结构','表达','岗位匹配'],'回答'),
+                                        'areas':{k:{'status':'partial','evidence':'回答','suggestion':'补充依据'} for k in
+                                        ('completeness','logic','technical_coverage','technical_expression','relevance','star')}} if mode=='llm' else None)
     focused = storage.get_learning_analytics(source_id=first)
     assert focused["pending_wrong_count"] == 1
     assert focused["assessed_interview_count"] == 1

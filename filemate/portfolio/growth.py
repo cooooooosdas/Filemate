@@ -93,10 +93,11 @@ class GrowthRepository:
                     excluded['interview'] += 1
                     continue
                 for turn in turns:
-                    if not in_period(turn['created_at']) or not str(turn.get('answer', '')).strip():
+                    if not in_period(turn.get('attempt_created_at',turn['created_at'])) or not str(turn.get('answer', '')).strip():
                         continue
                     score = _number(turn.get('score'), 100) if turn.get('scoring_mode') == 'llm' and turn.get('content_analysis') and not turn.get('analysis_data_error') else None
-                    records.append({'kind': 'interview', 'record_id': turn['turn_id'], 'created_at': turn['created_at'],
+                    records.append({'kind': 'interview', 'record_id': turn['turn_id'], 'created_at': turn.get('attempt_created_at',turn['created_at']),
+                                    **{key:turn.get(key) for key in ('attempt_id','attempt_version','analysis_run_id','source_revision')},
                                     'value': score, 'label': '模拟面试回答', 'href': '/interview?interview=' + row['interview_id']})
             from filemate.study.semester import SemesterRepository
             try:

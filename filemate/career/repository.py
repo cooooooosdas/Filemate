@@ -270,6 +270,16 @@ class CareerRepository:
                         )
                     ):
                         raise ValueError("review skill format")
+            if result['kind'] == 'review':
+                stale, unknown = False, False
+                for old in payload['comparison']['interviews']:
+                    current = self.storage.get_interview(old['interview_id'])
+                    refs = old.get('attempt_refs')
+                    if refs is None:
+                        unknown = True
+                    elif current is None or refs != [{key:turn.get(key) for key in ('turn_id','attempt_id','attempt_version','analysis_run_id','source_revision')} for turn in current['turns']]:
+                        stale = True
+                result.update(evidence_stale=stale, evidence_version_unknown=unknown)
             result.update(payload=payload, data_error=False)
         except (ValueError, TypeError, KeyError):
             result.update(payload=None, data_error=True)

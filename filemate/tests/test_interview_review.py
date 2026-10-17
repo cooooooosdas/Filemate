@@ -244,7 +244,8 @@ def test_report_persistence_idempotency_and_late_changes(storage):
     answer(storage, id, 1)
     assert repo.report(id) is None
     second = repo.generate(id)
-    assert second["artifact_id"] == first["artifact_id"] and second["answered"] == 2
+    assert second["artifact_id"] != first["artifact_id"] and second["answered"] == 2
+    assert storage.get_artifact(first["artifact_id"])["content"] == first
     reopened = SQLiteStorage(storage.db_path)
     reopened.init_schema()
     assert ReviewRepository(reopened).report(id)["answered"] == 2
