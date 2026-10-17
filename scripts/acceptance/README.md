@@ -214,3 +214,10 @@ uv run python scripts/acceptance/gateway_preflight.py --caddy <已核验的Caddy
 ## P1完整账户复验
 
 p1_full_product.mjs连接FILEMATE_WEB_URL/FILEMATE_API_URL，使用独立空白匿名部署和新FILEMATE_EVIDENCE_DIR。实际注册后在同账户执行22步；模型配置仅在后端验收子进程环境提供，浏览器不携带部署密钥，不替换响应。原生C++工具链须实际就绪。原生TTS独立记录，未完成保持CONDITIONAL/整体passed:false。所有账号、课程、岗位、回答均原创合成；私有下载/库只放_working，不提交。生产身份/限流/判题代理不同，不能直接把本机编译器结论当Linux公网验收。
+
+
+## 2026-10-17 面试教练隔离验收
+
+`interview_coach_fixture.py`和`interview_coach.mjs`只用于本地合成验收。先显式设置`FILEMATE_FIXTURE_DIR`为新的`_working`目录、`FILEMATE_API_URL=http://127.0.0.1:8047`、`FILEMATE_WEB_URL=http://127.0.0.1:5197`，以`uv run python scripts/acceptance/interview_coach_fixture.py`启动独立后端；前端用相同API地址和`VITE_ENABLE_INTERVIEW_COACH=true`启动。脚本拒绝非回环地址和无标记的非空数据目录，模型由受控夹具替代，不能据此声称真实模型接通。
+
+已安装Playwright及Edge后，将`FILEMATE_EVIDENCE_DIR`指向新的`_working`证据目录，`FILEMATE_FIXTURE_CONTROL`指向夹具目录的`control.json`，再执行`node scripts/acceptance/interview_coach.mjs`。九组覆盖持久化、故障、版本、媒体、开关与隐私完整生命周期。关闭版生产构建需预先按`VITE_ENABLE_INTERVIEW_COACH=false`生成到`filemate/web/dist`，由夹具提供。语音组会在独立授权后请求Microsoft实际语音；模拟摄像头不验证真实设备。不要连接生产库、真实账户或真实资料。
