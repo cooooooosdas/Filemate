@@ -53,6 +53,7 @@ from filemate.interview_coach.models import (
     AdvanceCommand,
     AnalysisCommand,
     ConsentCommand,
+    FocusCommand,
     SubmitAnswer,
 )
 from filemate.interview_coach.repository import CoachError, CoachRepository
@@ -4559,6 +4560,14 @@ def analyze_interview_coach(interview_id: str, request: AnalysisCommand):
     _guard_interview_external(interview_id)
     result = CoachAnalysisService(_interview_coach_repository().storage, _coach_llm).analyze(interview_id, request)
     _sync_interview_progress(interview_id)
+    return ApiResponse(success=True, data=result.model_dump())
+
+
+@app.post("/interviews/{interview_id}/coach/focus", response_model=ApiResponse)
+def focus_interview_coach(interview_id: str, request: FocusCommand):
+    _require_interview_coach_write_enabled()
+    result = _interview_coach_repository().focus(interview_id, request)
+    _attach_interview_source_context(result.snapshot.session)
     return ApiResponse(success=True, data=result.model_dump())
 
 

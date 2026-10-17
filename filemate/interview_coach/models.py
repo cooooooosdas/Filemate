@@ -105,3 +105,7 @@ class AdvanceCommand(Command):
 
 class ConsentCommand(Command):
     allowed: bool
+
+
+class FocusCommand(Command):
+    question_index: int | None = Field(default=None, ge=0, le=100)

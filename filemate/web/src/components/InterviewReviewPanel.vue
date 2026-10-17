@@ -45,8 +45,9 @@
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { analyzeInterviewTurn, cancelInterviewAnalysis, clearInterviewAnalysis, deleteInterviewSession, exportInterviewReview, generateInterviewReview, getInterviewReview, previewInterviewDelete, type InterviewSession } from '../services/api'
+import { reportInputKey } from '../interview/report-state'
 import type { InterviewReport, InterviewReviewEvent } from '../types/interviewReview'
-const props = defineProps<{ session: InterviewSession; recordingIndexes: number[]; mediaBusy: boolean; coachMode?: boolean; readOnly?: boolean }>()
+const props = defineProps<{ session: InterviewSession; recordingIndexes: number[]; mediaBusy: boolean; coachMode?: boolean; readOnly?: boolean; analysisBusy?: boolean }>()
 const emit = defineEmits<{ updated: [session: InterviewSession]; deleted: []; seek: [index: number, second: number]; cleared: [] }>()
 const report = shallowRef<InterviewReport | null>(null)
 const events = shallowRef<InterviewReviewEvent[]>([])
@@ -57,7 +58,7 @@ const generating = ref(false)
 const analyzing = ref(false)
 const mutating = ref(false)
 const loadLoading = ref(false)
-const busy = computed(() => generating.value || analyzing.value || mutating.value || props.mediaBusy)
+const busy = computed(() => generating.value || analyzing.value || mutating.value || props.mediaBusy || props.analysisBusy)
 let epoch = 0
 let disposed = false
 const formats = [{ value: 'pdf' as const, label: 'PDF' }, { value: 'json' as const, label: 'JSON' }, { value: 'markdown' as const, label: 'Markdown' }]
@@ -114,7 +115,10 @@ async function remove() {
   finally { mutating.value = false }
 }
 watch(() => props.session.interview_id, () => { consent.value = false; selectedTurn.value = props.session.turns.at(-1)?.turn_id || ''; void load() }, { immediate: true })
-watch(() => JSON.stringify(props.session.turns.map(t=>[t.turn_id,t.answer,t.score,t.scoring_mode])), () => { consent.value = false; selectedTurn.value = props.session.turns.at(-1)?.turn_id || ''; void load() })
+watch(() => reportInputKey(props.session,!!props.analysisBusy), () => {
+ epoch++;report.value=null;loadLoading.value=false
+ if(!props.analysisBusy)void load()
+})
 watch(selectedTurn, () => { consent.value = false })
 onBeforeUnmount(() => { disposed = true; epoch++ })
 </script>

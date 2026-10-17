@@ -279,3 +279,14 @@ def test_one_shot_new_provider_does_not_grant_later_automatic_analysis(setup):
         CoachAnalysisService(store, lambda: provider).analyze(sid, command(result.snapshot, 'another_analysis1'))
     assert exc.value.code == 'consent_required'
     assert len(provider.calls) == 1
+
+
+def test_revocation_uses_current_permission_even_after_claim_revision(setup):
+    store,repo,sid=setup;p=Provider();state=authorize(repo,sid,p)
+    claim=repo.claim_analysis(sid,command(state),provider_identity=state.provider_identity,model='fixture')
+    assert repo.snapshot(sid).revision>state.revision
+    revoked=repo.set_consent(sid,ConsentCommand(allowed=False,expected_revision=state.revision,request_key='revoke_claim_001'),provider_identity=state.provider_identity)
+    assert revoked.snapshot.external_consent is False
+    repo.finish_analysis(claim['run']['run_id'],evaluation=None,error_code='timeout')
+    assert repo.snapshot(sid).current_attempt.score is None
+    assert store._conn().execute('SELECT status FROM interview_coach_analysis_runs').fetchone()[0]=='cancelled'

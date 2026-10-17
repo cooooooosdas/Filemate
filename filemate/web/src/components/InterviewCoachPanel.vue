@@ -3,6 +3,7 @@
     <ol class="coach-steps" aria-label="本场进度">
       <li>准备</li><li :aria-current="coach.phase !== 'summary' ? 'step' : undefined">作答与反馈</li><li :aria-current="coach.phase === 'summary' ? 'step' : undefined">汇总</li>
     </ol>
+    <nav v-if="answeredQuestions?.length" class="coach-question-picker" aria-label="回看本场已答题"><button v-for="item in answeredQuestions" :key="item.index" type="button" :disabled="busy" :aria-pressed="coach.questionIndex===item.index && coach.phase!=='summary'" @click="$emit('select-question',item.index)">回看第 {{ item.index+1 }} 题</button><button v-if="completed && coach.phase!=='summary'" type="button" :disabled="busy" @click="$emit('select-question',null)">整场汇总</button></nav>
     <template v-if="coach.phase !== 'summary'">
       <p class="coach-kicker">第 {{ coach.questionIndex + 1 }} / {{ total }} 题 · {{ coach.phase === 'question' ? '想好再回答' : '回答已保存' }}</p>
       <h2 id="coach-question" tabindex="-1">{{ coach.question }}</h2>
@@ -42,8 +43,8 @@
 </template>
 <script setup lang="ts">
 import type { CoachView, AttemptView } from '../types/interviewCoach'
-defineProps<{coach:CoachView;draft:string;busy:boolean;total:number;editing:boolean;composing:boolean;externalConsent:boolean;currentAnswer:string;error?:string;attempts:AttemptView[];selectedAttempt:AttemptView|null;moreHistory:boolean;historyError?:string;comparison?:{first:AttemptView;last:AttemptView;scores_comparable:boolean}|null}>()
-const emit=defineEmits<{'update:draft':[text:string];composition:[active:boolean];submit:[];'retry-analysis':[];advance:[];'select-attempt':[attempt:AttemptView];reanswer:[];'consent-change':[allowed:boolean];'load-history':[more:boolean];reload:[]}>()
+defineProps<{answeredQuestions?:{index:number;question:string}[];completed?:boolean;coach:CoachView;draft:string;busy:boolean;total:number;editing:boolean;composing:boolean;externalConsent:boolean;currentAnswer:string;error?:string;attempts:AttemptView[];selectedAttempt:AttemptView|null;moreHistory:boolean;historyError?:string;comparison?:{first:AttemptView;last:AttemptView;scores_comparable:boolean}|null}>()
+const emit=defineEmits<{'select-question':[index:number|null];'update:draft':[text:string];composition:[active:boolean];submit:[];'retry-analysis':[];advance:[];'select-attempt':[attempt:AttemptView];reanswer:[];'consent-change':[allowed:boolean];'load-history':[more:boolean];reload:[]}>()
 const areaLabels:Record<string,string>={completeness:'是否说完整',logic:'推理是否清楚',technical_coverage:'专业内容',technical_expression:'技术表达',relevance:'是否回应问题',star:'经历与行动'}
 function input(event:Event){emit('update:draft',(event.target as HTMLTextAreaElement).value)}
 function historyToggle(event:Event){if((event.target as HTMLDetailsElement).open)emit('load-history',false)}

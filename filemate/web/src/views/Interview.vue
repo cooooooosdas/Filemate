@@ -79,7 +79,7 @@
         <DataState v-if="memoryError" :error="memoryError" />
       </section>
       <section class="studio">
-        <InterviewCoachPanel v-if="coachEnabled && coach.view.value" :coach="coach.view.value" :draft="answer" :busy="coachBusy || recording || videoRecording || videoStopping || videoStarting" :total="session.questions.length" :editing="coachEditing" :composing="coach.composing.value" :external-consent="coach.snapshot.value?.external_consent || false" :current-answer="coach.snapshot.value?.current_attempt?.answer || ''" :error="coach.error.value?.message" :attempts="coachAttempts" :selected-attempt="selectedAttempt" :more-history="historyBefore != null" :history-error="coachHistoryError" :comparison="coachComparison" @update:draft="answer = $event" @composition="coach.setDraft(answer, $event)" @submit="submitCoach" @retry-analysis="coach.analyze()" @advance="advanceCoach" @reanswer="reanswerCoach" @consent-change="coach.consent($event)" @load-history="loadCoachHistory" @select-attempt="selectedAttempt = $event" @reload="coach.refresh()">
+        <InterviewCoachPanel v-if="coachEnabled && coach.view.value" :answered-questions="session.turns.map(t=>({index:t.question_index,question:t.question}))" :completed="session.status==='completed'" :coach="coach.view.value" :draft="answer" :busy="coachBusy || recording || videoRecording || videoStopping || videoStarting" :total="session.questions.length" :editing="coachEditing" :composing="coach.composing.value" :external-consent="coach.snapshot.value?.external_consent || false" :current-answer="coach.snapshot.value?.current_attempt?.answer || ''" :error="coach.error.value?.message" :attempts="coachAttempts" :selected-attempt="selectedAttempt" :more-history="historyBefore != null" :history-error="coachHistoryError" :comparison="coachComparison" @update:draft="answer = $event" @composition="coach.setDraft(answer, $event)" @submit="submitCoach" @retry-analysis="coach.analyze()" @advance="advanceCoach" @reanswer="reanswerCoach" @select-question="focusCoach" @consent-change="coach.consent($event)" @load-history="loadCoachHistory" @select-attempt="selectedAttempt = $event" @reload="coach.refresh()">
           <template #answer-tools><button type="button" :disabled="coachBusy" @click="toggleRecording">{{ recording ? '停止录音' : '语音回答' }}</button><p class="speech-privacy">语音识别可能使用浏览器厂商的服务。摄像头和本地录像可在伙伴区按需开启。</p></template>
           <template #history-media><video v-if="selectedAttempt && coachRecordings[selectedAttempt.attempt_id]" :src="coachRecordings[selectedAttempt.attempt_id].url" controls playsinline /><p v-else>这版没有当前页面录像；已保存文字仍可回看。</p></template>
           <template #summary><button type="button" class="ghost" @click="reset">再练一次</button></template>
@@ -211,7 +211,7 @@
           </div>
         </details>
       </section>
-      <InterviewReviewPanel v-if="reviewEnabled || session.turns.length" :read-only="!reviewEnabled" :session="session" :coach-mode="coachEnabled" :recording-indexes="Object.keys(localRecordings).map(Number)" :media-busy="videoRecording || videoStopping || recording || loading" @updated="reviewUpdated" @deleted="deletedInterview" @cleared="vision.reset()" @seek="seekRecording" />
+      <InterviewReviewPanel v-if="reviewEnabled || session.turns.length" :read-only="!reviewEnabled" :session="session" :analysis-busy="coachEnabled && coach.pending.value==='analysis'" :coach-mode="coachEnabled" :recording-indexes="Object.keys(localRecordings).map(Number)" :media-busy="videoRecording || videoStopping || recording || loading" @updated="reviewUpdated" @deleted="deletedInterview" @cleared="vision.reset()" @seek="seekRecording" />
     </template>
   </div>
 </template>
@@ -317,7 +317,9 @@ async function submitCoach(){
  const saved=await coach.submit({fluency_metrics:metrics,visual_metrics:reviewEnabled.value?vision.finish():undefined})
  if(!saved || disposed)return
  const record=localRecordings.value[index]
- if(record?.ownerId===mediaId && saved.current_attempt){record.ownerId=saved.current_attempt.attempt_id;coachRecordings.value={...coachRecordings.value,[record.ownerId]:record}}
+ const savedId=saved.receipt.attempt_id
+ if(record?.ownerId===mediaId && typeof savedId==='string'){record.ownerId=savedId;coachRecordings.value={...coachRecordings.value,[savedId]:record}}
+ if(saved.snapshot.current_attempt?.attempt_id!==savedId){const next={...localRecordings.value};delete next[index];localRecordings.value=next;return}
  coachEditing.value=false;vision.reset()
 }
 function reanswerCoach(){
@@ -329,6 +331,13 @@ function reanswerCoach(){
 async function advanceCoach(){
  if(answer.value.trim()){try{await ElMessageBox.confirm('重答草稿还未提交。继续下一题会放弃这段草稿，已保存回答保留。','保留或放弃草稿',{confirmButtonText:'放弃草稿并继续',cancelButtonText:'继续修改'})}catch{return}}
  const result=await coach.advance();if(!result)return
+ answer.value='';clearCoachQuestion();coachEditing.value=false
+ await nextTick();document.getElementById('coach-question')?.focus()
+}
+async function focusCoach(index:number|null){
+ if(coachBusy.value || recording.value || videoRecording.value || videoStopping.value)return
+ if(answer.value.trim()){try{await ElMessageBox.confirm('切换会放弃未提交草稿，已保存版本保留。','切换题目',{confirmButtonText:'放弃草稿并切换',cancelButtonText:'继续修改'})}catch{return}}
+ const result=await coach.focus(index);if(!result)return
  answer.value='';clearCoachQuestion();coachEditing.value=false
  await nextTick();document.getElementById('coach-question')?.focus()
 }

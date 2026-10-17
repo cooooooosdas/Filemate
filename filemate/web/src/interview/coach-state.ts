@@ -1,4 +1,4 @@
-import type { CoachApi, CoachAnswer, CoachClientState, CoachEvent, CoachSnapshot, CoachView } from '../types/interviewCoach'
+import type { CoachApi, CoachAnswer, CoachClientState, CoachEvent, CoachMutationResult, CoachSnapshot, CoachView } from '../types/interviewCoach'
 export const initialCoachState = ():CoachClientState => ({sessionId:null,epoch:0,snapshot:null,draft:'',composing:false,pending:'idle',error:null})
 export function reduceCoach(state:CoachClientState,event:CoachEvent):CoachClientState {
  switch(event.type) {
@@ -20,6 +20,7 @@ export function projectCoach(snapshot:CoachSnapshot,pending:CoachClientState['pe
 }
 export function createCoachController(api:CoachApi,key:()=>string=()=>crypto.randomUUID(),changed:(state:CoachClientState)=>void=()=>{}) {
  let state=initialCoachState()
+ const autoAnalyzed=new Set<string>()
  let savedRequest:{fingerprint:string;input:CoachAnswer}|null=null
  const send=(event:CoachEvent)=>{state=reduceCoach(state,event);changed(state)}
  const capture=()=>({id:state.sessionId!,epoch:state.epoch})
@@ -34,19 +35,19 @@ export function createCoachController(api:CoachApi,key:()=>string=()=>crypto.ran
   const c=capture()
   try {apply(c,await api.get(c.id))} catch(e){fail(c,e)}
  }
- async function mutate(kind:CoachClientState['pending'],operation:(s:CoachSnapshot)=>Promise<{snapshot:CoachSnapshot}>) {
+ async function mutate(kind:CoachClientState['pending'],operation:(s:CoachSnapshot)=>Promise<CoachMutationResult>) {
   if(!state.snapshot || state.pending!=='idle') return null
   const c=capture();send({type:'pending',value:kind});send({type:'error',...c,value:null})
-  try {const result=await operation(state.snapshot);if(!current(c))return null;apply(c,result.snapshot);return result.snapshot}
+  try {const result=await operation(state.snapshot);if(!current(c))return null;apply(c,result.snapshot);return result}
   catch(e){if(current(c)){fail(c,e);try{apply(c,await api.get(c.id))}catch{/* 原错误与草稿保留。 */}}return null}
   finally{if(current(c))send({type:'pending',value:'idle'})}
  }
  async function analyze() {
-  return mutate('analysis',s=>api.analyze(s.session.interview_id,{request_key:key(),expected_revision:s.revision,attempt_id:s.current_attempt!.attempt_id,consent_revision:s.consent_revision}))
+  return (await mutate('analysis',s=>api.analyze(s.session.interview_id,{request_key:key(),expected_revision:s.revision,attempt_id:s.current_attempt!.attempt_id,consent_revision:s.consent_revision})))?.snapshot ?? null
  }
  return {
   get state(){return state},
-  async open(id:string){savedRequest=null;send({type:'open',id,epoch:state.epoch+1});await refresh()},refresh,
+  async open(id:string){savedRequest=null;autoAnalyzed.clear();send({type:'open',id,epoch:state.epoch+1});await refresh()},refresh,
   setDraft(text:string,composing=false){send({type:'draft',text,composing})},
   async submit(metrics:Pick<CoachAnswer,'fluency_metrics'|'visual_metrics'>={}) {
    if(!state.snapshot || state.composing || !state.draft.trim() || state.draft.length>12000) return null
@@ -57,14 +58,24 @@ export function createCoachController(api:CoachApi,key:()=>string=()=>crypto.ran
    const request=savedRequest.input
    const saved=await mutate('save',()=>api.submit(c.id,request))
    if(!saved || !current(c))return null
+   const receipt=saved.receipt
+   if(receipt.kind!=='submit' || receipt.request_key!==request.request_key || typeof receipt.attempt_id!=='string'){
+    fail(c,{code:'invalid_receipt',message:'保存回执无法核对，请保留草稿并重新读取。'});return null
+   }
    savedRequest=null
+   if(saved.snapshot.current_attempt?.attempt_id!==receipt.attempt_id){
+    fail(c,{code:'saved_attempt_superseded',message:'这次回答已保存为历史版本；另一处已有新回答。草稿保留，请对照后决定是否再次提交。'});return saved
+   }
    if(state.draft===text)send({type:'draft',text:'',composing:false})
-   if(saved.external_consent && saved.current_attempt?.attempt_id && !saved.active_run_id)await analyze()
+   if(saved.snapshot.external_consent && !saved.snapshot.active_run_id && !autoAnalyzed.has(request.request_key)){
+    autoAnalyzed.add(request.request_key);void analyze()
+   }
    return saved
   },analyze,
-  advance:()=>mutate('advance',s=>api.advance(s.session.interview_id,{request_key:key(),expected_revision:s.revision,from_index:s.displayed_index,expected_attempt_id:s.current_attempt!.attempt_id})),
+  advance:async()=>(await mutate('advance',s=>api.advance(s.session.interview_id,{request_key:key(),expected_revision:s.revision,from_index:s.displayed_index,expected_attempt_id:s.current_attempt!.attempt_id})))?.snapshot ?? null,
+  focus:async(question_index:number|null)=>(await mutate('advance',s=>api.focus(s.session.interview_id,{request_key:key(),expected_revision:s.revision,question_index})))?.snapshot ?? null,
   async consent(allowed:boolean){
-   if(allowed || state.pending!=='analysis')return mutate('consent',s=>api.consent(s.session.interview_id,{request_key:key(),expected_revision:s.revision,allowed}))
+   if(allowed || state.pending!=='analysis')return (await mutate('consent',s=>api.consent(s.session.interview_id,{request_key:key(),expected_revision:s.revision,allowed})))?.snapshot ?? null
    const s=state.snapshot;if(!s)return null
    const c=capture()
    try{const result=await api.consent(c.id,{request_key:key(),expected_revision:s.revision,allowed:false});apply(c,result.snapshot);return result.snapshot}catch(e){fail(c,e);return null}

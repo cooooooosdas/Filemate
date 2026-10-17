@@ -16,6 +16,7 @@ from .models import (
     CoachMutationResult,
     CoachSnapshot,
     ConsentCommand,
+    FocusCommand,
     SubmitAnswer,
 )
 
@@ -400,7 +401,7 @@ class CoachRepository:
                     "score": None,
                     "dimensions": evaluation["dimensions"],
                     "feedback": evaluation["feedback"],
-                    "fluency_metrics": command.fluency_metrics,
+                    "fluency_metrics": evaluation.get("fluency") or command.fluency_metrics,
                     "scoring_mode": "local_fallback",
                     "scoring_version": "coach-local-v1",
                     "next_question": None,
@@ -424,7 +425,7 @@ class CoachRepository:
                         command.answer,
                         json.dumps(evaluation["dimensions"], ensure_ascii=False),
                         evaluation["feedback"],
-                        json.dumps(command.fluency_metrics or {}, ensure_ascii=False),
+                        json.dumps(evaluation.get("fluency") or command.fluency_metrics or {}, ensure_ascii=False),
                         json.dumps(command.visual_metrics or {}, ensure_ascii=False),
                         turn_id,
                     ),
@@ -525,6 +526,25 @@ class CoachRepository:
             receipt = self._receipt(conn, interview_id, "advance", command, target_index=target)
             return self._result(interview_id, receipt)
 
+    def focus(self, interview_id: str, command: FocusCommand) -> CoachMutationResult:
+        with self.transaction() as conn:
+            old = self._previous(conn, interview_id, 'focus', command)
+            if old:
+                return self._result(interview_id, old)
+            self._check(conn, interview_id, command)
+            if command.question_index is None:
+                session = conn.execute('SELECT status FROM interview_sessions WHERE interview_id=?', (interview_id,)).fetchone()
+                if session['status'] != 'completed':
+                    raise CoachError('summary_not_ready')
+                conn.execute("UPDATE interview_coach_state SET phase='summary',revision=revision+1,updated_at=? WHERE interview_id=?", (now(), interview_id))
+            else:
+                target = conn.execute('SELECT 1 FROM interview_answer_attempts WHERE interview_id=? AND question_index=?', (interview_id, command.question_index)).fetchone()
+                if not target:
+                    raise CoachError('question_not_answered')
+                conn.execute("UPDATE interview_coach_state SET displayed_index=?,phase='feedback',revision=revision+1,updated_at=? WHERE interview_id=?", (command.question_index,now(),interview_id))
+            receipt = self._receipt(conn, interview_id, 'focus', command, question_index=command.question_index)
+            return self._result(interview_id, receipt)
+
     def list_attempts(
         self, interview_id: str, turn_id: str, *, limit: int = 20, before_version: int | None = None
     ) -> dict[str, Any]:
@@ -552,7 +572,16 @@ class CoachRepository:
             old = self._previous(conn, interview_id, "consent", command)
             if old:
                 return self._result(interview_id, old)
-            state = self._check(conn, interview_id, command)
+            if command.allowed:
+                state = self._check(conn, interview_id, command)
+            else:
+                state = conn.execute('SELECT * FROM interview_coach_state WHERE interview_id=?', (interview_id,)).fetchone()
+                if state is None:
+                    raise CoachError('interview_not_found', 404)
+                if command.expected_revision > state['revision']:
+                    raise CoachError('revision_conflict')
+                # 撤销只收紧当前权限，不能因分析认领增加修订号而阻止用户停止外发。
+
             if not command.allowed or state["provider_identity"] != provider_identity:
                 self._invalidate(conn, interview_id)
             conn.execute(

@@ -16,6 +16,7 @@ export interface CoachCommand { request_key: string; expected_revision: number }
 export interface CoachAnswer extends CoachCommand { answer: string; question_index: number; expected_attempt_id: string|null; fluency_metrics?: InterviewFluencyMetrics; visual_metrics?: VisualMetrics }
 export interface CoachAnalysis extends CoachCommand { attempt_id: string; consent_revision: number }
 export interface CoachAdvance extends CoachCommand { from_index: number; expected_attempt_id: string }
+export interface CoachFocus extends CoachCommand { question_index: number|null }
 export interface CoachConsent extends CoachCommand { allowed: boolean }
 export interface CoachAttempts { items: AttemptView[]; next_before_version: number|null }
 export interface CoachClientState {
@@ -32,5 +33,6 @@ export interface CoachApi {
  get(id:string):Promise<CoachSnapshot>; submit(id:string,input:CoachAnswer):Promise<CoachMutationResult>
  analyze(id:string,input:CoachAnalysis):Promise<CoachMutationResult>; advance(id:string,input:CoachAdvance):Promise<CoachMutationResult>
  consent(id:string,input:CoachConsent):Promise<CoachMutationResult>
+ focus(id:string,input:CoachFocus):Promise<CoachMutationResult>
  attempts(id:string,turnId:string,options?:{limit?:number;before_version?:number}):Promise<CoachAttempts>
 }

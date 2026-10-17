@@ -1,4 +1,4 @@
-import type { CoachSnapshot, CoachMutationResult, CoachAnswer, CoachAnalysis, CoachAdvance, CoachConsent, CoachAttempts } from '../types/interviewCoach'
+import type { CoachSnapshot, CoachMutationResult, CoachAnswer, CoachAnalysis, CoachAdvance, CoachConsent, CoachAttempts, CoachFocus } from '../types/interviewCoach'
 import axios from 'axios'
 import type { AccountState, AccountUser, RegisterAccount } from '../types/account'
 import { HITOKOTO_URL } from '../home/encouragement'
@@ -897,6 +897,11 @@ export interface InterviewEvaluation {
 }
 
 export interface InterviewTurn {
+  attempt_id?: string
+  attempt_version?: number
+  analysis_run_id?: string|null
+  source_revision?: string
+  analysis_status?: string
   turn_id: string
   question_index: number
   question: string
@@ -1884,3 +1889,5 @@ export const analyzeInterviewCoachAttempt=(id:string,input:CoachAnalysis):Promis
 export const advanceInterviewCoach=(id:string,input:CoachAdvance):Promise<CoachMutationResult>=>coachResult(api.post<unknown,ApiResponse<CoachMutationResult>>(`/interviews/${encodeURIComponent(id)}/coach/advance`,input,{timeout:15000}))
 export const setInterviewCoachConsent=(id:string,input:CoachConsent):Promise<CoachMutationResult>=>coachResult(api.post<unknown,ApiResponse<CoachMutationResult>>(`/interviews/${encodeURIComponent(id)}/coach/consent`,input,{timeout:15000}))
 export const getInterviewAttempts=(id:string,turnId:string,options:{limit?:number;before_version?:number}={}):Promise<CoachAttempts>=>coachResult(api.get<unknown,ApiResponse<CoachAttempts>>(`/interviews/${encodeURIComponent(id)}/turns/${encodeURIComponent(turnId)}/attempts`,{params:options,timeout:15000}))
+
+export const focusInterviewCoach=(id:string,input:CoachFocus):Promise<CoachMutationResult>=>coachResult(api.post<unknown,ApiResponse<CoachMutationResult>>(`/interviews/${encodeURIComponent(id)}/coach/focus`,input,{timeout:15000}))

@@ -111,3 +111,20 @@ def test_foreign_space_snapshot_and_submit_hidden(api):
         assert foreign.get(f'/interviews/{sid}/coach').status_code == 404
         assert foreign.post(f'/interviews/{sid}/coach/answers', json={'answer': ANSWER, 'question_index': 0,
                             'request_key': 'foreign_answer01', 'expected_revision': 0}).status_code == 404
+
+
+def test_focus_completed_session_preserves_original_progress_and_question(api):
+    client,_=api;sid=start(client)
+    while True:
+        s=client.get(f'/interviews/{sid}/coach').json()['data']
+        if s['phase']=='summary':break
+        r=client.post(f'/interviews/{sid}/coach/answers',json={'answer':'合成原回答','question_index':s['displayed_index'],'expected_revision':s['revision'],'request_key':__import__('uuid').uuid4().hex}).json()['data']['snapshot']
+        result=client.post(f'/interviews/{sid}/coach/advance',json={'from_index':r['displayed_index'],'expected_attempt_id':r['current_attempt']['attempt_id'],'expected_revision':r['revision'],'request_key':__import__('uuid').uuid4().hex})
+        assert result.status_code==200
+    response=client.post(f'/interviews/{sid}/coach/focus',json={'question_index':0,'expected_revision':s['revision'],'request_key':'api_focus_old001'})
+    assert response.status_code==200
+    focused=response.json()['data']['snapshot'];assert focused['phase']=='feedback'
+    result=client.post(f'/interviews/{sid}/coach/answers',json={'answer':'合成末次修订','question_index':0,'expected_attempt_id':focused['current_attempt']['attempt_id'],'expected_revision':focused['revision'],'request_key':'api_focus_edit01'}).json()['data']
+    assert result['snapshot']['session']['current_index']==len(s['session']['questions'])
+    assert result['snapshot']['session']['questions']==s['session']['questions']
+    assert result['snapshot']['current_attempt']['version']==2

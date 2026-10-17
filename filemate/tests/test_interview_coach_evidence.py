@@ -114,3 +114,31 @@ def test_corrupt_current_cache_cannot_leave_score_in_coach_snapshot(context):
     assert state.current_attempt.score is None
     assert state.current_attempt.data_error is True
     assert state.current_attempt.answer==ANSWER
+
+
+@pytest.mark.parametrize('malformed',[[],None,False,'broken',42])
+def test_nested_corrupt_run_json_keeps_read_and_privacy_available(context,malformed):
+    store,repo,sid,_=context;p=Provider()
+    CoachAnalysisService(store,lambda:p).analyze(sid,command(authorize(repo,sid,p)))
+    raw=json.dumps({'score':80,'content_analysis':malformed})
+    store._conn().execute('UPDATE interview_coach_analysis_runs SET evaluation=?',(raw,));store._conn().commit()
+    state=repo.snapshot(sid)
+    assert state.current_attempt.answer==ANSWER and state.current_attempt.score is None
+    assert state.current_attempt.data_error
+    assert repo.list_attempts(sid,state.current_attempt.turn_id)['items'][0]['score'] is None
+    review=ReviewRepository(store);assert review.delete_preview(sid)['answer_attempts']==1
+    assert store._conn().execute('SELECT evaluation FROM interview_coach_analysis_runs').fetchone()[0]==raw
+    review.clear(sid);assert repo.snapshot(sid).current_attempt.answer==ANSWER
+
+
+@pytest.mark.parametrize('scenario,text,field',[('技术面','我验证了索引的性能边界','chars_per_minute'),('英语面','I measured the baseline and checked the result','words_per_minute')])
+def test_coach_report_retains_server_calculated_speech_metrics(tmp_path,scenario,text,field):
+    store=SQLiteStorage(tmp_path/'fluency.db');store.init_schema()
+    sid=store.create_interview(target_role='训练',scenario=scenario,difficulty='标准',questions=['Explain'])['interview_id']
+    repo=CoachRepository(store)
+    first=repo.submit(sid,SubmitAnswer(answer=text,question_index=0,request_key='speech_first_001',expected_revision=0,fluency_metrics={'duration_seconds':10})).snapshot
+    report=ReviewRepository(store).generate(sid);assert report['expression'][field]>0
+    second=repo.submit(sid,SubmitAnswer(answer=text+' test',question_index=0,request_key='speech_second001',expected_revision=first.revision,expected_attempt_id=first.current_attempt.attempt_id,fluency_metrics={'duration_seconds':20})).snapshot
+    assert ReviewRepository(store).generate(sid)['expression'][field]>0
+    assert second.current_attempt.fluency_metrics[field]>0
+    store.close()

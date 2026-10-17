@@ -941,3 +941,9 @@ GET /api/llm/status新增credential_storage=browser|system，前端按该模式�
 ### 逐题面试隐私与恢复（2026-10-17 候选）
 
 删除预览增加`answer_attempts`、`analysis_runs`、`coach_actions`，`reports`计入全部历史报告；确认指纹绑定当前教练修订。清空覆盖全部版本的内容／视觉派生结果并撤销在途写资格，保留回答与语音节奏。关闭REVIEW后仍允许读取、导出、取消、清空和确认删除；禁止新增报告和外发分析。个人备份动态包含五张新表；有running/cancelling分析时拒绝覆盖恢复。恢复清除本场外发授权，将在途运行改为interrupted；管理员恢复先校验原哈希、库事实与删除账本，再对新目录的业务库事务规范化并检查外键，结果增加`normalized_coach_databases`，始终`activated=false`，不修改治理库及原备份。schema26管理员副本先保留原字节，首启追加迁移和回填。
+
+### 面试审阅修复补充（2026-10-17）
+
+`POST /interviews/{id}/coach/focus`接收`request_key`、`expected_revision`和`question_index`（已答题索引，null表示已完成场次汇总），仅切换阅读位置，不新增回答、不推进提交进度，不改冻结题目。允许完成后在原场次重答和重试。新端点同样受COACH写开关、认证及空间权限保护。
+
+授权开启仍严格比较revision；明确撤销`allowed=false`允许使用小于等于当前revision的已知修订，直接收紧当前权限，保证分析claim增加revision后仍可撤销；同键回执规则不变。保存回执`receipt.attempt_id`是本次操作归属，`snapshot.current_attempt`可能属于另一个较新版本，调用方不得混用或对较新版本自动分析。语音派生指标由服务端计算保存；报告按attempt/run/source_revision及分析pending使当前显示失效。

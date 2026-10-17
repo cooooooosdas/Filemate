@@ -231,3 +231,21 @@ def test_standard_question_bank_keeps_existing_sequence(store):
     result = repo.advance(sid, AdvanceCommand(from_index=0, expected_attempt_id=state.current_attempt.attempt_id,
                           expected_revision=state.revision, request_key='advance_standard'))
     assert result.snapshot.session['questions'][1] == '既有题库题'
+
+
+def test_completed_session_can_focus_old_question_and_reanswer_without_new_progress(tmp_path):
+    from filemate.interview_coach.models import FocusCommand
+    store=SQLiteStorage(tmp_path/'focus.db');store.init_schema();repo=CoachRepository(store)
+    sid=store.create_interview(target_role='开发',scenario='求职面试',difficulty='标准',questions=['Explain\nfirst','second'])['interview_id']
+    for index in range(2):
+        state=repo.snapshot(sid);state=repo.submit(sid,SubmitAnswer(answer=f'原回答{index}',question_index=index,expected_revision=state.revision,request_key=f'focus_answer_00{index}')).snapshot
+        repo.advance(sid,AdvanceCommand(from_index=index,expected_attempt_id=state.current_attempt.attempt_id,expected_revision=state.revision,request_key=f'focus_advance_0{index}'))
+    before=repo.snapshot(sid);assert before.phase=='summary'
+    focused=repo.focus(sid,FocusCommand(question_index=0,expected_revision=before.revision,request_key='focus_old_000001')).snapshot
+    assert focused.displayed_index==0 and focused.phase=='feedback'
+    changed=repo.submit(sid,SubmitAnswer(answer='修订首题',question_index=0,expected_revision=focused.revision,expected_attempt_id=focused.current_attempt.attempt_id,request_key='focus_reanswer01')).snapshot
+    assert changed.current_attempt.version==2 and changed.session['current_index']==2
+    assert changed.session['status']=='completed' and changed.session['questions']==before.session['questions']
+    summary=repo.focus(sid,FocusCommand(question_index=None,expected_revision=changed.revision,request_key='focus_summary001')).snapshot
+    assert summary.phase=='summary'
+    store.close()
