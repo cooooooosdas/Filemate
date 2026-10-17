@@ -1,3 +1,4 @@
+import type { CoachSnapshot, CoachMutationResult, CoachAnswer, CoachAnalysis, CoachAdvance, CoachConsent, CoachAttempts } from '../types/interviewCoach'
 import axios from 'axios'
 import type { AccountState, AccountUser, RegisterAccount } from '../types/account'
 import { HITOKOTO_URL } from '../home/encouragement'
@@ -187,7 +188,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !error.config?.url?.startsWith('/api/auth/')) {
       window.dispatchEvent(new Event('filemate:session-expired'))
     }
-    return Promise.reject(new Error(message))
+    return Promise.reject(Object.assign(new Error(typeof message === 'string' ? message : '请求参数无效'), { status: error.response?.status, code: error.response?.data?.data?.error_code || 'network_error' }))
   }
 )
 
@@ -1871,3 +1872,15 @@ export async function updateStudyPlanDay(
   if (response.success && response.data) return response.data
   throw new Error(response.error || '学习进度保存失败')
 }
+
+async function coachResult<T>(request:Promise<ApiResponse<T>>):Promise<T> {
+ const response=await request
+ if(response.success && response.data) return response.data
+ throw Object.assign(new Error(response.error || '面试操作未完成'),{code:'coach_error'})
+}
+export const getInterviewCoach=(id:string):Promise<CoachSnapshot>=>coachResult(api.get<unknown,ApiResponse<CoachSnapshot>>(`/interviews/${encodeURIComponent(id)}/coach`,{timeout:15000}))
+export const submitInterviewCoachAnswer=(id:string,input:CoachAnswer):Promise<CoachMutationResult>=>coachResult(api.post<unknown,ApiResponse<CoachMutationResult>>(`/interviews/${encodeURIComponent(id)}/coach/answers`,input,{timeout:20000}))
+export const analyzeInterviewCoachAttempt=(id:string,input:CoachAnalysis):Promise<CoachMutationResult>=>coachResult(api.post<unknown,ApiResponse<CoachMutationResult>>(`/interviews/${encodeURIComponent(id)}/coach/analysis`,input,{timeout:65000}))
+export const advanceInterviewCoach=(id:string,input:CoachAdvance):Promise<CoachMutationResult>=>coachResult(api.post<unknown,ApiResponse<CoachMutationResult>>(`/interviews/${encodeURIComponent(id)}/coach/advance`,input,{timeout:15000}))
+export const setInterviewCoachConsent=(id:string,input:CoachConsent):Promise<CoachMutationResult>=>coachResult(api.post<unknown,ApiResponse<CoachMutationResult>>(`/interviews/${encodeURIComponent(id)}/coach/consent`,input,{timeout:15000}))
+export const getInterviewAttempts=(id:string,turnId:string,options:{limit?:number;before_version?:number}={}):Promise<CoachAttempts>=>coachResult(api.get<unknown,ApiResponse<CoachAttempts>>(`/interviews/${encodeURIComponent(id)}/turns/${encodeURIComponent(turnId)}/attempts`,{params:options,timeout:15000}))
