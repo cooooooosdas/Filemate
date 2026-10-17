@@ -79,7 +79,13 @@
         <DataState v-if="memoryError" :error="memoryError" />
       </section>
       <section class="studio">
-        <div class="conversation-panel">
+        <InterviewCoachPanel v-if="coachEnabled && coach.view.value" :coach="coach.view.value" :draft="answer" :busy="coachBusy || recording || videoRecording || videoStopping || videoStarting" :total="session.questions.length" :editing="coachEditing" :composing="coach.composing.value" :external-consent="coach.snapshot.value?.external_consent || false" :current-answer="coach.snapshot.value?.current_attempt?.answer || ''" :error="coach.error.value?.message" :attempts="coachAttempts" :selected-attempt="selectedAttempt" :more-history="historyBefore != null" :history-error="coachHistoryError" :comparison="coachComparison" @update:draft="answer = $event" @composition="coach.setDraft(answer, $event)" @submit="submitCoach" @retry-analysis="coach.analyze()" @advance="advanceCoach" @reanswer="reanswerCoach" @consent-change="coach.consent($event)" @load-history="loadCoachHistory" @select-attempt="selectedAttempt = $event" @reload="coach.refresh()">
+          <template #answer-tools><button type="button" :disabled="coachBusy" @click="toggleRecording">{{ recording ? '停止录音' : '语音回答' }}</button><p class="speech-privacy">语音识别可能使用浏览器厂商的服务。摄像头和本地录像可在伙伴区按需开启。</p></template>
+          <template #history-media><video v-if="selectedAttempt && coachRecordings[selectedAttempt.attempt_id]" :src="coachRecordings[selectedAttempt.attempt_id].url" controls playsinline /><p v-else>这版没有当前页面录像；已保存文字仍可回看。</p></template>
+          <template #summary><button type="button" class="ghost" @click="reset">再练一次</button></template>
+        </InterviewCoachPanel>
+        <DataState v-else-if="coachEnabled" :error="coach.error.value?.message || ''" :loading="!coach.error.value" @retry="coach.open(session.interview_id)" />
+        <div v-else class="conversation-panel">
           <div class="progress-row"><span>第 {{ Math.min(session.current_index + 1, session.questions.length) }} / {{ session.questions.length }} 题</span><strong>{{ displayScore(session.overall_score) }}</strong></div>
           <div class="progress"><i :style="{ width: `${session.current_index / session.questions.length * 100}%` }"></i></div>
 
@@ -121,7 +127,7 @@
             <div class="voice-bars" aria-hidden="true"><i v-for="n in 7" :key="n"></i></div>
           </div>
           <div><p class="role">FileMate 面试伙伴</p><p class="online"><i></i>在线 · {{ session.scenario === '英语面' ? '英语训练' : '中文普通话' }}</p></div>
-          <button class="ghost" :disabled="!session.current_question" @click="speakQuestion">重新播报问题</button>
+          <template v-if="coachEnabled"><label class="coach-voice-consent"><input v-model="coachSpeech.voiceConsent.value" type="checkbox" /><span>允许将点击朗读的文字发给 Microsoft 自然语音服务</span></label><label class="coach-voice-select">朗读声线<select v-model="voiceId"><option v-for="voice in NATURAL_VOICES" :key="voice.voiceURI" :value="voice.voiceURI">{{ voice.name }}</option></select></label><div class="coach-voice-actions"><button type="button" class="ghost" :disabled="!coach.view.value?.question" @click="speakQuestion">朗读当前问题</button><button type="button" class="ghost" :disabled="!coach.view.value?.analysis" @click="readCoachFeedback">朗读可见反馈</button><button v-if="coachSpeech.speaking.value" type="button" class="ghost" @click="coachSpeech.stop">停止朗读</button></div><p v-if="coachSpeech.error.value" role="alert">{{ coachSpeech.error.value }}</p><p v-if="feedbackTooLong">反馈过长，朗读仅包含总评；各项建议请直接阅读。</p></template><button v-else class="ghost" :disabled="!session.current_question" @click="speakQuestion">重新播报问题</button>
           <div class="camera-dock" :class="{ active: cameraActive }">
             <div class="camera-preview">
               <video ref="cameraVideo" v-show="cameraActive" autoplay muted playsinline />
@@ -176,12 +182,12 @@
         action-label="查看成长证据"
       />
 
-      <section v-if="session.latest_evaluation" class="evaluation">
+      <section v-if="!coachEnabled && session.latest_evaluation" class="evaluation">
         <div class="evaluation-head"><div><p class="eyebrow">{{ session.latest_evaluation.scoring_mode === 'llm' ? '模型评估 · 仅供训练参考' : '规则练习 · 内容待评估' }}</p><h2>{{ session.latest_evaluation.feedback }}</h2></div><strong>{{ displayScore(session.latest_evaluation.score) }}</strong></div>
         <div class="dimension-grid"><div v-for="(score, name) in session.latest_evaluation.dimensions" :key="name"><span>{{ name }}</span><b>{{ score.toFixed(0) }}</b><i><em :style="{ width: `${score}%` }"></em></i></div></div>
       </section>
 
-      <section v-if="session.turns.length" class="review-list">
+      <section v-if="session.turns.length && (!coachEnabled || coach.view.value?.phase === 'summary')" class="review-list">
         <h2>回答记录</h2>
         <details v-for="(turn, index) in session.turns" :key="turn.turn_id" :open="index === session.turns.length - 1">
           <summary><span>Q{{ index + 1 }} · {{ turn.question }}</span><b>{{ displayScore(turn.score) }}</b></summary>
@@ -205,7 +211,7 @@
           </div>
         </details>
       </section>
-      <InterviewReviewPanel v-if="reviewEnabled" :session="session" :recording-indexes="Object.keys(localRecordings).map(Number)" :media-busy="videoRecording || videoStopping || recording || loading" @updated="session = $event" @deleted="reset" @cleared="vision.reset()" @seek="seekRecording" />
+      <InterviewReviewPanel v-if="reviewEnabled" :session="session" :coach-mode="coachEnabled" :recording-indexes="Object.keys(localRecordings).map(Number)" :media-busy="videoRecording || videoStopping || recording || loading" @updated="reviewUpdated" @deleted="reset" @cleared="vision.reset()" @seek="seekRecording" />
     </template>
   </div>
 </template>
@@ -231,6 +237,12 @@ import {
   type KnowledgeSource,
   type LearningAnalytics
 } from '../services/api'
+import InterviewCoachPanel from '../components/InterviewCoachPanel.vue'
+import { useInterviewCoach } from '../interview/useInterviewCoach'
+import { useInterviewCoachSpeech } from '../interview/useInterviewCoachSpeech'
+import { NATURAL_VOICES } from '../digital-human/natural-speech'
+import { getInterviewAttempts } from '../services/api'
+import type { AttemptView } from '../types/interviewCoach'
 import CompanionCard from '../components/CompanionCard.vue'
 import DataState from '../components/DataState.vue'
 import InterviewReviewPanel from '../components/InterviewReviewPanel.vue'
@@ -266,6 +278,63 @@ let disposed = false
 let syncingSessionTarget: string | null = null
 const knowledgeSources = ref<KnowledgeSource[]>([])
 const session = ref<InterviewSession | null>(null)
+const coachEnabled = import.meta.env.VITE_ENABLE_INTERVIEW_COACH === 'true'
+const coach = useInterviewCoach()
+const coachSpeech = useInterviewCoachSpeech()
+const voiceId = ref<string>('zh-CN-XiaoxiaoNeural')
+const coachEditing = ref(false)
+const coachBusy = computed(() => coach.pending.value !== 'idle')
+const currentQuestionIndex = computed(() => coachEnabled ? (coach.snapshot.value?.displayed_index ?? 0) : (session.value?.current_index ?? 0))
+const coachAttempts = ref<AttemptView[]>([])
+const selectedAttempt = ref<AttemptView|null>(null)
+const historyBefore = ref<number|null>(null)
+const coachHistoryError = ref('')
+const coachRecordings = ref<Record<string,LocalRecording>>({})
+let mediaEpoch = 0
+let draftMediaId = crypto.randomUUID()
+const coachComparison = computed(() => {
+ const turn = coach.snapshot.value?.session.turns.find(t => t.question_index === currentQuestionIndex.value) as unknown as {attempt_comparison?:{first:AttemptView;last:AttemptView;scores_comparable:boolean}} | undefined
+ return turn?.attempt_comparison ?? null
+})
+const feedbackText = computed(() => [coach.view.value?.feedback, ...Object.values(coach.view.value?.analysis?.areas || {}).flatMap(a => [a.evidence, a.suggestion])].filter(Boolean).join('。'))
+const feedbackTooLong = computed(() => Array.from(feedbackText.value).length > 5000)
+function readCoachFeedback(){coachSpeech.read(feedbackTooLong.value ? (coach.view.value?.feedback || '') : feedbackText.value,voiceId.value)}
+async function loadCoachHistory(more=false){
+ const state=coach.snapshot.value, a=state?.current_attempt
+ if(!state || !a) return
+ const id=state.session.interview_id, aid=a.attempt_id
+ try {const page=await getInterviewAttempts(id,a.turn_id,{limit:10,...(more && historyBefore.value ? {before_version:historyBefore.value}:{})});if(disposed || coach.snapshot.value?.session.interview_id!==id || coach.snapshot.value.current_attempt?.attempt_id!==aid)return;coachAttempts.value=more?[...coachAttempts.value,...page.items]:page.items;historyBefore.value=page.next_before_version;coachHistoryError.value=''}
+ catch {coachHistoryError.value='历史读取失败，可重新展开重试。'}
+}
+function clearCoachQuestion(){
+ mediaEpoch++;draftMediaId=crypto.randomUUID();coachSpeech.stop();stopSpeechRecording();vision.reset();fluencyMetrics.value=undefined;fluencyMarkers.value=[];recordingDuration.value=0;coachAttempts.value=[];selectedAttempt.value=null;historyBefore.value=null
+}
+async function submitCoach(){
+ if(recording.value || videoRecording.value || videoStopping.value || videoStarting.value)return
+ coachSpeech.stop();coach.setDraft(answer.value)
+ const index=currentQuestionIndex.value, mediaId=draftMediaId
+ const metrics=fluencyMetrics.value ? {duration_seconds:fluencyMetrics.value.duration_seconds,filler_count:fluencyMetrics.value.filler_count,long_pause_count:fluencyMetrics.value.long_pause_count,source:fluencyMetrics.value.source,markers:fluencyMetrics.value.markers,recording_offset_seconds:fluencyMetrics.value.recording_offset_seconds} : undefined
+ const saved=await coach.submit({fluency_metrics:metrics,visual_metrics:reviewEnabled.value?vision.finish():undefined})
+ if(!saved || disposed)return
+ const record=localRecordings.value[index]
+ if(record?.ownerId===mediaId && saved.current_attempt){record.ownerId=saved.current_attempt.attempt_id;coachRecordings.value={...coachRecordings.value,[record.ownerId]:record}}
+ coachEditing.value=false;vision.reset()
+}
+function reanswerCoach(){
+ if(coachBusy.value)return
+ clearCoachQuestion();answer.value=coach.snapshot.value?.current_attempt?.answer || '';coachEditing.value=true
+ const index=currentQuestionIndex.value;const next={...localRecordings.value};delete next[index];localRecordings.value=next
+ void nextTick(()=>document.getElementById('coach-answer')?.focus())
+}
+async function advanceCoach(){
+ if(answer.value.trim()){try{await ElMessageBox.confirm('重答草稿还未提交。继续下一题会放弃这段草稿，已保存回答保留。','保留或放弃草稿',{confirmButtonText:'放弃草稿并继续',cancelButtonText:'继续修改'})}catch{return}}
+ const result=await coach.advance();if(!result)return
+ answer.value='';clearCoachQuestion();coachEditing.value=false
+ await nextTick();document.getElementById('coach-question')?.focus()
+}
+function reviewUpdated(updated:InterviewSession){session.value=updated;if(coachEnabled)void coach.refresh()}
+watch(coach.snapshot,value=>{if(value)session.value=value.session})
+watch(coach.draft,value=>{if(coachEnabled && answer.value!==value)answer.value=value})
 const sourceEvidenceLabel = computed(() => {
   const evidence = session.value?.source_context?.source_evidence
   if (!evidence) return ''
@@ -279,7 +348,8 @@ const sourceEvidenceLabel = computed(() => {
 const answer = ref('')
 const loading = ref(false)
 const error = ref('')
-const speaking = ref(false)
+const speaking = computed(() => coachEnabled ? coachSpeech.speaking.value : legacySpeaking.value)
+const legacySpeaking = ref(false)
 const recording = ref(false)
 const recordingDuration = ref(0)
 const fillerCount = ref(0)
@@ -312,6 +382,7 @@ let recordingQuestionIndex = -1
 let discardPendingRecording = false
 
 interface LocalRecording {
+  ownerId?: string
   url: string
   duration: number
   mimeType: string
@@ -381,14 +452,15 @@ const completionCompanion = computed((): {
 })
 
 const speakQuestion = () => {
+  if(coachEnabled){coachSpeech.read(coach.view.value?.question || '',voiceId.value);return}
   const text = session.value?.current_question
   if (!text || !('speechSynthesis' in window)) return
   window.speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(text)
   utterance.lang = session.value?.scenario === '英语面' ? 'en-US' : 'zh-CN'; utterance.rate = .95
-  utterance.onstart = () => { speaking.value = true }
-  utterance.onend = () => { speaking.value = false }
-  utterance.onerror = () => { speaking.value = false }
+  utterance.onstart = () => { legacySpeaking.value = true }
+  utterance.onend = () => { legacySpeaking.value = false }
+  utterance.onerror = () => { legacySpeaking.value = false }
   window.speechSynthesis.speak(utterance)
 }
 
@@ -408,7 +480,8 @@ const begin = async () => {
     session.value = created
     resumeError.value = ''
     await syncSessionQuery(created.interview_id)
-    speakQuestion()
+    if(coachEnabled)await coach.open(created.interview_id)
+    else speakQuestion()
   }
   catch (e: any) { error.value = e?.message || '创建失败'; ElMessage.error(error.value) }
   finally { loading.value = false }
@@ -530,6 +603,7 @@ const restoreInterview = async (interviewId: string, fromRoute = false) => {
     focusWrongId.value = restored.source_context?.focus_wrong_id || ''
     originGoalId.value = restored.source_context?.goal_id || ''
     answer.value = ''
+    if(coachEnabled)await coach.open(restored.interview_id)
     await syncSessionQuery(restored.interview_id)
   } catch { resumeError.value = '这场面试暂时无法恢复。请确认后端已启动，或从下方新建面试。' }
   finally { loading.value = false }
@@ -553,6 +627,7 @@ const finalizeFluency = () => {
 }
 
 const toggleRecording = () => {
+  coachSpeech.stop()
   if (recording.value) { recognition?.stop(); return }
   if (recognition) return
   const Recognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -666,17 +741,20 @@ const stopLocalRecordingTracks = () => {
 }
 
 const startVideoRecording = async () => {
+  coachSpeech.stop()
   if (!cameraStream || !session.value || !recordingSupported || videoStarting.value || videoStopping.value) return
   videoStarting.value = true
   const capturedId = session.value.interview_id
-  const capturedIndex = session.value.current_index
+  const capturedIndex = currentQuestionIndex.value
+  const capturedEpoch = mediaEpoch
+  const capturedMediaId = draftMediaId
   const capturedCamera = cameraStream
   cameraError.value = ''
   if (localRecordings.value[capturedIndex]) {
     try {
       await ElMessageBox.confirm('本题已有一段当前页面录像。新录像完成后将替换它；可先下载保留原录像。确认重新录制？', '替换本题本地录像', { confirmButtonText: '确认重新录制', cancelButtonText: '保留原录像' })
     } catch { videoStarting.value = false; return }
-    if (disposed || capturedCamera !== cameraStream || session.value?.interview_id !== capturedId || session.value.current_index !== capturedIndex) { videoStarting.value = false; return }
+    if (disposed || capturedCamera !== cameraStream || session.value?.interview_id !== capturedId || currentQuestionIndex.value !== capturedIndex || mediaEpoch !== capturedEpoch) { videoStarting.value = false; return }
   }
   let microphoneStream: MediaStream | null = null
   try {
@@ -684,7 +762,7 @@ const startVideoRecording = async () => {
   } catch {
     ElMessage.warning('未获得麦克风权限，将只录制本地画面')
   }
-  if (disposed || !cameraActive.value || capturedCamera !== cameraStream || session.value?.interview_id !== capturedId || session.value.current_index !== capturedIndex) {
+  if (disposed || !cameraActive.value || capturedCamera !== cameraStream || session.value?.interview_id !== capturedId || currentQuestionIndex.value !== capturedIndex || mediaEpoch !== capturedEpoch) {
     microphoneStream?.getTracks().forEach(track => track.stop()); videoStarting.value = false; return
   }
   const videoTracks = cameraStream.getVideoTracks().map(track => track.clone())
@@ -693,7 +771,7 @@ const startVideoRecording = async () => {
   recordingHasAudio.value = audioTracks.length > 0
   localVideoChunks = []
   recordingByteCount = 0
-  recordingQuestionIndex = session.value.current_index
+  recordingQuestionIndex = currentQuestionIndex.value
   discardPendingRecording = false
   const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
     .find(type => MediaRecorder.isTypeSupported(type))
@@ -716,13 +794,14 @@ const startVideoRecording = async () => {
   }
   mediaRecorder.onstop = () => {
     const duration = Math.max(1, Math.round((Date.now() - videoRecordingStartedAt) / 1000))
-    if (!disposed && !discardPendingRecording && session.value?.interview_id === capturedId && localVideoChunks.length && recordingQuestionIndex >= 0) {
+    if (!disposed && !discardPendingRecording && session.value?.interview_id === capturedId && currentQuestionIndex.value === capturedIndex && mediaEpoch === capturedEpoch && localVideoChunks.length && recordingQuestionIndex >= 0) {
       const previous = localRecordings.value[recordingQuestionIndex]
       if (previous) URL.revokeObjectURL(previous.url)
       const blob = new Blob(localVideoChunks, { type: mediaRecorder?.mimeType || 'video/webm' })
       localRecordings.value = {
         ...localRecordings.value,
         [recordingQuestionIndex]: {
+          ownerId: coachEnabled ? capturedMediaId : undefined,
           url: URL.createObjectURL(blob),
           duration,
           mimeType: blob.type,
@@ -789,7 +868,9 @@ const removeRecording = async (index: number) => {
 }
 
 const clearLocalRecordings = () => {
-  Object.values(localRecordings.value).forEach(recording => URL.revokeObjectURL(recording.url))
+  mediaEpoch++;coachSpeech.stop()
+  new Set([...Object.values(localRecordings.value),...Object.values(coachRecordings.value)].map(r=>r.url)).forEach(url=>URL.revokeObjectURL(url))
+  coachRecordings.value={}
   localRecordings.value = {}
 }
 
@@ -801,6 +882,7 @@ const reset = async () => {
   stopCamera()
   vision.reset()
   clearLocalRecordings()
+  coach.dispose()
   session.value = null
   focusWrongId.value = ''
   originGoalId.value = ''
@@ -844,7 +926,7 @@ const draftPresent = computed(() => hasInterviewDraft({
 }))
 
 async function confirmLeave(): Promise<boolean> {
-  if (loading.value || memoryBusy.value) { ElMessage.info('正在保存或读取面试，请稍候再切换。'); return false }
+  if (loading.value || memoryBusy.value || coachBusy.value) { ElMessage.info('正在保存或读取面试，请稍候再切换。'); return false }
   if (!draftPresent.value) return true
   try {
     await ElMessageBox.confirm('未提交的文字、准备输入和本地录像不会保留。已提交的回答仍会保存，确定离开吗？', '离开当前练习', { confirmButtonText: '离开', cancelButtonText: '继续练习', type: 'warning' })
@@ -856,7 +938,8 @@ function protectBrowserExit(event: BeforeUnloadEvent): void {
   if (loading.value || memoryBusy.value || draftPresent.value) { event.preventDefault(); event.returnValue = '' }
 }
 
-onBeforeRouteLeave(confirmLeave)
+watch(answer,text=>{if(coachEnabled){coachSpeech.stop();coach.setDraft(text,coach.composing.value)}})
+onBeforeRouteLeave(async()=>{coachSpeech.stop();return confirmLeave()})
 onBeforeRouteUpdate(to => to.fullPath === syncingSessionTarget ? true : confirmLeave())
 watch(() => route.fullPath, fullPath => {
   if (fullPath === syncingSessionTarget) return
@@ -876,6 +959,7 @@ watch(() => route.fullPath, fullPath => {
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', protectBrowserExit)
   disposed = true
+  coach.dispose();coachSpeech.stop()
   stopSpeechRecording()
   stopVideoRecording(true)
   stopCamera()

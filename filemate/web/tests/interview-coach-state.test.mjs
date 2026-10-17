@@ -29,3 +29,12 @@ test('refresh_never_automatically_analyzes_and_conflict_keeps_draft',async()=>{
  await c.open('one');c.setDraft('不能丢的草稿');await c.refresh();await c.submit()
  assert.equal(c.state.draft,'不能丢的草稿');assert.equal(calls,0);assert.equal(c.state.error.code,'revision_conflict')
 })
+
+test('permission_can_be_revoked_during_analysis_and_old_snapshot_is_ignored',async()=>{
+ let release;let current=snapshot('one',{revision:1,phase:'feedback',external_consent:true,current_attempt:{attempt_id:'a',analysis_status:'running'}})
+ const c=createCoachController({get:async()=>current,analyze:()=>new Promise(resolve=>{release=resolve}),consent:async()=>{current={...current,revision:2,external_consent:false};return {snapshot:current}}})
+ await c.open('one');const pending=c.analyze();await c.consent(false)
+ assert.equal(c.state.snapshot.external_consent,false)
+ release({snapshot:{...current,revision:1,external_consent:true}});await pending
+ assert.equal(c.state.snapshot.external_consent,false)
+})

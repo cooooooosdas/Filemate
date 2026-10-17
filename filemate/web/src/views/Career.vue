@@ -449,7 +449,8 @@
             <p v-if="training.data_error" class="error">
               训练数据异常，原记录保留；可回到原面试或重新创建训练。
             </p>
-            <template v-else-if="training.payload"
+            <p v-if="training.evidence_stale || training.evidence_version_unknown" class="notice">这份岗位复盘引用了历史回答，当前回答已变化或原版本无法核验。历史快照保留，请重新生成以查看当前证据。</p>
+            <template v-if="!training.data_error && training.payload"
               ><p class="muted">
                 {{ training.payload.position.company }} ·
                 {{ training.payload.position.title }} · 岗位快照版本

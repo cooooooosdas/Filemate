@@ -3,7 +3,7 @@ export const initialCoachState = ():CoachClientState => ({sessionId:null,epoch:0
 export function reduceCoach(state:CoachClientState,event:CoachEvent):CoachClientState {
  switch(event.type) {
   case 'open': return {...initialCoachState(),sessionId:event.id,epoch:event.epoch}
-  case 'snapshot': return state.sessionId===event.id && state.epoch===event.epoch ? {...state,snapshot:event.value} : state
+  case 'snapshot': return state.sessionId===event.id && state.epoch===event.epoch && (!state.snapshot || event.value.revision>=state.snapshot.revision) ? {...state,snapshot:event.value} : state
   case 'draft': return {...state,draft:event.text,composing:event.composing}
   case 'pending': return {...state,pending:event.value}
   case 'error': return state.sessionId===event.id && state.epoch===event.epoch ? {...state,error:event.value} : state
@@ -63,7 +63,12 @@ export function createCoachController(api:CoachApi,key:()=>string=()=>crypto.ran
    return saved
   },analyze,
   advance:()=>mutate('advance',s=>api.advance(s.session.interview_id,{request_key:key(),expected_revision:s.revision,from_index:s.displayed_index,expected_attempt_id:s.current_attempt!.attempt_id})),
-  consent:(allowed:boolean)=>mutate('consent',s=>api.consent(s.session.interview_id,{request_key:key(),expected_revision:s.revision,allowed})),
+  async consent(allowed:boolean){
+   if(allowed || state.pending!=='analysis')return mutate('consent',s=>api.consent(s.session.interview_id,{request_key:key(),expected_revision:s.revision,allowed}))
+   const s=state.snapshot;if(!s)return null
+   const c=capture()
+   try{const result=await api.consent(c.id,{request_key:key(),expected_revision:s.revision,allowed:false});apply(c,result.snapshot);return result.snapshot}catch(e){fail(c,e);return null}
+  },
   dispose(){savedRequest=null;send({type:'dispose'})},
  }
 }
