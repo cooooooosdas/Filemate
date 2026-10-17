@@ -1,6 +1,6 @@
 # 面试教练发布准备（2026-10-17）
 
-状态：本地候选；此文件和压缩包不会执行部署。当前公网只读探针的release.json标记 `935061af439928fbf719ad79d454b8f765a41078`、`1.3.0-alpha.4`、业务schema26、治理schema2；实际生产数据库尚未读取，不能把候选包当作线上回执。
+状态：本清单在发布前编写，现已完成Linux CI、暂存、正式备份恢复、248业务库升级及公网验收，生产运行45520e81/schema27。已执行结果与安全回退依据以[上线回执](INTERVIEW_COACH_RELEASE_2026-10-17.md)为准；下文保留发布前要求，不作为仍未部署的结论。
 
 ## 包内容
 
@@ -21,7 +21,7 @@
 
 先核对现役systemd的Environment与EnvironmentFile来源及`FILEMATE_ENABLE_INTERVIEW_REVIEW`，再在受管理配置里加上述开关。包内的`40-interview-coach.conf.example`仅是示例，不自动安装；记录改前值与文件归属。关闭时把后端开关设0并切换本候选的coach-off前端，不清数据、不回退schema。
 
-现役拓扑的暂存命令在`stage-command.txt`，使用manifest中的固定提交、release id和两份SHA256。将三个文件放到`/opt/filemate/incoming/<release-id>/`后，由服务器Python3.11运行匹配源码的`scripts/deploy_existing.py stage`。它会在独立目录安装生产锁定依赖、静态检查旧迁移未改写，并启动独立临时数据目录的候选探针；不会切换现役链接。先检查该拓扑仍与现役服务器一致，再执行。此次尚未执行Linux暂存、当前提交远端CI、生产数据库升级或生产回滚演练。
+现役拓扑的暂存命令在`stage-command.txt`，使用manifest中的固定提交、release id和两份SHA256。将三个文件放到`/opt/filemate/incoming/<release-id>/`后，由服务器Python3.11运行匹配源码的`scripts/deploy_existing.py stage`。它会在独立目录安装生产锁定依赖、静态检查旧迁移未改写，并启动独立临时数据目录的候选探针；不会切换现役链接。先检查该拓扑仍与现役服务器一致，再执行。此次Linux暂存、精确提交CI、生产数据升级及独立备份恢复演练已通过，未在开放公众写入后故意破坏现役数据来测试降级。
 
 ## 激活前必须取得的证据
 
