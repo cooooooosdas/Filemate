@@ -1,6 +1,6 @@
 <template>
   <div class="learning-workspace">
-    <header class="workspace-heading"><div><h1>把知识，<span>读明白。</span></h1><p>一份资料，串起讲解、笔记与练习。</p></div><router-link to="/goals">我的学习路径 <el-icon><ArrowRight /></el-icon></router-link></header>
+    <header class="workspace-heading"><div><h1>学习工作区</h1><p>读原文、提问，或生成笔记和练习。</p></div><router-link to="/goals">我的学习路径 <el-icon><ArrowRight /></el-icon></router-link></header>
     <div v-if="error" class="workspace-error" role="alert">{{ error }} <button type="button" @click="reload">重新读取</button></div>
     <nav class="mobile-panes" aria-label="切换学习面板"><button v-for="pane in panes" :key="pane.id" :aria-pressed="activePane === pane.id" @click="switchPane(pane.id)">{{ pane.label }}</button></nav>
     <label v-if="source" class="model-consent"><input v-model="authorized" type="checkbox" :disabled="busy" /><span>允许本次学习将资料片段和问题发送给已配置的模型</span></label>
@@ -17,10 +17,10 @@
       <section class="conversation-pane" aria-label="资料对话">
         <header class="conversation-heading"><div><small>{{ source ? '正在学习' : '从一份资料开始' }}</small><h2>{{ source?.original_name || '今天，想弄懂什么？' }}</h2></div><span v-if="context" class="saved-indicator">会话可恢复</span></header>
         <div v-if="loading" class="blank-state" role="status"><el-icon><Reading /></el-icon><h3>正在打开资料与学习记录…</h3></div>
-        <div v-else-if="!source" class="blank-state"><el-icon><Reading /></el-icon><h3>把课件放进来，让学习接着发生。</h3><p>添加资料后即可读原文。需要讲解时再开启模型，也可以打开已有笔记和练习。</p><router-link class="primary" to="/import?intent=study">添加第一份资料 <el-icon><ArrowRight /></el-icon></router-link><small>课件、Markdown、代码笔记 · 最大 25 MB</small></div>
+        <div v-else-if="!source" class="blank-state"><el-icon><Reading /></el-icon><h3>先打开一份学习资料</h3><p>添加资料后即可读原文。需要讲解时再开启模型，也可以打开已有笔记和练习。</p><router-link class="primary" to="/import?intent=study">添加第一份资料 <el-icon><ArrowRight /></el-icon></router-link><small>课件、Markdown、代码笔记 · 最大 25 MB</small></div>
         <template v-else>
           <div ref="messageScroll" class="conversation-scroll" aria-live="polite">
-            <div v-if="!context?.chat_history.length" class="conversation-intro"><span class="intro-line"></span><h3>不急着得到答案，<br />先找到你想理解的那一点。</h3><p>读原文、记笔记，或把卡住的概念交给我。回答会附上可核对的资料片段。</p><div class="starter-prompts"><button v-for="prompt in prompts" :key="prompt" @click="questionText = prompt; composer?.focus()">{{ prompt }}<el-icon><ArrowRight /></el-icon></button></div></div>
+            <div v-if="!context?.chat_history.length" class="conversation-intro"><span class="intro-line"></span><h3>想问这份资料里的什么？</h3><p>输入问题，或选择下面的提问。回答附有资料片段，可回到原文核对。</p><div class="starter-prompts"><button v-for="prompt in prompts" :key="prompt" @click="questionText = prompt; composer?.focus()">{{ prompt }}<el-icon><ArrowRight /></el-icon></button></div></div>
             <article v-for="(message, i) in context?.chat_history" :key="i" class="message" :class="message.role"><small>{{ message.role === 'user' ? '我' : 'FileMate' }}</small><p>{{ message.content }}</p><div v-if="message.citations?.length" class="citations"><button v-for="citation in message.citations" :key="citation.id" @click="showCitation(citation)"><el-icon><Document /></el-icon>引用 {{ citation.id }} · {{ citation.page_number ? `第 ${citation.page_number} 页` : '原文片段' }}</button></div><router-link v-if="digitalHumanEnabled && message.role === 'assistant'" class="speak-answer" :to="{ path: '/digital-human', query: { ctx: context?.ctx_id, message: i } }"><el-icon><Microphone /></el-icon>让 AI 导师讲解</router-link></article>
             <p v-if="sending" class="pending" role="status">正在检索资料并组织回答…</p>
           </div>
@@ -34,12 +34,12 @@
 
       <aside class="resource-pane" aria-label="学习内容与原文">
         <nav class="resource-tabs" aria-label="阅读内容"><button :aria-pressed="resourceTab === 'artifacts'" @click="resourceTab = 'artifacts'">学习内容 <span>{{ artifacts.length }}</span></button><button :aria-pressed="resourceTab === 'source'" @click="resourceTab = 'source'">原文</button></nav>
-        <div v-if="!source" class="resource-empty"><el-icon><Notebook /></el-icon><h3>把思考留在旁边</h3><p>笔记、卡片和练习会在这里打开，阅读时不必离开对话。</p></div>
-        <div v-if="source" v-show="resourceTab === 'source'" ref="sourceReader" class="source-reader"><div v-if="citation" class="citation-focus"><button aria-label="关闭引用片段" @click="citation = null">关闭片段</button><strong>引用 {{ citation.id }} · {{ citation.source_name }}</strong><p>{{ citation.excerpt }}</p></div><h3>解析正文</h3><small>按文件解析顺序展示；图片与复杂排版可能不保留。</small><pre>{{ source.raw_text }}</pre></div>
+        <div v-if="!source" class="resource-empty"><el-icon><Notebook /></el-icon><h3>笔记与练习</h3><p>笔记、卡片和练习会在这里打开，阅读时不必离开对话。</p></div>
+        <div v-if="source" v-show="resourceTab === 'source'" ref="sourceReader" class="source-reader"><div v-if="citation" class="citation-focus"><button aria-label="关闭引用片段" @click="citation = null">关闭片段</button><strong>引用 {{ citation.id }} · {{ citation.source_name }}</strong><p>{{ citation.excerpt }}</p></div><h3>解析正文</h3><AnalysisWarnings :messages="source.metadata?.parse_warnings" /><small>按文件解析顺序展示；图片与复杂排版可能不保留。</small><pre>{{ source.raw_text }}</pre></div>
         <div v-if="source" v-show="resourceTab === 'artifacts'" class="artifact-workbench">
-          <div v-if="artifacts.length && !creatingContent" class="reading-toolbar"><strong>继续读，接着想。</strong><button @click="creatingContent = true"><el-icon aria-hidden="true"><Plus /></el-icon>创建学习内容</button></div>
+          <div v-if="artifacts.length && !creatingContent" class="reading-toolbar"><strong>已保存的学习内容</strong><button @click="creatingContent = true"><el-icon aria-hidden="true"><Plus /></el-icon>创建学习内容</button></div>
           <section v-if="creatingContent || !artifacts.length" class="generation-controls" aria-label="创建学习内容">
-            <div class="creator-heading"><h2>把资料变成<span>下一步。</span></h2><button v-if="artifacts.length" :disabled="busy" @click="creatingContent = false">返回阅读</button></div>
+            <div class="creator-heading"><h2>创建学习内容</h2><button v-if="artifacts.length" :disabled="busy" @click="creatingContent = false">返回阅读</button></div>
             <div class="generation-kinds"><button v-for="task in generationTasks" :key="task.id" :aria-pressed="generationKind === task.id" :disabled="busy" @click="generationKind = task.id"><el-icon aria-hidden="true"><component :is="task.icon" /></el-icon>{{ task.label }}</button></div>
             <p class="task-purpose">{{ generationTask.description }}</p>
             <div class="generation-submit">
@@ -60,10 +60,11 @@
 </template>
 
 <script setup lang="ts">
+import AnalysisWarnings from '../components/AnalysisWarnings.vue'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowRight, ChatDotRound, Collection, Document, FolderOpened, Microphone, Notebook, Plus, Promotion, Reading, Search, Tickets } from '@element-plus/icons-vue'
+import { ArrowRight, ChatDotRound, Collection, Document, FolderOpened, Microphone, Notebook, Plus, Promotion, Reading, Search, Tickets } from '../icons'
 import LearningArtifact from '../components/LearningArtifact.vue'
 import { askAI, createSourceContext, generateSourceArtifact, getAIContext, getKnowledgeArtifacts, getKnowledgeSources, getLearningSource, listAIContexts, type AICitation, type AIContextDetail, type AISessionSummary, type KnowledgeArtifact, type KnowledgeSource, type KnowledgeSourceDetail, type WorkspaceArtifactKind } from '../services/api'
 
@@ -88,8 +89,8 @@ function switchPane(id: string): void {
 const generationKind = ref<WorkspaceArtifactKind>('notes'); const count = ref(5)
 const creatingContent = ref(true)
 const generationTasks = [
-  { id: 'notes' as const, label: '笔记', description: '把重点理成层次，留下一份可反复阅读的笔记。', icon: Notebook },
-  { id: 'knowledge_cards' as const, label: '卡片', description: '先回忆，再翻面。用问题把知识留得更牢。', icon: Collection },
+  { id: 'notes' as const, label: '笔记', description: '按章节整理重点，生成后可继续编辑。', icon: Notebook },
+  { id: 'knowledge_cards' as const, label: '卡片', description: '生成问答卡片，回忆后翻面核对。', icon: Collection },
   { id: 'questions' as const, label: '练习', description: '逐题作答，保存结果，再到错题本继续复盘。', icon: Tickets },
   { id: 'summary' as const, label: '摘要', description: '先抓住主线，再回到原文核对细节。', icon: Document },
 ]

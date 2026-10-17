@@ -27,7 +27,13 @@ def analysis_failure(error: Exception) -> dict[str, str]:
     while current is not None and len(causes) < 5:
         causes.append(current)
         current = current.__cause__
-    if any(isinstance(item, LLMConfigError) for item in causes):
+    from filemate.runtime_governance import BudgetExceeded, GovernanceUnavailable
+
+    if any(isinstance(item, BudgetExceeded) for item in causes):
+        code, message = "budget_exceeded", "本学习空间的模型额度已用尽，请稍后重试"
+    elif any(isinstance(item, GovernanceUnavailable) for item in causes):
+        code, message = "governance_unavailable", "模型用量保护暂不可用，请稍后重试"
+    elif any(isinstance(item, LLMConfigError) for item in causes):
         code, message = "configuration", "模型尚未配置，请在设置中保存并测试DeepSeek密钥"
     elif any(isinstance(item, LLMAccessError) for item in causes):
         code, message = "access_denied", "DeepSeek拒绝访问，请在设置中检查密钥、余额和调用权限"
@@ -101,7 +107,8 @@ def parse_analysis(text: str, answer: str, catalog: dict[str, str]) -> dict[str,
                                  "dimension_evidence": evidence, "keywords": list(dict.fromkeys(keywords))}}
 
 
-def analyze_content(llm: Any, question: str, answer: str, target_role: str) -> dict[str, Any]:
+def analyze_content(llm: Any, question: str, answer: str, target_role: str, *,
+                    budget_seconds: float = 45.0) -> dict[str, Any]:
     """在同一45秒预算内核对结果，格式或引用错误最多重试一次。"""
     if llm is None:
         raise LLMConfigError("模型未配置")
@@ -124,7 +131,7 @@ def analyze_content(llm: Any, question: str, answer: str, target_role: str) -> d
     )
     messages = [{"role": "system", "content": instructions}, {"role": "user", "content": json.dumps(
         {"target_role": target_role, "question": question, "answer_excerpts": catalog}, ensure_ascii=False)}]
-    deadline = time.monotonic() + ANALYSIS_BUDGET_SECONDS
+    deadline = time.monotonic() + min(float(budget_seconds), 60.0)
     for attempt in range(2):
         remaining = deadline - time.monotonic()
         if remaining <= 0:

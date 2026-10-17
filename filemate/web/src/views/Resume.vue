@@ -1,11 +1,11 @@
 <template>
   <div class="portfolio-page">
-    <header><div><p class="eyebrow">从事实出发</p><h1>我的简历</h1><p>经历由你确认，AI 帮你选材排序。</p></div><RouterLink to="/career">回到求职训练</RouterLink></header>
-    <p v-if="loading" role="status">正在读取个人事实…</p>
+    <header><div><h1>我的简历</h1><p>经历由你确认，AI 帮你选材排序。</p></div><RouterLink to="/career">回到求职训练</RouterLink></header>
+    <p v-if="loading" role="status">正在读取个人信息与经历…</p>
     <DataState v-else-if="loadError" :error="loadError" @retry="load" />
     <div v-else class="portfolio-grid">
       <form class="portfolio-panel" @submit.prevent="save">
-        <h2>个人事实</h2><p>填写能如实说明的内容。这些信息独立于学习能力画像。</p>
+        <h2>个人信息与经历</h2><p>填写真实经历；这里的信息与学习能力评价分别保存。</p>
         <div class="field-grid">
           <label>姓名<input v-model="profile.name" required maxlength="80" autocomplete="name"></label>
           <label>学校<input v-model="profile.school" required maxlength="160"></label>
@@ -26,17 +26,17 @@
           <label>关联编程记录（可选）<select v-model="project.submission_id" :aria-label="`项目${index + 1}关联编程记录`"><option :value="null">不关联</option><option v-for="work in works" :key="work.submission_id" :value="work.submission_id">{{ work.problem_id }} · {{ work.result.verdict || '未判题' }} · {{ work.created_at.slice(0,10) }}</option><option v-if="project.submission_id && !works.some(w => w.submission_id === project.submission_id)" :value="project.submission_id">已保存的关联记录（保存时重新校验）</option></select></label>
           <button type="button" @click="removeProject(index)">移除此项目</button>
         </fieldset>
-        <p v-if="worksError" role="status">编程记录暂不可用，已有个人事实保留。{{ worksError }}</p>
+        <p v-if="worksError" role="status">编程记录暂不可用，已有个人信息与经历保留。{{ worksError }}</p>
         <p v-if="actionError" role="alert">{{ actionError }}</p>
-        <button class="primary" :disabled="busy">{{ busy ? '处理中…' : '保存个人事实' }}</button><span role="status">{{ savedMessage }}</span>
+        <button class="primary" :disabled="busy">{{ busy ? '处理中…' : '保存个人信息与经历' }}</button><span role="status">{{ savedMessage }}</span>
       </form>
       <section class="portfolio-panel">
-        <h2>生成与回看</h2><p v-if="dirty">有未保存的修改，请先保存个人事实。</p><p v-else>已保存版本 {{ profile.revision || '暂无' }}。直接排版不会调用模型。</p>
+        <h2>生成与回看</h2><p v-if="dirty">有未保存的修改，请先保存个人信息与经历。</p><p v-else>已保存版本 {{ profile.revision || '暂无' }}。直接排版不会调用模型。</p>
         <label>生成方式<select v-model="mode" aria-label="生成方式"><option value="local">直接排版全部事实</option><option value="llm">AI 按目标岗位选材排序</option></select></label>
         <label v-if="mode === 'llm'" class="consent"><input v-model="consent" type="checkbox">同意将教育、技能、项目事实及目标岗位发送给已配置模型；姓名和联系方式字段不发送，项目描述请自行去除敏感信息。</label>
         <button class="primary" type="button" :disabled="busy || dirty || !profile.revision || (mode === 'llm' && !consent)" @click="generate">生成简历</button>
         <div v-if="document" class="resume-preview"><p>{{ document.mode === 'llm' ? 'AI 选材' : '直接排版' }} · 事实版本 {{ document.profile_revision }}</p><pre>{{ document.markdown }}</pre><p class="notice">{{ document.fact_policy }}关联判题记录为生成时快照。</p><div class="actions"><button type="button" :disabled="busy" @click="download('pdf')">下载 PDF</button><button type="button" :disabled="busy" @click="download('docx')">下载 Word</button><button type="button" :disabled="busy" @click="download('markdown')">Markdown</button><button type="button" :disabled="busy" @click="download('json')">JSON</button></div></div>
-        <p v-else class="notice">还没有简历。保存个人事实后即可生成；模型失败时不会覆盖旧简历。</p>
+        <p v-else class="notice">还没有简历。保存个人信息与经历后即可生成；模型失败时不会覆盖旧简历。</p>
         <h3>最近30份简历</h3><ul class="document-list"><li v-for="item in history" :key="item.artifact_id"><button type="button" :disabled="busy" @click="open(item.artifact_id)">{{ item.title }} · {{ item.created_at.slice(0,10) }}</button></li></ul><p v-if="!history.length">暂无保存记录。</p>
       </section>
     </div>
@@ -58,7 +58,7 @@ async function load() { loading.value = true; loadError.value = ''; try { const 
 function addProject() { profile.value.projects.push({ project_id: crypto.randomUUID(), title: '', role: '', description: '', submission_id: null }) }
 async function removeProject(index: number) { try { await ElMessageBox.confirm('移除后需保存才会生效，旧简历快照保留。', '移除项目', { confirmButtonText: '确认移除', cancelButtonText: '取消' }); profile.value.projects.splice(index, 1) } catch {} }
 async function perform(action: () => Promise<void>) { busy.value = true; actionError.value = ''; savedMessage.value = ''; try { await action() } catch (e: any) { actionError.value = e.message || '操作失败，原记录保留' } finally { busy.value = false } }
-const save = () => perform(async () => { profile.value = await saveResumeProfile(edited.value); skillsText.value = profile.value.skills.join('\n'); baseline.value = JSON.stringify(edited.value); savedMessage.value = '个人事实已保存' })
+const save = () => perform(async () => { profile.value = await saveResumeProfile(edited.value); skillsText.value = profile.value.skills.join('\n'); baseline.value = JSON.stringify(edited.value); savedMessage.value = '个人信息与经历已保存' })
 const generate = () => perform(async () => { document.value = await generateResume(profile.value.revision, mode.value, consent.value); history.value = await getResumes(); savedMessage.value = '简历已保存' })
 const open = (id: string) => perform(async () => { document.value = await getResume(id) })
 const download = (format: 'markdown' | 'json' | 'pdf' | 'docx') => perform(async () => { if (!document.value) return; const blob = await exportResume(document.value.artifact_id, format); const url = URL.createObjectURL(blob as unknown as Blob); const link = window.document.createElement('a'); link.href = url; link.download = `resume.${format === 'markdown' ? 'md' : format}`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000) })

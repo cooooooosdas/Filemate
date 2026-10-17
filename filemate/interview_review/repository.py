@@ -74,7 +74,7 @@ class ReviewRepository:
                         return previous
                 except ValueError:
                     pass
-            artifact_id = state["artifact_id"] or uuid.uuid4().hex
+            artifact_id = uuid.uuid4().hex
             report["artifact_id"] = artifact_id
             report["generated_at"] = _now_iso()
             with conn:
@@ -104,6 +104,9 @@ class ReviewRepository:
             ).fetchone()
             if not row:
                 raise KeyError(turn_id)
+            from filemate.interview_coach.repository import record_legacy_analysis
+
+            record_legacy_analysis(conn, turn_id, evaluation)
             conn.execute(
                 "UPDATE interview_turns SET score=?, dimensions=?, feedback=?, scoring_mode='llm', "
                 "scoring_version='v2.4', content_analysis=? WHERE turn_id=?",
@@ -126,22 +129,31 @@ class ReviewRepository:
         with self.storage._write_lock, conn:
             conn.execute("UPDATE interview_review_state SET revision=revision+1 WHERE interview_id=?",
                          (interview_id,))
+            conn.execute("UPDATE interview_coach_analysis_runs SET status='cancelling' WHERE interview_id=? AND status='running'", (interview_id,))
+            conn.execute("UPDATE interview_coach_state SET revision=revision+1,updated_at=? WHERE interview_id=?", (_now_iso(), interview_id))
             self._event(interview_id, "analysis_cancelled")
         return {"cancelled": True}
+
+    def _report_ids(self, interview_id: str) -> list[str]:
+        return [row[0] for row in self.storage._conn().execute(
+            "SELECT artifact_id FROM artifacts WHERE artifact_type='interview_report' "
+            "AND json_valid(metadata) AND json_extract(metadata,'$.interview_id')=?", (interview_id,))]
 
     def clear(self, interview_id: str):
         """经用户确认清空派生分析，保留原回答和语音节奏。"""
         self.snapshot(interview_id)
         conn = self.storage._conn()
         with self.storage._write_lock, conn:
-            state = conn.execute("SELECT * FROM interview_review_state WHERE interview_id=?",
-                                 (interview_id,)).fetchone()
             changed = conn.execute(
                 "SELECT COUNT(*) FROM interview_turns WHERE interview_id=? AND "
                 "(visual_metrics!='{}' OR content_analysis!='{}' OR scoring_mode='llm')", (interview_id,),
             ).fetchone()[0]
-            if state["artifact_id"]:
-                conn.execute("DELETE FROM artifacts WHERE artifact_id=?", (state["artifact_id"],))
+            report_ids = self._report_ids(interview_id)
+            for artifact_id in report_ids:
+                conn.execute("DELETE FROM artifacts WHERE artifact_id=?", (artifact_id,))
+            conn.execute("UPDATE interview_answer_attempts SET visual_metrics='{}' WHERE interview_id=?", (interview_id,))
+            conn.execute("UPDATE interview_coach_analysis_runs SET evaluation='{}',error_code='cleared',status=CASE WHEN status IN ('running','cancelling') THEN 'cancelling' ELSE 'cancelled' END WHERE interview_id=?", (interview_id,))
+            conn.execute("UPDATE interview_coach_state SET external_consent=0,consent_revision=consent_revision+1,revision=revision+1,updated_at=? WHERE interview_id=?", (_now_iso(), interview_id))
             conn.execute(
                 "UPDATE interview_turns SET visual_metrics='{}',content_analysis='{}',score=0, "
                 "scoring_mode='local_fallback',scoring_version='v2.4-cleared', dimensions='{}', "
@@ -151,20 +163,25 @@ class ReviewRepository:
                          "WHERE interview_id=?", (interview_id,))
             conn.execute("UPDATE interview_sessions SET overall_score=0, expression_review='{}', updated_at=? "
                          "WHERE interview_id=?", (_now_iso(), interview_id))
-            if changed or state["artifact_id"]:
+            from filemate.interview_coach.repository import CoachRepository
+
+            CoachRepository(self.storage)._sync_score(conn, interview_id)
+            if changed or report_ids:
                 self._event(interview_id, "analysis_cleared")
         return self.storage.get_interview(interview_id)
 
     def delete_preview(self, interview_id: str):
         """列出删除影响并提供绑定当前修订的确认摘要。"""
         interview, revision = self.snapshot(interview_id)
-        state = self.storage._conn().execute(
-            "SELECT artifact_id FROM interview_review_state WHERE interview_id=?", (interview_id,),
-        ).fetchone()
-        token = hashlib.sha256((evidence_digest(interview) + str(revision)).encode()).hexdigest()
-        return {"interview_id": interview_id, "answers": len(interview["turns"]),
-                "reports": int(bool(state["artifact_id"])), "confirmation_token": token,
-                "scope": "本场回答、节奏、观察、报告与关联Agent记录；不删除原资料和其他练习。"}
+        conn = self.storage._conn()
+        counts = {label: conn.execute(f'SELECT COUNT(*) FROM {table} WHERE interview_id=?', (interview_id,)).fetchone()[0]
+                  for label, table in [('answer_attempts','interview_answer_attempts'),('analysis_runs','interview_coach_analysis_runs'),('coach_actions','interview_coach_actions')]}
+        coach = conn.execute('SELECT revision FROM interview_coach_state WHERE interview_id=?', (interview_id,)).fetchone()
+        reports = len(self._report_ids(interview_id))
+        token = hashlib.sha256(json.dumps([evidence_digest(interview),revision,coach[0] if coach else None,counts,reports],sort_keys=True).encode()).hexdigest()
+        return {"interview_id": interview_id, "answers": len(interview["turns"]), **counts,
+                "reports": reports, "confirmation_token": token,
+                "scope": "本场全部回答版本、节奏、观察、分析、历史报告与关联Agent记录；不删除原资料和其他练习。"}
 
     def delete(self, interview_id: str, token: str):
         """只删除用户预览确认的本场数据并清除关联私有记忆。"""
@@ -176,12 +193,10 @@ class ReviewRepository:
             if preview["confirmation_token"] != token:
                 raise ValueError("记录已更新，请重新预览删除影响")
             session = self.storage.get_interview(interview_id)
-            state = conn.execute("SELECT artifact_id FROM interview_review_state WHERE interview_id=?",
-                                 (interview_id,)).fetchone()
             run_id = session.get("agent_run_id")
             with conn:
-                if state["artifact_id"]:
-                    conn.execute("DELETE FROM artifacts WHERE artifact_id=?", (state["artifact_id"],))
+                for artifact_id in self._report_ids(interview_id):
+                    conn.execute("DELETE FROM artifacts WHERE artifact_id=?", (artifact_id,))
                 conn.execute("DELETE FROM agent_memories WHERE scope_id=?", (interview_id,))
                 conn.execute("DELETE FROM interview_review_events WHERE interview_id=?", (interview_id,))
                 conn.execute("DELETE FROM interview_sessions WHERE interview_id=?", (interview_id,))

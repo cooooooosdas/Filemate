@@ -79,6 +79,8 @@ export interface CareerComparison {
   recommended_problems: CareerProblem[];
 }
 export interface CareerTraining {
+  evidence_stale?: boolean;
+  evidence_version_unknown?: boolean;
   training_id: string;
   position_id: string;
   kind: "written" | "interview" | "review";

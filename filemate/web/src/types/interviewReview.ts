@@ -28,10 +28,10 @@ export interface InterviewReport {
   overall_score: number | null; calibration: string; purpose: string
   expression: { speech_turns: number; duration_seconds: number; chars_per_minute: number | null; words_per_minute?: number | null; filler_count: number | null; long_pause_count: number | null; method: string }
   visual: { sample_count: number; face_observed_ratio: number | null; low_light_ratio: number | null; method: string }
-  turns: { turn_id: string; question_index: number; question: string; answer: string; score: number | null; scoring_mode: string; feedback: string; content_analysis: ContentAnalysis; structure: { cues: string[]; character_count: number }; data_error: boolean }[]
+  turns: { attempt_id?: string; attempt_version?: number; analysis_status?: string; analysis_run_id?: string | null; source_revision?: string; attempt_comparison?: Record<string, unknown>; analysis_provenance?: Record<string, unknown>; turn_id: string; question_index: number; question: string; answer: string; score: number | null; scoring_mode: string; feedback: string; content_analysis: ContentAnalysis; structure: { cues: string[]; character_count: number }; data_error: boolean }[]
   timeline: InterviewTimeline[]
   review_focus: { question_index: number; area: string; evidence: string; suggestion: string; source: string }[]
   suggestions: string[]; privacy: Record<string, string>
 }
 export interface InterviewReviewEvent { event_id: number; action: string; detail: string; created_at: string }
-export interface InterviewDeletePreview { interview_id: string; answers: number; reports: number; confirmation_token: string; scope: string }
+export interface InterviewDeletePreview { interview_id: string; answers: number; answer_attempts?: number; analysis_runs?: number; coach_actions?: number; reports: number; confirmation_token: string; scope: string }

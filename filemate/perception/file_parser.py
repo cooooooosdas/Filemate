@@ -86,12 +86,15 @@ class FileParser:
 
         # 规范输出
         raw = (result or {}).get("raw_text", "") or ""
-        if len(raw) > self._MAX_CHARS:
+        truncated = len(raw) > self._MAX_CHARS
+        if truncated:
             raw = raw[: self._MAX_CHARS]
             logger.info("文本已截断到 %d 字: %s", self._MAX_CHARS, p.name)
 
         # 保留解析器上报的额外元数据（pages / slides / is_image_based 等）
         extra_meta = (result or {}).get("metadata", {}) or {}
+        if truncated:
+            extra_meta["truncated"] = True
         # 取解析器 note（如果有）
         parser_note = (result or {}).get("note", "") or ""
 

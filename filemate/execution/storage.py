@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from filemate.execution import data_actions
+from filemate.interview_coach import schema as interview_coach_schema
 from filemate.task_resources import admit_plan, admit_tasks
 
 logger = logging.getLogger(__name__)
@@ -590,6 +591,7 @@ CREATE TABLE account_attempts (
 );
 """
 
+
 _MIGRATIONS = (
     (1, "initial_execution_schema", _SCHEMA),
     (2, "knowledge_persistence", _KNOWLEDGE_SCHEMA),
@@ -615,6 +617,7 @@ _MIGRATIONS = (
     (24, "career_training_center", _CAREER_SCHEMA),
     (25, "accounts_and_revocable_sessions", _ACCOUNT_SCHEMA),
     (26, "confirmed_data_actions", data_actions.SCHEMA),
+    (27, "immutable_interview_answers", interview_coach_schema.SCHEMA),
 )
 
 
@@ -815,6 +818,12 @@ class SQLiteStorage:
                     "ADD COLUMN question_ids TEXT NOT NULL DEFAULT '[]'"
                 )
                 conn.commit()
+
+            from filemate.interview_coach.repository import backfill_legacy_attempts
+
+            with conn:
+                conn.execute("BEGIN IMMEDIATE")
+                backfill_legacy_attempts(conn)
 
     def get_schema_version(self) -> int:
         """返回已应用的最高数据库版本。"""
@@ -1241,26 +1250,17 @@ class SQLiteStorage:
         interview_average: float | None = None
         if linked_run_ids:
             placeholders = ",".join("?" for _ in linked_run_ids)
-            interview_row = connection.execute(
-                f"""SELECT COUNT(*) AS sessions,
-                           AVG(CASE WHEN current_index > 0
-                               THEN overall_score END) AS average
-                    FROM interview_sessions
-                    WHERE agent_run_id IN ({placeholders})""",
-                linked_run_ids,
-            ).fetchone()
-            turn_row = connection.execute(
-                f"""SELECT COUNT(*) AS turns FROM interview_turns
-                    WHERE interview_id IN (
-                        SELECT interview_id FROM interview_sessions
-                        WHERE agent_run_id IN ({placeholders})
-                    )""",
-                linked_run_ids,
-            ).fetchone()
-            interview_count = int(interview_row["sessions"] or 0)
-            interview_turn_count = int(turn_row["turns"] or 0)
-            if interview_row["average"] is not None:
-                interview_average = round(float(interview_row["average"]), 2)
+            linked = connection.execute(
+                f"SELECT interview_id FROM interview_sessions WHERE agent_run_id IN ({placeholders})", linked_run_ids,
+            ).fetchall()
+            interview_count = len(linked)
+            valid_scores = []
+            for linked_session in linked:
+                current = self.get_interview(linked_session['interview_id'])
+                interview_turn_count += len(current['turns'])
+                valid_scores.extend(t['score'] for t in current['turns'] if t['score'] is not None and not t.get('analysis_data_error'))
+            if valid_scores:
+                interview_average = round(sum(valid_scores) / len(valid_scores),2)
 
         attempt_count = int(attempt_row["total"] or 0)
         correct_count = int(attempt_row["correct"] or 0)
@@ -1323,7 +1323,7 @@ class SQLiteStorage:
                 "secondary": (
                     f"{interview_turn_count} 次回答 · 均分 {interview_average:.0f}"
                     if interview_average is not None
-                    else "尚无资料关联面试"
+                    else (f"{interview_turn_count} 次回答 · 内容待分析" if interview_turn_count else "尚无资料关联面试")
                 ),
             },
         ]
@@ -2237,6 +2237,11 @@ class SQLiteStorage:
                 "INSERT INTO interview_review_events(interview_id,action,created_at) VALUES (?, 'created', ?)",
                 (interview_id, _now_iso()),
             )
+            from filemate.interview_coach.repository import initialize_state
+
+            initialize_state(self._conn(), dict(self._conn().execute(
+                "SELECT * FROM interview_sessions WHERE interview_id=?", (interview_id,),
+            ).fetchone()))
             if commit:
                 self._conn().commit()
         return self.get_interview(interview_id)
@@ -2261,40 +2266,9 @@ class SQLiteStorage:
             "SELECT * FROM interview_turns WHERE interview_id=? ORDER BY question_index",
             (interview_id,),
         ).fetchall()
-        interview["turns"] = [
-            self._decode_row(turn, ("dimensions", "fluency_metrics"))
-            for turn in turns
-        ]
-        for turn in interview["turns"]:
-            content_invalid = False
-            for key in ("visual_metrics", "content_analysis"):
-                try:
-                    decoded = json.loads(turn[key])
-                    if not isinstance(decoded, dict):
-                        raise TypeError("invalid analysis")
-                    if decoded:
-                        from filemate.interview_review.models import (
-                            VisualMetrics,
-                            validate_saved_analysis,
-                        )
+        from filemate.interview_coach.repository import current_attempt_projection
 
-                        if key == "visual_metrics":
-                            decoded = VisualMetrics.model_validate(decoded).model_dump()
-                        else:
-                            decoded = validate_saved_analysis(decoded, turn["answer"])
-                    turn[key] = decoded
-                except (ValueError, TypeError):
-                    turn[key] = {}
-                    turn["analysis_data_error"] = True
-                    content_invalid = content_invalid or key == "content_analysis"
-            if content_invalid:
-                turn["feedback"] = "部分内容分析数据异常，内容质量待评估；原回答与有效采集证据保留。"
-            if turn["scoring_mode"] != "llm" or content_invalid:
-                turn["score"] = None
-                turn["dimensions"] = {
-                    key: value for key, value in turn["dimensions"].items()
-                    if key == "流畅性" and turn["scoring_mode"] == "local_fallback" and not content_invalid
-                }
+        interview["turns"] = [current_attempt_projection(self._conn(), turn["turn_id"]) for turn in turns]
         assessed = [t["score"] for t in interview["turns"] if t["score"] is not None]
         interview["assessed_turn_count"] = len(assessed)
         interview["overall_score"] = round(sum(assessed) / len(assessed), 2) if assessed else None
@@ -2321,89 +2295,134 @@ class SQLiteStorage:
         answer_digest: str | None = None,
     ) -> dict[str, Any]:
         """保存单轮面试评分并推进进度。"""
+        payload = dict(locals())
+        payload.pop("self")
+        with self._write_lock:
+            connection = self._conn()
+            with connection:
+                self._save_interview_turn_tx(connection, payload=payload, origin="legacy_write")
+        return self.get_interview(interview_id)
+
+    def _save_interview_turn_tx(
+        self, conn: sqlite3.Connection, *, payload: dict[str, Any], origin: str,
+    ) -> str:
+        """Write the compatibility turn and immutable version in one transaction."""
+        interview_id = payload["interview_id"]
+        question_index = payload["question_index"]
+        question = payload["question"]
+        answer = payload["answer"]
+        score = payload["score"]
+        dimensions = payload["dimensions"]
+        feedback = payload["feedback"]
+        fluency_metrics = payload["fluency_metrics"]
+        scoring_mode = payload["scoring_mode"]
+        scoring_version = payload["scoring_version"]
+        next_question = payload["next_question"]
+        expression_review = payload["expression_review"]
+        visual_metrics = payload["visual_metrics"]
+        content_analysis = payload["content_analysis"]
+        answer_key = payload["answer_key"]
+        answer_digest = payload["answer_digest"]
         if scoring_mode not in {"llm", "local_fallback", "unknown"}:
             raise ValueError("未知评分来源")
         if scoring_mode == "llm" and score is None:
             raise ValueError("模型评分不能为空")
-        with self._write_lock:
-            connection = self._conn()
-            if answer_key:
-                previous = connection.execute(
-                    "SELECT answer_digest FROM interview_turns WHERE interview_id=? AND answer_key=?",
-                    (interview_id, answer_key),
-                ).fetchone()
-                if previous:
-                    if previous["answer_digest"] != answer_digest:
-                        raise ValueError("重复请求键的回答内容不同")
-                    return self.get_interview(interview_id)
-            interview = self.get_interview(interview_id)
-            if interview is None:
-                raise ValueError("模拟面试不存在")
-            if interview["status"] == "completed":
-                raise ValueError("模拟面试已完成")
-            if int(interview["current_index"]) != question_index:
-                raise ValueError("面试进度已更新，请刷新后继续")
-            next_index = question_index + 1
-            completed = next_index >= len(interview["questions"])
-            if next_question is not None and completed:
-                raise ValueError("面试已到最后一题")
-            if expression_review is not None and not completed:
-                raise ValueError("只能在最后一题保存表达回看")
-            questions = list(interview["questions"])
-            question_ids = list(interview["question_ids"])
-            if next_question is not None:
-                questions[next_index] = next_question
-                question_ids[next_index] = None
-            scores = [
-                float(turn["score"])
-                for turn in interview["turns"]
-                if turn["score"] is not None
-            ]
-            if scoring_mode == "llm" and score is not None:
-                scores.append(score)
-            turn_id = uuid.uuid4().hex
-            connection.execute(
-                """INSERT INTO interview_turns
-                   (turn_id, interview_id, question_index, question, answer,
-                    score, dimensions, feedback, fluency_metrics, scoring_mode, scoring_version,
-                    visual_metrics, content_analysis, answer_key, answer_digest)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    turn_id, interview_id, question_index, question, answer,
-                    score if scoring_mode == "llm" else 0, self._dump_json(dimensions), feedback,
-                    self._dump_json(fluency_metrics or {}),
-                    scoring_mode, scoring_version,
-                    self._dump_json(visual_metrics or {}),
-                    self._dump_json(content_analysis or {}), answer_key, answer_digest,
-                ),
-            )
-            connection.execute(
-                """UPDATE interview_sessions SET current_index=?, status=?,
-                   overall_score=?, questions=?, question_ids=?, expression_review=?,
-                   updated_at=? WHERE interview_id=?""",
-                (
-                    next_index,
-                    "completed" if completed else "active",
-                    round(sum(scores) / len(scores), 2) if scores else 0,
-                    self._dump_json(questions),
-                    self._dump_json(question_ids),
-                    self._dump_json(expression_review or interview["expression_review"]),
-                    _now_iso(),
-                    interview_id,
-                ),
-            )
-            connection.execute(
-                "INSERT INTO interview_review_state (interview_id, revision) VALUES (?, 1) "
-                "ON CONFLICT(interview_id) DO UPDATE SET revision=revision+1, input_digest=''",
-                (interview_id,),
-            )
-            connection.execute(
-                "INSERT INTO interview_review_events (interview_id,action,detail,created_at) "
-                "VALUES (?, 'answer', ?, ?)",
-                (interview_id, self._dump_json({"question_index": question_index}), _now_iso()),
-            )
-            connection.commit()
-        return self.get_interview(interview_id)
+        connection = conn
+        if answer_key:
+            previous = connection.execute(
+                "SELECT turn_id, answer_digest FROM interview_turns WHERE interview_id=? AND answer_key=?",
+                (interview_id, answer_key),
+            ).fetchone()
+            if previous:
+                if previous["answer_digest"] != answer_digest:
+                    raise ValueError("重复请求键的回答内容不同")
+                return str(previous["turn_id"])
+        interview = self.get_interview(interview_id)
+        if interview is None:
+            raise ValueError("模拟面试不存在")
+        if interview["status"] == "completed":
+            raise ValueError("模拟面试已完成")
+        if int(interview["current_index"]) != question_index:
+            raise ValueError("面试进度已更新，请刷新后继续")
+        next_index = question_index + 1
+        completed = next_index >= len(interview["questions"])
+        if next_question is not None and completed:
+            raise ValueError("面试已到最后一题")
+        if expression_review is not None and not completed:
+            raise ValueError("只能在最后一题保存表达回看")
+        questions = list(interview["questions"])
+        question_ids = list(interview["question_ids"])
+        if next_question is not None:
+            questions[next_index] = next_question
+            question_ids[next_index] = None
+        scores = [
+            float(turn["score"])
+            for turn in interview["turns"]
+            if turn["score"] is not None
+        ]
+        if scoring_mode == "llm" and score is not None:
+            scores.append(score)
+        turn_id = uuid.uuid4().hex
+        connection.execute(
+            """INSERT INTO interview_turns
+               (turn_id, interview_id, question_index, question, answer,
+                score, dimensions, feedback, fluency_metrics, scoring_mode, scoring_version,
+                visual_metrics, content_analysis, answer_key, answer_digest, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                turn_id, interview_id, question_index, question, answer,
+                score if scoring_mode == "llm" else 0, self._dump_json(dimensions), feedback,
+                self._dump_json(fluency_metrics or {}),
+                scoring_mode, scoring_version,
+                self._dump_json(visual_metrics or {}),
+                self._dump_json(content_analysis or {}), answer_key, answer_digest, _now_iso(),
+            ),
+        )
+        connection.execute(
+            """UPDATE interview_sessions SET current_index=?, status=?,
+               overall_score=?, questions=?, question_ids=?, expression_review=?,
+               updated_at=? WHERE interview_id=?""",
+            (
+                next_index,
+                "completed" if completed else "active",
+                round(sum(scores) / len(scores), 2) if scores else 0,
+                self._dump_json(questions),
+                self._dump_json(question_ids),
+                self._dump_json(expression_review or interview["expression_review"]),
+                _now_iso(),
+                interview_id,
+            ),
+        )
+        connection.execute(
+            "INSERT INTO interview_review_state (interview_id, revision) VALUES (?, 1) "
+            "ON CONFLICT(interview_id) DO UPDATE SET revision=revision+1, input_digest=''",
+            (interview_id,),
+        )
+        connection.execute(
+            "INSERT INTO interview_review_events (interview_id,action,detail,created_at) "
+            "VALUES (?, 'answer', ?, ?)",
+            (interview_id, self._dump_json({"question_index": question_index}), _now_iso()),
+        )
+        from filemate.interview_coach.repository import (
+            freeze_question,
+            record_attempt_from_turn,
+        )
+
+        record_attempt_from_turn(conn, turn_id, origin=origin)
+        freeze_question(conn, interview_id, question_index, question, _now_iso())
+        displayed_index = question_index if origin == "coach" else min(next_index, len(questions) - 1)
+        phase = "feedback" if origin == "coach" else ("summary" if completed else "question")
+        if not completed and origin != "coach":
+            freeze_question(conn, interview_id, next_index, questions[next_index], _now_iso())
+        entered = [row[0] for row in conn.execute(
+            "SELECT question_index FROM interview_coach_questions WHERE interview_id=? ORDER BY question_index",
+            (interview_id,),
+        )]
+        conn.execute(
+            "UPDATE interview_coach_state SET revision=revision+1,displayed_index=?,phase=?,entered_indices=?,updated_at=? WHERE interview_id=?",
+            (displayed_index, phase, self._dump_json(entered), _now_iso(), interview_id),
+        )
+        return turn_id
 
     # ------------------------------------------------------------------
     # 面试题库

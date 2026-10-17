@@ -86,6 +86,8 @@ def validate_content_analysis(data: dict, answer: str) -> dict:
 
 def validate_saved_analysis(data: dict, answer: str) -> dict:
     """重新核对持久化引用，避免损坏记录被报告当成证据。"""
+    if not isinstance(data, dict):
+        raise TypeError("invalid saved analysis structure")
     if data.get("source") != "llm_reference":
         raise ValueError("unknown content analysis")
     areas = validate_content_analysis(data.get("areas"), answer)

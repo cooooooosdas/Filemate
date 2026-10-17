@@ -34,29 +34,26 @@
         </button>
       </div>
 
-      <router-link class="space-switch" to="/knowledge" title="打开个人知识库" @click="finishMobileNavigation">
-        <span class="space-icon"><el-icon><FolderOpened /></el-icon></span>
-        <span class="space-copy"><strong>个人学习空间</strong><small>资料 · 知识 · 成长</small></span>
-        <el-icon class="space-arrow"><ArrowRight /></el-icon>
-      </router-link>
+      <div class="space-caption"><span class="space-dot" />个人学习空间</div>
 
-      <nav class="nav-groups">
+      <nav class="nav-groups" aria-label="功能导航">
         <section v-for="group in navigationGroups" :key="group.label" class="nav-group">
           <p class="nav-group-label">{{ group.label }}</p>
-          <router-link
-            v-for="item in group.items"
-            :key="item.path"
-            :to="item.path"
-            :title="item.title"
-            :aria-label="item.title"
-            :aria-current="selectedPrimary === item.path ? (route.path === item.path ? 'page' : 'location') : undefined"
-            class="nav-item"
-            :class="{ 'nav-selected': selectedPrimary === item.path }"
-            @click="finishMobileNavigation"
-          >
-            <el-icon><component :is="toolIcons[item.icon]" /></el-icon>
-            <span>{{ item.title }}</span>
-          </router-link>
+          <div v-for="item in group.items" :key="item.path" class="nav-branch">
+            <router-link :to="item.path" :title="item.title" :aria-label="item.title"
+              :aria-current="route.path === item.path ? 'page' : selectedPrimary === item.path ? 'location' : undefined"
+              class="nav-item" :class="{ 'nav-selected': route.path === item.path, 'nav-parent-active': selectedPrimary === item.path && route.path !== item.path }"
+              @click="finishMobileNavigation">
+              <el-icon><component :is="toolIcons[item.icon]" /></el-icon><span>{{ item.title }}</span>
+              <el-icon v-if="childrenTools(item.path, tools).length" class="branch-arrow" :class="{ expanded: selectedPrimary === item.path }"><ChevronDown /></el-icon>
+            </router-link>
+            <div v-if="selectedPrimary === item.path && childrenTools(item.path, tools).length" class="nav-children" :aria-label="`${item.title}的子功能`">
+              <router-link v-for="child in childrenTools(item.path, tools)" :key="child.path" :to="child.path"
+                :aria-current="route.path === child.path || child.aliases?.includes(route.path) ? 'page' : undefined"
+                :class="{ 'child-selected': route.path === child.path || child.aliases?.includes(route.path) }"
+                @click="finishMobileNavigation"><el-icon><component :is="toolIcons[child.icon]" /></el-icon><span>{{ child.title }}</span></router-link>
+            </div>
+          </div>
         </section>
       </nav>
 
@@ -100,7 +97,7 @@
             <el-icon><Menu /></el-icon>
           </button>
           <div>
-            <span class="workspace-label">我的空间</span><span class="breadcrumb-divider" aria-hidden="true">/</span><span class="page-title">{{ pageTitle }}</span>
+            <span class="page-title">{{ pageTitle }}</span>
           </div>
         </div>
 
@@ -111,32 +108,13 @@
           <button class="finder-trigger" aria-label="查找功能" @click="showFinder = true"><el-icon><Search /></el-icon><span>查找功能</span><kbd>Ctrl K</kbd></button>
           <button
             class="icon-button"
-            :class="{ spinning: refreshing }"
-            aria-label="刷新当前页面"
-            title="刷新当前页面"
-            @click="refreshPage"
-          >
-            <el-icon><Refresh /></el-icon>
-          </button>
-          <button
-            class="icon-button desktop-only"
-            aria-label="切换全屏"
-            title="切换全屏"
-            @click="toggleFullscreen"
-          >
-            <el-icon><FullScreen /></el-icon>
-          </button>
-          <button
-            class="icon-button"
             aria-label="打开设置"
             title="设置"
             @click="showSettings = true"
           >
             <el-icon><Setting /></el-icon>
           </button>
-          <div class="avatar" role="img" aria-label="FileMate 学习伙伴">
-            <img src="./assets/filemate-mascot.png" alt="" aria-hidden="true" />
-          </div>
+
         </div>
       </header>
 
@@ -145,10 +123,9 @@
       </div>
 
       <div class="content-scroll">
-        <TaskNavigation v-if="contextLinks.length" :items="contextLinks" />
         <router-view v-slot="{ Component }">
           <transition name="page-fade" mode="out-in">
-            <component :is="Component" :key="`${['/ai-tools', '/import'].includes($route.path) ? $route.path : $route.fullPath}-${refreshToken}`" />
+            <component :is="Component" :key="routeViewKey(route.path, route.fullPath, refreshToken)" />
           </transition>
         </router-view>
         <footer class="site-footer" aria-label="网站备案与使用说明">
@@ -169,17 +146,17 @@
           <el-icon><Monitor /></el-icon>
           <div>
             <strong>显示模式</strong>
-            <span>钴蓝光束主视觉与冰蓝阅读工作台</span>
+            <span>浅色阅读界面，沿用系统字体</span>
           </div>
           <el-tag effect="plain">浅色</el-tag>
         </div>
         <div class="setting-row">
           <el-icon><Lock /></el-icon>
           <div>
-            <strong>数据边界</strong>
+            <strong>保存位置</strong>
             <span>{{ accountState?.enabled ? '网站资料保存在服务器的独立私有空间' : '学习资料与执行记录默认保存在本机' }}</span>
           </div>
-          <el-tag type="success" effect="plain">本地优先</el-tag>
+          <el-tag type="success" effect="plain">{{ accountState?.enabled ? '账号空间' : '本机' }}</el-tag>
         </div>
         <div class="setting-row">
           <el-icon><Connection /></el-icon>
@@ -208,7 +185,6 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch, type Component 
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import PageLoadError from './components/PageLoadError.vue'
-import TaskNavigation from './components/TaskNavigation.vue'
 import {
   Calendar,
   Clock,
@@ -220,7 +196,6 @@ import {
   DocumentAdd,
   Expand,
   Fold,
-  FullScreen,
   House,
   Lock,
   Menu,
@@ -228,7 +203,6 @@ import {
   Cpu,
   Notebook,
   Reading,
-  Refresh,
   Setting,
   Tickets,
   Microphone,
@@ -238,12 +212,13 @@ import {
   Aim,
   Search,
   User,
-  ArrowRight
+  ChevronDown
 } from './icons'
 import Logo from './components/Logo.vue'
 import FeatureFinder from './components/FeatureFinder.vue'
 import SettingsPanelLoader from './components/SettingsPanelLoader.vue'
-import { availableTools, primaryGroups, primaryPath, relatedTools, type Tool } from './navigation/catalog'
+import { availableTools, primaryGroups, primaryPath, childrenTools, type Tool } from './navigation/catalog'
+import { routeViewKey } from './navigation/route-state'
 import { navigationPending } from './router/load-errors'
 import { checkHealth, getAccountState, logoutAccount } from './services/api'
 import type { AccountState } from './types/account'
@@ -258,22 +233,19 @@ const loggingOut = ref(false)
 const accountState = ref<AccountState | null>(null)
 const backendConnected = ref<boolean | null>(null)
 const serviceChecking = ref(false)
-const refreshing = ref(false)
 const refreshToken = ref(0)
 const showFinder = ref(false)
 const finder = ref<{ focus: () => void; reset: () => void } | null>(null)
 const mobileMenuButton = ref<HTMLButtonElement | null>(null)
-let refreshTimer: number | undefined
 let shellRevision = 0
 let shellLoad: Promise<void> | null = null
 
 const tools = availableTools(import.meta.env)
 const toolIcons: Record<string, Component> = { Calendar, Clock, Collection, Share, DataLine, DocumentAdd, House, Lock, Cpu, Notebook, Reading, Tickets, Microphone, VideoPlay, DataAnalysis, FolderOpened, Aim }
 
-const pageTitle = computed(() => String(route.meta.title || '学习工作台'))
+const pageTitle = computed(() => tools.find(item => item.path === route.path || item.aliases?.includes(route.path))?.title || String(route.meta.title || '学习工作台'))
 const navigationGroups = primaryGroups(tools)
 const selectedPrimary = computed(() => primaryPath(route.path, tools))
-const contextLinks = computed(() => relatedTools(route.path, route.query.intent, tools).map(item => ({ ...item, icon: toolIcons[item.icon]! })))
 
 function openTool(item: Tool): void {
   showFinder.value = false
@@ -354,34 +326,6 @@ function expireSession(): void {
   showAccount.value = false
 }
 
-async function refreshPage(): Promise<void> {
-  if (!window.dispatchEvent(new Event('filemate:before-refresh', { cancelable: true }))) return
-  refreshing.value = true
-  await loadShellState()
-  if (!window.dispatchEvent(new Event('filemate:before-refresh', { cancelable: true }))) {
-    refreshing.value = false
-    return
-  }
-  refreshToken.value += 1
-  refreshTimer = window.setTimeout(() => {
-    refreshing.value = false
-  }, 220)
-  if (backendConnected.value) ElMessage.success('工作台已刷新')
-  else ElMessage.warning('页面已重新加载，服务暂时无法连接')
-}
-
-async function toggleFullscreen(): Promise<void> {
-  try {
-    if (document.fullscreenElement) {
-      await document.exitFullscreen()
-    } else {
-      await document.documentElement.requestFullscreen()
-    }
-  } catch {
-    ElMessage.warning('当前环境不支持全屏切换')
-  }
-}
-
 onMounted(() => {
   void router.isReady().then(() => {
     if (!isAuthPath(route.path)) void loadShellState()
@@ -395,7 +339,6 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleShortcut)
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('filemate:session-expired', expireSession)
-  window.clearTimeout(refreshTimer)
 })
 
 function isAuthPath(path: string): boolean {
@@ -1016,12 +959,12 @@ function isAuthPath(path: string): boolean {
 }
 
 .nav-item { min-height:50px; font-size:17px; gap:12px; }
-.nav-group-label { font-size:14px; letter-spacing:.03em; }
+.nav-group-label { font-size:15px; letter-spacing:.03em; }
 .nav-group + .nav-group { margin-top:18px; }
-.space-copy strong { font-size:16px; }.space-copy small { font-size:14px; }.space-switch { min-height:70px; }
+.space-copy strong { font-size:18px; }.space-copy small { display:none; }.space-switch { min-height:70px; }
 .page-title { font-size:18px; font-weight:600; }.workspace-label { font-size:14px; }
-.service-state,.version-label,.site-footer,.setting-row span { font-size:14px; }
-.setting-row strong { font-size:16px; }
+.service-state,.version-label,.site-footer,.setting-row span { font-size:16px; }
+.setting-row strong { font-size:18px; }
 .finder-trigger { font-size:15px; }
 .global-import { display:inline-flex; align-items:center; gap:9px; min-height:44px; padding:0 16px; margin-right:8px; border-radius:10px; background:var(--accent); color:white; font-size:16px; font-weight:600; text-decoration:none; }
 .global-import:hover { background:var(--accent-hover); }
@@ -1032,6 +975,42 @@ function isAuthPath(path: string): boolean {
 .topbar-actions svg,.nav-item svg,.finder-results svg { stroke-width:1.8; }
 @media(prefers-reduced-motion:reduce) { .nav-item .el-icon { transition:none; } .nav-item:hover:not(.nav-selected) .el-icon { transform:none; } }
 @media(max-width:1100px) { .avatar { display:none; } }
-@media(max-width:560px) { .global-import { width:44px; padding:0; margin-right:0; flex-shrink:0; }.global-import span { display:none; }.topbar-actions>.icon-button { display:none; }.topbar-title { min-width:0; }.page-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } }
+@media(max-width:560px) { .global-import { width:44px; justify-content:center; padding:0; margin-right:0; flex-shrink:0; }.global-import span { display:none; }.topbar-actions>.icon-button { display:none; }.topbar-title { min-width:0; }.page-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } }
 @media(max-width:560px) { .page-title { font-size:16px; }.nav-item { font-size:18px; } }
+</style>
+
+<style scoped>
+.sidebar { --bg-surface: #f8fbff; background: var(--bg-surface); border-color: #e0e8f4; }
+.sidebar-head { min-height: 90px; padding: 22px 16px 12px; }
+.space-caption { display: flex; align-items: center; gap: 10px; padding: 8px 24px 18px; color: var(--text-secondary); font-size: 15px; }
+.space-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.nav-groups { padding: 2px 12px 20px; }
+.nav-group-label { font-size: 15px; color: var(--text-muted); letter-spacing: 0; margin: 16px 14px 8px; }
+.nav-group + .nav-group { margin-top: 8px; }
+.nav-item { min-height: 50px; border: 0; font-size: 17px; }
+.nav-parent-active { background: #edf3fe; color: var(--accent); font-weight: 600; }
+.nav-item.nav-selected { background: var(--accent); }
+.branch-arrow { flex: 0 0 15px !important; font-size: 15px !important; transform: rotate(-90deg); transition: transform var(--motion-fast); }
+.branch-arrow.expanded { transform: none; }
+.nav-children { display: grid; gap: 2px; padding: 4px 0 8px 16px; }
+.nav-children a { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 10px; border-radius: 9px; text-decoration: none; color: var(--text-secondary); font-size: 16px; }
+.nav-children .el-icon { flex: 0 0 18px; font-size: 18px; }
+.nav-children a:hover { color: var(--accent); background: #edf3fe; }
+.nav-children a.child-selected { color: var(--accent); background: #e3edff; font-weight: 650; }
+.topbar { --bg-surface: #fcfdff; padding-inline: 32px; border-color: #e0e8f4; }
+.content-scroll { padding: 32px 36px 48px; }
+.finder-trigger { min-height: 44px; background: #f5f8fd; border-color: #dfe7f3; }
+.account-entry { border-color: transparent; background: transparent; }
+.sidebar-collapsed .space-caption, .sidebar-collapsed .nav-children, .sidebar-collapsed .branch-arrow { display: none; }
+@media(max-width: 900px) {
+  .sidebar-collapsed .space-caption { display: flex; }
+  .sidebar-collapsed .nav-children { display: grid; }
+  .sidebar-collapsed .branch-arrow { display: inline-flex; }
+}
+@media(max-width: 560px) {
+  .topbar { padding-inline: 12px; }
+  .content-scroll { padding: 22px 16px 32px; }
+  .nav-item { font-size: 17px; }
+}
+@media(prefers-reduced-motion:reduce) { .branch-arrow { transition: none; } }
 </style>

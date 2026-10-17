@@ -564,9 +564,26 @@ def restore_backup(backup: Path, target: Path, confirmation: str) -> dict[str, A
         _copy(source, output)
         if _file_digest(output) != entry['sha256']:
             raise ValueError('当前删除账本复制失败，新目录不可启用')
+    normalized = 0
+    from filemate.interview_coach.repository import normalize_restored_coach
+
+    for entry in manifest['entries']:
+        if entry['kind'] != 'database' or entry['database'].get('database_kind') == 'resource_governance':
+            continue
+        with closing(sqlite3.connect(destination / entry['path'])) as conn:
+            conn.row_factory = sqlite3.Row
+            conn.execute('PRAGMA foreign_keys=ON')
+            with conn:
+                conn.execute('BEGIN IMMEDIATE')
+                exists = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='interview_coach_state'").fetchone()
+                normalize_restored_coach(conn)
+                if conn.execute('PRAGMA foreign_key_check').fetchone():
+                    raise ValueError('恢复安全规范化失败，新目录不可启用')
+                normalized += int(bool(exists))
     return {
         "passed": True,
         "target": str(destination),
+        "normalized_coach_databases": normalized,
         "file_count": plan["file_count"],
         "activated": False,
         "path_policy": plan["path_policy"],

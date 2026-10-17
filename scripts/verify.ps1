@@ -53,7 +53,7 @@ try {
         filemate/tests/test_p1_semester.py `
         filemate/tests/test_p1_personal_backup.py `
         filemate/programming `
-        filemate/interview_review `
+        filemate/interview_coach filemate/tests/test_interview_coach_storage.py filemate/tests/test_interview_coach_commands.py filemate/tests/test_interview_coach_analysis.py filemate/tests/test_interview_coach_api.py filemate/tests/test_interview_coach_evidence.py filemate/tests/test_interview_coach_privacy.py filemate/interview_review `
         filemate/career `
         filemate/operations `
         filemate/speech.py filemate/tests/test_natural_speech.py `
@@ -73,7 +73,7 @@ try {
         scripts/acceptance/gateway_preflight.py `
         scripts/deploy_existing.py `
         scripts/ops/resource_recorder.py filemate/tests/test_resource_recorder.py filemate/perception/bounded_parse.py filemate/perception/parse_worker.py filemate/tests/test_bounded_parse.py `
-        scripts/acceptance/workspace_model_fixture.py `
+        scripts/acceptance/workspace_model_fixture.py scripts/acceptance/interview_coach_fixture.py `
         evaluation/analyze_feedback.py
     Assert-LastExitCode "Ruff"
     uv run pytest filemate/tests -q -m "not e2e"

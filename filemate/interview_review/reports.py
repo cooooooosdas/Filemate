@@ -19,9 +19,12 @@ _PDF_FONT_LOCK = threading.Lock()
 
 def evidence_digest(interview: dict[str, Any]) -> str:
     """计算影响报告的原始记录摘要。"""
-    payload = {key: interview[key] for key in (
-        "interview_id", "target_role", "scenario", "status", "questions", "turns",
-    )}
+    payload = {key: interview[key] for key in ('interview_id','target_role','scenario','status')}
+    payload['total'] = len(interview['questions'])
+    keys = ('turn_id','question_index','question','answer','score','dimensions','feedback','fluency_metrics',
+            'visual_metrics','content_analysis','scoring_mode','analysis_data_error','attempt_id','attempt_version',
+            'attempt_created_at','analysis_status','analysis_run_id','source_revision')
+    payload['turns'] = [{key: turn.get(key) for key in keys} for turn in interview['turns']]
     return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
 
 
@@ -80,6 +83,8 @@ def build_report(interview: dict[str, Any]) -> dict[str, Any]:
             "structure": describe_answer_structure(turn["answer"]),
             "fluency": metrics, "visual": visual if visual_valid else {},
             "data_error": bool(turn.get("analysis_data_error")),
+            **{key: turn.get(key) for key in ('attempt_id','attempt_version','analysis_status','analysis_run_id',
+                                             'source_revision','attempt_comparison','analysis_provenance')},
         })
     timeline.sort(key=lambda e: (e["question_index"], e["timebase"], e["start"]))
     return {
@@ -114,7 +119,7 @@ def build_report(interview: dict[str, Any]) -> dict[str, Any]:
         ] + (["部分采样画面亮度较低，视觉观察可信度可能下降。"] if dim_samples else []),
         "privacy": {
             "video": "录像仅存当前浏览器页面内存；不上传，刷新或删除后清除。",
-            "records": "回答、节奏、观察摘要和报告保存在本地SQLite，可单独清空分析或删除练习。",
+            "records": "回答、节奏、观察摘要和报告保存在当前学习空间SQLite，可单独清空分析或删除练习。",
             "external": "只有主动授权的回答内容分析会外发问题、回答和目标方向；不发送音视频和人脸点。供应商保存策略需另行核对。",
             "speech": "语音识别由浏览器提供，可能使用浏览器厂商在线服务；文本输入不需要语音外发。",
         },

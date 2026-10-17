@@ -150,6 +150,7 @@
 
     <!-- 处理结果 -->
     <div v-if="result" class="result-section">
+      <AnalysisWarnings :messages="result.warnings" />
       <!-- 摘要结果 -->
       <div v-if="activeTab === 'summary'" class="result-card summary-result">
         <div class="result-header">
@@ -323,6 +324,7 @@
 </template>
 
 <script setup lang="ts">
+import AnalysisWarnings from '../components/AnalysisWarnings.vue'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
@@ -430,7 +432,7 @@ const resumeSession = async (session: AISessionSummary) => {
   try {
     const ctx = await getAIContext(session.ctx_id)
     chatHistory.value = ctx.chat_history || []
-    result.value = { ctx_id: session.ctx_id, source_id: session.source_id }
+    result.value = { ctx_id: session.ctx_id, source_id: session.source_id, warnings: ctx.metadata?.warnings }
     activeTab.value = 'chat'
   } catch (e: any) {
     ElMessage.error(e.message || '加载会话失败')
@@ -560,7 +562,7 @@ const switchToChatMode = (ctxId: string) => {
   currentCtxId.value = ctxId
   chatHistory.value = []
   if (result.value) {
-    result.value = { ctx_id: ctxId }
+    result.value = { ctx_id: ctxId, warnings: result.value.warnings }
   }
 }
 

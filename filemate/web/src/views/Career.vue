@@ -2,9 +2,8 @@
   <div class="career-page">
     <header class="page-heading">
       <div>
-        <p class="eyebrow">岗位 · 证据 · 下一步训练</p>
         <h1>求职训练中心</h1>
-        <p>从岗位要求出发，把知识练习、编程和口头表达接成一条训练路径。</p>
+        <p>查看岗位要求，选择笔试或面试练习，再对照记录补足短板。</p>
       </div>
       <button :disabled="loading || !!busy" @click="load">刷新记录</button>
     </header>
@@ -450,7 +449,8 @@
             <p v-if="training.data_error" class="error">
               训练数据异常，原记录保留；可回到原面试或重新创建训练。
             </p>
-            <template v-else-if="training.payload"
+            <p v-if="training.evidence_stale || training.evidence_version_unknown" class="notice">这份岗位复盘引用了历史回答，当前回答已变化或原版本无法核验。历史快照保留，请重新生成以查看当前证据。</p>
+            <template v-if="!training.data_error && training.payload"
               ><p class="muted">
                 {{ training.payload.position.company }} ·
                 {{ training.payload.position.title }} · 岗位快照版本

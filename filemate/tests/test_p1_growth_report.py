@@ -83,6 +83,7 @@ def test_growth_interview_fallback_and_semester_have_actual_time_basis(server_mo
     interview = store.create_interview(target_role='合成岗位', scenario='practice', difficulty='normal', questions=['合成问题'])
     store.save_interview_turn(interview_id=interview['interview_id'], question_index=0, question='合成问题', answer='合成实际回答',
                               score=None, dimensions={}, feedback='未调用模型', scoring_mode='local_fallback')
+    store._conn().execute("UPDATE interview_answer_attempts SET created_at='2020-02-01T01:00:00+00:00'")
     store._conn().execute("UPDATE interview_turns SET created_at='2020-02-01T01:00:00+00:00'"); store._conn().commit()
     from filemate.study.semester import (
         ConfirmSemester,

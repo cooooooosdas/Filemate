@@ -1,5 +1,7 @@
 # API 规范
 
+2026-10-16 OPT-01候选：五个上传AI接口将同步生成放入线程池；摘要/卡片/笔记为空、结构错误或上游失败返回502，不持久化成功产物。上传和现役工作区保持配额429/治理503。学习导入与上传共用受控解析422，错误明确等待/拆分/解密，未知内部异常不公开。Source元数据保留页数/truncated/enrichment_incomplete及parse_warnings；AI响应、Artifact/Context元数据和计划新增可选warnings，记录实际模型输入截取范围。卡片数1–50、摘要长度1–10000、卡片格式front_back/qa、笔记outline/markdown/mindmap在落盘前校验。无新路由/schema/依赖/环境变量；旧数据缺字段仍可读。实现、证据及未完成项见[优化合同](../../docs/PRODUCT_OPTIMIZATION_EXECUTION_2026-10-16.md)，尚未发布。
+
 2026-10-15 上传故障修复候选：PDF/Office 解码和 `/process` 富提取使用单槽子进程，384 MiB、40 秒墙钟、Linux 25 秒 CPU、8 MiB 输出上限。忙碌、超时、资源超限及失败沿用 `{raw_text,metadata,error}`；`/process` 为 success:false 的失败会话，`/knowledge/import` 沿用解析失败响应。超过 500 页 PDF 要求拆分，文本上限 500,000 字，metadata.truncated 标注截断；超过 50 页保留正文，metadata.enrichment_incomplete=true 和 note 明示未做表格／图表几何提取。API/阶段线程池保留租户及模型授权上下文；子进程不传模型密钥，不执行 LLM 或数据库写入。没有新环境变量、路由或迁移；Windows RSS 巡检不等同于 Linux 地址空间硬限制。见 [故障记录](../../docs/INCIDENT_2026-10-15.md)。
 
 2026-10-14 缺陷修复候选：新增`GET /api/ready`，核心业务库/公网账号库/资源账本可读且版本符合当前实现时200，否则503；响应`{success,data:{version,status,checks},error}`，status为`ready`或`not_ready`，checks各项为`ready`或`unavailable`。响应no-store，不返回路径、异常原文、用户计数或密钥，不解析会话、不创建游客、不触发迁移或外部AI/语音/OJ调用。只读连接每库busy timeout 0.5秒；不是完整性扫描或全功能验收。`GET /api/health`继续仅报告进程存活和版本，数据库故障时仍可用。既有部署脚本同时校验存活、就绪和候选版本；维护及备份探测不会创建匿名空间。
@@ -675,11 +677,11 @@ Linux适配层使用独立受限Unix socket代理，Web进程不持有Docker权�
 
 沿用 `/interviews` 原流程及现役本机/匿名设备分库。SQLite v23 仅追加迁移：回答新增 `visual_metrics`、`content_analysis`、`answer_key`、`answer_digest`；新增 `interview_review_state`、`interview_review_events`。报告复用 Artifact，类型为 `interview_report`，通用 Artifact 编辑返回 409，不能改写面试证据。
 
-`POST /interviews` 增加可选 `allow_external_analysis: boolean | null`，保存到 Agent 上下文引用。`false` 禁止该场出题及提交回答时自动外发；新前端默认 `false`，用户后续逐题确认分析。旧客户端不传/null 保持已有流程；`FILEMATE_INTERVIEW_LOCAL_ONLY=1` 优先强制本地。原知识讲解和未授权私有错题规则保留。
+`POST /interviews` 增加可选 `allow_external_analysis: boolean | null`，保存到 Agent 上下文引用。`false` 禁止该场出题及提交回答时自动外发；新前端默认 `false`，用户后续逐题确认分析。不传/null 一律不授权外发；`FILEMATE_INTERVIEW_LOCAL_ONLY=1` 优先强制本地。原知识讲解和未授权私有错题规则保留。
 
 `POST /interviews/{id}/answers` 增加可选 `question_index`（0–100）、`request_key`（16–80 位字母/数字/下划线/短横线）与 `visual_metrics`。同场同键且正文、题号和指标一致，重复提交返回现有记录；同键不同请求或过期题号返回 409，不推进第二题。旧客户端可省略这些字段。空回答仍为 422。
 
-2026-10-13开发候选：`POST /interviews`的`scenario`兼容原四场景，并增加`技术面|项目面|算法面|HR面|压力面|英语面`。可选`project_name`（≤120）、`project_details`（≤6000）、`remember_for_future`（默认false）、`memory_id`（≤64）。项目面缺项目或只填一项返回422；无有效回答、资料已删除或撤销的所选记忆返回409。新专项或记忆训练不传`allow_external_analysis`时按false处理，旧四场景未传字段的行为兼容保留。专项五题为规则脚本；下一问题按本次真实回答与已校验分析组织，不新增模型请求。原题库CRUD的场景限制未在本轮扩展。
+2026-10-13开发候选：`POST /interviews`的`scenario`兼容原四场景，并增加`技术面|项目面|算法面|HR面|压力面|英语面`。可选`project_name`（≤120）、`project_details`（≤6000）、`remember_for_future`（默认false）、`memory_id`（≤64）。项目面缺项目或只填一项返回422；无有效回答、资料已删除或撤销的所选记忆返回409。新专项或记忆训练不传`allow_external_analysis`时按false处理，旧四场景未传字段同样不授权外发。专项五题为规则脚本；下一问题按本次真实回答与已校验分析组织，不新增模型请求。原题库CRUD的场景限制未在本轮扩展。
 
 创建、恢复、回答响应增加`practice_context:{mode,project,remember_for_future,memory_id,memory_ref,memory_available}`；project为用户填写的`{name,details,source:'user_input'}`或null。memory_ref含历史memory/interview/turn/question引用及本轮`target_question_index`。remember_for_future反映当前有效许可，不把已撤销的初始勾选当成许可。英语`fluency_metrics`增加`language:'en-US'`、`words_per_minute`；英语不产生未校准的节奏分，报告expression的words_per_minute可缺省/null以兼容旧报告。
 
@@ -914,3 +916,34 @@ GET /api/llm/status新增credential_storage=browser|system，前端按该模式�
 ## 2026-10-10 视觉与讲话展示
 
 没有新增API/schema。视频模块在用户开启摄像头并主动开启本地观察后，以同源Worker实时展示FaceLandmarker的微笑/皱眉/张口系数（0–100）及姿态；数值不是情绪概率。实时原始系数不发送/保存，提交仍只使用原VisualMetrics动作摘要。无脸、低光、停止/异常清空读数。数字人使用连续SVG/CSS讲解动画，随语音实际状态启停、减少动态关闭；没有音素/音频输出，不保证精确唇形同步。
+
+
+2026-10-16 面试教练开发候选：业务 schema27 追加回答版本、已进入问题、场次授权、分析运行与幂等操作表；schema26回答启动时原文原时间回填，旧写入同步捕获版本。尚未完成本批整体验收，未部署；治理schema2不变。
+
+
+### 2026-10-17 逐题面试教练候选（默认关闭）
+
+业务 schema27；治理schema2不变。FILEMATE_ENABLE_INTERVIEW_COACH=1 开启新写入，默认0；VITE_ENABLE_INTERVIEW_COACH=true 开启新界面，默认false。关闭保留原训练和版本只读。REVIEW总开关、LOCAL_ONLY、知识讲解和私有资料限制优先；不默认外发任何音视频。POST /interviews 只有 allow_external_analysis=true 才授权该场外发，省略/null/false均不授权；旧 answers 先保存原文再可选分析，失败不丢回答。
+
+| 方法/路径 | 合同 |
+| --- | --- |
+| GET /interviews/{id}/coach | 兼容session、revision、displayed_index、phase(question/feedback/summary)、external_consent、consent_revision、provider_identity、current_attempt、active_run_id、pending_retries、data_error；过期运行仅标interrupted，不重放 |
+| POST /interviews/{id}/coach/answers | answer(1–12000非空白)、question_index(0–100)、request_key(16–80字母数字下划线短横线)、expected_revision、expected_attempt_id(null或当前版本ID)、可选既有fluency_metrics/visual_metrics；回答先保存，显示feedback，不自动切题 |
+| GET /interviews/{id}/turns/{turn_id}/attempts | limit=20(1–100)、before_version可选正整数；items版本倒序、next_before_version，不跨场次 |
+| POST /interviews/{id}/coach/consent | allowed、expected_revision、request_key；只授权当前场次及服务端提供商身份，撤销使在途结果失效 |
+| POST /interviews/{id}/coach/analysis | attempt_id、consent_revision、expected_revision、request_key；60秒截止、每次≤30秒，只有格式错误允许一次纠正；每场一个在途运行 |
+| POST /interviews/{id}/coach/advance | from_index、expected_attempt_id、expected_revision、request_key；进入下一题或summary，已进入题冻结 |
+
+写成功均返回 {snapshot,receipt}，receipt含kind/request_key及受限attempt_id/run_id/target_index。同键同操作返回原回执及最新快照；同键异文或异操作409，不重复保存或调用模型。末次回答是当前版本，失败时score=null，历史成功仅在历史中；显式分析重试使用新key。新分析使当前报告失效，原Artifact保留，需重新生成当前报告。旧 /analyze 的 external_consent=true 是单次授权，不升级为后续自动授权。
+
+错误信封沿用success/data/error；data可含error_code、retryable、run_id、attempt_id。参数422、跨空间404、修订/并发/授权冲突409、私有资料403、模型故障502、累计额度429、治理或关闭503。无供应商异常原文、正文或密钥。新接口不替代现有身份/CSRF写保护；密钥只在请求上下文使用，不写入上述五张表。
+
+### 逐题面试隐私与恢复（2026-10-17 候选）
+
+删除预览增加`answer_attempts`、`analysis_runs`、`coach_actions`，`reports`计入全部历史报告；确认指纹绑定当前教练修订。清空覆盖全部版本的内容／视觉派生结果并撤销在途写资格，保留回答与语音节奏。关闭REVIEW后仍允许读取、导出、取消、清空和确认删除；禁止新增报告和外发分析。个人备份动态包含五张新表；有running/cancelling分析时拒绝覆盖恢复。恢复清除本场外发授权，将在途运行改为interrupted；管理员恢复先校验原哈希、库事实与删除账本，再对新目录的业务库事务规范化并检查外键，结果增加`normalized_coach_databases`，始终`activated=false`，不修改治理库及原备份。schema26管理员副本先保留原字节，首启追加迁移和回填。
+
+### 面试审阅修复补充（2026-10-17）
+
+`POST /interviews/{id}/coach/focus`接收`request_key`、`expected_revision`和`question_index`（已答题索引，null表示已完成场次汇总），仅切换阅读位置，不新增回答、不推进提交进度，不改冻结题目。允许完成后在原场次重答和重试。新端点同样受COACH写开关、认证及空间权限保护。
+
+授权开启仍严格比较revision；明确撤销`allowed=false`允许使用小于等于当前revision的已知修订，直接收紧当前权限，保证分析claim增加revision后仍可撤销；同键回执规则不变。保存回执`receipt.attempt_id`是本次操作归属，`snapshot.current_attempt`可能属于另一个较新版本，调用方不得混用或对较新版本自动分析。语音派生指标由服务端计算保存；报告按attempt/run/source_revision及分析pending使当前显示失效。

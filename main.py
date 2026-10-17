@@ -70,7 +70,9 @@ def _make_stages(
         source = session.source_path
         parsed = parser.parse_enriched(source)
         raw_text = parsed.get("raw_text", "")
-        meta = parsed.get("metadata", {})
+        from filemate.perception.diagnostics import parse_metadata
+
+        meta = parse_metadata(parsed)
         if parsed.get("error"):
             session.entities["raw_text"] = raw_text
             session.entities["metadata"] = meta

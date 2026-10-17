@@ -90,3 +90,33 @@
   .content-scroll .growth-page .kpis article:nth-child(even) { border-right: 0; }
   .content-scroll .goal-planner-page .section-heading { align-items: flex-start; flex-wrap: wrap; gap: 10px; }
 }
+
+
+/* PPT task and coach surfaces use a plain page heading and their own content hierarchy. */
+.content-scroll :is(.today-page.ppt-surface > .hero, .interview-page.coach-surface > .page-head) {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.content-scroll .today-page.ppt-surface .summary { background: transparent; border: 0; }
+.content-scroll .today-page.ppt-surface .summary strong { font-weight: 650; color: var(--accent); }
+.content-scroll .today-page.ppt-surface .review-stat strong { color: #96551b; }
+.content-scroll .interview-page.coach-surface .conversation-panel { padding: 28px; }
+@media(max-width: 1050px) {
+  .content-scroll .today-page.ppt-surface .today-main { display: contents; }
+  .content-scroll .today-page.ppt-surface .day-welcome { grid-row: 1; }
+  .content-scroll .today-page.ppt-surface .today-aside { grid-row: 2; }
+  .content-scroll .today-page.ppt-surface :is(.queue,.empty) { grid-row: 3; margin-top: 0; }
+}
+@media(max-width: 600px) {
+  .content-scroll .today-page.ppt-surface .summary { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+  .content-scroll .today-page.ppt-surface .summary article { padding: 16px 10px; }
+  .content-scroll .today-page.ppt-surface .summary-icon { display: none; }
+  .content-scroll .today-page.ppt-surface .summary article > div > span { font-size: 15px; }
+  .content-scroll .today-page.ppt-surface .summary strong { font-size: 30px; }
+  .content-scroll .today-page.ppt-surface .summary p { display: none; }
+  .content-scroll .interview-page.coach-surface .conversation-panel { padding: 20px; }
+}

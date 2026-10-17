@@ -62,7 +62,7 @@ def _metric(rows: list[dict[str, Any]], *, label: str, unit: str, basis: str,
             "sample_count": len(rows), "sample_unit": unit, "minimum_samples": MIN_SAMPLES,
             "updated_at": latest.isoformat() if latest else None, "status": status,
             "basis": basis, "excluded_count": excluded,
-            "records": [{key: row[key] for key in ("record_id", "record_type", "href")}
+            "records": [{key: row[key] for key in ("record_id", "record_type", "href", "attempt_id", "attempt_version", "analysis_run_id", "source_revision") if key in row}
                         for row in ordered[:5]]}
 
 
@@ -127,12 +127,13 @@ def build_evidence_profile(*, attempts: list[dict[str, Any]], wrongs: list[dict[
             if row.get("scoring_mode") != "llm" or row.get("score") is None:
                 unassessed += 1
                 continue
-            moment = _time(row.get("created_at"), current)
+            moment = _time(row.get("attempt_created_at", row.get("created_at")), current)
             score = _number(row.get("score"), 100)
             if moment is None or score is None:
                 excluded["interview"] += 1
                 continue
             record = {"time": moment, "record_id": row["turn_id"], "record_type": "interview_turn",
+                **{key: row.get(key) for key in ("attempt_id","attempt_version","analysis_run_id","source_revision")},
                 "value": score, "href": "/interview?" + urlencode({"interview": interview["interview_id"]})}
             valid["interview"].append(record)
             scores = row.get("dimensions")

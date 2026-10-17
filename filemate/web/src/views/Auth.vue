@@ -3,15 +3,15 @@
     <section class="auth-story" aria-labelledby="auth-story-title">
       <router-link class="auth-brand" to="/" aria-label="返回 FileMate 学习工作台"><Logo /></router-link>
       <div class="story-copy">
-        <h1 id="auth-story-title">学有所据，<br /><span>进步有迹。</span></h1>
-        <p>把散落的课件、笔记和想法收在一起。<br />从读懂一份资料，到看见自己的成长。</p>
+        <h1 id="auth-story-title">你的资料，<br /><span>随时接着学。</span></h1>
+        <p>保存课件和笔记，记录练习与复习。<br />登录后回到自己的学习空间。</p>
       </div>
       <div class="learning-trace" aria-label="FileMate 学习轨迹示例">
-        <div class="trace-head"><span>从资料，到掌握</span><span class="trace-status">学习流程示意</span></div>
+        <div class="trace-head"><span>在 FileMate 学习</span><span class="trace-status">学习流程示意</span></div>
         <ol>
-          <li><span class="trace-index">01</span><div><strong>收好每一份资料</strong><small>课件、笔记与作业，有序归档</small></div><el-icon><DocumentAdd /></el-icon></li>
-          <li><span class="trace-index">02</span><div><strong>读懂，再变成自己的</strong><small>重点笔记、知识卡片，随时回看</small></div><el-icon><Notebook /></el-icon></li>
-          <li class="trace-current"><span class="trace-index">03</span><div><strong>每次复习，都有方向</strong><small>练习与错题，串起学习的下一步</small></div><el-icon><Reading /></el-icon></li>
+          <li><span class="trace-index">01</span><div><strong>整理课程资料</strong><small>课件、笔记与作业，有序归档</small></div><el-icon><DocumentAdd /></el-icon></li>
+          <li><span class="trace-index">02</span><div><strong>整理笔记与卡片</strong><small>重点笔记、知识卡片，随时回看</small></div><el-icon><Notebook /></el-icon></li>
+          <li class="trace-current"><span class="trace-index">03</span><div><strong>练习与复习</strong><small>保存作答记录，回顾错题</small></div><el-icon><Reading /></el-icon></li>
         </ol>
       </div>
       <p class="story-footnote"><el-icon><Lock /></el-icon>资料默认私有，未经确认不会对外共享</p>
@@ -21,7 +21,7 @@
       <div class="auth-card">
         <header class="auth-card-head">
           <h2 id="auth-form-title">{{ recoveryResult ? '保存你的恢复码' : isRecover ? '找回密码' : isRegister ? '注册 FileMate' : '登录 FileMate' }}</h2>
-          <span>{{ recoveryResult ? '恢复码只显示这一次，请妥善保存。' : isRecover ? '使用注册时保存的恢复码，设置新密码。' : '把每一份努力，留在自己的学习空间。' }}</span>
+          <span>{{ recoveryResult ? '恢复码只显示这一次，请妥善保存。' : isRecover ? '使用注册时保存的恢复码，设置新密码。' : '登录后查看自己的资料与学习记录。' }}</span>
         </header>
         <section v-if="recoveryResult" class="recovery-result" aria-label="恢复码保存">
           <p>{{ isRecover ? '密码已更新，所有设备已退出登录。旧恢复码已失效。' : '账号已创建，当前设备已登录。' }}</p>

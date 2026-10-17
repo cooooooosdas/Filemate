@@ -49,6 +49,16 @@ from filemate.execution.confirmation_executor import (
     ExecutionError,
 )
 from filemate.execution.storage import QuestionRevisionConflict, SQLiteStorage
+from filemate.interview_coach.models import (
+    AdvanceCommand,
+    AnalysisCommand,
+    ConsentCommand,
+    FocusCommand,
+    SubmitAnswer,
+)
+from filemate.interview_coach.repository import CoachError, CoachRepository
+from filemate.interview_coach.repository import now as _coach_now
+from filemate.interview_coach.service import CoachAnalysisService, provider_metadata
 from filemate.interview_review.models import VisualMetrics
 from filemate.llm_client.credential_store import (
     CredentialStoreError,
@@ -1890,9 +1900,7 @@ async def import_learning_source(file: Annotated[UploadFile, File()]):
     retained = False
     try:
         parsed = await run_in_threadpool(FileParser().parse, str(path))
-        text = parsed.get("raw_text", "")
-        if parsed.get("error") or not text.strip():
-            raise HTTPException(status_code=422, detail="无法提取正文，请使用包含文字的资料")
+        text = _parsed_text(parsed)
         file_hash = hashlib.sha256(path.read_bytes()).hexdigest()
         stable_id = uuid.uuid5(uuid.NAMESPACE_URL, f"filemate:local:{file_hash}").hex
         source = _storage.get_source(stable_id)
@@ -1900,7 +1908,7 @@ async def import_learning_source(file: Annotated[UploadFile, File()]):
             source_id = _storage.save_source(
                 original_name=path.name, source_path=str(path), raw_text=text,
                 media_type=mimetypes.guess_type(path.name)[0] or "",
-                file_hash=file_hash, metadata={"size_bytes": size},
+                file_hash=file_hash, metadata={**_parse_metadata(parsed), "size_bytes": size},
             )
             retained = True
             _storage.replace_source_chunks(source_id, split_document(text))
@@ -1956,15 +1964,19 @@ def generate_source_artifact(source_id: str, request: WorkspaceArtifactRequest):
             LLMClient(LLMConfig.from_env()), text=source["raw_text"],
             title=source["original_name"], kind=request.artifact_type, count=request.count,
         )
+    except (BudgetExceeded, GovernanceUnavailable):
+        raise
     except Exception as exc:
         logger.warning("学习产物生成失败 (%s)", type(exc).__name__)
         raise HTTPException(status_code=502, detail="生成失败，未保存无效内容，请稍后重试") from exc
     labels = {"summary": "摘要", "notes": "笔记", "knowledge_cards": "知识卡", "questions": "练习题"}
     input_limit = 2500 if request.artifact_type == "questions" else 12000
+    warnings = _analysis_warnings({"metadata": source.get("metadata", {})}, source["raw_text"], input_limit)
     artifact = _storage.save_source_artifact(
         source_id=source_id, artifact_type=request.artifact_type, content=content,
         title=f"{source['original_name']} · {labels[request.artifact_type]}",
         metadata={"origin": "learning_workspace", "external_model_authorized": True,
+                  "warnings": warnings,
                   "input_characters": min(len(source["raw_text"]), input_limit),
                   "source_truncated": len(source["raw_text"]) > input_limit},
     )
@@ -2265,6 +2277,40 @@ def delete_knowledge_source(source_id: str, request: DataDeleteRequest | None = 
 
 # =============== AI 工具箱 API ===============
 
+def _parsed_text(parsed: dict[str, Any]) -> str:
+    """Expose actionable decoder errors without returning internal exceptions."""
+    if parsed.get("error"):
+        message = str(parsed["error"])
+        public_errors = {
+            "资料解析正在进行，请稍后再试", "资料解析超时，请拆分文件后重试",
+            "资料解析结果过大，请拆分文件后重试", "资料解析超过内存上限，请拆分文件后重试",
+            "资料解析失败或超过资源上限，请拆分文件后重试", "资料解析结果无效",
+            "资料解析服务暂不可用，请稍后重试", "PDF 超过 500 页，请拆分文件后重试",
+            "PDF 已加密，请先解密后重新上传",
+        }
+        raise HTTPException(status_code=422, detail=message if message in public_errors else
+                            "资料解析失败，请检查文件是否损坏或加密，或拆分后重试")
+    text = parsed.get("raw_text", "")
+    if not isinstance(text, str) or not text.strip():
+        raise HTTPException(status_code=422, detail="无法提取正文，请使用包含文字的资料")
+    return text
+
+
+def _parse_metadata(parsed: dict[str, Any]) -> dict[str, Any]:
+    """Keep supported parser evidence and limitations with the source."""
+    from filemate.perception.diagnostics import parse_metadata
+
+    return parse_metadata(parsed)
+
+
+def _analysis_warnings(parsed: dict[str, Any], text: str, limit: int | None = None) -> list[str]:
+    """Describe the actual analysis scope instead of claiming full coverage."""
+    warnings = list(_parse_metadata(parsed)["parse_warnings"])
+    if limit is not None and len(text) > limit:
+        warnings.append(f"本次AI使用正文前{limit}字，其余已解析正文保留；可按章节拆分后分别生成。")
+    return warnings
+
+
 def _persist_ai_context(
     *,
     file_path: Path,
@@ -2273,6 +2319,7 @@ def _persist_ai_context(
     content: Any,
     title: str = "",
     metadata: dict[str, Any] | None = None,
+    parse_metadata: dict[str, Any] | None = None,
 ) -> tuple[str, str, str]:
     """持久化资料源、AI 产物与可恢复问答上下文。"""
     file_hash = hashlib.sha256(file_path.read_bytes()).hexdigest()
@@ -2282,7 +2329,7 @@ def _persist_ai_context(
         raw_text=text,
         media_type=mimetypes.guess_type(file_path.name)[0] or "",
         file_hash=file_hash,
-        metadata={"size_bytes": file_path.stat().st_size},
+        metadata={**(parse_metadata or {}), "size_bytes": file_path.stat().st_size},
     )
     from filemate.understanding.retrieval import split_document
 
@@ -2303,6 +2350,7 @@ def _persist_ai_context(
         metadata={
             "filename": file_path.name,
             "artifact_type": artifact_type,
+            "warnings": (metadata or {}).get("warnings", []),
         },
     )
     return ctx_id, source_id, artifact_id
@@ -2311,7 +2359,7 @@ def _persist_ai_context(
 @app.post("/ai/summarize", response_model=ApiResponse)
 async def ai_summarize(
     file: Annotated[UploadFile, File()],
-    max_length: Annotated[int, Form()] = 500,
+    max_length: Annotated[int, Form(ge=1, le=10000)] = 500,
 ):
     """AI摘要生成：上传PDF/文档，生成AI摘要笔记。"""
     file_path, _ = await _save_upload(file)
@@ -2323,10 +2371,8 @@ async def ai_summarize(
         from filemate.perception import FileParser
         parser = FileParser()
         parsed = await run_in_threadpool(parser.parse, str(file_path))
-        text = parsed.get("raw_text", "")
-
-        if not text.strip():
-            raise HTTPException(status_code=422, detail="无法从文件中提取文本内容")
+        text = _parsed_text(parsed)
+        warnings = _analysis_warnings(parsed, text, 8000)
 
         # 生成摘要
         from filemate.llm_client import LLMClient, LLMConfig
@@ -2334,19 +2380,21 @@ async def ai_summarize(
         llm = LLMClient(llm_config)
         from filemate.understanding import AISummarizer
         summarizer = AISummarizer(llm)
-        summary = summarizer.summarize(text, max_length=max_length)
+        summary = await run_in_threadpool(summarizer.summarize, text, max_length=max_length)
 
         ctx_id, source_id, artifact_id = _persist_ai_context(
             file_path=file_path,
             text=text,
+            parse_metadata=_parse_metadata(parsed),
             artifact_type="summary",
             content=summary,
             title=f"{file_path.stem} · 摘要",
-            metadata={"max_length": max_length},
+            metadata={"warnings": warnings, "max_length": max_length},
         )
         retained = True
 
         result = {
+            "warnings": warnings,
             "ctx_id": ctx_id,
             "filename": file.filename,
             "summary": summary,
@@ -2357,9 +2405,9 @@ async def ai_summarize(
 
         return ApiResponse(success=True, data=result)
     except Exception as exc:
-        if isinstance(exc, HTTPException):
+        if isinstance(exc, (HTTPException, BudgetExceeded, GovernanceUnavailable)):
             raise
-        logger.exception("AI摘要生成失败: %s", file.filename)
+        logger.warning("AI upload failed (%s)", type(exc).__name__)
         raise HTTPException(status_code=502, detail="AI 摘要生成失败") from exc
     finally:
         if not retained:
@@ -2369,8 +2417,8 @@ async def ai_summarize(
 @app.post("/ai/knowledge-cards", response_model=ApiResponse)
 async def ai_knowledge_cards(
     file: Annotated[UploadFile, File()],
-    num_cards: Annotated[int, Form()] = 10,
-    card_format: Annotated[str, Form()] = "front_back",
+    num_cards: Annotated[int, Form(ge=1, le=50)] = 10,
+    card_format: Annotated[Literal["front_back", "qa"], Form()] = "front_back",
 ):
     """AI知识卡生成：上传PDF/文档，生成AI知识卡片。"""
     file_path, _ = await _save_upload(file)
@@ -2382,10 +2430,8 @@ async def ai_knowledge_cards(
         from filemate.perception import FileParser
         parser = FileParser()
         parsed = await run_in_threadpool(parser.parse, str(file_path))
-        text = parsed.get("raw_text", "")
-
-        if not text.strip():
-            raise HTTPException(status_code=422, detail="无法从文件中提取文本内容")
+        text = _parsed_text(parsed)
+        warnings = _analysis_warnings(parsed, text, 8000)
 
         # 生成知识卡
         from filemate.llm_client import LLMClient, LLMConfig
@@ -2393,19 +2439,21 @@ async def ai_knowledge_cards(
         llm = LLMClient(llm_config)
         from filemate.understanding import KnowledgeCardGenerator
         generator = KnowledgeCardGenerator(llm)
-        cards = generator.generate_cards(text, num_cards=num_cards, card_format=card_format)
+        cards = await run_in_threadpool(generator.generate_cards, text, num_cards=num_cards, card_format=card_format)
 
         ctx_id, source_id, artifact_id = _persist_ai_context(
             file_path=file_path,
             text=text,
+            parse_metadata=_parse_metadata(parsed),
             artifact_type="knowledge_cards",
             content=cards,
             title=f"{file_path.stem} · 知识卡",
-            metadata={"count": len(cards), "card_format": card_format},
+            metadata={"warnings": warnings, "count": len(cards), "card_format": card_format},
         )
         retained = True
 
         result = {
+            "warnings": warnings,
             "ctx_id": ctx_id,
             "filename": file.filename,
             "cards": cards,
@@ -2416,9 +2464,9 @@ async def ai_knowledge_cards(
 
         return ApiResponse(success=True, data=result)
     except Exception as exc:
-        if isinstance(exc, HTTPException):
+        if isinstance(exc, (HTTPException, BudgetExceeded, GovernanceUnavailable)):
             raise
-        logger.exception("AI知识卡生成失败: %s", file.filename)
+        logger.warning("AI upload failed (%s)", type(exc).__name__)
         raise HTTPException(status_code=502, detail="AI 知识卡生成失败") from exc
     finally:
         if not retained:
@@ -2441,12 +2489,8 @@ async def ai_questions(
         from filemate.perception import FileParser
         parser = FileParser()
         parsed = await run_in_threadpool(parser.parse, str(file_path))
-        if parsed.get("error"):
-            raise HTTPException(status_code=422, detail=str(parsed["error"]))
-        text = parsed.get("raw_text", "")
-
-        if not text.strip():
-            raise HTTPException(status_code=422, detail="无法从文件中提取文本内容")
+        text = _parsed_text(parsed)
+        warnings = _analysis_warnings(parsed, text, None)
 
         # 解析题目类型
         types_list = None
@@ -2481,6 +2525,8 @@ async def ai_questions(
         subject = file_path.stem[:20] or "综合"
         knowledge_point = text[:60].replace("\n", " ") if text else "核心内容"
         chunks = chunk_text(text, chunk_size=800, overlap=100)
+        if len(text) > 500:
+            warnings.append("本次出题使用前5个资料片段，每片段最多500字；可按章节拆分以覆盖其余内容。")
 
         all_questions: list[dict[str, Any]] = []
         requested_types = [_map_type(t) for t in types_list] if types_list else ["choice"]
@@ -2492,7 +2538,8 @@ async def ai_questions(
             if requested_count == 0:
                 continue
             try:
-                batch = generate_questions_with_llm(
+                batch = await run_in_threadpool(
+                    generate_questions_with_llm,
                     llm=llm,
                     subject=subject,
                     knowledge_point=knowledge_point,
@@ -2501,8 +2548,10 @@ async def ai_questions(
                     context=chunks,
                 )
                 all_questions.extend(batch)
+            except (BudgetExceeded, GovernanceUnavailable):
+                raise
             except RuntimeError as exc:
-                generation_errors.append(str(exc))
+                generation_errors.append(type(exc).__name__)
                 continue
 
         if not all_questions:
@@ -2513,14 +2562,16 @@ async def ai_questions(
         ctx_id, source_id, artifact_id = _persist_ai_context(
             file_path=file_path,
             text=text,
+            parse_metadata=_parse_metadata(parsed),
             artifact_type="questions",
             content=questions,
             title=f"{file_path.stem} · 练习题",
-            metadata={"count": len(questions), "types": types_list or []},
+            metadata={"warnings": warnings, "count": len(questions), "types": types_list or []},
         )
         retained = True
 
         result = {
+            "warnings": warnings,
             "ctx_id": ctx_id,
             "filename": file.filename,
             "questions": questions,
@@ -2531,9 +2582,9 @@ async def ai_questions(
 
         return ApiResponse(success=True, data=result)
     except Exception as exc:
-        if isinstance(exc, HTTPException):
+        if isinstance(exc, (HTTPException, BudgetExceeded, GovernanceUnavailable)):
             raise
-        logger.exception("AI题目提取失败: %s", file.filename)
+        logger.warning("AI upload failed (%s)", type(exc).__name__)
         raise HTTPException(status_code=502, detail="AI 题目生成失败") from exc
     finally:
         if not retained:
@@ -2543,7 +2594,7 @@ async def ai_questions(
 @app.post("/ai/notes", response_model=ApiResponse)
 async def ai_notes(
     file: Annotated[UploadFile, File()],
-    format: Annotated[str, Form()] = "outline",
+    format: Annotated[Literal["outline", "markdown", "mindmap"], Form()] = "outline",
 ):
     """AI笔记提取：上传PDF/文档，提取结构化笔记。"""
     file_path, _ = await _save_upload(file)
@@ -2555,10 +2606,8 @@ async def ai_notes(
         from filemate.perception import FileParser
         parser = FileParser()
         parsed = await run_in_threadpool(parser.parse, str(file_path))
-        text = parsed.get("raw_text", "")
-
-        if not text.strip():
-            raise HTTPException(status_code=422, detail="无法从文件中提取文本内容")
+        text = _parsed_text(parsed)
+        warnings = _analysis_warnings(parsed, text, 8000)
 
         # 提取笔记
         from filemate.llm_client import LLMClient, LLMConfig
@@ -2566,19 +2615,21 @@ async def ai_notes(
         llm = LLMClient(llm_config)
         from filemate.understanding import NoteExtractor
         extractor = NoteExtractor(llm)
-        notes = extractor.extract_notes(text, format=format)
+        notes = await run_in_threadpool(extractor.extract_notes, text, format=format)
 
         ctx_id, source_id, artifact_id = _persist_ai_context(
             file_path=file_path,
             text=text,
+            parse_metadata=_parse_metadata(parsed),
             artifact_type="notes",
             content=notes,
             title=f"{file_path.stem} · 结构化笔记",
-            metadata={"format": format},
+            metadata={"warnings": warnings, "format": format},
         )
         retained = True
 
         result = {
+            "warnings": warnings,
             "ctx_id": ctx_id,
             "filename": file.filename,
             "notes": notes,
@@ -2588,9 +2639,9 @@ async def ai_notes(
 
         return ApiResponse(success=True, data=result)
     except Exception as exc:
-        if isinstance(exc, HTTPException):
+        if isinstance(exc, (HTTPException, BudgetExceeded, GovernanceUnavailable)):
             raise
-        logger.exception("AI笔记提取失败: %s", file.filename)
+        logger.warning("AI upload failed (%s)", type(exc).__name__)
         raise HTTPException(status_code=502, detail="AI 笔记生成失败") from exc
     finally:
         if not retained:
@@ -2614,9 +2665,8 @@ async def ai_study_plan(
         from filemate.perception import FileParser
 
         parsed = await run_in_threadpool(FileParser().parse, str(file_path))
-        text = parsed.get("raw_text", "")
-        if not text.strip():
-            raise HTTPException(status_code=422, detail="无法从文件中提取文本内容")
+        text = _parsed_text(parsed)
+        warnings = _analysis_warnings(parsed, text, 12000)
 
         from filemate.llm_client import LLMClient, LLMConfig
         from filemate.understanding import StudyPlanGenerator
@@ -2624,21 +2674,24 @@ async def ai_study_plan(
         topics = None
         if weak_topics:
             topics = [item.strip() for item in weak_topics.split(",") if item.strip()]
-        plan = StudyPlanGenerator(LLMClient(LLMConfig.from_env())).generate(
+        plan = await run_in_threadpool(
+            StudyPlanGenerator(LLMClient(LLMConfig.from_env())).generate,
             text=text,
             exam_date=exam_date,
             daily_minutes=daily_minutes,
             goal=goal.strip(),
             weak_topics=topics,
         )
+        plan["warnings"] = warnings
 
         ctx_id, source_id, artifact_id = _persist_ai_context(
             file_path=file_path,
             text=text,
+            parse_metadata=_parse_metadata(parsed),
             artifact_type="study_plan",
             content=plan,
             title=plan.get("title", f"{file_path.stem} · 学习计划"),
-            metadata={"exam_date": exam_date, "daily_minutes": daily_minutes},
+            metadata={"warnings": warnings, "exam_date": exam_date, "daily_minutes": daily_minutes},
         )
         retained = True
         saved_plan = _storage.create_study_plan(
@@ -2649,6 +2702,7 @@ async def ai_study_plan(
         return ApiResponse(
             success=True,
             data={
+                "warnings": warnings,
                 "ctx_id": ctx_id,
                 "filename": file_path.name,
                 "plan": plan,
@@ -2659,9 +2713,9 @@ async def ai_study_plan(
             },
         )
     except Exception as exc:
-        if isinstance(exc, HTTPException):
+        if isinstance(exc, (HTTPException, BudgetExceeded, GovernanceUnavailable)):
             raise
-        logger.exception("AI学习计划生成失败: %s", file_path.name)
+        logger.warning("AI upload failed (%s)", type(exc).__name__)
         raise HTTPException(status_code=502, detail="AI 学习计划生成失败") from exc
     finally:
         if not retained:
@@ -4031,9 +4085,7 @@ def start_interview(request: InterviewStartRequest):
     if request.memory_id and (remembered is None or not remembered["interview"]["turns"]):
         raise HTTPException(status_code=409, detail="所选练习记忆已撤销或没有有效回答，请重新选择")
     memory_ref = None
-    allow_external_analysis = request.allow_external_analysis
-    if allow_external_analysis is None and (request.scenario in SPECIALIST_QUESTIONS or request.memory_id):
-        allow_external_analysis = False
+    allow_external_analysis = request.allow_external_analysis is True
     source = None
     context_excerpt = ""
     source_context_mode = "none"
@@ -4193,6 +4245,11 @@ def start_interview(request: InterviewStartRequest):
             agent_run_id=run["run_id"],
             commit=False,
         )
+        if (allow_external_analysis and os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") != "1"
+                and request.scenario != "知识讲解" and source_context_mode != "local_metadata_only"):
+            identity, _ = provider_metadata(llm)
+            connection.execute("UPDATE interview_coach_state SET external_consent=1,consent_revision=1,provider_identity=? WHERE interview_id=?",
+                               (identity, interview["interview_id"]))
         if request.remember_for_future:
             practice.remember(interview, commit=False)
     _storage.append_agent_step(
@@ -4301,6 +4358,7 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
         if previous:
             if previous.get("answer_digest") != digest:
                 raise HTTPException(status_code=409, detail="重复请求键的回答内容不同")
+            _sync_interview_progress(interview_id)
             return get_interview(interview_id)
     if interview["status"] == "completed":
         raise HTTPException(status_code=409, detail="模拟面试已完成")
@@ -4311,35 +4369,15 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
     if request.visual_metrics:
         _require_interview_review_enabled()
 
-    from filemate.llm_client import LLMClient, LLMConfig
-    from filemate.understanding import InterviewEvaluator
-
     index = interview["current_index"]
     question = interview["questions"][index]
     run = _storage.get_agent_run(interview["agent_run_id"]) if interview.get("agent_run_id") else None
     context_refs = run.get("context_refs", {}) if run else {}
-    private_wrong_question = bool(
-        context_refs.get("focus_wrong_id")
-        and context_refs.get("source_context_mode") == "local_metadata_only"
-    )
-    try:
-        if (
-            os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") == "1"
-            or interview["scenario"] == "知识讲解"
-            or private_wrong_question
-            or context_refs.get("allow_external_analysis") is False
-        ):
-            raise RuntimeError("本地评分模式")
-        evaluator = InterviewEvaluator(LLMClient(LLMConfig.from_env()))
-    except Exception:  # noqa: BLE001 - 未配置模型或隐私模式下使用本地评分
-        evaluator = InterviewEvaluator(None)
-    evaluation = evaluator.evaluate(
-        question,
-        request.answer,
-        interview["target_role"],
+    from filemate.interview_coach.commands import local_evaluation
+
+    evaluation = local_evaluation(request.answer,
         request.fluency_metrics.model_dump() if request.fluency_metrics else None,
-        speech_language="en-US" if interview["scenario"] == "英语面" else "zh-CN",
-    )
+        speech_language="en-US" if interview["scenario"] == "英语面" else "zh-CN")
     next_question = None
     memory_question_index = (context_refs.get("practice_memory_ref") or {}).get("target_question_index")
     if (context_refs.get("practice_mode") == "continuous"
@@ -4354,7 +4392,7 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
             interview_id=interview_id,
             question_index=index,
             question=question,
-            answer=request.answer.strip(),
+            answer=request.answer,
             score=evaluation["score"],
             dimensions=evaluation["dimensions"],
             feedback=evaluation["feedback"],
@@ -4370,52 +4408,25 @@ def answer_interview(interview_id: str, request: InterviewAnswerRequest):
         detail = str(exc)
         status_code = 404 if detail == "模拟面试不存在" else 409
         raise HTTPException(status_code=status_code, detail=detail) from exc
-    run_id = interview.get("agent_run_id")
-    if run_id:
-        _storage.append_agent_step(
-            run_id=run_id,
-            agent_name="评价 Agent",
-            input_refs={
-                "interview_id": interview_id,
-                "question_index": index,
-            },
-            output_summary=(
-                f"第 {index + 1} 题：{evaluation['score'] if evaluation['score'] is not None else '内容待评估'}；"
-                f"已记录 {len(evaluation['dimensions'])} 个评分维度"
-            ),
-        )
-        _storage.save_agent_memory(
-            memory_type="growth",
-            scope_id=interview_id,
-            source_type="interview_turn",
-            source_id=f"{interview_id}:{index}",
-            summary=(
-                f"{interview['scenario']}第 {index + 1} 题得分 "
-                f"{evaluation['score'] if evaluation['score'] is not None else '待评估'}，用于后续复盘"
-            ),
-            allowed_agents=["评价 Agent", "规划 Agent", "学习教练 Agent"],
-        )
-        if updated["status"] == "completed":
-            _storage.finish_agent_run(run_id)
-    if updated["status"] == "completed" and context_refs.get("goal_id"):
-        goal_artifact = _storage.get_artifact(str(context_refs["goal_id"]))
-        if goal_artifact and goal_artifact.get("artifact_type") == "reverse_goal_plan":
-            goal_content = dict(goal_artifact.get("content") or {})
-            tasks = list(goal_content.get("tasks") or [])
-            for task in tasks:
-                if (
-                    task.get("task_id") == "explain-wrong-aloud"
-                    and task.get("focus_wrong_id") == context_refs.get("focus_wrong_id")
-                    and goal_artifact.get("source_id") == context_refs.get("source_id")
-                    and _oral_evidence_invalid_reason(task) is None
-                ):
-                    task["status"] = "completed"
-                    goal_content["tasks"] = tasks
-                    _storage.update_artifact(
-                        str(context_refs["goal_id"]),
-                        title=str(goal_artifact["title"]), content=goal_content,
-                    )
-                    break
+    _sync_interview_progress(interview_id)
+    state = _interview_coach_repository().snapshot(interview_id)
+    if (context_refs.get("allow_external_analysis") is True and state.external_consent
+            and os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") != "1"
+            and os.getenv("FILEMATE_ENABLE_INTERVIEW_REVIEW", "1") != "0"
+            and interview["scenario"] != "知识讲解"):
+        try:
+            _guard_interview_external(interview_id)
+            attempt = next(t for t in updated["turns"] if t["question_index"] == index)
+            result = CoachAnalysisService(_interview_coach_repository().storage, _coach_llm).analyze(
+                interview_id, AnalysisCommand(attempt_id=attempt["attempt_id"],
+                    request_key="legacy_auto_" + attempt["attempt_id"], expected_revision=state.revision,
+                    consent_revision=state.consent_revision))
+            run = _storage._conn().execute("SELECT evaluation FROM interview_coach_analysis_runs WHERE run_id=?", (result.receipt["run_id"],)).fetchone()
+            evaluation = json.loads(run[0]) or evaluation
+        except (CoachError, HTTPException):
+            pass
+        updated = _storage.get_interview(interview_id)
+        _sync_interview_progress(interview_id)
     next_index = updated["current_index"]
     updated["current_question"] = (
         updated["questions"][next_index]
@@ -4446,6 +4457,172 @@ def _interview_review_error(exc: Exception):
                          detail="面试或回答不存在" if isinstance(exc, KeyError) else str(exc))
 
 
+def _interview_coach_repository():
+    return CoachRepository(_interview_review_repository().storage)
+
+
+def _require_interview_coach_write_enabled() -> None:
+    if os.getenv("FILEMATE_ENABLE_INTERVIEW_COACH", "0") != "1":
+        raise HTTPException(503, "逐题教练暂未启用，原有文字练习仍可使用")
+
+
+def _coach_llm():
+    from filemate.llm_client import LLMClient, LLMConfig
+
+    return LLMClient(LLMConfig.from_env())
+
+
+def _guard_interview_external(interview_id: str):
+    _require_interview_review_enabled()
+    interview = _storage.get_interview(interview_id)
+    if interview is None:
+        raise HTTPException(404, "模拟面试不存在")
+    if os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") == "1" or interview["scenario"] == "知识讲解":
+        raise HTTPException(503, "当前面试处于本地模式，未向外部模型发送数据")
+    _attach_interview_source_context(interview)
+    refs = interview.get("source_context") or {}
+    if refs.get("source_id") and refs.get("mode") == "local_metadata_only":
+        raise HTTPException(403, "所选私有资料尚未授权外发，内容分析仅可本地复盘")
+
+
+@app.exception_handler(CoachError)
+async def interview_coach_error_handler(request: Request, exc: CoachError):
+    del request
+    messages = {
+        "configuration": "模型尚未配置，请在设置中保存并测试密钥；原回答已保存",
+        "access_denied": "模型拒绝访问，请检查密钥、余额和调用权限；原回答已保存",
+        "timeout": "模型分析超时，请主动重试这一题；原回答已保存",
+        "rate_limit": "模型暂时限流，请稍后重试；原回答已保存",
+        "connection": "模型连接未完成，请在设置中测试连接；原回答已保存",
+        "invalid_evidence": "模型格式或原句引用未通过核对，请主动重试；原回答已保存",
+        "budget_exceeded": "模型额度已用尽，请稍后重试；原回答已保存",
+        "governance_unavailable": "模型用量保护暂不可用，请稍后重试；原回答已保存",
+        "consent_required": "请重新确认本场的问题与回答外发授权，模型配置可能已改变",
+        "analysis_in_progress": "本场仍有分析正在结束，请稍后重试",
+        "request_key_conflict": "重复请求键对应不同操作，请保留草稿并重新读取",
+    }
+    message = messages.get(exc.code, "面试或回答不存在" if exc.status_code == 404 else "记录已变化，请保留草稿并重新读取")
+    data = {"error_code": exc.code, "retryable": exc.status_code in {429, 502, 503}}
+    for name in ("run_id", "attempt_id"):
+        if hasattr(exc, name):
+            data[name] = getattr(exc, name)
+    return JSONResponse(status_code=exc.status_code, content={"success": False, "data": data, "error": message})
+
+
+@app.get("/interviews/{interview_id}/coach", response_model=ApiResponse)
+def get_interview_coach(interview_id: str):
+    from datetime import timezone
+
+    repo = _interview_coach_repository()
+    repo.interrupt_expired(interview_id, now=datetime.now(timezone.utc))
+    state = repo.snapshot(interview_id)
+    _attach_interview_source_context(state.session)
+    return ApiResponse(success=True, data=state.model_dump())
+
+
+@app.post("/interviews/{interview_id}/coach/answers", response_model=ApiResponse)
+def submit_interview_coach(interview_id: str, request: SubmitAnswer):
+    _require_interview_coach_write_enabled()
+    if request.visual_metrics:
+        _require_interview_review_enabled()
+    result = _interview_coach_repository().submit(interview_id, request)
+    _sync_interview_progress(interview_id)
+    _attach_interview_source_context(result.snapshot.session)
+    return ApiResponse(success=True, data=result.model_dump())
+
+
+@app.get("/interviews/{interview_id}/turns/{turn_id}/attempts", response_model=ApiResponse)
+def get_interview_attempts(interview_id: str, turn_id: str,
+                           limit: int = Query(default=20, ge=1, le=100),
+                           before_version: int | None = Query(default=None, ge=1)):
+    return ApiResponse(success=True, data=_interview_coach_repository().list_attempts(
+        interview_id, turn_id, limit=limit, before_version=before_version,
+    ))
+
+
+@app.post("/interviews/{interview_id}/coach/consent", response_model=ApiResponse)
+def set_interview_coach_consent(interview_id: str, request: ConsentCommand):
+    _require_interview_coach_write_enabled()
+    if request.allowed:
+        _guard_interview_external(interview_id)
+    try:
+        llm = _coach_llm()
+    except Exception:  # noqa: BLE001 - configuration failure must not prevent revocation
+        llm = None
+    identity, _ = provider_metadata(llm)
+    result = _interview_coach_repository().set_consent(interview_id, request, provider_identity=identity)
+    return ApiResponse(success=True, data=result.model_dump())
+
+
+@app.post("/interviews/{interview_id}/coach/analysis", response_model=ApiResponse)
+def analyze_interview_coach(interview_id: str, request: AnalysisCommand):
+    _require_interview_coach_write_enabled()
+    _guard_interview_external(interview_id)
+    result = CoachAnalysisService(_interview_coach_repository().storage, _coach_llm).analyze(interview_id, request)
+    _sync_interview_progress(interview_id)
+    return ApiResponse(success=True, data=result.model_dump())
+
+
+@app.post("/interviews/{interview_id}/coach/focus", response_model=ApiResponse)
+def focus_interview_coach(interview_id: str, request: FocusCommand):
+    _require_interview_coach_write_enabled()
+    result = _interview_coach_repository().focus(interview_id, request)
+    _attach_interview_source_context(result.snapshot.session)
+    return ApiResponse(success=True, data=result.model_dump())
+
+
+@app.post("/interviews/{interview_id}/coach/advance", response_model=ApiResponse)
+def advance_interview_coach(interview_id: str, request: AdvanceCommand):
+    _require_interview_coach_write_enabled()
+    result = _interview_coach_repository().advance(interview_id, request)
+    return ApiResponse(success=True, data=result.model_dump())
+
+
+def _sync_interview_progress(interview_id: str):
+    """Recover idempotent trace, current memory and linked goal after durable save."""
+    repo = _interview_coach_repository()
+    with repo.transaction() as conn:
+        session = repo.storage.get_interview(interview_id)
+        run_id = session.get("agent_run_id")
+        run = repo.storage.get_agent_run(run_id) if run_id else None
+        refs = run.get("context_refs", {}) if run else {}
+        if run:
+            for turn in session["turns"]:
+                key = "progress_" + turn["attempt_id"]
+                previous = conn.execute("SELECT 1 FROM interview_coach_actions WHERE interview_id=? AND request_key=?", (interview_id, key)).fetchone()
+                score = turn["score"] if turn["score"] is not None else "待分析"
+                summary = f"第{turn['question_index'] + 1}题第{turn['attempt_version']}版，模型参考分{score}"
+                source_id = f"{interview_id}:{turn['question_index']}"
+                memory = conn.execute("SELECT memory_id FROM agent_memories WHERE scope_id=? AND source_type='interview_turn' AND source_id=?", (interview_id, source_id)).fetchone()
+                if memory:
+                    conn.execute("UPDATE agent_memories SET summary=? WHERE memory_id=?", (summary, memory[0]))
+                else:
+                    repo.storage.save_agent_memory(memory_type="growth", scope_id=interview_id,
+                        source_type="interview_turn", source_id=source_id, summary=summary,
+                        allowed_agents=["评价 Agent", "规划 Agent", "学习教练 Agent"], commit=False)
+                if not previous:
+                    sequence = conn.execute("SELECT COALESCE(MAX(sequence),0)+1 FROM agent_steps WHERE run_id=?", (run_id,)).fetchone()[0]
+                    conn.execute("INSERT INTO agent_steps(step_id,run_id,sequence,agent_name,status,input_refs,output_summary) VALUES (?,?,?,'评价 Agent','completed',?,?)",
+                                 (uuid.uuid4().hex, run_id, sequence,
+                                  json.dumps({"interview_id": interview_id, "attempt_id": turn["attempt_id"]}), summary))
+                    conn.execute("INSERT INTO interview_coach_actions VALUES (?,?, 'progress',?, ?,?)",
+                                 (interview_id, key, turn["attempt_id"], "{}", _coach_now()))
+            if session["status"] == "completed":
+                conn.execute("UPDATE agent_runs SET status='completed',updated_at=? WHERE run_id=? AND status!='completed'", (_coach_now(), run_id))
+        if session["status"] == "completed" and refs.get("goal_id"):
+            artifact = repo.storage.get_artifact(str(refs["goal_id"]))
+            if artifact and artifact["artifact_type"] == "reverse_goal_plan":
+                content = dict(artifact.get("content") or {})
+                for task in content.get("tasks", []):
+                    if (task.get("task_id") == "explain-wrong-aloud" and task.get("status") != "completed"
+                            and task.get("focus_wrong_id") == refs.get("focus_wrong_id")
+                            and artifact.get("source_id") == refs.get("source_id")
+                            and _oral_evidence_invalid_reason(task) is None):
+                        task["status"] = "completed"
+                        conn.execute("UPDATE artifacts SET content=?,updated_at=? WHERE artifact_id=?",
+                                     (json.dumps(content, ensure_ascii=False), _coach_now(), artifact["artifact_id"]))
+
+
 @app.get("/interview/review/status", response_model=ApiResponse)
 def interview_review_status():
     return ApiResponse(success=True, data={
@@ -4456,7 +4633,6 @@ def interview_review_status():
 
 @app.get("/interviews/{interview_id}/review", response_model=ApiResponse)
 def get_interview_report(interview_id: str):
-    _require_interview_review_enabled()
     try:
         repo = _interview_review_repository()
         return ApiResponse(success=True, data={"report": repo.report(interview_id),
@@ -4478,49 +4654,30 @@ def generate_interview_report(interview_id: str):
 def analyze_interview_turn(interview_id: str, turn_id: str, request: InterviewAnalysisRequest):
     _require_interview_review_enabled()
     if not request.external_consent:
-        raise HTTPException(status_code=422, detail="请先确认向已配置模型发送问题与回答；音视频不会外发")
-    if os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") == "1":
-        raise HTTPException(status_code=503, detail="当前面试处于本地模式，未向外部模型发送数据")
-    repo = _interview_review_repository()
-    try:
-        interview, revision = repo.snapshot(interview_id)
-        turn = next((item for item in interview["turns"] if item["turn_id"] == turn_id), None)
-        if not turn:
-            raise KeyError(turn_id)
-        if turn.get("analysis_data_error"):
-            raise ValueError("分析数据异常，请先清空分析；原回答保留")
-        if turn.get("content_analysis", {}).get("source") == "llm_reference":
-            return get_interview(interview_id)
-        _attach_interview_source_context(interview)
-        refs = interview.get("source_context") or {}
-        if refs.get("focus_wrong_id") and refs.get("mode") == "local_metadata_only":
-            raise HTTPException(status_code=403, detail="所选私有错题尚未授权外发，内容分析仅可本地复盘")
-        from filemate.llm_client import LLMClient, LLMConfig
-        from filemate.understanding import InterviewEvaluator
-
-        try:
-            evaluation = InterviewEvaluator(LLMClient(LLMConfig.from_env())).evaluate(
-                turn["question"], turn["answer"], interview["target_role"], turn.get("fluency_metrics"),
-            )
-        except Exception as exc:  # noqa: BLE001 - 模型不可用时保留原始面试证据
-            from filemate.interview_review.content import analysis_failure
-
-            evaluation = {"scoring_mode": "local_fallback", "analysis_error": analysis_failure(exc)}
-        if evaluation["scoring_mode"] != "llm":
-            detail = evaluation.get("analysis_error", {}).get(
-                "message", "模型分析未完成，请重试这一题；原回答、节奏与报告保留",
-            )
-            raise HTTPException(status_code=502, detail=detail)
-        updated = repo.apply_analysis(interview_id, turn_id, revision, evaluation)
-        _attach_interview_source_context(updated)
-        return ApiResponse(success=True, data=updated)
-    except (KeyError, ValueError) as exc:
-        raise _interview_review_error(exc) from exc
+        raise HTTPException(422, "请先确认向已配置模型发送问题与回答；音视频不会外发")
+    _guard_interview_external(interview_id)
+    repo = _interview_coach_repository()
+    state = repo.snapshot(interview_id)
+    turn = next((t for t in state.session["turns"] if t["turn_id"] == turn_id), None)
+    if turn is None:
+        raise CoachError("turn_not_found", 404)
+    if turn.get("analysis_data_error"):
+        raise CoachError("attempt_data_error")
+    if turn.get("scoring_mode") == "llm" and turn.get("content_analysis", {}).get("source") == "llm_reference":
+        return get_interview(interview_id)
+    result = CoachAnalysisService(repo.storage, _coach_llm).analyze(interview_id,
+        AnalysisCommand(attempt_id=turn["attempt_id"], request_key="legacy_manual_" + uuid.uuid4().hex,
+                        expected_revision=state.revision, consent_revision=state.consent_revision),
+        one_shot_consent=True)
+    run = repo.storage._conn().execute("SELECT status FROM interview_coach_analysis_runs WHERE run_id=?", (result.receipt["run_id"],)).fetchone()
+    if run[0] == "cancelled":
+        raise CoachError("analysis_cancelled")
+    _sync_interview_progress(interview_id)
+    return get_interview(interview_id)
 
 
 @app.post("/interviews/{interview_id}/analysis/cancel", response_model=ApiResponse)
 def cancel_interview_analysis(interview_id: str):
-    _require_interview_review_enabled()
     try:
         return ApiResponse(success=True, data=_interview_review_repository().cancel(interview_id))
     except (KeyError, ValueError) as exc:
@@ -4529,7 +4686,6 @@ def cancel_interview_analysis(interview_id: str):
 
 @app.post("/interviews/{interview_id}/analysis/clear", response_model=ApiResponse)
 def clear_interview_analysis(interview_id: str, request: InterviewPrivacyRequest):
-    _require_interview_review_enabled()
     if not request.confirmed:
         raise HTTPException(status_code=422, detail="请确认清空内容评分、视觉观察和报告；原回答与节奏保留")
     try:
@@ -4542,7 +4698,6 @@ def clear_interview_analysis(interview_id: str, request: InterviewPrivacyRequest
 
 @app.get("/interviews/{interview_id}/delete-preview", response_model=ApiResponse)
 def preview_interview_delete(interview_id: str):
-    _require_interview_review_enabled()
     try:
         return ApiResponse(success=True, data=_interview_review_repository().delete_preview(interview_id))
     except (KeyError, ValueError) as exc:
@@ -4551,7 +4706,6 @@ def preview_interview_delete(interview_id: str):
 
 @app.delete("/interviews/{interview_id}", response_model=ApiResponse)
 def delete_interview(interview_id: str, request: InterviewPrivacyRequest):
-    _require_interview_review_enabled()
     if not request.confirmed or len(request.confirmation_token) != 64:
         raise HTTPException(status_code=422, detail="请先预览并确认本场练习的删除影响")
     try:
@@ -4564,7 +4718,6 @@ def delete_interview(interview_id: str, request: InterviewPrivacyRequest):
 
 @app.get("/interviews/{interview_id}/review/export")
 def export_interview_report(interview_id: str, format: Literal["json", "markdown", "pdf"] = "json"):
-    _require_interview_review_enabled()
     from filemate.interview_review.reports import report_markdown, report_pdf
 
     repo = _interview_review_repository()

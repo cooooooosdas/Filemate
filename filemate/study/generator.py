@@ -146,6 +146,10 @@ def generate_questions_with_llm(
             temperature=0.4,
         )
     except Exception as exc:
+        from filemate.runtime_governance import BudgetExceeded, GovernanceUnavailable
+
+        if isinstance(exc, (BudgetExceeded, GovernanceUnavailable)):
+            raise
         raise RuntimeError(f"AI 出题失败：{exc}") from exc
     try:
         generated = _normalize(raw, subject, knowledge_point)
