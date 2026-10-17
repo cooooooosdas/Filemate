@@ -4,7 +4,7 @@
 
 ## 包内容
 
-`source/`来自manifest中固定Git提交；`deploy/backend.tar.gz`为同一提交的源码；`deploy/web.tar.gz`开启逐题教练，`deploy/web-coach-off.tar.gz`关闭新界面。`manifest.json`和`SHA256SUMS.txt`记录包指纹、版本、开关及验收范围。`evidence/`只包含合成验收、门禁及公网只读结果，不包含数据库、真实资料、密钥、音视频或环境配置。
+`source/`来自manifest中固定Git提交；`deploy/backend.tar.gz`为同一提交的源码；`deploy/web.tar.gz`开启逐题教练，`deploy/web-coach-off.tar.gz`关闭新界面。`manifest.json`和`SHA256SUMS.txt`记录包指纹、版本、开关及验收范围。`evidence/`只包含合成验收、门禁及公网只读结果，不包含数据库、真实资料、密钥、音视频或生产环境配置；源码保留公开配置示例和桌面端回环API地址。
 
 ## 配置与暂存
 
