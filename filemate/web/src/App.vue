@@ -62,7 +62,7 @@
           <span class="state-indicator" />
           <span>{{ backendConnected === null ? '正在连接…' : backendConnected ? '服务已连接' : '服务未连接' }}</span>
         </div>
-        <button class="version-label" title="整合版本 1.3.0-alpha.4" aria-label="打开应用设置" @click="showSettings = true">v1.3 α4</button>
+        <button class="version-label" title="整合版本 1.3.0-alpha.4" aria-label="打开应用设置" @click="openSettings">v1.3 α4</button>
       </div>
     </aside>
 
@@ -110,7 +110,7 @@
             class="icon-button"
             aria-label="打开设置"
             title="设置"
-            @click="showSettings = true"
+            @click="openSettings"
           >
             <el-icon><Setting /></el-icon>
           </button>
@@ -140,39 +140,16 @@
       <div v-if="accountState?.user" class="account-details"><strong>{{ accountState.user.display_name }}</strong><p>{{ accountState.user.email }}</p><p>资料保存在该账号的私有学习空间，换设备登录后可继续使用。</p><p>忘记密码时，请在登录页使用保存的恢复码。</p></div>
       <template #footer><el-button @click="showAccount = false">关闭</el-button><el-button type="primary" :loading="loggingOut" @click="signOut">退出登录</el-button></template>
     </el-dialog>
-    <el-dialog v-model="showSettings" title="应用设置" width="min(660px, calc(100vw - 32px))">
-      <div class="settings-list">
-        <div class="setting-row">
-          <el-icon><Monitor /></el-icon>
-          <div>
-            <strong>显示模式</strong>
-            <span>浅色阅读界面，沿用系统字体</span>
-          </div>
-          <el-tag effect="plain">浅色</el-tag>
-        </div>
-        <div class="setting-row">
-          <el-icon><Lock /></el-icon>
-          <div>
-            <strong>保存位置</strong>
-            <span>{{ accountState?.enabled ? '网站资料保存在服务器的独立私有空间' : '学习资料与执行记录默认保存在本机' }}</span>
-          </div>
-          <el-tag type="success" effect="plain">{{ accountState?.enabled ? '账号空间' : '本机' }}</el-tag>
-        </div>
-        <div class="setting-row">
-          <el-icon><Connection /></el-icon>
-          <div>
-            <strong>服务状态</strong>
-            <span>{{ backendConnected ? '可以导入、查看和保存资料' : '请启动服务后重新连接' }}</span>
-          </div>
-          <el-tag :type="backendConnected ? 'success' : 'danger'" effect="plain">
-            {{ backendConnected ? '在线' : '离线' }}
-          </el-tag>
-        </div>
-      </div>
-      <SettingsPanelLoader v-if="showSettings" :backend-connected="backendConnected" :active="showSettings" />
-      <template #footer>
-        <el-button @click="showSettings = false">关闭</el-button>
-      </template>
+    <el-dialog v-model="showSettings" title="应用设置" class="preferences-dialog" top="5vh" width="min(780px, calc(100vw - 32px))">
+      <el-tabs v-model="settingsTab" class="preferences-tabs">
+        <el-tab-pane label="外观" name="appearance"><AppearanceSettings /></el-tab-pane>
+        <el-tab-pane label="保存位置" name="downloads" lazy><DownloadSettings /></el-tab-pane>
+        <el-tab-pane label="模型服务" name="model" lazy><SettingsPanelLoader v-if="showSettings" :backend-connected="backendConnected" :active="showSettings && settingsTab === 'model'" /></el-tab-pane>
+        <el-tab-pane label="连接状态" name="connection" lazy>
+          <section class="connection-settings"><h3>{{ backendConnected ? '学习服务已连接' : '学习服务暂未连接' }}</h3><p>{{ backendConnected ? '可以导入、查看和保存资料。' : '请检查网络或本机服务，再重新连接。' }}</p><el-button type="primary" :loading="serviceChecking" @click="loadShellState">重新连接</el-button><p>{{ accountState?.enabled ? '学习资料保存在账号的服务器私有空间；保存位置设置仅影响本机导出文件。' : '学习资料由本机服务保存；保存位置设置仅影响导出文件。' }}</p></section>
+        </el-tab-pane>
+      </el-tabs>
+      <template #footer><el-button @click="showSettings = false">完成</el-button></template>
     </el-dialog>
     <el-dialog v-model="showFinder" title="查找功能" width="min(580px, calc(100vw - 32px))" @opened="finder?.focus()" @closed="finder?.reset()">
       <FeatureFinder ref="finder" :tools="tools" :icons="toolIcons" @select="openTool" />
@@ -199,7 +176,6 @@ import {
   House,
   Lock,
   Menu,
-  Monitor,
   Cpu,
   Notebook,
   Reading,
@@ -217,6 +193,8 @@ import {
 import Logo from './components/Logo.vue'
 import FeatureFinder from './components/FeatureFinder.vue'
 import SettingsPanelLoader from './components/SettingsPanelLoader.vue'
+import AppearanceSettings from './components/AppearanceSettings.vue'
+import DownloadSettings from './components/DownloadSettings.vue'
 import { availableTools, primaryGroups, primaryPath, childrenTools, type Tool } from './navigation/catalog'
 import { routeViewKey } from './navigation/route-state'
 import { navigationPending } from './router/load-errors'
@@ -228,6 +206,7 @@ const router = useRouter()
 const sidebarCollapsed = ref(false)
 const mobileNavOpen = ref(false)
 const showSettings = ref(false)
+const settingsTab = ref('appearance')
 const showAccount = ref(false)
 const loggingOut = ref(false)
 const accountState = ref<AccountState | null>(null)
@@ -250,6 +229,10 @@ const selectedPrimary = computed(() => primaryPath(route.path, tools))
 function openTool(item: Tool): void {
   showFinder.value = false
   void router.push(item.path).catch(() => {})
+}
+async function openSettings(): Promise<void> {
+  if (mobileNavOpen.value) await closeMobileNav()
+  showSettings.value = true
 }
 async function openMobileNav(): Promise<void> {
   mobileNavOpen.value = true
@@ -348,7 +331,7 @@ function isAuthPath(path: string): boolean {
 
 <style scoped>
 .navigation-loading { position:relative; flex-shrink:0; padding:10px 24px 8px; font-size:15px; color:var(--accent); background:var(--bg-surface); overflow:hidden; }
-.navigation-track { position:absolute; inset:0 auto auto 0; width:30%; height:3px; background:var(--accent); animation:navigation-progress 1.1s ease-in-out infinite alternate; }
+.navigation-track { position:absolute; inset:0 auto auto 0; width:30%; height:3px; background:var(--action-fill, var(--accent)); animation:navigation-progress 1.1s ease-in-out infinite alternate; }
 @keyframes navigation-progress { to { transform:translateX(230%); } }
 @media(prefers-reduced-motion:reduce) { .navigation-track { width:100%; animation:none; } }
 
@@ -500,7 +483,7 @@ function isAuthPath(path: string): boolean {
 
 .nav-item.nav-selected {
   color: #f2f6ff;
-  background: var(--accent);
+  background: var(--action-fill, var(--accent));
   border-color: transparent;
   font-weight: 600;
 }
@@ -512,7 +495,7 @@ function isAuthPath(path: string): boolean {
   inset: 12px auto 12px 0;
   width: 3px;
   border-radius: 2px;
-  background: var(--accent);
+  background: var(--action-fill, var(--accent));
 }
 
 .space-switch {
@@ -966,8 +949,8 @@ function isAuthPath(path: string): boolean {
 .service-state,.version-label,.site-footer,.setting-row span { font-size:16px; }
 .setting-row strong { font-size:18px; }
 .finder-trigger { font-size:15px; }
-.global-import { display:inline-flex; align-items:center; gap:9px; min-height:44px; padding:0 16px; margin-right:8px; border-radius:10px; background:var(--accent); color:white; font-size:16px; font-weight:600; text-decoration:none; }
-.global-import:hover { background:var(--accent-hover); }
+.global-import { display:inline-flex; align-items:center; gap:9px; min-height:44px; padding:0 16px; margin-right:8px; border-radius:10px; background:var(--action-fill, var(--accent)); color:white; font-size:16px; font-weight:600; text-decoration:none; }
+.global-import:hover { background:var(--action-hover, var(--accent-hover)); }
 
 .page-fade-enter-from { transform:translateY(10px); }
 .nav-item:hover:not(.nav-selected) .el-icon { transform:translateX(2px); }
@@ -980,16 +963,37 @@ function isAuthPath(path: string): boolean {
 </style>
 
 <style scoped>
-.sidebar { --bg-surface: #f8fbff; background: var(--bg-surface); border-color: #e0e8f4; }
-.sidebar-head { min-height: 90px; padding: 22px 16px 12px; }
+.sidebar {
+  --bg-surface: var(--sidebar-surface);
+  --bg-hover: var(--sidebar-hover);
+  --text-primary: var(--sidebar-ink);
+  --text-secondary: var(--sidebar-secondary);
+  --text-muted: var(--sidebar-muted);
+  --border-subtle: var(--sidebar-line);
+  --border-strong: #8fa7cb;
+  --accent: var(--hero-highlight);
+  --success: #8dddba;
+  --danger: #ffb9ae;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border-color: #14243e;
+}
+.sidebar .brand-link { padding: 9px 8px; background: #fffdf8; border-radius: 9px; }
+.sidebar .version-label { border: 0; background: transparent; min-height: 44px; padding: 0; }
+.sidebar .nav-item.nav-selected { color: #fffdf8; background: var(--action-fill); }
+.sidebar .nav-item:hover:not(.nav-selected) { color: #fffdf8; background: var(--sidebar-hover); }
+.sidebar .icon-button:focus-visible, .sidebar a:focus-visible { outline-color: #bdd3fb; }
+.sidebar .nav-children a.child-selected { color: #172b48; background: #bdd3fb; }
+.sidebar .nav-children a:hover:not(.child-selected) { color: #fffdf8; background: var(--sidebar-hover); }
+.sidebar-head { min-height: 90px; padding: 18px 12px 12px; gap: 4px; }
 .space-caption { display: flex; align-items: center; gap: 10px; padding: 8px 24px 18px; color: var(--text-secondary); font-size: 15px; }
-.space-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.space-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--action-fill, var(--accent)); }
 .nav-groups { padding: 2px 12px 20px; }
 .nav-group-label { font-size: 15px; color: var(--text-muted); letter-spacing: 0; margin: 16px 14px 8px; }
 .nav-group + .nav-group { margin-top: 8px; }
 .nav-item { min-height: 50px; border: 0; font-size: 17px; }
-.nav-parent-active { background: #edf3fe; color: var(--accent); font-weight: 600; }
-.nav-item.nav-selected { background: var(--accent); }
+.nav-parent-active { background: var(--sidebar-hover); color: #bdd3fb; font-weight: 600; }
+.nav-item.nav-selected { background: var(--action-fill, var(--accent)); }
 .branch-arrow { flex: 0 0 15px !important; font-size: 15px !important; transform: rotate(-90deg); transition: transform var(--motion-fast); }
 .branch-arrow.expanded { transform: none; }
 .nav-children { display: grid; gap: 2px; padding: 4px 0 8px 16px; }
@@ -997,10 +1001,10 @@ function isAuthPath(path: string): boolean {
 .nav-children .el-icon { flex: 0 0 18px; font-size: 18px; }
 .nav-children a:hover { color: var(--accent); background: #edf3fe; }
 .nav-children a.child-selected { color: var(--accent); background: #e3edff; font-weight: 650; }
-.topbar { --bg-surface: #fcfdff; padding-inline: 32px; border-color: #e0e8f4; }
+.topbar { --bg-surface: var(--header-surface); padding-inline: 32px; border-color: #8e9eb7; }
 .content-scroll { padding: 32px 36px 48px; }
-.finder-trigger { min-height: 44px; background: #f5f8fd; border-color: #dfe7f3; }
-.account-entry { border-color: transparent; background: transparent; }
+.finder-trigger { min-height: 44px; color: var(--text-primary); background: var(--bg-elevated); border-color: var(--border-strong); }
+.account-entry { color: var(--text-primary); border-color: transparent; background: transparent; }
 .sidebar-collapsed .space-caption, .sidebar-collapsed .nav-children, .sidebar-collapsed .branch-arrow { display: none; }
 @media(max-width: 900px) {
   .sidebar-collapsed .space-caption { display: flex; }
@@ -1013,4 +1017,12 @@ function isAuthPath(path: string): boolean {
   .nav-item { font-size: 17px; }
 }
 @media(prefers-reduced-motion:reduce) { .branch-arrow { transition: none; } }
+</style>
+
+<style scoped>
+.preferences-tabs{min-width:0}.preferences-tabs :deep(.el-tabs__item){font-size:17px;min-height:48px}.connection-settings h3{font-size:25px;line-height:1.5}.connection-settings p{font-size:17px;line-height:1.8;color:var(--text-secondary)}
+</style>
+
+<style>
+.preferences-dialog { max-height:90dvh;overflow:auto;margin-bottom:0; }.preferences-dialog .el-dialog__footer { position:sticky;bottom:-16px;background:var(--bg-surface);padding-top:16px;z-index:1; }
 </style>

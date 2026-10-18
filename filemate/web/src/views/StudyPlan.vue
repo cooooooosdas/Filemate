@@ -143,6 +143,7 @@
 </template>
 
 <script setup lang="ts">
+import { saveDownload } from '../services/downloads'
 import AnalysisWarnings from '../components/AnalysisWarnings.vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -293,12 +294,7 @@ const formatFileSize = (bytes: number) => bytes < 1024 * 1024
   : `${(bytes / 1024 / 1024).toFixed(1)} MB`
 
 const download = (content: string, type: string, filename: string) => {
-  const url = URL.createObjectURL(new Blob([content], { type }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
+  void saveDownload(new Blob([content], { type }), filename)
 }
 
 const csvCell = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`
@@ -373,7 +369,7 @@ onUnmounted(() => { restoreEpoch++ })
 .wide-field { grid-column: 1 / -1; }
 input, select { width: 100%; box-sizing: border-box; padding: 12px 14px; background: #ffffff; border: 1px solid var(--border-strong); border-radius: 10px; color: var(--text-primary); font: inherit; }
 input:focus, select:focus { outline: 2px solid var(--accent-border); border-color: var(--accent); }
-.generate-button { width: 100%; padding: 14px; border: 0; border-radius: 11px; background: var(--accent); color: #ffffff; font-weight: 750; cursor: pointer; }
+.generate-button { width: 100%; padding: 14px; border: 0; border-radius: 11px; background: var(--action-fill, var(--accent)); color: #ffffff; font-weight: 750; cursor: pointer; }
 .study-empty { margin: 16px 0 0; padding: 22px; text-align: center; color: var(--text-muted); font-size: var(--type-copy); background: var(--bg-surface); border: 1px dashed var(--border-strong); border-radius: 12px; }
 .generate-button:disabled { opacity: 0.45; cursor: not-allowed; }
 .spinner { display: inline-block; width: 12px; height: 12px; margin-right: 8px; border: 2px solid rgba(255,255,255,0.45); border-top-color: #ffffff; border-radius: 50%; animation: spin 0.8s linear infinite; }
@@ -388,7 +384,7 @@ input:focus, select:focus { outline: 2px solid var(--accent-border); border-colo
 .summary-metrics strong { font-size: 24px; }
 .summary-metrics span { color: var(--text-muted); font-size: var(--type-action); }
 .progress-track { height: 6px; margin: 22px 0 16px; overflow: hidden; background: var(--bg-elevated); border-radius: 999px; }
-.progress-track span { display: block; height: 100%; background: var(--accent); }
+.progress-track span { display: block; height: 100%; background: var(--action-fill, var(--accent)); }
 .topic-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
 .topic-chip { padding: 6px 10px; border-radius: 999px; background: var(--bg-elevated); color: var(--text-secondary); font-size: var(--type-meta); }
 .topic-chip.high { background: #fbeaea; color: #a43e3e; }
@@ -402,7 +398,7 @@ input:focus, select:focus { outline: 2px solid var(--accent-border); border-colo
 .day-card.completed { opacity: 0.55; }
 .day-card.completed h3, .day-card.completed li { text-decoration: line-through; }
 .completion-toggle { flex: 0 0 38px; width: 38px; height: 38px; border: 1px solid var(--accent-border); border-radius: 50%; background: transparent; color: var(--accent); font-weight: 700; cursor: pointer; }
-.completed .completion-toggle { background: var(--accent); color: #ffffff; }
+.completed .completion-toggle { background: var(--action-fill, var(--accent)); color: #ffffff; }
 .day-date { flex: 0 0 72px; }
 .day-date strong, .day-date span { display: block; }
 .day-date strong { font-size: var(--type-meta); }

@@ -10,6 +10,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { saveDownload } from '../services/downloads'
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { cancelPersonalRestore, exportPersonalData, previewPersonalRestore, restorePersonalData, type PersonalRestorePreview } from '../services/api'
@@ -17,7 +18,7 @@ const emit = defineEmits<{ restored: [] }>()
 const file = ref<File | null>(null), fileInput = ref<HTMLInputElement | null>(null), busy = ref(false), error = ref(''), message = ref(''), proposal = ref<PersonalRestorePreview | null>(null)
 function selectFile(event: Event) { file.value = (event.target as HTMLInputElement).files?.[0] || null; proposal.value = null; error.value = ''; message.value = '' }
 async function perform(action: () => Promise<void>) { busy.value = true; error.value = ''; message.value = ''; try { await action() } catch (e: any) { error.value = e.message || '操作未完成，原数据保留' } finally { busy.value = false } }
-const download = (format: 'backup' | 'json') => perform(async () => { const blob = await exportPersonalData(format); const url = URL.createObjectURL(blob as unknown as Blob); const link = document.createElement('a'); link.href = url; link.download = `filemate-personal.${format === 'backup' ? 'zip' : 'json'}`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); message.value = '个人数据已导出' })
+const download = (format: 'backup' | 'json') => perform(async () => { const blob = await exportPersonalData(format); if (await saveDownload(blob as unknown as Blob, `filemate-personal.${format === 'backup' ? 'zip' : 'json'}`)) message.value = '个人数据已导出' })
 const preview = () => perform(async () => { if (!file.value) return; if (file.value.size > 25 * 1024 * 1024) throw new Error('备份文件不能超过25MB'); proposal.value = await previewPersonalRestore(file.value) })
 const cancel = () => perform(async () => { if (!proposal.value) return; const result = await cancelPersonalRestore(proposal.value); proposal.value = null; message.value = result.cleanup_pending ? '恢复已取消，服务内副本仍待清理。' : '恢复已取消，预览副本已清理。' })
 const restore = () => perform(async () => { if (!proposal.value) return; try { await ElMessageBox.confirm('将整体替换当前学习记录及托管文件。请确认已下载需要保留的当前数据。恢复不会重放旧文件操作，也不会恢复密码或API密钥。', '确认恢复个人备份', { confirmButtonText: '确认整体恢复', cancelButtonText: '取消' }) } catch { return }; const result = await restorePersonalData(proposal.value); if (!result.restored) throw new Error('服务未确认恢复完成，请检查原数据'); proposal.value = null; file.value = null; if (fileInput.value) fileInput.value.value = ''; window.speechSynthesis?.cancel(); message.value = result.cleanup_pending ? '业务数据已恢复，但临时副本清理未完成，请联系维护者处理。' : '个人数据与托管文件已恢复'; ElMessage.success(message.value); emit('restored') })

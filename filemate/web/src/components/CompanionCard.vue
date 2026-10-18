@@ -115,7 +115,7 @@ const portraitStyle = computed(() => ({
   padding: 6px 10px;
   border: 2px solid #fff;
   border-radius: 6px;
-  background: var(--accent);
+  background: var(--action-fill, var(--accent));
   color: #fff;
   font-size: var(--type-meta);
   font-weight: 800;
@@ -130,7 +130,7 @@ const portraitStyle = computed(() => ({
 .growth-progress > div { display: flex; justify-content: space-between; gap: 14px; color: #36566f; font-size: var(--type-meta); }
 .growth-progress > div b { color: #176f52; }
 .growth-progress > i { display: block; height: 6px; margin-top: 6px; overflow: hidden; border-radius: 99px; background: rgba(41, 92, 125, .12); }
-.growth-progress > i em { display: block; height: 100%; border-radius: inherit; background: var(--accent);  }
+.growth-progress > i em { display: block; height: 100%; border-radius: inherit; background: var(--action-fill, var(--accent));  }
 .growth-progress > p { margin: 5px 0 0; color: var(--text-muted); font-size: var(--type-meta); }
 .companion-action {
   position: relative;
@@ -140,7 +140,7 @@ const portraitStyle = computed(() => ({
   align-items: center;
   padding: 0 16px;
   border-radius: 11px;
-  background: var(--accent);
+  background: var(--action-fill, var(--accent));
   color: #fff;
   font-weight: 700;
   text-decoration: none;

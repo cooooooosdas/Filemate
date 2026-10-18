@@ -84,6 +84,7 @@
 </template>
 
 <script setup lang="ts">
+import { saveDownload } from '../services/downloads'
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -157,7 +158,7 @@ const saveArtifact = async () => {
   } catch (cause: any) { ElMessage.error(cause.message || '保存失败') }
   finally { saving.value = false }
 }
-const exportArtifact=()=>{if(!selectedArtifact.value)return;const structured=typeof selectedArtifact.value.content!=='string';const blob=new Blob([formatArtifactContent(selectedArtifact.value.content)],{type:structured?'application/json;charset=utf-8':'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`${selectedArtifact.value.title||'FileMate学习产物'}.${structured?'json':'txt'}`;link.click();URL.revokeObjectURL(url)}
+const exportArtifact=()=>{if(!selectedArtifact.value)return;const structured=typeof selectedArtifact.value.content!=='string';const blob=new Blob([formatArtifactContent(selectedArtifact.value.content)],{type:structured?'application/json;charset=utf-8':'text/plain;charset=utf-8'});void saveDownload(blob,`${selectedArtifact.value.title||'FileMate学习产物'}.${structured?'json':'txt'}`)}
 const confirmDelete = async (source: KnowledgeSource) => {
   deletingSource.value = source.source_id
   try {
@@ -182,15 +183,15 @@ onUnmounted(()=>{disposed=true;artifactEpoch++;window.removeEventListener('filem
 .page-head,.section-head { display:flex; justify-content:space-between; align-items:center; gap:20px; }
 .page-head { margin-bottom:24px; }
 .page-head p { margin:0; }
-.import-link { display:inline-flex; align-items:center; justify-content:center; gap:9px; min-height:46px; padding:11px 17px; border-radius:11px; color:var(--hero-ink); background:var(--accent); text-decoration:none; font-size:16px; font-weight:600; flex-shrink:0; }
-.import-link:hover { background:var(--accent-hover); }
+.import-link { display:inline-flex; align-items:center; justify-content:center; gap:9px; min-height:46px; padding:11px 17px; border-radius:11px; color:var(--hero-ink); background:var(--action-fill, var(--accent)); text-decoration:none; font-size:16px; font-weight:600; flex-shrink:0; }
+.import-link:hover { background:var(--action-hover, var(--accent-hover)); }
 .search-panel,.results,.library { border:1px solid var(--border-subtle); border-radius:22px; padding:26px; background:var(--bg-surface); }
 .search-panel h2 { font-size:27px; margin:0 0 18px; letter-spacing:-.025em; }
 .search-row { display:grid; grid-template-columns:1fr auto; gap:12px; }
 .search-box { min-width:0; display:flex; align-items:center; gap:13px; min-height:62px; padding:0 18px; border:1px solid var(--border-strong); border-radius:14px; color:var(--accent); background:var(--bg-reading); }
 .search-box:focus-within { outline:3px solid var(--accent-soft); border-color:var(--accent); }
 .search-box input { min-width:0; width:100%; height:60px; border:0; outline:0; background:transparent; font-size:20px; color:var(--text-primary); }
-.search-row>button { display:flex; align-items:center; justify-content:center; gap:16px; padding:0 23px; border:0; border-radius:14px; background:var(--accent); color:var(--hero-ink); font-size:18px; font-weight:600; }
+.search-row>button { display:flex; align-items:center; justify-content:center; gap:16px; padding:0 23px; border:0; border-radius:14px; background:var(--action-fill, var(--accent)); color:var(--hero-ink); font-size:18px; font-weight:600; }
 button:disabled { opacity:.5; cursor:default; }
 .search-foot { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-top:15px; }
 .privacy,.scope-label { font-size:15px; color:var(--text-secondary); margin:0; }
@@ -249,7 +250,7 @@ button:disabled { opacity:.5; cursor:default; }
 .empty { display:flex; flex-direction:column; align-items:center; gap:12px; padding:50px 24px; text-align:center; color:var(--text-secondary); font-size:17px; line-height:1.75; }
 .empty-icon { display:grid; place-items:center; width:68px; height:68px; background:var(--accent-soft); color:var(--accent); border-radius:18px; font-size:30px; }
 .library-empty strong { color:var(--text-primary); font-size:24px; }
-.library-empty a { display:inline-flex; align-items:center; gap:9px; min-height:46px; padding:8px 16px; border-radius:10px; background:var(--accent); color:var(--hero-ink); text-decoration:none; margin-top:10px; }
+.library-empty a { display:inline-flex; align-items:center; gap:9px; min-height:46px; padding:8px 16px; border-radius:10px; background:var(--action-fill, var(--accent)); color:var(--hero-ink); text-decoration:none; margin-top:10px; }
 .result-list { display:grid; gap:12px; margin-top:18px; }
 .result-list article { border:1px solid var(--border-subtle); border-radius:14px; padding:20px; background:var(--bg-reading); }
 .citation { display:flex; align-items:center; flex-wrap:wrap; gap:10px; font-size:15px; overflow-wrap:anywhere; }
@@ -280,7 +281,7 @@ button:disabled { opacity:.5; cursor:default; }
 .artifact-dialog footer>span { flex:1; min-width:200px; font-size: var(--type-copy); line-height:1.65; color:var(--text-secondary); }
 .artifact-dialog footer>div { display:flex; flex-wrap:wrap; gap:8px; }
 .artifact-dialog footer button { display:flex; align-items:center; justify-content:center; min-height:44px; padding:8px 16px; border:1px solid var(--accent-border); border-radius:10px; color:var(--accent); background:transparent; font-size:16px; }
-.artifact-dialog footer .primary { color:var(--hero-ink); background:var(--accent); }
+.artifact-dialog footer .primary { color:var(--hero-ink); background:var(--action-fill, var(--accent)); }
 @media(max-width:1100px) { .evidence-entries a { padding:18px 14px; gap:10px; }.evidence-entries span>span { font-size: var(--type-copy); } }
 @media(max-width:700px) { .page-head { align-items:flex-start; flex-direction:column; }.search-panel,.results,.library { padding:22px 18px; }.evidence-entries { grid-template-columns:1fr; gap:10px; }.evidence-entries a { padding:16px; }.evidence-entries a>span { display:flex; align-items:center; gap:12px; }.evidence-entries strong { font-size:18px; white-space:nowrap; }.library-heading { align-items:flex-start; flex-direction:column; }.library-filter { max-width:none; width:100%; }.lineage-head { align-items:flex-start; flex-direction:column; }.lineage-rail { grid-template-columns:repeat(2,minmax(0,1fr)); }.source-actions { grid-column:1/-1; }.file-mark { grid-row:auto; }.source-actions .delete { margin-left:0; } }
 @media(max-width:480px) { .search-row { grid-template-columns:1fr; }.search-row>button { min-height:52px; }.search-box { padding:0 12px; }.search-box input { font-size:18px; }.search-panel h2 { font-size:25px; }.source-card { grid-template-columns:48px minmax(0,1fr); gap:13px; }.file-mark { width:48px; height:66px; }.source-copy h3 { font-size:20px; }.artifact-items button { grid-template-columns:62px minmax(0,1fr); }.artifact-items em { display:none; }.lineage-rail article { padding:13px; }.lineage-rail strong { font-size:17px; }.lineage-rail p { font-size:15px; }.evidence-entries a>span { gap:10px; }.evidence-entries span>span { font-size: var(--type-copy); }.artifact-dialog pre { padding:16px; }.artifact-dialog footer>span { flex-basis:100%; } }

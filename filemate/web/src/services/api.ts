@@ -1,3 +1,4 @@
+import { saveDownload } from './downloads'
 import type { CoachSnapshot, CoachMutationResult, CoachAnswer, CoachAnalysis, CoachAdvance, CoachConsent, CoachAttempts, CoachFocus } from '../types/interviewCoach'
 import axios from 'axios'
 import type { AccountState, AccountUser, RegisterAccount } from '../types/account'
@@ -349,16 +350,9 @@ export async function getIcsContent(sessionId: string): Promise<string> {
 }
 
 // 下载 .ics 文件
-export function downloadIcs(content: string, filename: string) {
+export async function downloadIcs(content: string, filename: string): Promise<boolean> {
   const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  return saveDownload(blob, filename)
 }
 
 // =============== AI 工具箱 API ===============
@@ -1337,16 +1331,11 @@ export async function submitProductFeedback(
   if (!response.success) throw new Error(response.error || '反馈保存失败')
 }
 
-export async function downloadAnonymousFeedback(): Promise<void> {
+export async function downloadAnonymousFeedback(): Promise<boolean> {
   const blob = await api.get<any, Blob>('/evaluation/feedback/export.csv', {
     responseType: 'blob'
   })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'filemate-anonymous-feedback.csv'
-  link.click()
-  URL.revokeObjectURL(url)
+  return saveDownload(blob, 'filemate-anonymous-feedback.csv')
 }
 
 export interface KnowledgeSource {

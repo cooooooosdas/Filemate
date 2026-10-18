@@ -39,7 +39,7 @@ onUnmounted(() => { disposed = true; observer?.disconnect() })
 
 <style scoped>
 .context-navigation { position:relative; isolation:isolate; display:flex; flex-wrap:wrap; gap:6px; margin:0 auto 24px; max-width:1360px; width:100%; padding:6px; border:1px solid var(--border-subtle); border-radius:16px; background:var(--bg-surface); }
-.task-indicator { position:absolute; left:0; top:0; z-index:-1; background:var(--accent); border-radius:10px; box-shadow:0 3px 10px #2454d726; transition:transform var(--motion-panel),width var(--motion-panel),height var(--motion-panel); }
+.task-indicator { position:absolute; left:0; top:0; z-index:-1; background:var(--action-fill, var(--accent)); border-radius:10px; box-shadow:0 3px 10px #2454d726; transition:transform var(--motion-panel),width var(--motion-panel),height var(--motion-panel); }
 a { display:inline-flex; align-items:center; justify-content:center; gap:9px; min-height:46px; padding:8px 16px; border-radius:10px; color:var(--text-secondary); font-size:16px; text-decoration:none; transition:color var(--motion-fast),background var(--motion-fast); }
 a:hover:not(.task-current) { background:var(--accent-soft); color:var(--accent); }
 a.task-current { color:var(--hero-ink); }

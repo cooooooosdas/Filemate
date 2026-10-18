@@ -80,7 +80,7 @@ const steps = ['导入资料', '分类与命名', '查看日程']
 
 .workflow-steps li.complete > span {
   color: #ffffff;
-  background: var(--accent);
+  background: var(--action-fill, var(--accent));
   border-color: var(--accent);
 }
 

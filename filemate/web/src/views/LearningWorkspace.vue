@@ -242,8 +242,8 @@ onUnmounted(() => { epoch++; window.removeEventListener('filemate:before-refresh
 .learning-workspace button:disabled { opacity: .5; cursor: default; }
 .learning-workspace button:focus-visible, .learning-workspace input:focus-visible, .learning-workspace textarea:focus-visible, .learning-workspace a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .mobile-panes button { min-width: 130px; font-size: 18px; min-height: 54px; }
-.mobile-panes button[aria-pressed=true] { background: var(--accent); color: white; border-color: var(--accent); font-weight: 750; }
-.learning-workspace .primary { text-decoration:none; background: var(--accent); color: white; border-color: var(--accent); display: inline-flex; align-items: center; justify-content: center; gap: 12px; }
+.mobile-panes button[aria-pressed=true] { background: var(--action-fill, var(--accent)); color: white; border-color: var(--accent); font-weight: 750; }
+.learning-workspace .primary { text-decoration:none; background: var(--action-fill, var(--accent)); color: white; border-color: var(--accent); display: inline-flex; align-items: center; justify-content: center; gap: 12px; }
 .model-consent { display: flex; align-items: flex-start; gap: 12px; font-size: 17px; line-height: 1.7; padding: 14px 18px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 12px; color: var(--text-secondary); margin: 0 0 20px; cursor: pointer; }
 .model-consent input { width: 19px; height: 19px; flex: 0 0 auto; accent-color: var(--accent); margin: 4px 0 0; }
 .desk { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); border: 1px solid var(--border-subtle); border-radius: 22px; overflow: hidden; background: var(--bg-reading); min-height: 740px; height: clamp(740px, calc(100dvh - 285px), 1050px); }
@@ -277,7 +277,7 @@ onUnmounted(() => { epoch++; window.removeEventListener('filemate:before-refresh
 .saved-indicator { font-size: var(--type-copy); color: var(--accent); white-space: nowrap; }
 .conversation-scroll { flex: 1; overflow: auto; padding: 26px; min-height: 160px; }
 .conversation-intro { padding: 10px 0; }
-.intro-line { display: block; width: 50px; height: 4px; background: var(--accent); margin-bottom: 22px; }
+.intro-line { display: block; width: 50px; height: 4px; background: var(--action-fill, var(--accent)); margin-bottom: 22px; }
 .conversation-intro h3 { font-size: 29px; line-height: 1.55; letter-spacing: -.035em; font-weight: 650; margin: 0 0 20px; }
 .conversation-intro p { font-size: 18px; color: var(--text-secondary); line-height: 1.9; margin: 0 0 26px; }
 .starter-prompts { display: flex; flex-direction: column; gap: 12px; }

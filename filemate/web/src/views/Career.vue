@@ -570,6 +570,7 @@
 </template>
 
 <script setup lang="ts">
+import { saveDownload } from '../services/downloads'
 import {
   computed,
   onBeforeUnmount,
@@ -1082,13 +1083,7 @@ async function download(format: "json" | "markdown") {
     const id = training.value.training_id,
       blob = await exportCareerTraining(id, format);
     if (disposed) return;
-    const url = URL.createObjectURL(blob),
-      a = document.createElement("a");
-    a.href = url;
-    a.download = `filemate-career-${id}.${format === "json" ? "json" : "md"}`;
-    a.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    events.value = await getCareerEvents();
+    if (await saveDownload(blob, `filemate-career-${id}.${format === "json" ? "json" : "md"}`)) events.value = await getCareerEvents();
   } catch (e) {
     error.value = message(e);
   } finally {
@@ -1234,7 +1229,7 @@ button:disabled {
   cursor: default;
 }
 .primary {
-  background: var(--accent);
+  background: var(--action-fill, var(--accent));
   color: #fff;
 }
 .danger {

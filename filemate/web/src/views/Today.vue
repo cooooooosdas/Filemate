@@ -250,7 +250,7 @@ onMounted(load)
 .coach-controls form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 18px; font-size: 16px; }
 .coach-controls form label { width: 100%; }
 .coach-controls input { width: 85px; min-height: 46px; padding: 10px; background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-default); border-radius: 9px; }
-.coach-controls button { width: 100%; min-height: 46px; margin-top: 4px; background: var(--accent); color: #fff; border: 0; border-radius: 9px; }
+.coach-controls button { width: 100%; min-height: 46px; margin-top: 4px; background: var(--action-fill, var(--accent)); color: #fff; border: 0; border-radius: 9px; }
 .coach-controls .deferred-note { margin-top: 12px; color: var(--warning); }
 .queue { margin-top: 26px; padding: 26px; background: #fff; border-radius: 16px; scroll-margin-top: 20px; }
 .section-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 20px; }
@@ -269,7 +269,7 @@ onMounted(load)
 .reorder-actions { display: flex; gap: 8px; float: right; }
 .reorder-actions button { min-width: 44px; min-height: 44px; border: 0; border-radius: 8px; color: var(--text-secondary); background: var(--bg-elevated); font-size: 15px; }
 .task-action { grid-column: 2; }
-.task-action button, .task-action a, .retry button { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 10px 18px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; text-decoration: none; font-size: 17px; }
+.task-action button, .task-action a, .retry button { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 10px 18px; border: 0; border-radius: 10px; background: var(--action-fill, var(--accent)); color: #fff; text-decoration: none; font-size: 17px; }
 .retry { display: flex; gap: 10px; margin-top: 18px; }
 .retry label { flex: 1; min-width: 0; }
 .retry input { width: 100%; min-height: 46px; padding: 10px 12px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 10px; color: var(--text-primary); }
@@ -279,7 +279,7 @@ onMounted(load)
 .empty h2 { margin: 16px 0 10px; font-size: 24px; }
 .empty p { color: var(--text-secondary); line-height: 1.8; }
 .empty > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 20px; }
-.empty a { display: inline-flex; align-items: center; min-height: 46px; padding: 10px 16px; border-radius: 10px; background: var(--accent); color: #fff; text-decoration: none; }
+.empty a { display: inline-flex; align-items: center; min-height: 46px; padding: 10px 16px; border-radius: 10px; background: var(--action-fill, var(--accent)); color: #fff; text-decoration: none; }
 .empty a.secondary { background: var(--accent-soft); color: var(--accent); }
 .state { padding: 80px 20px; text-align: center; color: var(--text-secondary); }
 button:disabled { opacity: .5; cursor: default; }
