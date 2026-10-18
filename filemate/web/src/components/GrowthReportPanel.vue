@@ -15,6 +15,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { saveDownload } from '../services/downloads'
 import { onMounted, ref } from 'vue'
 import { exportGrowthReport, generateGrowthReport, getGrowthEvidence, getGrowthReport, getGrowthReports } from '../services/api'
 import type { GrowthReport, SavedDocument } from '../types/portfolio'
@@ -28,7 +29,7 @@ const load = () => perform(async () => { history.value = await getGrowthReports(
 const generate = () => perform(async () => { const result = await generateGrowthReport(start.value, end.value); report.value = result; page.value = 0; history.value = await getGrowthReports() })
 const open = (id: string) => perform(async () => { report.value = await getGrowthReport(id); page.value = 0 })
 const paginate = (next: number) => perform(async () => { if (!report.value) return; const result = await getGrowthEvidence(report.value.artifact_id, next * 20); report.value.records = result.items; page.value = next })
-const download = (format: 'markdown' | 'json' | 'pdf') => perform(async () => { if (!report.value) return; const blob = await exportGrowthReport(report.value.artifact_id, format); const url = URL.createObjectURL(blob as unknown as Blob); const link = document.createElement('a'); link.href = url; link.download = `growth-report.${format === 'markdown' ? 'md' : format}`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000) })
+const download = (format: 'markdown' | 'json' | 'pdf') => perform(async () => { if (!report.value) return; const blob = await exportGrowthReport(report.value.artifact_id, format); await saveDownload(blob as unknown as Blob, `growth-report.${format === 'markdown' ? 'md' : format}`) })
 onMounted(load)
 </script>
 <style src="../styles/portfolio.css"></style>

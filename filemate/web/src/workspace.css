@@ -32,11 +32,11 @@
 .content-scroll .knowledge-page .library { border-radius: var(--radius-panel); }
 .content-scroll .knowledge-page .search-panel { background: var(--bg-surface); }
 .content-scroll :is(.page-head,.page-header,.growth-page > header,.today-page > .hero) {
-  padding: 26px 28px; border: 1px solid var(--border-subtle); border-radius: 22px; background: var(--panel-tint);
+  padding: 26px 28px; border: 1px solid var(--border-subtle); border-radius: 14px; background: var(--panel-tint);
 }
 .content-scroll :is(.goal-planner-page,.trust-page,.growth-page) .eyebrow { letter-spacing: .02em; font-weight: 500; color: var(--text-muted); }
-.content-scroll .goal-planner-page .progress span { background: var(--accent); }
-.content-scroll .goal-planner-page :is(.create-button,.toolbar-actions button) { background: var(--accent); border-radius: var(--radius-control); font-weight: 600; }
+.content-scroll .goal-planner-page .progress span { background: var(--action-fill, var(--accent)); }
+.content-scroll .goal-planner-page :is(.create-button,.toolbar-actions button) { background: var(--action-fill, var(--accent)); border-radius: var(--radius-control); font-weight: 600; }
 .content-scroll .goal-planner-page :is(.goal-form input,.goal-form select,.toolbar-actions select) { border-color: var(--border-strong); border-radius: var(--radius-control); background: var(--bg-surface); }
 .content-scroll .goal-planner-page :is(.goal-form input,.goal-form select,.toolbar-actions select):focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .content-scroll .goal-planner-page :is(.loading-state,.empty-state) { border-color: var(--border-strong); border-radius: var(--radius-panel); background: var(--bg-surface); }
@@ -103,7 +103,7 @@
 }
 .content-scroll .today-page.ppt-surface .summary { background: transparent; border: 0; }
 .content-scroll .today-page.ppt-surface .summary strong { font-weight: 650; color: var(--accent); }
-.content-scroll .today-page.ppt-surface .review-stat strong { color: #96551b; }
+.content-scroll .today-page.ppt-surface .review-stat strong { color: var(--accent); }
 .content-scroll .interview-page.coach-surface .conversation-panel { padding: 28px; }
 @media(max-width: 1050px) {
   .content-scroll .today-page.ppt-surface .today-main { display: contents; }
@@ -120,3 +120,13 @@
   .content-scroll .today-page.ppt-surface .summary p { display: none; }
   .content-scroll .interview-page.coach-surface .conversation-panel { padding: 20px; }
 }
+
+/* 深色骨架之外，阅读与输入保持蓝灰层次和明确控件边界。 */
+.content-scroll .today-page.ppt-surface .day-welcome { background: var(--hero-background); color: #fffdf8; }
+.content-scroll .today-page.ppt-surface .day-welcome p { color: #e0e8fb; }
+.content-scroll .today-page.ppt-surface .day-welcome a { color: #bdd3fb; }
+.content-scroll .today-page.ppt-surface :is(.queue,.coach-controls,.summary article,.empty) { border: 1px solid var(--border-subtle); background: var(--bg-surface); border-radius: 14px; }
+.content-scroll .today-page.ppt-surface .summary article.review-stat { background: var(--panel-tint); border-color: var(--border-subtle); }
+.content-scroll :is(.coding-page,.portfolio-page,.digital-human) :is(input:not([type='checkbox']):not([type='radio']),select,textarea) { border-color: var(--border-strong); }
+.content-scroll .coding-page .tabs button[aria-selected='true'],
+.content-scroll .coding-page .tabs button.active { color: #fffdf8; background: var(--hero-background); border-color: #183a7e; }

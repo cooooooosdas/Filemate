@@ -1,18 +1,18 @@
 ---
 name: FileMate
-description: 清爽、清晰、以真实学习记录为中心的大学生学习工作台
+description: 深蓝与蓝灰、高对比、以真实学习记录为中心的大学生学习工作台
 colors:
-  cobalt-action: "#2352D3"
-  cobalt-hover: "#1C42AD"
-  ice-canvas: "#EDF3FC"
-  white-surface: "#FFFFFF"
-  sidebar: "#F8FBFF"
-  elevated: "#F4F7FD"
-  ink-primary: "#15264A"
-  ink-secondary: "#405573"
-  ink-muted: "#4D5F7B"
-  line-soft: "#DCE5F3"
-  line-strong: "#B2C4DF"
+  cobalt-action: "#254BC3"
+  cobalt-hover: "#19388F"
+  ice-canvas: "#C1CDDD"
+  white-surface: "#F0F3F8"
+  sidebar: "#14243E"
+  elevated: "#E8EDF5"
+  ink-primary: "#16243B"
+  ink-secondary: "#34465F"
+  ink-muted: "#45556D"
+  line-soft: "#A5B3C8"
+  line-strong: "#7B8DA9"
 typography:
   display:
     fontFamily: "MiSans, HarmonyOS Sans SC, Alibaba PuHuiTi 3, PingFang SC, Microsoft YaHei, system-ui, sans-serif"
@@ -31,7 +31,9 @@ rounded:
 
 # FileMate 当前设计
 
-2026-10-16，按用户确认，以答辩PPT第6页今日安排和第10页教练构想为主要参考。保留现有蓝色LOGO和业务数据，采用浅冰蓝工作台、白色阅读面板、钴蓝操作和主次分栏。此文替代早期自然绿/小字号规范；详见 `design-system/filemate/MASTER.md`。
+2026-10-18，按用户最新要求加深全站骨架并增强文字与控件对比：保留深蓝侧栏/主视觉与现有布局，工作区适度加深为蓝灰画布，阅读面板采用冷调浅灰蓝，重点用协调的银蓝。按用户预览反馈，首页、一言、登录标题全部恢复原中文无衬线字体，不使用宋体、楷体或突兀的深黄色装饰。以下保留交互布局，视觉冲突以本段和设计系统10月18日章节为准。
+
+历史布局来源：2026-10-16，按用户确认，以答辩PPT第6页今日安排和第10页教练构想为主要参考。保留现有蓝色LOGO和业务数据，采用浅冰蓝工作台、白色阅读面板、钴蓝操作和主次分栏。此文替代早期自然绿/小字号规范；详见 `design-system/filemate/MASTER.md`。
 
 ## 版式
 
@@ -57,3 +59,7 @@ rounded:
 ## 证据
 
 交付与验证范围：`docs/PPT_WORKSPACE_REDESIGN_2026-10-16.md`。原始PPT未改动；页面为可交互Vue组件，未把构想截图贴成背景。
+
+本轮颜色、字体和编辑器交付：`docs/FRONTEND_DEPTH_2026-10-18.md`。无新增外部字体/图片/组件依赖，未部署。
+
+设置提供四主题、跟随系统、本机导出目录和连接重试，详见设计系统10月18日最新章节。主题/目录偏好只存于当前浏览器，保留授权、导出确认和失败恢复。

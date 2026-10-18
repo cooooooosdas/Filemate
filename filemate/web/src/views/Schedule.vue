@@ -157,8 +157,7 @@ async function downloadIcs() {
   icsLoading.value = true
   try {
     const content = await getIcsContent(currentFile.value.session_id)
-    downloadIcsApi(content, `${currentFile.value.suggested_name}.ics`)
-    ElMessage.success('日历文件已下载')
+    if (await downloadIcsApi(content, `${currentFile.value.suggested_name}.ics`)) ElMessage.success('日历文件已下载')
   } catch (e: any) {
     ElMessage.error(e?.message || '日历文件下载失败，请重试')
   } finally {

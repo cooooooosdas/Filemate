@@ -30,13 +30,30 @@ onMounted(async () => {
     if (disposed || !host.value) return
     const scope = self as typeof self & { MonacoEnvironment?: Monaco.Environment }
     scope.MonacoEnvironment = { getWorker: () => new worker.default() }
-    monaco.editor.defineTheme('filemate-light', {
-      base: 'vs', inherit: true, rules: [], colors: { 'editor.background': '#f6f8fe', 'editor.lineHighlightBackground': '#e4ecfc' },
+    monaco.editor.defineTheme('filemate-ink', {
+      base: 'vs-dark', inherit: true,
+      rules: [
+        { token: 'comment', foreground: 'b6c5db' },
+        { token: 'keyword', foreground: '9fc4ff' },
+        { token: 'number', foreground: 'bdd3fb' },
+        { token: 'string', foreground: '9ee3ca' },
+        { token: 'identifier', foreground: 'edf2fb' },
+        { token: 'type.identifier', foreground: 'c1d3ff' },
+      ],
+      colors: {
+        'editor.background': '#14243e', 'editor.foreground': '#edf2fb',
+        'editor.lineHighlightBackground': '#243c5e',
+        'editorLineNumber.foreground': '#b6c5db',
+        'editorLineNumber.activeForeground': '#bdd3fb',
+        'editorCursor.foreground': '#bdd3fb',
+        'editor.selectionBackground': '#3b5480',
+        'editor.inactiveSelectionBackground': '#2b4166',
+      },
     })
     model = monaco.editor.createModel(props.modelValue, 'cpp')
     editor = monaco.editor.create(host.value, {
-      model, theme: 'filemate-light', ariaLabel: 'C++代码', readOnly: props.disabled,
-      automaticLayout: true, minimap: { enabled: false }, fontSize: 14,
+      model, theme: 'filemate-ink', ariaLabel: 'C++代码', readOnly: props.disabled,
+      automaticLayout: true, minimap: { enabled: false }, fontSize: 16,
       scrollBeyondLastLine: false, wordWrap: 'on', tabSize: 4,
       padding: { top: 16 }, accessibilitySupport: 'on',
     })
@@ -53,5 +70,5 @@ function onFallback(event: Event) { emit('update:modelValue', (event.target as H
 onUnmounted(() => { disposed = true; subscription?.dispose(); editor?.dispose(); model?.dispose() })
 </script>
 <style scoped>
-.editor-wrap{position:relative;border:1px solid #dce6d6;border-radius:12px;overflow:hidden;background:#fbfcf9}.editor-host{height:420px;min-width:0}.editor-loading{position:absolute;top:12px;left:60px;color:#718169;pointer-events:none}textarea{width:100%;height:420px;padding:16px;font:14px/1.6 Consolas,monospace;color:#263c27;background:#fbfcf9;border:0;resize:vertical}.editor-wrap>p{padding:8px 12px}@media(max-width:600px){.editor-host,textarea{height:340px}}
+.editor-wrap{position:relative;border:1px solid var(--border-strong);border-radius:12px;overflow:hidden;background:#14243e}.editor-host{height:420px;min-width:0}.editor-loading{position:absolute;top:12px;left:60px;color:#e0e8fb;pointer-events:none}textarea{width:100%;height:420px;padding:16px;font:16px/1.6 Consolas,monospace;color:#edf2fb;background:#14243e;border:0;resize:vertical}.editor-wrap>p{padding:8px 12px}@media(max-width:600px){.editor-host,textarea{height:340px}}
 </style>

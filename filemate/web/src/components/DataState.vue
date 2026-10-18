@@ -70,7 +70,7 @@ defineEmits<{ retry: [] }>()
   padding: 9px 16px;
   border: 0;
   border-radius: 9px;
-  background: var(--accent);
+  background: var(--action-fill, var(--accent));
   color: #fff;
   font-weight: 700;
   cursor: pointer;

@@ -1,0 +1,46 @@
+:root {
+  --action-fill: #254bc3;
+  --action-hover: #19388f;
+  --el-bg-color: var(--bg-surface);
+  --el-bg-color-overlay: var(--bg-surface);
+  --el-fill-color-blank: var(--bg-surface);
+  --el-fill-color-light: var(--bg-elevated);
+  --el-fill-color-lighter: var(--bg-hover);
+  --el-color-primary: var(--action-fill);
+  --el-color-primary-light-3: var(--action-hover);
+  --el-color-primary-dark-2: var(--action-hover);
+  --el-color-primary-light-9: var(--accent-soft);
+}
+
+:root[data-theme='midnight'] {
+  --el-color-success: #235c3f;
+  --el-color-warning: #72460e;
+  --el-color-danger: #8b3034;
+  --el-color-info: #45556d;
+  --el-disabled-bg-color: #26354c;
+  --el-disabled-text-color: #b4c5dd;
+  --el-disabled-border-color: #516584;
+}
+
+:root[data-theme='midnight'] :is(.content-scroll,.auth-panel,.el-dialog) :is(h1,h2,h3,h4,dt,strong) { color: var(--text-primary); }
+:root[data-theme='midnight'] :is(.content-scroll,.auth-panel,.el-dialog) :is(p,small,dd,label) { color: var(--text-secondary); }
+:root[data-theme='midnight'] .content-scroll :is(.panel,.portfolio-panel,.library,.search-panel,.source-card,.source-row,.artifact-row,.result-card,.empty,.import-card,.intake-option,.file-queue,.setup-card,.studio,.evaluation,.coach-controls,.queue,.practice-memory,.question-block,.interviewer-panel,.surface-panel,.guidance-panel) {
+  background: var(--bg-surface); border-color: var(--border-subtle); color: var(--text-primary);
+}
+:root[data-theme='midnight'] .content-scroll :is(.notice,.info,.hint-box,.empty-state,.evidence-note,.example,.coach,.recommendation-list article) {
+  background: var(--bg-elevated); color: var(--text-secondary); border-color: var(--border-subtle);
+}
+:root[data-theme='midnight'] .content-scroll :is(input:not([type=checkbox]):not([type=radio]),select,textarea):not(.monaco-editor textarea) {
+  background: var(--bg-elevated); color: var(--text-primary); border-color: var(--border-strong);
+}
+:root[data-theme='midnight'] :is(.el-tag,.model-status) {
+  --el-tag-text-color: var(--text-secondary); --el-tag-bg-color: var(--bg-elevated); --el-tag-border-color: var(--border-subtle);
+  color: var(--text-secondary); background: var(--bg-elevated); border-color: var(--border-subtle);
+}
+:root[data-theme='midnight'] .content-scroll :is(.error,[role=alert],.coach-error) { color: var(--danger); }
+:root[data-theme='midnight'] .content-scroll :is(.summary-icon,.review-stat .summary-icon) { color: var(--accent); background: var(--accent-soft); }
+:root[data-theme='midnight'] .el-dialog .el-tabs__item { color: var(--text-secondary); }
+:root[data-theme='midnight'] .el-dialog .el-tabs__item.is-active { color: var(--accent); }
+
+:root[data-theme='midnight'] :is(.portfolio-page button:not(.primary),.auth-card .guest-action) { background:var(--bg-elevated);color:var(--text-primary);border-color:var(--border-strong); }
+:root[data-theme='midnight'] .trust-page :is(.status,.status.running,.status.failed,.steps li>span,.agent-stack i,.memory-grid article) { background:var(--bg-elevated);color:var(--text-secondary);border-color:var(--border-subtle); }

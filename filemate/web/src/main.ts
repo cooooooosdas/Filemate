@@ -5,6 +5,10 @@ import App from './App.vue'
 
 import './style.css'
 import './workspace.css'
+import './themes.css'
+import { initializeAppearance } from './preferences/theme-runtime'
+
+initializeAppearance()
 
 const app = createApp(App)
 

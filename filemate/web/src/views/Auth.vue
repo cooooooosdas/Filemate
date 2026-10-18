@@ -79,6 +79,7 @@
 </template>
 
 <script setup lang="ts">
+import { saveDownload } from '../services/downloads'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -155,10 +156,8 @@ async function copyRecovery(): Promise<void> {
   try { await navigator.clipboard.writeText(recoveryResult.value); ElMessage.success('恢复码已复制，请保存到私密位置') }
   catch { ElMessage.info('请选中恢复码复制，或下载保存') }
 }
-function saveRecovery(): void {
-  const url = URL.createObjectURL(new Blob([`FileMate 账号：${account.value}\n恢复码：${recoveryResult.value}\n请保密；重设密码后此恢复码失效。\n`], { type: 'text/plain;charset=utf-8' }))
-  const link = document.createElement('a'); link.href = url; link.download = 'FileMate-恢复码.txt'; link.click()
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+async function saveRecovery(): Promise<void> {
+  await saveDownload(new Blob([`FileMate 账号：${account.value}\n恢复码：${recoveryResult.value}\n请保密；重设密码后此恢复码失效。\n`], { type: 'text/plain;charset=utf-8' }), 'FileMate-恢复码.txt')
 }
 function finishRecovery(): void {
   if (!savedRecovery.value) return
@@ -188,10 +187,11 @@ onUnmounted(() => { window.removeEventListener('beforeunload', beforeUnload); re
   padding: 40px clamp(32px, 6vw, 88px);
   display: flex;
   flex-direction: column;
-  background: radial-gradient(ellipse at 10% 100%, #91bbf788, transparent 65%), var(--panel-tint);
+  background: var(--hero-background);
+  color: #fffdf8;
   border-right: 1px solid var(--border-subtle);
 }
-.auth-brand { display: block; width: fit-content; }
+.auth-brand { display: block; width: fit-content; padding: 12px; background: #fffdf8; border-radius: 10px; }
 .story-copy { margin: clamp(48px, 8vh, 88px) 0 36px; }
 .eyebrow,
 .auth-card-head > p {
@@ -208,7 +208,8 @@ onUnmounted(() => { window.removeEventListener('beforeunload', beforeUnload); re
   letter-spacing: -.045em;
   line-height: 1.2;
 }
-.story-copy h1 span { color: var(--accent); }
+.story-copy h1 span { color: #bdd3fb; font-family: var(--font-sans); }
+.story-copy h1 { color: #fffdf8; }
 .story-copy > p:last-child {
   margin: 24px 0 0;
   color: var(--text-secondary);
@@ -216,6 +217,7 @@ onUnmounted(() => { window.removeEventListener('beforeunload', beforeUnload); re
   line-height: 1.9;
 }
 .learning-trace {
+  color: var(--text-primary);
   width: min(490px, 100%);
   margin-top: auto;
   overflow: hidden;
@@ -252,7 +254,8 @@ onUnmounted(() => { window.removeEventListener('beforeunload', beforeUnload); re
 .learning-trace small { font-size: var(--type-meta); color: var(--text-secondary); line-height: 1.6; }
 .learning-trace li > .el-icon { width: 32px; height: 36px; background: var(--accent-soft); border-radius: 6px; font-size: 18px; color: var(--accent); }
 .trace-current .trace-index { color: var(--accent); }
-.story-footnote { display: flex; align-items: center; gap: 8px; margin: 18px 0 0; font-size: var(--type-meta); line-height: 1.8; color: var(--text-secondary); }
+.story-copy > p:last-child { color: #e0e8fb; }
+.story-footnote { display: flex; align-items: center; gap: 8px; margin: 18px 0 0; font-size: var(--type-meta); line-height: 1.8; color: #e0e8fb; }
 .auth-panel { display: grid; place-items: center; padding: 48px clamp(32px, 4.5vw, 72px); }
 .auth-card { width: min(400px, 100%); min-width: 0; }
 .auth-card-head > p { margin-bottom: 14px; }
@@ -261,7 +264,7 @@ onUnmounted(() => { window.removeEventListener('beforeunload', beforeUnload); re
 .auth-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin: 28px 0; background: var(--bg-base); border: 1px solid var(--border-subtle); border-radius: var(--radius-control); }
 .auth-switch a { display: grid; place-items: center; min-height: 44px; color: var(--text-secondary); border: 1px solid transparent; border-radius: 7px; font-size: var(--type-copy); font-weight: 500; text-decoration: none; }
 .auth-switch a:hover { color: var(--accent); }
-.auth-switch a[aria-current=page] { color: var(--accent); border-color: var(--accent-border); background: var(--bg-reading); font-weight: 600; }
+.auth-switch a[aria-current=page] { color: #fffdf8; border-color: #183a7e; background: var(--hero-background); font-weight: 600; }
 .field-group { margin-bottom: 18px; }
 .field-group > label,
 .field-label-row label { color: var(--text-primary); font-size: var(--type-meta); font-weight: 500; }
@@ -285,8 +288,8 @@ onUnmounted(() => { window.removeEventListener('beforeunload', beforeUnload); re
 .check-row.invalid { color: var(--danger); }
 .primary-action,
 .guest-action { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: 50px; border-radius: var(--radius-control); font-size: var(--type-action); font-weight: 600; text-decoration: none; transition: background var(--motion-fast), border-color var(--motion-fast); }
-.primary-action { color: white; background: var(--accent); border: 1px solid var(--accent); }
-.primary-action:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.primary-action { color: white; background: var(--action-fill, var(--accent)); border: 1px solid var(--accent); }
+.primary-action:hover { background: var(--action-hover, var(--accent-hover)); border-color: var(--accent-hover); }
 .guest-divider { display: flex; align-items: center; gap: 16px; margin: 22px 0 16px; color: var(--text-muted); font-size: var(--type-meta); }
 .guest-divider::before,
 .guest-divider::after { content: ''; flex: 1; height: 1px; background: var(--border-subtle); }

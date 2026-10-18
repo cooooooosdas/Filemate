@@ -43,6 +43,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import { saveDownload } from '../services/downloads'
 import { computed, onMounted, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import DataState from '../components/DataState.vue'
@@ -61,7 +62,7 @@ async function perform(action: () => Promise<void>) { busy.value = true; actionE
 const save = () => perform(async () => { profile.value = await saveResumeProfile(edited.value); skillsText.value = profile.value.skills.join('\n'); baseline.value = JSON.stringify(edited.value); savedMessage.value = '个人信息与经历已保存' })
 const generate = () => perform(async () => { document.value = await generateResume(profile.value.revision, mode.value, consent.value); history.value = await getResumes(); savedMessage.value = '简历已保存' })
 const open = (id: string) => perform(async () => { document.value = await getResume(id) })
-const download = (format: 'markdown' | 'json' | 'pdf' | 'docx') => perform(async () => { if (!document.value) return; const blob = await exportResume(document.value.artifact_id, format); const url = URL.createObjectURL(blob as unknown as Blob); const link = window.document.createElement('a'); link.href = url; link.download = `resume.${format === 'markdown' ? 'md' : format}`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000) })
+const download = (format: 'markdown' | 'json' | 'pdf' | 'docx') => perform(async () => { if (!document.value) return; const blob = await exportResume(document.value.artifact_id, format); await saveDownload(blob as unknown as Blob, `resume.${format === 'markdown' ? 'md' : format}`) })
 onMounted(load)
 </script>
 <style src="../styles/portfolio.css"></style>

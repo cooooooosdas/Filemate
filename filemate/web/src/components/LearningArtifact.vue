@@ -27,6 +27,7 @@
 </template>
 
 <script setup lang="ts">
+import { saveDownload } from '../services/downloads'
 import AnalysisWarnings from './AnalysisWarnings.vue'
 import { computed, ref, watch } from 'vue'
 import { submitQuizAttempt, type KnowledgeArtifact, type QuizAttemptResult } from '../services/api'
@@ -63,10 +64,7 @@ async function submit() {
 }
 function download() {
   const text = typeof props.artifact.content === 'string' ? props.artifact.content : JSON.stringify(props.artifact.content, null, 2)
-  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }))
-  const link = document.createElement('a'); link.href = url
-  link.download = `${props.artifact.title.replace(/[<>:"/\\|?*]/g, '_')}.txt`; link.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  void saveDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), `${props.artifact.title}.txt`)
 }
 </script>
 
@@ -84,7 +82,7 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .flashcard { width: 100%; min-height: 320px; background: radial-gradient(ellipse at 100% 0, #d8eacb, transparent 80%), #ecf4e7; text-align: left; padding: 28px; display: flex; flex-direction: column; justify-content: space-between; border-radius: 20px; border-color: var(--accent-border); }
 .flashcard p { font-size: 24px; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; margin: 22px 0; }
 .flashcard span { font-size: 17px; color: var(--accent); }
-.primary { background: var(--accent); color: white; margin-top: 20px; border-color: var(--accent); }
+.primary { background: var(--action-fill, var(--accent)); color: white; margin-top: 20px; border-color: var(--accent); }
 h4 { font-size: 24px; line-height: 1.75; margin: 24px 0 18px; }
 .read-content, .note-content p { white-space: pre-wrap; line-height: 1.95; font-size: 18px; overflow-wrap: anywhere; }
 .note-content section { padding: 8px 0; }

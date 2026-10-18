@@ -324,6 +324,7 @@
 </template>
 
 <script setup lang="ts">
+import { saveDownload } from '../services/downloads'
 import AnalysisWarnings from '../components/AnalysisWarnings.vue'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -625,34 +626,22 @@ const copyToClipboard = async (text: string) => {
 }
 
 // 导出为 JSON
-const exportCardsAsJson = () => {
+const exportCardsAsJson = async () => {
   if (!result.value?.cards) return
   const json = JSON.stringify(result.value.cards, null, 2)
   const blob = new Blob([json], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'knowledge_cards.json'
-  link.click()
-  URL.revokeObjectURL(url)
-  ElMessage.success('已导出 JSON')
+  if (await saveDownload(blob, 'knowledge_cards.json')) ElMessage.success('已导出 JSON')
 }
 
 // 导出为 CSV
-const exportCardsAsCsv = () => {
+const exportCardsAsCsv = async () => {
   if (!result.value?.cards) return
   const cards = result.value.cards as KnowledgeCard[]
   const csv = 'front,back\n' + cards.map(c =>
     `"${c.front.replace(/"/g, '""')}","${c.back.replace(/"/g, '""')}"`
   ).join('\n')
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'knowledge_cards.csv'
-  link.click()
-  URL.revokeObjectURL(url)
-  ElMessage.success('已导出 CSV')
+  if (await saveDownload(blob, 'knowledge_cards.csv')) ElMessage.success('已导出 CSV')
 }
 
 onMounted(() => {
@@ -830,7 +819,7 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   padding: 14px 40px;
-  background: var(--accent);
+  background: var(--action-fill, var(--accent));
   border: none;
   border-radius: 12px;
   color: #fff;
@@ -842,7 +831,7 @@ onMounted(() => {
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  background: var(--accent-hover);
+  background: var(--action-hover, var(--accent-hover));
   box-shadow: 0 6px 18px rgba(47, 125, 85, 0.16);
 }
 
@@ -1153,7 +1142,7 @@ onMounted(() => {
 
 .send-btn {
   padding: 12px 24px;
-  background: var(--accent);
+  background: var(--action-fill, var(--accent));
   border: none;
   border-radius: 10px;
   color: #fff;
@@ -1163,7 +1152,7 @@ onMounted(() => {
 }
 
 .send-btn:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--action-hover, var(--accent-hover));
 }
 
 .send-btn:disabled {
@@ -1284,13 +1273,13 @@ onMounted(() => {
 .btn-primary,
 .send-btn {
   color: #ffffff;
-  background: var(--accent);
+  background: var(--action-fill, var(--accent));
   box-shadow: none;
 }
 
 .btn-primary:hover:not(:disabled),
 .send-btn:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--action-hover, var(--accent-hover));
   box-shadow: none;
   transform: none;
 }

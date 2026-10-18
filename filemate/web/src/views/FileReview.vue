@@ -261,7 +261,7 @@ async function downloadCalendar(): Promise<void> {
   if (!currentFile.value || busy.value || !calendarReady.value) return
   operation.value = 'download'
   actionError.value = ''
-  try { downloadIcs(await getIcsContent(currentFile.value.session_id), `${previewName.value}.ics`) }
+  try { await downloadIcs(await getIcsContent(currentFile.value.session_id), `${previewName.value}.ics`) }
   catch (error) { actionError.value = error instanceof Error ? error.message : '日程下载失败' }
   finally { operation.value = null }
 }
@@ -338,7 +338,7 @@ async function loadDistribution(event?: Event): Promise<void> {
 .category-history p { font-size: 16px; color: var(--text-secondary); margin: 20px 0; }
 .distribution-row { display: grid; grid-template-columns: 100px minmax(0, 1fr) 45px; gap: 16px; align-items: center; max-width: 680px; margin: 14px 0; font-size: 17px; }
 .distribution-row > div { height: 10px; background: var(--accent-soft); border-radius: 5px; }
-.distribution-row i { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
+.distribution-row i { display: block; height: 100%; background: var(--action-fill, var(--accent)); border-radius: inherit; }
 @media (max-width: 1050px) { .review-layout { grid-template-columns: 1fr; } .archive-preview { border-left: 0; border-top: 1px solid var(--border-subtle); } }
 @media (max-width: 600px) {
   .review-heading { padding: 14px 0 24px; } .review-heading > .el-icon { display: none; } .review-heading p { font-size: 18px; }
