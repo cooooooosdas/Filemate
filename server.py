@@ -59,6 +59,7 @@ from filemate.interview_coach.models import (
 from filemate.interview_coach.repository import CoachError, CoachRepository
 from filemate.interview_coach.repository import now as _coach_now
 from filemate.interview_coach.service import CoachAnalysisService, provider_metadata
+from filemate.interview_config import ConfigurationRepository, InterviewConfiguration, SaveDraft
 from filemate.interview_review.models import VisualMetrics
 from filemate.llm_client.credential_store import (
     CredentialStoreError,
@@ -2748,6 +2749,7 @@ class InterviewStartRequest(BaseModel):
     project_details: str = Field(default="", max_length=6000)
     remember_for_future: bool = False
     memory_id: str | None = Field(default=None, min_length=1, max_length=64)
+    configuration: InterviewConfiguration | None = None
 
 
 class InterviewFluencyMarker(BaseModel):
@@ -4063,6 +4065,29 @@ def forget_interview_practice(memory_id: str, request: InterviewPrivacyRequest):
     return ApiResponse(success=True, data=result)
 
 
+@app.get("/interview/configuration", response_model=ApiResponse)
+def get_interview_configuration():
+    return ApiResponse(success=True, data={
+        "enabled": os.getenv("FILEMATE_ENABLE_INTERVIEW_CONFIG", "1") != "0",
+        "draft": ConfigurationRepository(_storage).read_draft(),
+        "capabilities": {"runtime": "fixed_questions", "timing_active": False,
+                         "question_strategies": ["fixed"], "creator_active": False},
+    })
+
+
+@app.put("/interview/configuration/draft", response_model=ApiResponse)
+def save_interview_configuration_draft(request: SaveDraft):
+    if os.getenv("FILEMATE_ENABLE_INTERVIEW_CONFIG", "1") == "0":
+        raise HTTPException(status_code=503, detail="统一配置写入已关闭；已保存记录仍可读取")
+    try:
+        result = ConfigurationRepository(_storage).save_draft(
+            request.content, request.expected_revision, request.request_key
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return ApiResponse(success=True, data=result)
+
+
 @app.post("/interviews", response_model=ApiResponse)
 def start_interview(request: InterviewStartRequest):
     """创建一场可持续复盘的模拟面试。"""
@@ -4074,6 +4099,15 @@ def start_interview(request: InterviewStartRequest):
     )
 
 
+    if request.configuration is not None:
+        if os.getenv("FILEMATE_ENABLE_INTERVIEW_CONFIG", "1") == "0":
+            raise HTTPException(status_code=503, detail="统一配置写入已关闭，请使用原训练入口")
+        try:
+            scenario = request.configuration.legacy_scenario()
+            if scenario != request.scenario or request.configuration.difficulty != request.difficulty:
+                raise ValueError("配置与场景或难度不一致，请重新选择")
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
     project_name = request.project_name.strip()
     project_details = request.project_details.strip()
     if bool(project_name) != bool(project_details):
@@ -4243,6 +4277,7 @@ def start_interview(request: InterviewStartRequest):
             questions=questions,
             question_ids=question_ids,
             agent_run_id=run["run_id"],
+            configuration=request.configuration.model_dump() if request.configuration is not None else None,
             commit=False,
         )
         if (allow_external_analysis and os.getenv("FILEMATE_INTERVIEW_LOCAL_ONLY") != "1"
