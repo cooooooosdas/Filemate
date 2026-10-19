@@ -9,7 +9,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from filemate.interview_coach.models import CoachMutationResult, Command, SubmitAnswer
 from filemate.interview_coach.repository import CoachError, CoachRepository, digest, freeze_question
@@ -117,6 +117,12 @@ class RuntimeCommand(Command):
     expected_attempt_id: str | None = Field(default=None, max_length=80)
     fluency_metrics: dict[str, Any] | None = None
     visual_metrics: dict[str, Any] | None = None
+
+
+    @field_validator("fluency_metrics", "visual_metrics")
+    @classmethod
+    def validated_metrics(cls, value, info):
+        return SubmitAnswer.validated_metrics(value, info)
 
 
 class PrepareRuntime(BaseModel):

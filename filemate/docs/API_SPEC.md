@@ -979,3 +979,26 @@ configuration严格字段：schema_version=1；category=general/technical/projec
 - Restore preserves deadlines and tasks/answers, rotates runtime version tokens, interrupts running sessions, revokes AI consent. Deleting a confirmed interview cascades runtime/tasks/events; preview includes runtime_tasks/runtime_events. JSON/Markdown/PDF reports include task and simulated-comment evidence. No new six-dimension score or real-user calibration claim.
 
 Runtime UI drafts are temporary sessionStorage records bound to the session/task/current attempt/version token and restored only after an authorized snapshot. A changed task/token/attempt preserves text and blocks a new write until explicitly cleared. Definite 4xx rejection discards cached write preconditions; ambiguous transport failure keeps the original idempotent request. No draft is sent for external AI until explicitly submitted under consent.
+
+
+### Interview 2.0 Stage4：独立音频证据（本地验收）
+
+仅 coach answers 与 runtime commands 的 `fluency_metrics` 新增 `source=browser_media_v1`。
+旧 `speech_recognition` 继续可读写；旧顺序答题接口保持原合同。
+新结构：`duration_seconds` 0–600；`audio` 和 `transcription` 至少一项非空。
+`audio={status:measured|unavailable, summary}`；measured 必须有摘要，unavailable 必须为 null。
+摘要为 `method=web_audio_energy_v1`、duration_seconds(0,600.1]、sample_rate[8000,96000]、
+sample_count≥1、rms[0,1.01]、low_energy_seconds≤音频时长、clipping_ratio[0,1]、threshold=0.01。
+采样数与采样率必须和时长匹配；所有数字有限，不允许额外字段。
+`transcription={provider:browser_web_speech,status:completed|interrupted|denied|no_speech|unsupported,
+language:zh-CN|en-US,segments,confidence}`；最多100段，每段1000字符，总计12000。
+每段包含text、confidence(供应商原始估计或null)、callback_seconds[0,600]（回调时刻，不是词时间戳）。
+平均confidence由已提供的段值计算，全部缺失时null；非准确率。不接收正在识别的中间态。
+这些摘要只是设备上报、未经服务端核验，不影响内容评分。非法指标在请求边界返回422。
+报告2.5追加audio汇总及逐题audio/transcription；旧字段保留，JSON/Markdown/PDF均可导出。
+已有回答JSON列及备份承载摘要，无schema迁移。删除练习同步删除各回答版本及其摘要。
+
+`VITE_ENABLE_INTERVIEW_AUDIO=true`（默认关闭，需coach启用）开启浏览器独立录音与转写面板。
+原始录音Blob仅在页面内存：单次10分钟/20MiB，单页60MiB/30段；不上传、不写SQLite、不进备份。
+刷新/离页清除，用户可在当前页面逐题回听、单独导出（沿用用户下载目录设置）。
+浏览器语音转写为单独授权的可选服务，可能向浏览器厂商发送音频；授权与录音、微软自然语音分别控制。

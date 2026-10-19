@@ -53,7 +53,7 @@ class ReviewRepository:
             return None
         artifact = self.storage.get_artifact(state["artifact_id"])
         content = artifact.get("content") if artifact else None
-        if (not isinstance(content, dict) or content.get("version") != "2.4"
+        if (not isinstance(content, dict) or content.get("version") not in {"2.4", "2.5"}
                 or not isinstance(content.get("turns"), list)):
             raise ValueError("报告数据异常，请重新生成；原回答仍保留")
         return content

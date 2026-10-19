@@ -841,3 +841,8 @@ powershell -ExecutionPolicy Bypass -File scripts/verify.ps1
 实战未提交文字以会话、任务、回答版本和恢复令牌绑定，临时保存在当前标签页的 sessionStorage；关闭标签页或清除站点数据可能丢失。只在服务器确认会话可访问后恢复；后台切题不会把旧草稿套到新题，需先复制并清空。浏览器禁用存储时明确提示复制保存。明确冲突后允许重新核对并主动重试；网络响应不明时沿用原请求避免重复版本。
 
 第三阶段本地交付与限制见[Interview 2.0连续计时交付](docs/INTERVIEW_2_0_PHASE3_DELIVERY_2026-10-20.md)，不代表已上线或完成全部2.0能力。
+
+
+面试2.0第四阶段本地开发：`VITE_ENABLE_INTERVIEW_AUDIO=true`（默认off；需要coach）启用独立录音、逐题回听/导出及单独授权的浏览器转写。
+录音仅页面内存，刷新丢失；摘要与转写来源随回答版本保存、备份和删除，设备指标不计入能力分数。
+上限10分钟/20MiB每段、60MiB/30段每页；详见[音频合同](filemate/docs/API_SPEC.md)。

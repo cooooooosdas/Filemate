@@ -1,3 +1,4 @@
+import type { MediaEvidence } from './interviewAudio'
 import type { InterviewSession, InterviewFluencyMetrics } from '../services/api'
 import type { ContentAnalysis, VisualMetrics } from './interviewReview'
 export interface AttemptView {
@@ -13,7 +14,7 @@ export interface CoachSnapshot {
 }
 export interface CoachMutationResult { snapshot: CoachSnapshot; receipt: Record<string,unknown> }
 export interface CoachCommand { request_key: string; expected_revision: number }
-export interface CoachAnswer extends CoachCommand { answer: string; question_index: number; expected_attempt_id: string|null; fluency_metrics?: InterviewFluencyMetrics; visual_metrics?: VisualMetrics }
+export interface CoachAnswer extends CoachCommand { answer: string; question_index: number; expected_attempt_id: string|null; fluency_metrics?: InterviewFluencyMetrics | MediaEvidence; visual_metrics?: VisualMetrics }
 export interface CoachAnalysis extends CoachCommand { attempt_id: string; consent_revision: number }
 export interface CoachAdvance extends CoachCommand { from_index: number; expected_attempt_id: string }
 export interface CoachFocus extends CoachCommand { question_index: number|null }
