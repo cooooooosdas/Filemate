@@ -25,5 +25,6 @@ export function useInterviewCoach() {
  return {...controller,open:controller.open,refresh:controller.refresh,submit:controller.submit,analyze:controller.analyze,advance:controller.advance,focus:controller.focus,consent:controller.consent,setDraft:controller.setDraft,dispose,
   snapshot:computed(()=>state.value.snapshot),view:computed(()=>state.value.snapshot?projectCoach(state.value.snapshot,state.value.pending,state.value.draftContext,controller.canReplaySave):null),
   draftConflict:computed(()=>!!state.value.draft.trim() && !controller.canReplaySave && !!state.value.snapshot && !draftMatches(state.value.snapshot,state.value.draftContext)),draftRecoveryAvailable:computed(()=>{void state.value.draft;return draftStore.available}),
+  replaySave:computed(()=>{void state.value.draft;void state.value.snapshot;return controller.canReplaySave}),
   draft:computed(()=>state.value.draft),pending:computed(()=>state.value.pending),error:computed(()=>state.value.error),composing:computed(()=>state.value.composing)}
 }
