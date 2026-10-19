@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from filemate import interview_config
-from filemate.execution import data_actions, interview_configuration_schema
+from filemate.execution import data_actions, interview_configuration_schema, interview_runtime_schema
 from filemate.interview_coach import schema as interview_coach_schema
 from filemate.task_resources import admit_plan, admit_tasks
 
@@ -620,6 +620,7 @@ _MIGRATIONS = (
     (26, "confirmed_data_actions", data_actions.SCHEMA),
     (27, "immutable_interview_answers", interview_coach_schema.SCHEMA),
     (28, "interview_configuration", interview_configuration_schema.SCHEMA),
+    (29, "interview_runtime", interview_runtime_schema.SCHEMA),
 )
 
 
@@ -2220,7 +2221,7 @@ class SQLiteStorage:
         if question_ids is not None and len(question_ids) != len(questions):
             raise ValueError("题目 ID 必须与题目逐项对应")
         config = interview_config.InterviewConfiguration.model_validate(configuration) if configuration is not None else None
-        if config and (config.legacy_scenario() != scenario or config.difficulty != difficulty):
+        if config and (config.session_scenario() != scenario or config.difficulty != difficulty):
             raise ValueError("配置与会话场景或难度不一致")
         interview_id = uuid.uuid4().hex[:16]
         with self._write_lock:
@@ -2284,6 +2285,11 @@ class SQLiteStorage:
         interview["configuration"] = interview_config.session_configuration(
             self._conn(), interview_id, interview["scenario"], interview["difficulty"]
         )
+        from filemate.interview_runtime import runtime_projection
+
+        interview["runtime"] = runtime_projection(self._conn(), interview_id)
+        if interview["runtime"]:
+            interview["configuration"]["timing_active"] = True
         return interview
 
     def save_interview_turn(
@@ -2320,6 +2326,10 @@ class SQLiteStorage:
     ) -> str:
         """Write the compatibility turn and immutable version in one transaction."""
         interview_id = payload["interview_id"]
+        if origin != "coach":
+            from filemate.interview_runtime import guard_legacy_write
+
+            guard_legacy_write(conn, interview_id)
         question_index = payload["question_index"]
         question = payload["question"]
         answer = payload["answer"]

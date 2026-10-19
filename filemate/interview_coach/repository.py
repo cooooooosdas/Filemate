@@ -369,79 +369,85 @@ class CoachRepository:
             speech_language="en-US" if session["scenario"] == "英语面" else "zh-CN",
         )
         with self.transaction() as conn:
-            old = self._previous(conn, interview_id, "submit", command)
-            if old:
-                return self._result(interview_id, old)
-            state = self._check(conn, interview_id, command)
-            frozen = conn.execute(
-                "SELECT * FROM interview_coach_questions WHERE interview_id=? AND question_index=?",
-                (interview_id, command.question_index),
-            ).fetchone()
-            if frozen is None:
-                raise CoachError("question_not_entered")
-            existing = conn.execute(
-                "SELECT * FROM interview_turns WHERE interview_id=? AND question_index=?",
-                (interview_id, command.question_index),
-            ).fetchone()
-            latest = conn.execute(
-                "SELECT attempt_id FROM interview_answer_attempts WHERE interview_id=? AND question_index=? "
-                "ORDER BY version DESC LIMIT 1",
-                (interview_id, command.question_index),
-            ).fetchone()
-            if (latest[0] if latest else None) != command.expected_attempt_id:
-                raise CoachError("attempt_conflict")
-            if existing is None:
-                if command.question_index != state["displayed_index"]:
-                    raise CoachError("question_conflict")
-                payload = {
-                    "interview_id": interview_id,
-                    "question_index": command.question_index,
-                    "question": frozen["question"],
-                    "answer": command.answer,
-                    "score": None,
-                    "dimensions": evaluation["dimensions"],
-                    "feedback": evaluation["feedback"],
-                    "fluency_metrics": evaluation.get("fluency") or command.fluency_metrics,
-                    "scoring_mode": "local_fallback",
-                    "scoring_version": "coach-local-v1",
-                    "next_question": None,
-                    "expression_review": None,
-                    "visual_metrics": command.visual_metrics,
-                    "content_analysis": None,
-                    "answer_key": command.request_key,
-                    "answer_digest": digest(command.model_dump()),
-                }
-                turn_id = self.storage._save_interview_turn_tx(
-                    conn, payload=payload, origin="coach"
-                )
-            else:
-                turn_id = existing["turn_id"]
-                self._invalidate(conn, interview_id)
-                conn.execute(
-                    "UPDATE interview_turns SET answer=?,score=0,dimensions=?,feedback=?,fluency_metrics=?,"
-                    "visual_metrics=?,content_analysis='{}',scoring_mode='local_fallback',scoring_version='coach-local-v1' "
-                    "WHERE turn_id=?",
-                    (
-                        command.answer,
-                        json.dumps(evaluation["dimensions"], ensure_ascii=False),
-                        evaluation["feedback"],
-                        json.dumps(evaluation.get("fluency") or command.fluency_metrics or {}, ensure_ascii=False),
-                        json.dumps(command.visual_metrics or {}, ensure_ascii=False),
-                        turn_id,
-                    ),
-                )
-                record_attempt_from_turn(conn, turn_id, origin="coach")
-                conn.execute(
-                    "UPDATE interview_coach_state SET revision=revision+1,displayed_index=?,phase='feedback',updated_at=? WHERE interview_id=?",
-                    (command.question_index, now(), interview_id),
-                )
-                self._sync_score(conn, interview_id)
-            attempt = conn.execute(
-                "SELECT attempt_id FROM interview_answer_attempts WHERE turn_id=? ORDER BY version DESC LIMIT 1",
-                (turn_id,),
-            ).fetchone()
-            receipt = self._receipt(conn, interview_id, "submit", command, attempt_id=attempt[0])
-            return self._result(interview_id, receipt)
+            from filemate.interview_runtime import guard_legacy_write
+
+            guard_legacy_write(conn, interview_id)
+            return self._submit_in_transaction(conn, interview_id, command, evaluation)
+
+    def _submit_in_transaction(self, conn, interview_id, command, evaluation):
+        old = self._previous(conn, interview_id, "submit", command)
+        if old:
+            return self._result(interview_id, old)
+        state = self._check(conn, interview_id, command)
+        frozen = conn.execute(
+            "SELECT * FROM interview_coach_questions WHERE interview_id=? AND question_index=?",
+            (interview_id, command.question_index),
+        ).fetchone()
+        if frozen is None:
+            raise CoachError("question_not_entered")
+        existing = conn.execute(
+            "SELECT * FROM interview_turns WHERE interview_id=? AND question_index=?",
+            (interview_id, command.question_index),
+        ).fetchone()
+        latest = conn.execute(
+            "SELECT attempt_id FROM interview_answer_attempts WHERE interview_id=? AND question_index=? "
+            "ORDER BY version DESC LIMIT 1",
+            (interview_id, command.question_index),
+        ).fetchone()
+        if (latest[0] if latest else None) != command.expected_attempt_id:
+            raise CoachError("attempt_conflict")
+        if existing is None:
+            if command.question_index != state["displayed_index"]:
+                raise CoachError("question_conflict")
+            payload = {
+                "interview_id": interview_id,
+                "question_index": command.question_index,
+                "question": frozen["question"],
+                "answer": command.answer,
+                "score": None,
+                "dimensions": evaluation["dimensions"],
+                "feedback": evaluation["feedback"],
+                "fluency_metrics": evaluation.get("fluency") or command.fluency_metrics,
+                "scoring_mode": "local_fallback",
+                "scoring_version": "coach-local-v1",
+                "next_question": None,
+                "expression_review": None,
+                "visual_metrics": command.visual_metrics,
+                "content_analysis": None,
+                "answer_key": command.request_key,
+                "answer_digest": digest(command.model_dump()),
+            }
+            turn_id = self.storage._save_interview_turn_tx(
+                conn, payload=payload, origin="coach"
+            )
+        else:
+            turn_id = existing["turn_id"]
+            self._invalidate(conn, interview_id)
+            conn.execute(
+                "UPDATE interview_turns SET answer=?,score=0,dimensions=?,feedback=?,fluency_metrics=?,"
+                "visual_metrics=?,content_analysis='{}',scoring_mode='local_fallback',scoring_version='coach-local-v1' "
+                "WHERE turn_id=?",
+                (
+                    command.answer,
+                    json.dumps(evaluation["dimensions"], ensure_ascii=False),
+                    evaluation["feedback"],
+                    json.dumps(evaluation.get("fluency") or command.fluency_metrics or {}, ensure_ascii=False),
+                    json.dumps(command.visual_metrics or {}, ensure_ascii=False),
+                    turn_id,
+                ),
+            )
+            record_attempt_from_turn(conn, turn_id, origin="coach")
+            conn.execute(
+                "UPDATE interview_coach_state SET revision=revision+1,displayed_index=?,phase='feedback',updated_at=? WHERE interview_id=?",
+                (command.question_index, now(), interview_id),
+            )
+            self._sync_score(conn, interview_id)
+        attempt = conn.execute(
+            "SELECT attempt_id FROM interview_answer_attempts WHERE turn_id=? ORDER BY version DESC LIMIT 1",
+            (turn_id,),
+        ).fetchone()
+        receipt = self._receipt(conn, interview_id, "submit", command, attempt_id=attempt[0])
+        return self._result(interview_id, receipt)
 
     def _sync_score(self, conn, sid):
         session = self.storage.get_interview(sid)
@@ -472,6 +478,9 @@ class CoachRepository:
                 difficulty=view.session["difficulty"],
             )
         with self.transaction() as conn:
+            from filemate.interview_runtime import guard_legacy_write
+
+            guard_legacy_write(conn, interview_id)
             old = self._previous(conn, interview_id, "advance", command)
             if old:
                 return self._result(interview_id, old)
@@ -528,6 +537,9 @@ class CoachRepository:
 
     def focus(self, interview_id: str, command: FocusCommand) -> CoachMutationResult:
         with self.transaction() as conn:
+            from filemate.interview_runtime import guard_legacy_write
+
+            guard_legacy_write(conn, interview_id)
             old = self._previous(conn, interview_id, 'focus', command)
             if old:
                 return self._result(interview_id, old)

@@ -36,6 +36,7 @@ class InterviewConfiguration(BaseModel):
     language: Literal["zh-CN", "en-US"] = "zh-CN"
     difficulty: Literal["入门", "标准", "压力面"] = "标准"
     duration_minutes: int = Field(default=10, ge=1, le=60)
+    execution_mode: Literal["fixed", "timed"] = "fixed"
     difficulty_strategy: Literal["standard", "challenge"] = "standard"
     question_strategy: Literal["fixed", "random", "ai", "mixed"] = "fixed"
     media_preferences: MediaPreferences = Field(default_factory=MediaPreferences)
@@ -48,6 +49,8 @@ class InterviewConfiguration(BaseModel):
 
     def legacy_scenario(self) -> str:
         """Reject capabilities the fixed-question runtime cannot execute."""
+        if self.execution_mode != "fixed":
+            raise ValueError("连续计时请通过实战入口开始")
         if self.category == "creator" or self.question_strategy != "fixed":
             raise ValueError("该任务模式尚未启用，可保存配置，暂不能开始")
         if self.language == "en-US":
@@ -59,6 +62,15 @@ class InterviewConfiguration(BaseModel):
                 raise ValueError("挑战追问目前仅支持通用求职")
             return "压力面"
         return TRACKS[self.category][self.track]
+
+    def session_scenario(self) -> str:
+        if self.execution_mode == "fixed":
+            return self.legacy_scenario()
+        if self.question_strategy not in {"fixed", "random"} or self.language != "zh-CN":
+            raise ValueError("实战目前支持中文固定／随机规则任务；AI出题及英文实战尚未启用")
+        if self.difficulty_strategy != "standard":
+            raise ValueError("实战挑战使用独立任务；自适应难度尚未启用")
+        return {"knowledge": "知识主播", "commerce": "电商主播"}[self.track] if self.category == "creator" else TRACKS[self.category][self.track]
 
 
 class DraftContent(BaseModel):
