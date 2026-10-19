@@ -26,7 +26,7 @@
 
     <section v-if="!session" class="setup-card">
       <p v-if="needsConfigurationChoice" class="focus-note" role="alert">这场历史记录的训练模式未被识别。原题与回答仍可回看；请重新选择训练方向后再开始。</p>
-      <InterviewCreator v-if="!configurationState.ready || configurationState.enabled" :model-value="configuration" :draft="configurationState" :busy="loading || memoryBusy" @update:model-value="updateConfiguration" @save="savePreparation" @restore="restorePreparation" @reload="draftController.load()" />
+      <InterviewCreator v-if="!configurationState.ready || configurationState.enabled" :model-value="configuration" :draft="configurationState" :runtime-enabled="runtimeEnabled" :busy="loading || memoryBusy" @update:model-value="updateConfiguration" @save="savePreparation" @restore="restorePreparation" @reload="draftController.load()" />
       <div v-else class="setup-copy">
         <h2>选择你要训练的真实场景</h2>
         <p>选场景、定主题，然后开始回答。可以说出来，也可以全程打字。</p>
@@ -38,18 +38,18 @@
       <div class="form-grid">
         <label>02 / 这次想练什么？<input v-model="form.targetRole" name="target_role" maxlength="120" autocomplete="off" placeholder="例如：数据库索引 / Java 后端开发" :disabled="loading" /></label>
         <fieldset v-if="configurationState.ready && !configurationState.enabled" class="difficulty-picker"><legend>选择难度</legend><button v-for="level in ['入门', '标准', '压力面']" :key="level" type="button" :aria-pressed="form.difficulty === level" :disabled="loading" @click="form.difficulty = level">{{ level }}</button></fieldset>
-        <label class="source-field">结合哪份资料？（可选）<select v-model="form.sourceId" name="interview_source" :disabled="loading" @change="focusWrongId = ''; originGoalId = ''"><option value="">按题库训练</option><option v-for="source in knowledgeSources" :key="source.source_id" :value="source.source_id">{{ source.original_name }}</option></select><small>主动选择后才会使用；授权未确认时只用资料名组织问题。</small></label>
+        <label v-if="configuration.execution_mode!=='timed'" class="source-field">结合哪份资料？（可选）<select v-model="form.sourceId" name="interview_source" :disabled="loading" @change="focusWrongId = ''; originGoalId = ''"><option value="">按题库训练</option><option v-for="source in knowledgeSources" :key="source.source_id" :value="source.source_id">{{ source.original_name }}</option></select><small>主动选择后才会使用；授权未确认时只用资料名组织问题。</small></label>
       </div>
       <p v-if="form.scenario === '压力面'" class="focus-note">通过质疑依据、反例和取舍练习临场回应；不会使用羞辱性提问。</p>
       <p v-if="form.scenario === '英语面'" class="focus-note">问题播报与语音识别切换到英语；也可以直接输入英文回答。</p>
-      <fieldset v-if="form.scenario === '项目面'" class="project-input">
-        <legend>你实际参与的项目</legend>
+      <fieldset v-if="form.scenario === '项目面' || configuration.execution_mode==='timed'" class="project-input">
+        <legend>{{ configuration.category==='creator'?'讲解主题／商品的已知事实':'真实经历与资料事实' }}</legend>
         <label>项目名称<input v-model="projectName" maxlength="120" placeholder="例如：课程项目或比赛作品" :disabled="loading" /></label>
-        <label>你负责并完成的内容<textarea v-model="projectDetails" maxlength="6000" rows="4" :disabled="loading" placeholder="说明目标、你的职责、设计选择和实际结果。未做或未验证的部分请明确写出。" /></label>
+        <label>本场事实依据（未知信息请注明）<textarea v-model="projectDetails" maxlength="6000" rows="4" :disabled="loading" placeholder="说明目标、你的职责、设计选择和实际结果。未做或未验证的部分请明确写出。" /></label>
         <p>这段事实会随本场练习保存，只用于提问；不会自动修改简历或能力画像。</p>
       </fieldset>
-      <label class="practice-consent"><input v-model="rememberForFuture" type="checkbox" :disabled="loading" />允许本场回答用于以后面试的连续追问（可随时遗忘）</label>
-      <details class="practice-memory">
+      <label v-if="configuration.execution_mode!=='timed'" class="practice-consent"><input v-model="rememberForFuture" type="checkbox" :disabled="loading" />允许本场回答用于以后面试的连续追问（可随时遗忘）</label>
+      <details v-if="configuration.execution_mode!=='timed'" class="practice-memory">
         <summary>选择一场已授权练习继续追问{{ selectedMemoryId ? ' · 已选择' : '' }}</summary>
         <p>仅列出你主动允许复用的练习。外发分析仍需另行授权；遗忘保留原回答与报告。</p>
         <button type="button" class="ghost" :disabled="memoryBusy || loading" @click="loadMemories">{{ memoryBusy ? '正在读取…' : '刷新可用练习' }}</button>
@@ -67,12 +67,12 @@
       <p v-if="form.scenario === '知识讲解'" class="focus-note">讲解会保存为练习记录；当前内容准确性待评估，语音节奏仅作参考。</p>
       <p v-if="reviewEnabled" class="focus-note">本轮先按规则选题，回答保存到学习空间。提交后可在复盘区主动授权内容分析；录像和视觉观察不会发给模型。</p>
       <label v-else class="legacy-consent"><input v-model="legacyExternalConsent" type="checkbox" />授权已配置模型对问题和回答提供四维参考评分；不发送本地录像。</label>
-      <button class="primary start-practice" :disabled="loading || memoryBusy || needsConfigurationChoice || configurationState.busy || !configurationState.ready || (configurationState.enabled && !legacyScenario(configuration)) || !form.targetRole.trim() || (form.scenario === '项目面' && (!projectName.trim() || !projectDetails.trim()))" @click="begin"><VideoPlay :size="22" aria-hidden="true" />{{ loading ? '正在创建…' : '开始逐题训练' }}<ArrowRight :size="22" aria-hidden="true" /></button>
+      <button class="primary start-practice" :disabled="loading || memoryBusy || needsConfigurationChoice || configurationState.busy || !configurationState.ready || (configurationState.enabled && (!!unavailableReason(configuration) || (configuration.execution_mode==='timed'&&!runtimeEnabled))) || !form.targetRole.trim() || (form.scenario === '项目面' && (!projectName.trim() || !projectDetails.trim()))" @click="begin"><VideoPlay :size="22" aria-hidden="true" />{{ loading ? '正在创建…' : configuration.execution_mode==='timed'?'准备实战':'开始逐题训练' }}<ArrowRight :size="22" aria-hidden="true" /></button>
       <DataState v-if="error" :error="error" @retry="begin" />
     </section>
 
     <template v-else>
-      <p v-if="session.configuration" class="focus-note" role="status">{{ session.configuration.origin === 'unavailable' ? session.configuration.error : session.configuration.duration_minutes ? `目标 ${session.configuration.duration_minutes} 分钟 · 当前为逐题训练，尚未启用计时` : '旧版训练 · 未记录目标时长' }}</p>
+      <p v-if="session.configuration && !session.runtime" class="focus-note" role="status">{{ session.configuration.origin === 'unavailable' ? session.configuration.error : session.configuration.duration_minutes ? `目标 ${session.configuration.duration_minutes} 分钟 · 当前为逐题训练，尚未启用计时` : '旧版训练 · 未记录目标时长' }}</p>
       <p v-if="requestedMedia.length" class="focus-note">本场准备使用：{{ requestedMedia.join('、') }}。请在训练伙伴区点击相应按钮开启；AI 分析需单独授权。也可以全程打字完成。</p>
       <section v-if="session.practice_context && (session.practice_context.mode === 'continuous' || session.practice_context.remember_for_future)" class="practice-session" aria-live="polite">
         <strong>{{ session.scenario }}{{ session.practice_context.mode === 'continuous' ? ' · 连续追问' : '' }}</strong>
@@ -82,8 +82,10 @@
         <button v-if="session.practice_context.remember_for_future" type="button" class="ghost" :disabled="loading || memoryBusy || recording || videoRecording || videoStopping" @click="forgetCurrentPractice">停止复用本场</button>
         <DataState v-if="memoryError" :error="memoryError" />
       </section>
+      <InterviewRuntimePanel v-if="session.runtime" :runtime="session.runtime" :busy="['save','advance','consent'].includes(coach.pending.value)" @command="runtimeAction" />
+      <p v-if="session.runtime && runtimeLocked && answer.trim()" class="focus-note">本场已停止接收回答。这段未提交文字仍在页面中，请复制保存：{{ answer }}</p>
       <section class="studio">
-        <InterviewCoachPanel v-if="coachEnabled && coach.view.value" :answered-questions="session.turns.map(t=>({index:t.question_index,question:t.question}))" :completed="session.status==='completed'" :coach="coach.view.value" :draft="answer" :busy="coachBusy || recording || videoRecording || videoStopping || videoStarting" :total="session.questions.length" :editing="coachEditing" :composing="coach.composing.value" :external-consent="coach.snapshot.value?.external_consent || false" :current-answer="coach.snapshot.value?.current_attempt?.answer || ''" :error="coach.error.value?.message" :attempts="coachAttempts" :selected-attempt="selectedAttempt" :more-history="historyBefore != null" :history-error="coachHistoryError" :comparison="coachComparison" @update:draft="answer = $event" @composition="coach.setDraft(answer, $event)" @submit="submitCoach" @retry-analysis="coach.analyze()" @advance="advanceCoach" @reanswer="reanswerCoach" @select-question="focusCoach" @consent-change="coach.consent($event)" @load-history="loadCoachHistory" @select-attempt="selectedAttempt = $event" @reload="coach.refresh()">
+        <InterviewCoachPanel v-if="coachEnabled && coach.view.value" :answer-locked="runtimeLocked" :history-locked="!!session.runtime && !['finished','expired'].includes(session.runtime.status)" :answered-questions="session.turns.map(t=>({index:t.question_index,question:t.question}))" :completed="session.status==='completed'" :coach="coach.view.value" :draft="answer" :busy="coachBusy || recording || videoRecording || videoStopping || videoStarting" :total="session.questions.length" :editing="coachEditing" :composing="coach.composing.value" :external-consent="coach.snapshot.value?.external_consent || false" :current-answer="coach.snapshot.value?.current_attempt?.answer || ''" :error="coach.error.value?.message" :attempts="coachAttempts" :selected-attempt="selectedAttempt" :more-history="historyBefore != null" :history-error="coachHistoryError" :comparison="coachComparison" @update:draft="answer = $event" @composition="coach.setDraft(answer, $event)" @submit="submitCoach" @retry-analysis="coach.analyze()" @advance="advanceCoach" @reanswer="reanswerCoach" @select-question="focusCoach" @consent-change="coach.consent($event)" @load-history="loadCoachHistory" @select-attempt="selectedAttempt = $event" @reload="coach.refresh()">
           <template #answer-tools><button type="button" :disabled="coachBusy" @click="toggleRecording">{{ recording ? '停止录音' : '语音回答' }}</button><p class="speech-privacy">语音识别可能使用浏览器厂商的服务。摄像头和本地录像可在伙伴区按需开启。</p></template>
           <template #history-media><video v-if="selectedAttempt && coachRecordings[selectedAttempt.attempt_id]" :src="coachRecordings[selectedAttempt.attempt_id].url" controls playsinline /><p v-else>这版没有当前页面录像；已保存文字仍可回看。</p></template>
           <template #summary><button type="button" class="ghost" @click="reset">再练一次</button></template>
@@ -252,7 +254,10 @@ import CompanionCard from '../components/CompanionCard.vue'
 import DataState from '../components/DataState.vue'
 import InterviewReviewPanel from '../components/InterviewReviewPanel.vue'
 import InterviewCreator from '../components/InterviewCreator.vue'
-import { configurationForScenario, configurationForSession, createDraftController, legacyScenario } from '../interview/configuration'
+import InterviewRuntimePanel from '../components/InterviewRuntimePanel.vue'
+import type { RuntimeKind } from '../types/interviewRuntime'
+import { prepareInterviewRuntime } from '../services/api'
+import { configurationForScenario, configurationForSession, createDraftController, legacyScenario, unavailableReason } from '../interview/configuration'
 import { getInterviewConfiguration, saveInterviewDraft } from '../services/api'
 import type { InterviewConfiguration } from '../types/interviewConfiguration'
 import { useInterviewVision } from '../interview/useInterviewVision'
@@ -320,6 +325,15 @@ const requestedMedia = computed(() => {
 })
 const coachEnabled = import.meta.env.VITE_ENABLE_INTERVIEW_COACH === 'true'
 const coach = useInterviewCoach()
+const runtimeEnabled = computed(()=>coachEnabled && configurationState.value.runtimeEnabled===true)
+const runtimeLocked = computed(()=>!!session.value?.runtime && session.value.runtime.status!=='running')
+let preparationKey='', preparationFingerprint=''
+async function runtimeAction(kind:RuntimeKind){
+ if(kind==='finish'){try{await ElMessageBox.confirm(answer.value.trim()?'未提交文字不会写入报告，请先复制保存。确定提前结束本场？':'已保存回答保留，可随时生成复盘报告。确定提前结束？','结束实战',{confirmButtonText:'结束本场',cancelButtonText:'继续训练'})}catch{return}}
+ if(kind==='finish'||kind==='skip'){stopSpeechRecording();stopVideoRecording(true);coachSpeech.stop()}
+ const updated=await coach.runtimeAction(kind)
+ if(updated && kind==='skip'){answer.value='';coach.setDraft('');coachEditing.value=false}
+}
 const coachSpeech = useInterviewCoachSpeech()
 const voiceId = ref<string>('zh-CN-XiaoxiaoNeural')
 const coachEditing = ref(false)
@@ -519,6 +533,19 @@ const begin = async () => {
   error.value = ''
   memoryError.value = ''
   try {
+    if(configuration.value.execution_mode==='timed'){
+      if(!runtimeEnabled.value)throw Error('实战写入未开启，请选择逐题训练')
+      const content={configuration:configuration.value,target_role:form.value.targetRole,source_id:'',project_name:projectName.value,project_details:projectDetails.value}
+      const fingerprint=JSON.stringify(content)
+      if(preparationFingerprint!==fingerprint){preparationFingerprint=fingerprint;preparationKey=crypto.randomUUID()}
+      const prepared=await prepareInterviewRuntime(content,preparationKey)
+      if(disposed)return
+      preparationKey='';preparationFingerprint=''
+      session.value=prepared.session
+      await syncSessionQuery(prepared.session.interview_id)
+      await coach.open(prepared.session.interview_id)
+      return
+    }
     const created = await startInterview(form.value.targetRole, form.value.scenario, form.value.difficulty, form.value.sourceId || undefined, focusWrongId.value || undefined, originGoalId.value || undefined, reviewEnabled.value ? false : legacyExternalConsent.value, {
       projectName: form.value.scenario === '项目面' ? projectName.value : '',
       projectDetails: form.value.scenario === '项目面' ? projectDetails.value : '',

@@ -5,7 +5,7 @@ import { configurationForScenario, interviewDirections, unavailableReason } from
 import type { DraftClientState } from '../interview/configuration'
 import type { InterviewCategory, InterviewConfiguration } from '../types/interviewConfiguration'
 
-const props=defineProps<{ modelValue:InterviewConfiguration; draft:DraftClientState; busy:boolean }>()
+const props=defineProps<{ modelValue:InterviewConfiguration; draft:DraftClientState; busy:boolean; runtimeEnabled?:boolean }>()
 const emit=defineEmits<{
   'update:modelValue':[value:InterviewConfiguration]
   save:[]; restore:[]; reload:[]
@@ -17,7 +17,7 @@ const mediaOptions = [{id:'camera',label:'摄像头预览'},{id:'microphone',lab
 function patch(value:Partial<InterviewConfiguration>){emit('update:modelValue',{...props.modelValue,...value})}
 function selectCategory(category:InterviewCategory){
   const direction=interviewDirections.find(d=>d.id===category)!
-  patch({category,track:direction.tracks[0]!.id,language:'zh-CN',difficulty_strategy:'standard'})
+  patch({category,track:direction.tracks[0]!.id,language:'zh-CN',difficulty_strategy:'standard',...(category==='creator'&&props.runtimeEnabled?{execution_mode:'timed' as const}:{})})
 }
 </script>
 
@@ -31,12 +31,13 @@ function selectCategory(category:InterviewCategory){
     </fieldset>
     <button class="expression-link" type="button" :aria-pressed="modelValue.category==='learning_expression'" :disabled="busy" @click="selectCategory('learning_expression')"><Reading :size="24" aria-hidden="true" /><span>想结合课程资料练习？进入学习表达训练</span></button>
     <fieldset class="track-picker"><legend>{{ selected.label }}专项</legend><button v-for="track in selected.tracks" :key="track.id" type="button" :disabled="busy" :aria-pressed="modelValue.track===track.id" @click="patch({track:track.id})">{{ track.label }}</button></fieldset>
-    <p class="runtime-note"><ShieldCheck :size="22" aria-hidden="true" /><span>当前使用固定题逐题训练。{{ modelValue.duration_minutes }} 分钟是目标配置，计时任务引擎尚未启用。</span></p>
+    <fieldset v-if="runtimeEnabled" class="track-picker"><legend>怎么练？</legend><button type="button" :aria-pressed="modelValue.execution_mode!=='timed'" :disabled="busy" @click="patch({execution_mode:'fixed'})">逐题训练</button><button type="button" :aria-pressed="modelValue.execution_mode==='timed'" :disabled="busy" @click="patch({execution_mode:'timed',language:'zh-CN',difficulty_strategy:'standard'})">连续计时实战</button></fieldset>
+    <p class="runtime-note"><ShieldCheck :size="22" aria-hidden="true" /><span>{{ modelValue.execution_mode==='timed'?'开场 → 主题 → 互动挑战 → 复盘。准备好后开始计时，可提前结束。':`逐题作答，不计时。${modelValue.duration_minutes} 分钟是目标配置。` }}</span></p>
     <details class="advanced"><summary>语言、难度与任务配置 <span>{{ modelValue.language==='zh-CN'?'中文':'英文' }} · {{ modelValue.difficulty }}</span></summary>
       <fieldset class="track-picker"><legend>训练语言</legend><button v-for="language in ['zh-CN','en-US'] as const" :key="language" type="button" :disabled="busy" :aria-pressed="modelValue.language===language" @click="patch({language})">{{ language==='zh-CN'?'中文':'英文（通用求职）' }}</button></fieldset>
       <fieldset class="track-picker"><legend>题目难度</legend><button v-for="difficulty in ['入门','标准','压力面'] as const" :key="difficulty" type="button" :disabled="busy" :aria-pressed="modelValue.difficulty===difficulty" @click="patch({difficulty})">{{ difficulty==='压力面'?'进阶':difficulty }}</button></fieldset>
-      <div class="advanced-grid"><label>目标时长 · 1–60 分钟，尚未计时<input type="number" min="1" max="60" step="1" list="interview-durations" :value="modelValue.duration_minutes" :disabled="busy" @input="patch({duration_minutes:Number(($event.target as HTMLInputElement).value)})" /><datalist id="interview-durations"><option v-for="minutes in [3,5,10,15,30]" :key="minutes" :value="minutes" /></datalist></label>
-        <label>选题方式<select :value="modelValue.question_strategy" :disabled="busy" @change="patch({question_strategy:($event.target as HTMLSelectElement).value as InterviewConfiguration['question_strategy']})"><option value="fixed">固定题 · 已可用</option><option value="random">随机题 · 仅保存配置</option><option value="ai">AI 选题 · 仅保存配置</option><option value="mixed">混合选题 · 仅保存配置</option></select></label></div>
+      <div class="advanced-grid"><label>目标时长 · 1–60 分钟<input type="number" min="1" max="60" step="1" list="interview-durations" :value="modelValue.duration_minutes" :disabled="busy" @input="patch({duration_minutes:Number(($event.target as HTMLInputElement).value)})" /><datalist id="interview-durations"><option v-for="minutes in [3,5,10,15,30]" :key="minutes" :value="minutes" /></datalist></label>
+        <label>选题方式<select :value="modelValue.question_strategy" :disabled="busy" @change="patch({question_strategy:($event.target as HTMLSelectElement).value as InterviewConfiguration['question_strategy']})"><option value="fixed">固定题 · 已可用</option><option value="random">{{ modelValue.execution_mode==='timed'?'随机规则任务':'随机题 · 仅保存配置' }}</option><option value="ai">AI 选题 · 仅保存配置</option><option value="mixed">混合选题 · 仅保存配置</option></select></label></div>
       <fieldset class="track-picker"><legend>追问策略</legend><button type="button" :disabled="busy" :aria-pressed="modelValue.difficulty_strategy==='standard'" @click="patch({difficulty_strategy:'standard'})">标准追问</button><button type="button" :disabled="busy" :aria-pressed="modelValue.difficulty_strategy==='challenge'" @click="patch({difficulty_strategy:'challenge'})">挑战追问（通用求职）</button></fieldset>
       <fieldset class="media-preferences"><legend>本场希望使用哪些辅助？</legend><label v-for="option in mediaOptions" :key="option.id"><input type="checkbox" :checked="modelValue.media_preferences[option.id]" :disabled="busy" @change="patch({media_preferences:{...modelValue.media_preferences,[option.id]:($event.target as HTMLInputElement).checked}})" />{{ option.label }}</label><p>这里只保存使用意向。开始后仍需点击相应控件授权；恢复草稿不会打开设备、录制或发送内容。语音转写可能使用浏览器厂商服务。</p></fieldset>
     </details>

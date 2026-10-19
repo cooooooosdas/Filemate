@@ -95,7 +95,7 @@ class TestMigrationUpgrade:
 
         assert s.get_schema_version() == 29
         assert [m["version"] for m in s.list_migrations()] == [
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
         ]
 
         conn = s._conn()
@@ -310,9 +310,9 @@ class TestSchemaInit:
         assert storage.get_schema_version() == 29
         migrations = storage.list_migrations()
         assert [item["version"] for item in migrations] == [
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
         ]
-        assert migrations[-1]["name"] == "interview_configuration"
+        assert migrations[-1]["name"] == "interview_runtime"
 
     def test_knowledge_tables_and_local_workspace_exist(
         self,

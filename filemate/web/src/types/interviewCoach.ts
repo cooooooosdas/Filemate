@@ -30,6 +30,7 @@ export interface CoachView {
  canSubmit:boolean; canAdvance:boolean; canRetry:boolean
 }
 export interface CoachApi {
+ runtime?(id:string,kind:import('./interviewRuntime').RuntimeKind):Promise<CoachMutationResult>
  get(id:string):Promise<CoachSnapshot>; submit(id:string,input:CoachAnswer):Promise<CoachMutationResult>
  analyze(id:string,input:CoachAnalysis):Promise<CoachMutationResult>; advance(id:string,input:CoachAdvance):Promise<CoachMutationResult>
  consent(id:string,input:CoachConsent):Promise<CoachMutationResult>

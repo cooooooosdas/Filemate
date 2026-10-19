@@ -6,6 +6,7 @@ export interface InterviewConfiguration {
   language: 'zh-CN' | 'en-US'
   difficulty: '入门' | '标准' | '压力面'
   duration_minutes: number
+  execution_mode: 'fixed' | 'timed'
   difficulty_strategy: 'standard' | 'challenge'
   question_strategy: 'fixed' | 'random' | 'ai' | 'mixed'
   media_preferences: { camera:boolean; microphone:boolean; transcription:boolean; local_recording:boolean; post_analysis:boolean }
@@ -42,6 +43,7 @@ export interface SessionConfiguration {
   language: string | null
   duration_minutes: number | null
   timing_active: boolean
+  execution_mode?: 'fixed'|'timed'
   error?: string
   media_preferences?: InterviewConfiguration['media_preferences']
 }

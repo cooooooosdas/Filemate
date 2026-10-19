@@ -1013,6 +1013,7 @@ export interface SourceEvidenceRef {
 }
 
 export interface InterviewSession {
+  runtime?: import('../types/interviewRuntime').InterviewRuntime | null
   configuration?: import('../types/interviewConfiguration').SessionConfiguration
   interview_id: string
   agent_run_id?: string | null
@@ -1895,3 +1896,6 @@ export const setInterviewCoachConsent=(id:string,input:CoachConsent):Promise<Coa
 export const getInterviewAttempts=(id:string,turnId:string,options:{limit?:number;before_version?:number}={}):Promise<CoachAttempts>=>coachResult(api.get<unknown,ApiResponse<CoachAttempts>>(`/interviews/${encodeURIComponent(id)}/turns/${encodeURIComponent(turnId)}/attempts`,{params:options,timeout:15000}))
 
 export const focusInterviewCoach=(id:string,input:CoachFocus):Promise<CoachMutationResult>=>coachResult(api.post<unknown,ApiResponse<CoachMutationResult>>(`/interviews/${encodeURIComponent(id)}/coach/focus`,input,{timeout:15000}))
+
+export const prepareInterviewRuntime=(content:import('../types/interviewConfiguration').InterviewDraftContent,request_key:string):Promise<CoachSnapshot>=>coachResult(api.post<unknown,ApiResponse<CoachSnapshot>>('/interviews/runtime',{content,request_key},{timeout:15000}))
+export const commandInterviewRuntime=(id:string,input:import('../types/interviewRuntime').RuntimeCommand):Promise<CoachMutationResult>=>coachResult(api.post<unknown,ApiResponse<CoachMutationResult>>(`/interviews/${encodeURIComponent(id)}/runtime/commands`,input,{timeout:20000}))

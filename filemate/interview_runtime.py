@@ -400,6 +400,9 @@ class RuntimeRepository:
             )
             attempt_id = result.snapshot.current_attempt.attempt_id
             conn.execute(
+                "UPDATE interview_sessions SET status='active' WHERE interview_id=?", (sid,)
+            )
+            conn.execute(
                 "UPDATE interview_tasks SET status='answered',attempt_id=? WHERE interview_id=? AND task_index=?",
                 (attempt_id, sid, index),
             )
@@ -435,7 +438,7 @@ class RuntimeRepository:
                     (sid, target),
                 )
                 conn.execute(
-                    "UPDATE interview_sessions SET current_index=?,status='in_progress' WHERE interview_id=?",
+                    "UPDATE interview_sessions SET current_index=?,status='active' WHERE interview_id=?",
                     (target, sid),
                 )
                 entered = [

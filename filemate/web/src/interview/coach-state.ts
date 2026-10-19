@@ -16,7 +16,7 @@ export function projectCoach(snapshot:CoachSnapshot,pending:CoachClientState['pe
  const free=pending==='idle' && !snapshot.data_error
  return {phase:snapshot.phase,questionIndex:snapshot.displayed_index,question:a?.question ?? snapshot.session.questions[snapshot.displayed_index] ?? '',attemptId:a?.attempt_id ?? null,
  analysisStatus:pending==='analysis'?'running':(a?.analysis_status ?? 'unrequested'),score:valid?a!.score:null,feedback:valid?(a?.evaluation.feedback || '已完成参考分析'):'回答保存后可主动分析；未分析内容不计分。',analysis:valid?(a?.evaluation.content_analysis ?? null):null,
- canSubmit:free && snapshot.phase!=='summary',canAdvance:free && snapshot.phase==='feedback' && !!a && !snapshot.active_run_id,canRetry:free && !!a && !snapshot.active_run_id && snapshot.external_consent}
+ canSubmit:free && snapshot.phase!=='summary' && (!snapshot.session.runtime || snapshot.session.runtime.status==='running'),canAdvance:free && snapshot.phase==='feedback' && !!a && !snapshot.active_run_id && (!snapshot.session.runtime || snapshot.session.runtime.status==='running'),canRetry:free && !!a && !snapshot.active_run_id && snapshot.external_consent && (!snapshot.session.runtime || snapshot.session.runtime.status==='running')}
 }
 export function createCoachController(api:CoachApi,key:()=>string=()=>crypto.randomUUID(),changed:(state:CoachClientState)=>void=()=>{}) {
  let state=initialCoachState()
@@ -72,6 +72,16 @@ export function createCoachController(api:CoachApi,key:()=>string=()=>crypto.ran
    }
    return saved
   },analyze,
+  async runtimeAction(kind:import('../types/interviewRuntime').RuntimeKind){
+   if(kind==='finish' && state.pending==='analysis' && state.sessionId && api.runtime){
+    const c=capture()
+    try{const result=await api.runtime(c.id,kind);apply(c,result.snapshot);return result.snapshot}catch(e){fail(c,e);return null}
+   }
+   return (await mutate('advance',s=>{
+    if(!api.runtime)throw Error('实战接口未启用')
+    return api.runtime(s.session.interview_id,kind)
+   }))?.snapshot ?? null
+  },
   advance:async()=>(await mutate('advance',s=>api.advance(s.session.interview_id,{request_key:key(),expected_revision:s.revision,from_index:s.displayed_index,expected_attempt_id:s.current_attempt!.attempt_id})))?.snapshot ?? null,
   focus:async(question_index:number|null)=>(await mutate('advance',s=>api.focus(s.session.interview_id,{request_key:key(),expected_revision:s.revision,question_index})))?.snapshot ?? null,
   async consent(allowed:boolean){
