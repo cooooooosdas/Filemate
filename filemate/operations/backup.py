@@ -579,6 +579,9 @@ def restore_backup(backup: Path, target: Path, confirmation: str) -> dict[str, A
                 exists = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='interview_coach_state'").fetchone()
                 normalize_restored_coach(conn)
                 normalize_restored_configuration(conn)
+                from filemate.interview_runtime import normalize_restored_runtime
+
+                normalize_restored_runtime(conn)
                 if conn.execute('PRAGMA foreign_key_check').fetchone():
                     raise ValueError('恢复安全规范化失败，新目录不可启用')
                 normalized += int(bool(exists))

@@ -381,6 +381,9 @@ class PersonalBackup:
 
                 normalize_restored_coach(conn)
                 normalize_restored_configuration(conn)
+                from filemate.interview_runtime import normalize_restored_runtime
+
+                normalize_restored_runtime(conn)
                 conn.execute("UPDATE sessions SET status='failed',error='备份恢复的历史会话；文件操作不重放'")
                 conn.execute("UPDATE execution_records SET status='failed',error='备份恢复后禁止重放文件操作'")
                 conn.execute("DELETE FROM data_action_previews WHERE action!='personal_restore'")

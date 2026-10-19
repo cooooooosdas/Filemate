@@ -175,7 +175,7 @@ class ReviewRepository:
         interview, revision = self.snapshot(interview_id)
         conn = self.storage._conn()
         counts = {label: conn.execute(f'SELECT COUNT(*) FROM {table} WHERE interview_id=?', (interview_id,)).fetchone()[0]
-                  for label, table in [('answer_attempts','interview_answer_attempts'),('analysis_runs','interview_coach_analysis_runs'),('coach_actions','interview_coach_actions')]}
+                  for label, table in [('answer_attempts','interview_answer_attempts'),('analysis_runs','interview_coach_analysis_runs'),('coach_actions','interview_coach_actions'),('runtime_tasks','interview_tasks'),('runtime_events','interview_events')]}
         coach = conn.execute('SELECT revision FROM interview_coach_state WHERE interview_id=?', (interview_id,)).fetchone()
         reports = len(self._report_ids(interview_id))
         token = hashlib.sha256(json.dumps([evidence_digest(interview),revision,coach[0] if coach else None,counts,reports],sort_keys=True).encode()).hexdigest()

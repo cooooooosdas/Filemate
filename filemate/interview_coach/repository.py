@@ -537,9 +537,9 @@ class CoachRepository:
 
     def focus(self, interview_id: str, command: FocusCommand) -> CoachMutationResult:
         with self.transaction() as conn:
-            from filemate.interview_runtime import guard_legacy_write
-
-            guard_legacy_write(conn, interview_id)
+            runtime = conn.execute("SELECT status FROM interview_runtime WHERE interview_id=?", (interview_id,)).fetchone()
+            if runtime and runtime[0] not in {"finished", "expired"}:
+                raise CoachError("runtime_command_required")
             old = self._previous(conn, interview_id, 'focus', command)
             if old:
                 return self._result(interview_id, old)
@@ -678,6 +678,9 @@ class CoachRepository:
             view = attempt_view(conn, attempt)
             if view.data_error:
                 raise CoachError("attempt_data_error")
+            from filemate.interview_runtime import reserve_runtime_ai
+
+            reserve_runtime_ai(conn, interview_id)
             conn.execute(
                 "INSERT OR IGNORE INTO interview_review_state(interview_id) VALUES (?)",
                 (interview_id,),
@@ -772,6 +775,8 @@ class CoachRepository:
             review = conn.execute(
                 "SELECT revision FROM interview_review_state WHERE interview_id=?", (sid,)
             ).fetchone()
+            from filemate.interview_runtime import runtime_analysis_allowed
+
             fresh = (
                 run["status"] == "running"
                 and latest == run["attempt_id"]
@@ -779,6 +784,7 @@ class CoachRepository:
                 and review[0] == run["review_revision"]
                 and state["provider_identity"] in {"", run["provider_identity"]}
                 and datetime.now(timezone.utc) <= datetime.fromisoformat(run["deadline_at"])
+                and runtime_analysis_allowed(conn, sid)
             )
             if not fresh:
                 status, evaluation, error_code = "cancelled", None, "superseded"

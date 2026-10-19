@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from filemate.interview_review.models import CONTENT_LABELS, VISUAL_LABELS
+from filemate.interview_runtime import runtime_evidence
 from filemate.study.explanation_cycle import describe_answer_structure
 
 _PDF_FONT_LOCK = threading.Lock()
@@ -25,6 +26,8 @@ def evidence_digest(interview: dict[str, Any]) -> str:
             'visual_metrics','content_analysis','scoring_mode','analysis_data_error','attempt_id','attempt_version',
             'attempt_created_at','analysis_status','analysis_run_id','source_revision')
     payload['turns'] = [{key: turn.get(key) for key in keys} for turn in interview['turns']]
+    if interview.get('runtime'):
+        payload['runtime'] = runtime_evidence(interview['runtime'])
     return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
 
 
@@ -91,6 +94,7 @@ def build_report(interview: dict[str, Any]) -> dict[str, Any]:
         "version": "2.4", "interview_id": interview["interview_id"],
         "target_role": interview["target_role"], "scenario": interview["scenario"],
         "status": interview["status"], "answered": len(turns), "total": len(interview["questions"]),
+        "runtime": runtime_evidence(interview.get('runtime')),
         "assessed": interview["assessed_turn_count"], "overall_score": interview["overall_score"],
         "calibration": "待校准（没有真实专家评分样本）",
         "purpose": "用于训练和复盘，模型评分是参考，不用于录用决定或心理状态推断。",
@@ -144,6 +148,16 @@ def report_markdown(report: dict[str, Any]) -> str:
              report["expression"]["method"], "", "## 面部可观察行为", "",
              f"有效采样：{report['visual']['sample_count']}；检出比例：{report['visual']['face_observed_ratio'] if report['visual']['face_observed_ratio'] is not None else '待评测'}",
              report["visual"]["method"], "", "## 回答与专业内容", ""]
+    if report.get("runtime"):
+        runtime = report["runtime"]
+        lines.extend(["## 实战任务与互动", "", f"状态：{runtime['status']}；开始：{runtime['started_at']}；原截止：{runtime['deadline']}",
+                      "互动均为规则生成的模拟观众，不代表真实观众评价。"])
+        for task in runtime["tasks"]:
+            lines.append(f"{task['title']}：{task['status']}；回答依据：{task['attempt_id'] or '无，待评估'}")
+        for event in runtime["events"]:
+            if event["kind"] == "audience":
+                lines.append(f"{event['created_at']} {event['text']}；回答依据：{event['attempt_id'] or '未回应'}")
+        lines.append("")
     for turn in report["turns"]:
         lines.extend([f"### 第{turn['question_index'] + 1}题", "", turn["question"], "",
                       "回答：", "", turn["answer"], "", f"来源：{turn['scoring_mode']}",

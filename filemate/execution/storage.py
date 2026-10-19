@@ -18,7 +18,11 @@ from pathlib import Path
 from typing import Any
 
 from filemate import interview_config
-from filemate.execution import data_actions, interview_configuration_schema, interview_runtime_schema
+from filemate.execution import (
+    data_actions,
+    interview_configuration_schema,
+    interview_runtime_schema,
+)
 from filemate.interview_coach import schema as interview_coach_schema
 from filemate.task_resources import admit_plan, admit_tasks
 
