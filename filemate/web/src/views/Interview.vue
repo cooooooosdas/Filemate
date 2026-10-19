@@ -11,7 +11,7 @@
     <DataState v-if="resumeError && !session" :error="resumeError" @retry="restoreInterview(requestedInterviewId)" />
     <details v-if="!session" class="resume-panel">
       <summary class="resume-summary"><Document :size="24" aria-hidden="true" /><strong>接着上次练</strong><span>{{ historyLoading ? '正在读取…' : `${recentInterviews.length} 场已保存` }}</span></summary>
-      <div class="resume-heading"><p>已提交的回答会保留；未提交文字和本地录像不会在刷新后恢复。</p><button class="ghost" :disabled="historyLoading || loading" @click="loadRecent">刷新记录</button></div>
+      <div class="resume-heading"><p>已提交回答保留。实战文字草稿可在同一浏览器标签页刷新恢复；本地录像不恢复。</p><button class="ghost" :disabled="historyLoading || loading" @click="loadRecent">刷新记录</button></div>
       <p v-if="historyLoading" role="status">正在读取练习记录…</p>
       <DataState v-else-if="historyError" :error="historyError" @retry="loadRecent" />
       <div v-else-if="recentInterviews.length" class="resume-list">
@@ -83,6 +83,8 @@
         <DataState v-if="memoryError" :error="memoryError" />
       </section>
       <InterviewRuntimePanel v-if="session.runtime" :runtime="session.runtime" :busy="['save','advance','consent'].includes(coach.pending.value)" @command="runtimeAction" />
+      <section v-if="session.runtime && coach.draftConflict.value" class="focus-note" role="alert"><strong>这段草稿属于原任务或原回答版本</strong><p>请先复制保留；清空旧草稿后再回答当前任务，避免串题。</p><blockquote>{{ answer }}</blockquote><button class="ghost" @click="discardRuntimeDraft">清空旧草稿，回答当前任务</button></section>
+      <p v-if="session.runtime && answer.trim()" class="focus-note">{{ coach.draftRecoveryAvailable.value ? '草稿仅临时保存在当前浏览器标签页；关闭标签页或清除站点数据可能丢失。' : '浏览器存储不可用，刷新前请复制这段草稿。' }}</p>
       <p v-if="session.runtime && runtimeLocked && answer.trim()" class="focus-note">本场已停止接收回答。这段未提交文字仍在页面中，请复制保存：{{ answer }}</p>
       <section class="studio">
         <InterviewCoachPanel v-if="coachEnabled && coach.view.value" :answer-locked="runtimeLocked" :history-locked="!!session.runtime && !['finished','expired'].includes(session.runtime.status)" :answered-questions="session.turns.map(t=>({index:t.question_index,question:t.question}))" :completed="session.status==='completed'" :coach="coach.view.value" :draft="answer" :busy="coachBusy || recording || videoRecording || videoStopping || videoStarting" :total="session.questions.length" :editing="coachEditing" :composing="coach.composing.value" :external-consent="coach.snapshot.value?.external_consent || false" :current-answer="coach.snapshot.value?.current_attempt?.answer || ''" :error="coach.error.value?.message" :attempts="coachAttempts" :selected-attempt="selectedAttempt" :more-history="historyBefore != null" :history-error="coachHistoryError" :comparison="coachComparison" @update:draft="answer = $event" @composition="coach.setDraft(answer, $event)" @submit="submitCoach" @retry-analysis="coach.analyze()" @advance="advanceCoach" @reanswer="reanswerCoach" @select-question="focusCoach" @consent-change="coach.consent($event)" @load-history="loadCoachHistory" @select-attempt="selectedAttempt = $event" @reload="coach.refresh()">
@@ -382,6 +384,10 @@ function reanswerCoach(){
  const index=currentQuestionIndex.value;const next={...localRecordings.value};delete next[index];localRecordings.value=next
  void nextTick(()=>document.getElementById('coach-answer')?.focus())
 }
+async function discardRuntimeDraft(){
+ try{await ElMessageBox.confirm('请先复制需要保留的文字。清空后可重新回答当前任务。','清空旧草稿',{confirmButtonText:'清空旧草稿',cancelButtonText:'继续保留'})}catch{return}
+ answer.value='';coach.setDraft('');coachEditing.value=true
+}
 async function advanceCoach(){
  if(answer.value.trim()){try{await ElMessageBox.confirm('重答草稿还未提交。继续下一题会放弃这段草稿，已保存回答保留。','保留或放弃草稿',{confirmButtonText:'放弃草稿并继续',cancelButtonText:'继续修改'})}catch{return}}
  const result=await coach.advance();if(!result)return
@@ -397,7 +403,7 @@ async function focusCoach(index:number|null){
 }
 function reviewUpdated(updated:InterviewSession){session.value=updated;if(coachEnabled)void coach.refresh()}
 watch(coach.snapshot,value=>{if(value)session.value=value.session})
-watch(coach.draft,value=>{if(coachEnabled && answer.value!==value)answer.value=value})
+watch(coach.draft,value=>{if(coachEnabled && answer.value!==value)answer.value=value;if(value.trim() && session.value?.runtime)coachEditing.value=true})
 const sourceEvidenceLabel = computed(() => {
   const evidence = session.value?.source_context?.source_evidence
   if (!evidence) return ''
@@ -1014,7 +1020,7 @@ async function confirmLeave(): Promise<boolean> {
   if (loading.value || memoryBusy.value || coachBusy.value || configurationState.value.busy) { ElMessage.info('正在保存或读取面试，请稍候再切换。'); return false }
   if (!draftPresent.value) return true
   try {
-    await ElMessageBox.confirm('未保存配置、未提交的文字和本地录像不会保留。已保存配置与回答仍会保留，确定离开吗？', '离开当前练习', { confirmButtonText: '离开', cancelButtonText: '继续练习', type: 'warning' })
+    await ElMessageBox.confirm(session.value?.runtime ? '未保存配置和本地录像不会保留。实战文字草稿仅临时保存在当前标签页，建议先复制；已保存回答保留。确定离开吗？' : '未保存配置、未提交的文字和本地录像不会保留。已保存配置与回答仍会保留，确定离开吗？', '离开当前练习', { confirmButtonText: '离开', cancelButtonText: '继续练习', type: 'warning' })
     return true
   } catch { return false }
 }

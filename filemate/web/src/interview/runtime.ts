@@ -29,7 +29,8 @@ export function createRuntimeAdapter(base:CoachApi,post:(id:string,command:Runti
       if(!sessions.has(id))return base.submit(id,answer)
       let cmd=requests.get(answer.request_key)
       if(!cmd){cmd={...input(id,'submit',answer.request_key),task_index:answer.question_index,answer:answer.answer,expected_attempt_id:answer.expected_attempt_id,fluency_metrics:answer.fluency_metrics,visual_metrics:answer.visual_metrics};requests.set(answer.request_key,cmd)}
-      const result=await send(id,cmd);requests.delete(answer.request_key);return result
+      try{const result=await send(id,cmd);requests.delete(answer.request_key);return result}
+      catch(error){if([400,401,403,404,409,422,429].includes((error as {status?:number}).status ?? 0))requests.delete(answer.request_key);throw error}
     },
     advance:async(id,advance)=>{
       if(!sessions.has(id))return base.advance(id,advance)

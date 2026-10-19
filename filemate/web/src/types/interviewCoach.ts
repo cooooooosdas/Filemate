@@ -19,11 +19,17 @@ export interface CoachAdvance extends CoachCommand { from_index: number; expecte
 export interface CoachFocus extends CoachCommand { question_index: number|null }
 export interface CoachConsent extends CoachCommand { allowed: boolean }
 export interface CoachAttempts { items: AttemptView[]; next_before_version: number|null }
+export interface DraftContext { questionIndex:number; attemptId:string|null; versionToken:string }
+export interface CoachDraftStore {
+ load(id:string):{text:string;context:DraftContext}|null|undefined
+ save(id:string,value:{text:string;context:DraftContext}):void
+ remove(id:string):void
+}
 export interface CoachClientState {
- sessionId: string|null; epoch: number; snapshot: CoachSnapshot|null; draft: string; composing: boolean
+ sessionId: string|null; epoch: number; snapshot: CoachSnapshot|null; draft: string; draftContext:DraftContext|null; composing: boolean
  pending: 'idle'|'save'|'analysis'|'advance'|'consent'; error: {code:string;message:string}|null
 }
-export type CoachEvent = {type:'open';id:string;epoch:number} | {type:'snapshot';id:string;epoch:number;value:CoachSnapshot} | {type:'draft';text:string;composing:boolean} | {type:'pending';value:CoachClientState['pending']} | {type:'error';id:string;epoch:number;value:CoachClientState['error']} | {type:'dispose'}
+export type CoachEvent = {type:'open';id:string;epoch:number} | {type:'snapshot';id:string;epoch:number;value:CoachSnapshot} | {type:'draft';text:string;composing:boolean;context?:DraftContext|null} | {type:'pending';value:CoachClientState['pending']} | {type:'error';id:string;epoch:number;value:CoachClientState['error']} | {type:'dispose'}
 export interface CoachView {
  phase: CoachSnapshot['phase']; questionIndex:number; question:string; attemptId:string|null
  analysisStatus:string; score:number|null; feedback:string; analysis:ContentAnalysis|null
