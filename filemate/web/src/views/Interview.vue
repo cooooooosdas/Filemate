@@ -25,17 +25,18 @@
     </details>
 
     <section v-if="!session" class="setup-card">
-      <div class="setup-copy">
+      <InterviewCreator v-if="!configurationState.ready || configurationState.enabled" :model-value="configuration" :draft="configurationState" :busy="loading || memoryBusy" @update:model-value="updateConfiguration" @save="savePreparation" @restore="restorePreparation" @reload="draftController.load()" />
+      <div v-else class="setup-copy">
         <h2>选择你要训练的真实场景</h2>
         <p>选场景、定主题，然后开始回答。可以说出来，也可以全程打字。</p>
       </div>
-      <fieldset class="mode-picker">
+      <fieldset v-if="configurationState.ready && !configurationState.enabled" class="mode-picker">
         <legend>训练场景</legend>
         <button v-for="mode in interviewModes" :key="mode" type="button" :aria-pressed="form.scenario === mode" :disabled="loading" @click="form.scenario = mode"><component :is="modeIcons[mode]" :size="24" aria-hidden="true" /><span>{{ mode === 'HR面' ? 'HR 面' : mode }}</span></button>
       </fieldset>
       <div class="form-grid">
-        <label>这次想练什么？<input v-model="form.targetRole" name="target_role" autocomplete="off" placeholder="例如：数据库索引 / Java 后端开发" :disabled="loading" /></label>
-        <fieldset class="difficulty-picker"><legend>选择难度</legend><button v-for="level in ['入门', '标准', '压力面']" :key="level" type="button" :aria-pressed="form.difficulty === level" :disabled="loading" @click="form.difficulty = level">{{ level }}</button></fieldset>
+        <label>02 / 这次想练什么？<input v-model="form.targetRole" name="target_role" maxlength="120" autocomplete="off" placeholder="例如：数据库索引 / Java 后端开发" :disabled="loading" /></label>
+        <fieldset v-if="configurationState.ready && !configurationState.enabled" class="difficulty-picker"><legend>选择难度</legend><button v-for="level in ['入门', '标准', '压力面']" :key="level" type="button" :aria-pressed="form.difficulty === level" :disabled="loading" @click="form.difficulty = level">{{ level }}</button></fieldset>
         <label class="source-field">结合哪份资料？（可选）<select v-model="form.sourceId" name="interview_source" :disabled="loading" @change="focusWrongId = ''; originGoalId = ''"><option value="">按题库训练</option><option v-for="source in knowledgeSources" :key="source.source_id" :value="source.source_id">{{ source.original_name }}</option></select><small>主动选择后才会使用；授权未确认时只用资料名组织问题。</small></label>
       </div>
       <p v-if="form.scenario === '压力面'" class="focus-note">通过质疑依据、反例和取舍练习临场回应；不会使用羞辱性提问。</p>
@@ -65,11 +66,12 @@
       <p v-if="form.scenario === '知识讲解'" class="focus-note">讲解会保存为练习记录；当前内容准确性待评估，语音节奏仅作参考。</p>
       <p v-if="reviewEnabled" class="focus-note">本轮先按规则选题，回答保存到学习空间。提交后可在复盘区主动授权内容分析；录像和视觉观察不会发给模型。</p>
       <label v-else class="legacy-consent"><input v-model="legacyExternalConsent" type="checkbox" />授权已配置模型对问题和回答提供四维参考评分；不发送本地录像。</label>
-      <button class="primary start-practice" :disabled="loading || memoryBusy || !form.targetRole.trim() || (form.scenario === '项目面' && (!projectName.trim() || !projectDetails.trim()))" @click="begin"><VideoPlay :size="22" aria-hidden="true" />{{ loading ? '正在创建…' : '开始模拟面试' }}<ArrowRight :size="22" aria-hidden="true" /></button>
+      <button class="primary start-practice" :disabled="loading || memoryBusy || configurationState.busy || !configurationState.ready || (configurationState.enabled && !legacyScenario(configuration)) || !form.targetRole.trim() || (form.scenario === '项目面' && (!projectName.trim() || !projectDetails.trim()))" @click="begin"><VideoPlay :size="22" aria-hidden="true" />{{ loading ? '正在创建…' : '开始逐题训练' }}<ArrowRight :size="22" aria-hidden="true" /></button>
       <DataState v-if="error" :error="error" @retry="begin" />
     </section>
 
     <template v-else>
+      <p v-if="session.configuration" class="focus-note" role="status">{{ session.configuration.origin === 'unavailable' ? session.configuration.error : session.configuration.duration_minutes ? `目标 ${session.configuration.duration_minutes} 分钟 · 当前为逐题训练，尚未启用计时` : '旧版训练 · 未记录目标时长' }}</p>
       <section v-if="session.practice_context && (session.practice_context.mode === 'continuous' || session.practice_context.remember_for_future)" class="practice-session" aria-live="polite">
         <strong>{{ session.scenario }}{{ session.practice_context.mode === 'continuous' ? ' · 连续追问' : '' }}</strong>
         <span v-if="session.practice_context.project">项目：{{ session.practice_context.project.name }}</span>
@@ -247,6 +249,10 @@ import type { AttemptView } from '../types/interviewCoach'
 import CompanionCard from '../components/CompanionCard.vue'
 import DataState from '../components/DataState.vue'
 import InterviewReviewPanel from '../components/InterviewReviewPanel.vue'
+import InterviewCreator from '../components/InterviewCreator.vue'
+import { configurationForScenario, createDraftController, legacyScenario } from '../interview/configuration'
+import { getInterviewConfiguration, saveInterviewDraft } from '../services/api'
+import type { InterviewConfiguration } from '../types/interviewConfiguration'
 import { useInterviewVision } from '../interview/useInterviewVision'
 import { visualLabels } from '../interview/observations'
 import { publishCompanionEvent, type CompanionMood } from '../composables/useCompanion'
@@ -259,6 +265,30 @@ const form = ref({ targetRole: '', scenario: '知识讲解', difficulty: '标准
 const specialistModes = ['技术面', '项目面', '算法面', 'HR面', '压力面', '英语面']
 const interviewModes = ['知识讲解', ...specialistModes, '求职面试', '竞赛答辩', '保研复试']
 const modeIcons: Record<string, typeof Reading> = { '知识讲解': Reading, '技术面': Code, '项目面': Collection, '算法面': Code, 'HR面': Conversation, '压力面': ShieldCheck, '英语面': Language, '求职面试': Briefcase, '竞赛答辩': Trophy, '保研复试': School }
+const configuration = ref<InterviewConfiguration>(configurationForScenario('知识讲解', '标准')!)
+const draftController = createDraftController({ read: getInterviewConfiguration, save: saveInterviewDraft }, undefined, state => { configurationState.value = state })
+const configurationState = ref(draftController.state)
+function updateConfiguration(value: InterviewConfiguration): void {
+  configuration.value = value
+  form.value.scenario = legacyScenario(value) || form.value.scenario
+  form.value.difficulty = value.difficulty
+}
+async function savePreparation(): Promise<void> {
+  const before = preparationSnapshot()
+  await draftController.save({ configuration: configuration.value, target_role: form.value.targetRole, source_id: form.value.sourceId, project_name: projectName.value, project_details: projectDetails.value })
+  if (!configurationState.value.error && preparationSnapshot() === before) initialPreparation.value = before
+}
+function restorePreparation(): void {
+  const saved = configurationState.value.remote.content
+  if (!saved) return
+  updateConfiguration({ ...saved.configuration })
+  form.value.targetRole = saved.target_role
+  form.value.sourceId = saved.source_id
+  projectName.value = saved.project_name; projectDetails.value = saved.project_details
+  focusWrongId.value = ''; originGoalId.value = ''
+  rememberForFuture.value = false; selectedMemoryId.value = null; legacyExternalConsent.value = false
+  initialPreparation.value = preparationSnapshot()
+}
 const projectName = ref('')
 const projectDetails = ref('')
 const rememberForFuture = ref(false)
@@ -485,7 +515,7 @@ const begin = async () => {
       projectDetails: form.value.scenario === '项目面' ? projectDetails.value : '',
       rememberForFuture: rememberForFuture.value,
       memoryId: selectedMemoryId.value
-    })
+    }, configurationState.value.enabled ? configuration.value : undefined)
     if (disposed) return
     session.value = created
     resumeError.value = ''
@@ -923,10 +953,11 @@ async function syncSessionQuery(id?: string): Promise<void> {
 
 
 function preparationSnapshot(): string {
-  return JSON.stringify([form.value, projectName.value, projectDetails.value, rememberForFuture.value, selectedMemoryId.value])
+  return JSON.stringify([form.value, configuration.value, projectName.value, projectDetails.value, rememberForFuture.value, selectedMemoryId.value])
 }
 function applyPreparationRoute(): void {
   form.value = { targetRole: typeof route.query.target === 'string' ? route.query.target.slice(0, 120) : '', scenario: interviewModes.includes(String(route.query.scenario)) ? String(route.query.scenario) : '知识讲解', difficulty: '标准', sourceId: typeof route.query.source === 'string' ? route.query.source : '' }
+  configuration.value = configurationForScenario(form.value.scenario, form.value.difficulty)!
   projectName.value = ''; projectDetails.value = ''; rememberForFuture.value = false; selectedMemoryId.value = null
 }
 applyPreparationRoute()
@@ -940,16 +971,16 @@ const draftPresent = computed(() => hasInterviewDraft({
 }))
 
 async function confirmLeave(): Promise<boolean> {
-  if (loading.value || memoryBusy.value || coachBusy.value) { ElMessage.info('正在保存或读取面试，请稍候再切换。'); return false }
+  if (loading.value || memoryBusy.value || coachBusy.value || configurationState.value.busy) { ElMessage.info('正在保存或读取面试，请稍候再切换。'); return false }
   if (!draftPresent.value) return true
   try {
-    await ElMessageBox.confirm('未提交的文字、准备输入和本地录像不会保留。已提交的回答仍会保存，确定离开吗？', '离开当前练习', { confirmButtonText: '离开', cancelButtonText: '继续练习', type: 'warning' })
+    await ElMessageBox.confirm('未保存配置、未提交的文字和本地录像不会保留。已保存配置与回答仍会保留，确定离开吗？', '离开当前练习', { confirmButtonText: '离开', cancelButtonText: '继续练习', type: 'warning' })
     return true
   } catch { return false }
 }
 
 function protectBrowserExit(event: BeforeUnloadEvent): void {
-  if (loading.value || memoryBusy.value || draftPresent.value) { event.preventDefault(); event.returnValue = '' }
+  if (loading.value || memoryBusy.value || configurationState.value.busy || draftPresent.value) { event.preventDefault(); event.returnValue = '' }
 }
 
 watch(answer,text=>{if(coachEnabled){coachSpeech.stop();coach.setDraft(text,coach.composing.value)}})
@@ -971,6 +1002,7 @@ watch(() => route.fullPath, fullPath => {
 })
 
 onBeforeUnmount(() => {
+  draftController.dispose()
   window.removeEventListener('beforeunload', protectBrowserExit)
   disposed = true
   coach.dispose();coachSpeech.stop()
@@ -983,6 +1015,7 @@ onBeforeUnmount(() => {
 })
 onMounted(async () => {
   window.addEventListener('beforeunload', protectBrowserExit)
+  void draftController.load()
   if (reviewEnabled.value) { try { reviewEnabled.value = (await getInterviewReviewStatus()).enabled } catch { reviewEnabled.value = false } }
   void loadRecent()
   void loadMemories()

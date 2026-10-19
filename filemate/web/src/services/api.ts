@@ -1013,6 +1013,7 @@ export interface SourceEvidenceRef {
 }
 
 export interface InterviewSession {
+  configuration?: import('../types/interviewConfiguration').SessionConfiguration
   interview_id: string
   agent_run_id?: string | null
   target_role: string
@@ -1053,7 +1054,8 @@ export async function startInterview(
   focusWrongId?: string,
   goalId?: string,
   allowExternalAnalysis?: boolean,
-  practice?: { projectName: string; projectDetails: string; rememberForFuture: boolean; memoryId: string | null }
+  practice?: { projectName: string; projectDetails: string; rememberForFuture: boolean; memoryId: string | null },
+  configuration?: import('../types/interviewConfiguration').InterviewConfiguration
 ): Promise<InterviewSession> {
   const response = await api.post<any, ApiResponse<InterviewSession>>('/interviews', {
     target_role: targetRole,
@@ -1066,10 +1068,23 @@ export async function startInterview(
     project_name: practice?.projectName || '',
     project_details: practice?.projectDetails || '',
     remember_for_future: practice?.rememberForFuture || false,
-    memory_id: practice?.memoryId || null
+    memory_id: practice?.memoryId || null,
+    ...(configuration ? { configuration } : {})
   })
   if (response.success && response.data) return response.data
   throw new Error(response.error || '创建模拟面试失败')
+}
+
+export async function getInterviewConfiguration(): Promise<import('../types/interviewConfiguration').ConfigurationStatus> {
+  const result = await api.get<any, ApiResponse<import('../types/interviewConfiguration').ConfigurationStatus>>('/interview/configuration', { timeout: 15000 })
+  if (result.success && result.data) return result.data
+  throw new Error(result.error || '训练配置读取失败')
+}
+
+export async function saveInterviewDraft(input: import('../types/interviewConfiguration').SaveInterviewDraft): Promise<import('../types/interviewConfiguration').InterviewDraft> {
+  const result = await api.put<any, ApiResponse<import('../types/interviewConfiguration').InterviewDraft>>('/interview/configuration/draft', input, { timeout: 15000 })
+  if (result.success && result.data) return result.data
+  throw new Error(result.error || '草稿保存失败；当前输入仍保留，请读取最新草稿后重试')
 }
 
 export interface InterviewPracticeMemory {
