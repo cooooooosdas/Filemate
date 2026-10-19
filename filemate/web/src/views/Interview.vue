@@ -72,6 +72,7 @@
 
     <template v-else>
       <p v-if="session.configuration" class="focus-note" role="status">{{ session.configuration.origin === 'unavailable' ? session.configuration.error : session.configuration.duration_minutes ? `目标 ${session.configuration.duration_minutes} 分钟 · 当前为逐题训练，尚未启用计时` : '旧版训练 · 未记录目标时长' }}</p>
+      <p v-if="requestedMedia.length" class="focus-note">本场准备使用：{{ requestedMedia.join('、') }}。请在训练伙伴区点击相应按钮开启；AI 分析需单独授权。也可以全程打字完成。</p>
       <section v-if="session.practice_context && (session.practice_context.mode === 'continuous' || session.practice_context.remember_for_future)" class="practice-session" aria-live="polite">
         <strong>{{ session.scenario }}{{ session.practice_context.mode === 'continuous' ? ' · 连续追问' : '' }}</strong>
         <span v-if="session.practice_context.project">项目：{{ session.practice_context.project.name }}</span>
@@ -309,6 +310,11 @@ let disposed = false
 let syncingSessionTarget: string | null = null
 const knowledgeSources = ref<KnowledgeSource[]>([])
 const session = ref<InterviewSession | null>(null)
+const requestedMedia = computed(() => {
+  const preferences = session.value?.configuration?.media_preferences
+  const names = { camera:'摄像头', microphone:'麦克风', transcription:'语音转写', local_recording:'本地录像', post_analysis:'AI 分析' }
+  return preferences ? (Object.keys(names) as (keyof typeof names)[]).filter(key => preferences[key]).map(key => names[key]) : []
+})
 const coachEnabled = import.meta.env.VITE_ENABLE_INTERVIEW_COACH === 'true'
 const coach = useInterviewCoach()
 const coachSpeech = useInterviewCoachSpeech()

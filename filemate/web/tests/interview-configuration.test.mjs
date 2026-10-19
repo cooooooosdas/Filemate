@@ -50,3 +50,8 @@ test('Vue reactive configuration can be saved as a stable plain snapshot',async(
   assert.equal(payload.content.configuration.duration_minutes,10)
   assert.equal(c.state.remote.revision,1)
 })
+
+test('invalid custom duration cannot enter the fixed-question runner',()=>{
+  for(const duration_minutes of [0,61,1.5,NaN])assert.equal(legacyScenario({...configurationForScenario('技术面','标准'),duration_minutes}),null)
+  assert.equal(legacyScenario({...configurationForScenario('技术面','标准'),duration_minutes:3}),'技术面')
+})

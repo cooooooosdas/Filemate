@@ -13,18 +13,21 @@ export function configurationForScenario(scenario:string, difficulty:string):Int
     if(track.scenario===scenario || (special && direction.id==='general' && track.id==='general')) {
       return {schema_version:1,category:direction.id,track:track.id,language:scenario==='英语面'?'en-US':'zh-CN',
         difficulty:difficulty==='入门'||difficulty==='压力面'?difficulty:'标准',duration_minutes:10,
-        difficulty_strategy:scenario==='压力面'?'challenge':'standard',question_strategy:'fixed'}
+        difficulty_strategy:scenario==='压力面'?'challenge':'standard',question_strategy:'fixed',
+        media_preferences:{camera:false,microphone:false,transcription:false,local_recording:false,post_analysis:false}}
     }
   }
   return null
 }
 export function legacyScenario(config:InterviewConfiguration):string|null {
+  if(!Number.isInteger(config.duration_minutes)||config.duration_minutes<1||config.duration_minutes>60)return null
   if(config.question_strategy!=='fixed' || config.category==='creator')return null
   if(config.language==='en-US')return config.category==='general'&&config.track==='general'&&config.difficulty_strategy==='standard'?'英语面':null
   if(config.difficulty_strategy==='challenge')return config.category==='general'&&config.track==='general'?'压力面':null
   return interviewDirections.find(d=>d.id===config.category)?.tracks.find(t=>t.id===config.track)?.scenario??null
 }
 export function unavailableReason(config:InterviewConfiguration):string {
+  if(!Number.isInteger(config.duration_minutes)||config.duration_minutes<1||config.duration_minutes>60)return '目标时长需为 1–60 分钟的整数。'
   if(legacyScenario(config))return ''
   if(config.category==='creator')return '主播任务引擎正在筹备。本次可保存配置，暂不能开始主播训练。'
   if(config.question_strategy!=='fixed')return '当前支持固定题训练；随机、AI 与混合选题尚未启用。'

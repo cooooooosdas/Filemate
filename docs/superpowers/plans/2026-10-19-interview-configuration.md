@@ -13,7 +13,7 @@
 - No Stage 3 engine, new scoring, emotion inference, deployment or dependency upgrade.
 - Target duration is stored, never shown as active timing. Fixed questions remain real execution. Unsupported strategies / creator tracks are draft-only and blocked server-side.
 - English currently maps only to existing English general interview. Challenge maps only to existing pressure mode. Reject unsupported combinations rather than silently changing the chosen track.
-- Save source and project facts only on explicit draft save; no stored media permission, external consent, reusable-answer consent or memory selection. Draft restore requires a click and never requests a device.
+- Support 3/5/10/15/30 and custom 1–60 minute target duration; persist optional media/analysis intent only, with explicit in-session activation. Save source and project facts only on explicit draft save; no stored media permission, external consent, reusable-answer consent or memory selection. Draft restore requires a click and never requests a device.
 - Append migration 28; preserve historical sessions and the 24 preexisting modified tests. Existing backup dynamically includes new tables; test old missing-table backups and consent revocation.
 - Reuse existing isolated worktree and new codex/interview-v2-configuration branch. Fetch reset by network; no merge or push.
 

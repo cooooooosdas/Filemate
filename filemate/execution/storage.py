@@ -17,9 +17,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from filemate.execution import data_actions
-from filemate.interview_coach import schema as interview_coach_schema
 from filemate import interview_config
+from filemate.execution import data_actions, interview_configuration_schema
+from filemate.interview_coach import schema as interview_coach_schema
 from filemate.task_resources import admit_plan, admit_tasks
 
 logger = logging.getLogger(__name__)
@@ -619,7 +619,7 @@ _MIGRATIONS = (
     (25, "accounts_and_revocable_sessions", _ACCOUNT_SCHEMA),
     (26, "confirmed_data_actions", data_actions.SCHEMA),
     (27, "immutable_interview_answers", interview_coach_schema.SCHEMA),
-    (28, "interview_configuration", interview_config.SCHEMA),
+    (28, "interview_configuration", interview_configuration_schema.SCHEMA),
 )
 
 

@@ -7,7 +7,10 @@ from pydantic import ValidationError
 
 from filemate.execution.storage import SQLiteStorage
 from filemate.interview_config import (
-    ConfigurationRepository, DraftContent, InterviewConfiguration, legacy_projection,
+    ConfigurationRepository,
+    DraftContent,
+    InterviewConfiguration,
+    legacy_projection,
 )
 
 
@@ -34,9 +37,9 @@ def test_legacy_projection_does_not_invent_duration(scenario, category, track, l
 
 
 def test_unsupported_choices_are_valid_drafts_but_not_launchable():
-    for values in [dict(category="creator", track="commerce"),
-                   dict(category="technical", track="algorithm", language="en-US"),
-                   dict(question_strategy="mixed")]:
+    for values in [{"category": "creator", "track": "commerce"},
+                   {"category": "technical", "track": "algorithm", "language": "en-US"},
+                   {"question_strategy": "mixed"}]:
         config = InterviewConfiguration(**values)
         with pytest.raises(ValueError):
             config.legacy_scenario()
@@ -94,3 +97,15 @@ def test_draft_corruption_is_visible_without_destroying_saved_record(store):
     store._conn().commit()
     assert repo.read_draft()["content"] is None
     assert repo.read_draft()["error"]
+
+
+def test_custom_duration_and_device_preferences_never_grant_permissions(store):
+    config = InterviewConfiguration(duration_minutes=3, media_preferences={"camera": True, "post_analysis": True})
+    assert InterviewConfiguration(duration_minutes=27).duration_minutes == 27
+    session = store.create_interview(target_role="测试", scenario="求职面试", difficulty="标准",
+                                     questions=["介绍经历"], configuration=config.model_dump())
+    assert session["configuration"]["media_preferences"]["camera"] is True
+    state = store._conn().execute('SELECT external_consent FROM interview_coach_state').fetchone()
+    assert state[0] == 0
+    with pytest.raises(ValidationError):
+        InterviewConfiguration(duration_minutes=0)

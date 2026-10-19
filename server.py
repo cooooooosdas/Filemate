@@ -4182,7 +4182,7 @@ def start_interview(request: InterviewStartRequest):
 
     questions, question_ids = build_interview_questions(
         _storage,
-        llm,
+        None if request.configuration is not None else llm,
         scenario=request.scenario,
         difficulty=request.difficulty,
         target_role=request.target_role,

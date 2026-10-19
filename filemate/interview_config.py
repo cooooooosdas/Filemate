@@ -7,18 +7,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-
-SCHEMA = """
-CREATE TABLE interview_session_config (
- interview_id TEXT PRIMARY KEY REFERENCES interview_sessions(interview_id) ON DELETE CASCADE,
- configuration TEXT NOT NULL, created_at TEXT NOT NULL
-);
-CREATE TABLE interview_configuration_draft (
- singleton INTEGER PRIMARY KEY CHECK(singleton=1), revision INTEGER NOT NULL,
- content TEXT NOT NULL, request_key TEXT NOT NULL, updated_at TEXT NOT NULL
-);
-"""
-
 TRACKS = {
     "general": {"general": "求职面试", "hr": "HR面"},
     "technical": {"technical": "技术面", "algorithm": "算法面"},
@@ -26,6 +14,16 @@ TRACKS = {
     "creator": {"knowledge": None, "commerce": None},
     "learning_expression": {"explain": "知识讲解"},
 }
+
+
+class MediaPreferences(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    camera: bool = False
+    microphone: bool = False
+    transcription: bool = False
+    local_recording: bool = False
+    post_analysis: bool = False
 
 
 class InterviewConfiguration(BaseModel):
@@ -36,9 +34,10 @@ class InterviewConfiguration(BaseModel):
     track: str = Field(default="general", max_length=24)
     language: Literal["zh-CN", "en-US"] = "zh-CN"
     difficulty: Literal["入门", "标准", "压力面"] = "标准"
-    duration_minutes: Literal[5, 10, 15, 20, 30] = 10
+    duration_minutes: int = Field(default=10, ge=1, le=60)
     difficulty_strategy: Literal["standard", "challenge"] = "standard"
     question_strategy: Literal["fixed", "random", "ai", "mixed"] = "fixed"
+    media_preferences: MediaPreferences = Field(default_factory=MediaPreferences)
 
     @model_validator(mode="after")
     def validate_track(self):

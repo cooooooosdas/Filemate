@@ -53,7 +53,7 @@ try {
         filemate/tests/test_p1_semester.py `
         filemate/tests/test_p1_personal_backup.py `
         filemate/programming `
-        filemate/interview_coach filemate/tests/test_interview_coach_storage.py filemate/tests/test_interview_coach_commands.py filemate/tests/test_interview_coach_analysis.py filemate/tests/test_interview_coach_api.py filemate/tests/test_interview_coach_evidence.py filemate/tests/test_interview_coach_privacy.py filemate/interview_review `
+        filemate/interview_coach filemate/tests/test_interview_coach_storage.py filemate/tests/test_interview_coach_commands.py filemate/tests/test_interview_coach_analysis.py filemate/tests/test_interview_coach_api.py filemate/tests/test_interview_coach_evidence.py filemate/tests/test_interview_coach_privacy.py filemate/interview_review filemate/interview_config.py filemate/tests/test_interview_configuration.py filemate/tests/test_interview_configuration_api.py `
         filemate/career `
         filemate/operations `
         filemate/speech.py filemate/tests/test_natural_speech.py `

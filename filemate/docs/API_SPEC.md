@@ -947,3 +947,19 @@ GET /api/llm/status新增credential_storage=browser|system，前端按该模式�
 `POST /interviews/{id}/coach/focus`接收`request_key`、`expected_revision`和`question_index`（已答题索引，null表示已完成场次汇总），仅切换阅读位置，不新增回答、不推进提交进度，不改冻结题目。允许完成后在原场次重答和重试。新端点同样受COACH写开关、认证及空间权限保护。
 
 授权开启仍严格比较revision；明确撤销`allowed=false`允许使用小于等于当前revision的已知修订，直接收紧当前权限，保证分析claim增加revision后仍可撤销；同键回执规则不变。保存回执`receipt.attempt_id`是本次操作归属，`snapshot.current_attempt`可能属于另一个较新版本，调用方不得混用或对较新版本自动分析。语音派生指标由服务端计算保存；报告按attempt/run/source_revision及分析pending使当前显示失效。
+# 面试 2.0 统一配置（业务 schema28，2026-10-19）
+
+复用现有身份／空间路由、CORS、访问控制与请求限流；以下草稿只属于当前空间的数据库。无额外用户画像表。
+
+| 接口 | 合同 |
+| --- | --- |
+| `GET /interview/configuration` | `{success,data:{enabled,draft,capabilities}}`；关闭写入仍可读。`draft={revision,content,updated_at,error}`；无草稿revision0/content=null；损坏时保留记录并返回可恢复错误。能力明确标记fixed_questions、timing_active=false、creator_active=false。 |
+| `PUT /interview/configuration/draft` | `{content,expected_revision,request_key}`；content包含configuration、target_role≤120、source_id≤64、project_name≤120、project_details≤6000；严格拒绝未声明字段（包括权限）。request_key为12–80位字母数字下划线或连字符。同一最新请求及内容可重试；过期revision或同key变更内容409，关闭503，校验失败422。保存是显式替换当前草稿；读取不覆盖本地输入。 |
+| `POST /interviews` | 原合同保留，新增可选configuration。若提供，必须与scenario/difficulty一致；不支持的组合422且不创建会话。配置与会话同事务保存为不可变快照。关闭新写入时带配置请求503，省略配置的旧请求仍可用。 |
+| `GET /interviews/{id}` / coach快照 | 新增configuration投影；origin=snapshot/legacy/unavailable。旧数据时长未知为null，原scenario保留；损坏配置仍可读原题和回答。 |
+
+configuration严格字段：schema_version=1；category=general/technical/project/creator/learning_expression；track必须属于category；language=zh-CN/en-US；difficulty=入门/标准/压力面（UI“进阶”对应旧压力面难度）；duration_minutes为1–60整数（含3/5/10/15/30预设与自定义；目标，未计时）；difficulty_strategy=standard/challenge；question_strategy=fixed/random/ai/mixed；media_preferences包含camera/microphone/transcription/local_recording/post_analysis布尔意向，默认全false，不能授予权限。默认general/general、中文、标准、10分钟、standard、fixed。英文和challenge只支持general/general，二者不可叠加；creator及非fixed模式仅草稿可保存，启动拒绝。
+
+映射：general/general→求职面试、general/hr→HR面；technical/technical→技术面、technical/algorithm→算法面；project/project→项目面、competition→竞赛答辩、academic→保研复试；learning_expression/explain→知识讲解；英文综合→英语面，挑战综合→压力面。知识讲解仍受本地分析限制。未提供configuration的历史请求维持原选题合同。
+
+表`interview_session_config`以interview_id为主键和级联外键；表`interview_configuration_draft`为当前空间唯一、带revision的草稿。个人导出、签名备份、管理员快照、整空间删除均通过动态表集合覆盖新表；恢复schema27等无新表备份时配置按旧模式只读投影。草稿不存AI／媒体权限，不自动请求设备或分析；既有恢复授权撤销继续生效。单场删除级联移除快照，独立草稿由用户显式保存替换或整空间删除清除。关闭功能不降级数据库；二进制回退需迁移前完整快照并在新目录验证，不承诺任意降级。

@@ -5,9 +5,10 @@ export interface InterviewConfiguration {
   track: string
   language: 'zh-CN' | 'en-US'
   difficulty: '入门' | '标准' | '压力面'
-  duration_minutes: 5 | 10 | 15 | 20 | 30
+  duration_minutes: number
   difficulty_strategy: 'standard' | 'challenge'
   question_strategy: 'fixed' | 'random' | 'ai' | 'mixed'
+  media_preferences: { camera:boolean; microphone:boolean; transcription:boolean; local_recording:boolean; post_analysis:boolean }
 }
 export interface InterviewDraftContent {
   configuration: InterviewConfiguration
@@ -40,4 +41,5 @@ export interface SessionConfiguration {
   duration_minutes: number | null
   timing_active: boolean
   error?: string
+  media_preferences?: InterviewConfiguration['media_preferences']
 }

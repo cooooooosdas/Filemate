@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from filemate.interview_config import ConfigurationRepository, DraftContent
 from filemate.operations.personal_backup import PersonalBackup
 from filemate.tests.test_accounts import HEADERS, account_server, register  # noqa: F401
+from filemate.tests.test_interview_coach_analysis import Provider
 from filemate.tests.test_interview_coach_api import api  # noqa: F401
 from filemate.tests.test_interview_coach_privacy import rewrite_backup
 
@@ -89,3 +90,17 @@ def test_new_and_old_backup_restore_configuration_without_permissions(api, tmp_p
     backup.restore(preview['backup_id'], preview['confirmation_token'])
     assert module._storage.get_interview(sid)['configuration']['origin'] == 'legacy'
     assert repo.read_draft()['revision'] == 0
+
+
+def test_fixed_strategy_never_uses_ai_to_select_questions(api, monkeypatch):
+    import filemate.llm_client as llm
+
+    client, _ = api
+    provider = Provider()
+    monkeypatch.setenv('FILEMATE_INTERVIEW_LOCAL_ONLY', '0')
+    monkeypatch.setattr(llm, 'LLMClient', lambda _: provider)
+    monkeypatch.setattr(llm.LLMConfig, 'from_env', lambda: object())
+    response = client.post('/interviews', json={'target_role': '测试', 'configuration': {},
+                           'allow_external_analysis': True})
+    assert response.status_code == 200, response.text
+    assert provider.calls == []
