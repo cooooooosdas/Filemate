@@ -19,6 +19,7 @@ from typing import Any
 
 from filemate.execution import data_actions
 from filemate.interview_coach import schema as interview_coach_schema
+from filemate import interview_config
 from filemate.task_resources import admit_plan, admit_tasks
 
 logger = logging.getLogger(__name__)
@@ -618,6 +619,7 @@ _MIGRATIONS = (
     (25, "accounts_and_revocable_sessions", _ACCOUNT_SCHEMA),
     (26, "confirmed_data_actions", data_actions.SCHEMA),
     (27, "immutable_interview_answers", interview_coach_schema.SCHEMA),
+    (28, "interview_configuration", interview_config.SCHEMA),
 )
 
 
@@ -2211,11 +2213,15 @@ class SQLiteStorage:
         questions: list[str],
         question_ids: list[str | None] | None = None,
         agent_run_id: str | None = None,
+        configuration: dict[str, Any] | None = None,
         commit: bool = True,
     ) -> dict[str, Any]:
         """创建模拟面试。"""
         if question_ids is not None and len(question_ids) != len(questions):
             raise ValueError("题目 ID 必须与题目逐项对应")
+        config = interview_config.InterviewConfiguration.model_validate(configuration) if configuration is not None else None
+        if config and (config.legacy_scenario() != scenario or config.difficulty != difficulty):
+            raise ValueError("配置与会话场景或难度不一致")
         interview_id = uuid.uuid4().hex[:16]
         with self._write_lock:
             self._conn().execute(
@@ -2242,6 +2248,9 @@ class SQLiteStorage:
             initialize_state(self._conn(), dict(self._conn().execute(
                 "SELECT * FROM interview_sessions WHERE interview_id=?", (interview_id,),
             ).fetchone()))
+            if config:
+                self._conn().execute("INSERT INTO interview_session_config VALUES (?,?,?)",
+                                     (interview_id, config.model_dump_json(), _now_iso()))
             if commit:
                 self._conn().commit()
         return self.get_interview(interview_id)
@@ -2272,6 +2281,9 @@ class SQLiteStorage:
         assessed = [t["score"] for t in interview["turns"] if t["score"] is not None]
         interview["assessed_turn_count"] = len(assessed)
         interview["overall_score"] = round(sum(assessed) / len(assessed), 2) if assessed else None
+        interview["configuration"] = interview_config.session_configuration(
+            self._conn(), interview_id, interview["scenario"], interview["difficulty"]
+        )
         return interview
 
     def save_interview_turn(
