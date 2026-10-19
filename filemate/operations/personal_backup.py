@@ -377,8 +377,10 @@ class PersonalBackup:
                         names = ','.join('"' + column + '"' for column in columns)
                         conn.execute(f'INSERT INTO "{name}" ({names}) VALUES ({placeholders})', [row[column] for column in columns])
                 from filemate.interview_coach.repository import normalize_restored_coach
+                from filemate.interview_config import normalize_restored_configuration
 
                 normalize_restored_coach(conn)
+                normalize_restored_configuration(conn)
                 conn.execute("UPDATE sessions SET status='failed',error='备份恢复的历史会话；文件操作不重放'")
                 conn.execute("UPDATE execution_records SET status='failed',error='备份恢复后禁止重放文件操作'")
                 conn.execute("DELETE FROM data_action_previews WHERE action!='personal_restore'")

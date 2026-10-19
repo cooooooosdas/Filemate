@@ -4081,7 +4081,7 @@ def save_interview_configuration_draft(request: SaveDraft):
         raise HTTPException(status_code=503, detail="统一配置写入已关闭；已保存记录仍可读取")
     try:
         result = ConfigurationRepository(_storage).save_draft(
-            request.content, request.expected_revision, request.request_key
+            request.content, request.expected_revision, request.request_key, request.expected_token
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

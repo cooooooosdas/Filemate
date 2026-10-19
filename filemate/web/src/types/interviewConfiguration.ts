@@ -19,6 +19,7 @@ export interface InterviewDraftContent {
 }
 export interface InterviewDraft {
   revision: number
+  version_token: string | null
   content: InterviewDraftContent | null
   updated_at?: string | null
   error?: string | null
@@ -31,6 +32,7 @@ export interface ConfigurationStatus {
 export interface SaveInterviewDraft {
   content: InterviewDraftContent
   expected_revision: number
+  expected_token: string | null
   request_key: string
 }
 export interface SessionConfiguration {

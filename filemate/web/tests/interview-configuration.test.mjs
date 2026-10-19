@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { reactive } from 'vue'
-import { configurationForScenario, legacyScenario, createDraftController } from '../src/interview/configuration.ts'
+import { configurationForScenario, configurationForSession, legacyScenario, createDraftController } from '../src/interview/configuration.ts'
 
 test('legacy routes retain language and scenario distinctions', () => {
   assert.equal(legacyScenario(configurationForScenario('保研复试', '标准')), '保研复试')
@@ -54,4 +54,24 @@ test('Vue reactive configuration can be saved as a stable plain snapshot',async(
 test('invalid custom duration cannot enter the fixed-question runner',()=>{
   for(const duration_minutes of [0,61,1.5,NaN])assert.equal(legacyScenario({...configurationForScenario('技术面','标准'),duration_minutes}),null)
   assert.equal(legacyScenario({...configurationForScenario('技术面','标准'),duration_minutes:3}),'技术面')
+})
+
+test('retrying a restored session retains its actual scenario, duration and device intent',()=>{
+  const snapshot={...configurationForScenario('技术面','入门'),duration_minutes:27}
+  snapshot.media_preferences.camera=true
+  const restored=configurationForSession({scenario:'技术面',difficulty:'入门',configuration:{...snapshot,origin:'snapshot',timing_active:false}})
+  assert.equal(legacyScenario(restored),'技术面')
+  assert.equal(restored.duration_minutes,27)
+  assert.equal(restored.media_preferences.camera,true)
+  restored.media_preferences.camera=false
+  assert.equal(snapshot.media_preferences.camera,true)
+  assert.equal(legacyScenario(configurationForSession({scenario:'英语面',difficulty:'标准'})),'英语面')
+  assert.equal(configurationForSession({scenario:'未知旧模式',difficulty:'标准'}),null)
+})
+
+test('draft save carries the opaque version read from the server',async()=>{
+  let submitted
+  const c=createDraftController({read:async()=>({enabled:true,draft:{revision:2,version_token:'after-restore-token',content:null}}),save:async input=>{submitted=input;return {revision:3,version_token:input.request_key,content:input.content}}})
+  await c.load();await c.save({configuration:configurationForScenario('技术面','标准'),target_role:'合成岗位'})
+  assert.equal(submitted.expected_token,'after-restore-token')
 })

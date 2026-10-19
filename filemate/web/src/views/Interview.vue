@@ -25,6 +25,7 @@
     </details>
 
     <section v-if="!session" class="setup-card">
+      <p v-if="needsConfigurationChoice" class="focus-note" role="alert">这场历史记录的训练模式未被识别。原题与回答仍可回看；请重新选择训练方向后再开始。</p>
       <InterviewCreator v-if="!configurationState.ready || configurationState.enabled" :model-value="configuration" :draft="configurationState" :busy="loading || memoryBusy" @update:model-value="updateConfiguration" @save="savePreparation" @restore="restorePreparation" @reload="draftController.load()" />
       <div v-else class="setup-copy">
         <h2>选择你要训练的真实场景</h2>
@@ -32,7 +33,7 @@
       </div>
       <fieldset v-if="configurationState.ready && !configurationState.enabled" class="mode-picker">
         <legend>训练场景</legend>
-        <button v-for="mode in interviewModes" :key="mode" type="button" :aria-pressed="form.scenario === mode" :disabled="loading" @click="form.scenario = mode"><component :is="modeIcons[mode]" :size="24" aria-hidden="true" /><span>{{ mode === 'HR面' ? 'HR 面' : mode }}</span></button>
+        <button v-for="mode in interviewModes" :key="mode" type="button" :aria-pressed="form.scenario === mode" :disabled="loading" @click="form.scenario = mode; needsConfigurationChoice = false"><component :is="modeIcons[mode]" :size="24" aria-hidden="true" /><span>{{ mode === 'HR面' ? 'HR 面' : mode }}</span></button>
       </fieldset>
       <div class="form-grid">
         <label>02 / 这次想练什么？<input v-model="form.targetRole" name="target_role" maxlength="120" autocomplete="off" placeholder="例如：数据库索引 / Java 后端开发" :disabled="loading" /></label>
@@ -66,7 +67,7 @@
       <p v-if="form.scenario === '知识讲解'" class="focus-note">讲解会保存为练习记录；当前内容准确性待评估，语音节奏仅作参考。</p>
       <p v-if="reviewEnabled" class="focus-note">本轮先按规则选题，回答保存到学习空间。提交后可在复盘区主动授权内容分析；录像和视觉观察不会发给模型。</p>
       <label v-else class="legacy-consent"><input v-model="legacyExternalConsent" type="checkbox" />授权已配置模型对问题和回答提供四维参考评分；不发送本地录像。</label>
-      <button class="primary start-practice" :disabled="loading || memoryBusy || configurationState.busy || !configurationState.ready || (configurationState.enabled && !legacyScenario(configuration)) || !form.targetRole.trim() || (form.scenario === '项目面' && (!projectName.trim() || !projectDetails.trim()))" @click="begin"><VideoPlay :size="22" aria-hidden="true" />{{ loading ? '正在创建…' : '开始逐题训练' }}<ArrowRight :size="22" aria-hidden="true" /></button>
+      <button class="primary start-practice" :disabled="loading || memoryBusy || needsConfigurationChoice || configurationState.busy || !configurationState.ready || (configurationState.enabled && !legacyScenario(configuration)) || !form.targetRole.trim() || (form.scenario === '项目面' && (!projectName.trim() || !projectDetails.trim()))" @click="begin"><VideoPlay :size="22" aria-hidden="true" />{{ loading ? '正在创建…' : '开始逐题训练' }}<ArrowRight :size="22" aria-hidden="true" /></button>
       <DataState v-if="error" :error="error" @retry="begin" />
     </section>
 
@@ -251,7 +252,7 @@ import CompanionCard from '../components/CompanionCard.vue'
 import DataState from '../components/DataState.vue'
 import InterviewReviewPanel from '../components/InterviewReviewPanel.vue'
 import InterviewCreator from '../components/InterviewCreator.vue'
-import { configurationForScenario, createDraftController, legacyScenario } from '../interview/configuration'
+import { configurationForScenario, configurationForSession, createDraftController, legacyScenario } from '../interview/configuration'
 import { getInterviewConfiguration, saveInterviewDraft } from '../services/api'
 import type { InterviewConfiguration } from '../types/interviewConfiguration'
 import { useInterviewVision } from '../interview/useInterviewVision'
@@ -267,9 +268,11 @@ const specialistModes = ['技术面', '项目面', '算法面', 'HR面', '压力
 const interviewModes = ['知识讲解', ...specialistModes, '求职面试', '竞赛答辩', '保研复试']
 const modeIcons: Record<string, typeof Reading> = { '知识讲解': Reading, '技术面': Code, '项目面': Collection, '算法面': Code, 'HR面': Conversation, '压力面': ShieldCheck, '英语面': Language, '求职面试': Briefcase, '竞赛答辩': Trophy, '保研复试': School }
 const configuration = ref<InterviewConfiguration>(configurationForScenario('知识讲解', '标准')!)
+const needsConfigurationChoice = ref(false)
 const draftController = createDraftController({ read: getInterviewConfiguration, save: saveInterviewDraft }, undefined, state => { configurationState.value = state })
 const configurationState = ref(draftController.state)
 function updateConfiguration(value: InterviewConfiguration): void {
+  needsConfigurationChoice.value = false
   configuration.value = value
   form.value.scenario = legacyScenario(value) || form.value.scenario
   form.value.difficulty = value.difficulty
@@ -511,7 +514,7 @@ const speakQuestion = () => {
 }
 
 const begin = async () => {
-  if (loading.value || memoryBusy.value) return
+  if (loading.value || memoryBusy.value || needsConfigurationChoice.value || configurationState.value.busy || !configurationState.value.ready) return
   loading.value = true
   error.value = ''
   memoryError.value = ''
@@ -642,6 +645,9 @@ const restoreInterview = async (interviewId: string, fromRoute = false) => {
     if (disposed) return
     session.value = restored
     form.value = { targetRole: restored.target_role, scenario: restored.scenario, difficulty: restored.difficulty, sourceId: restored.source_context?.source_id || '' }
+    const restoredConfiguration = configurationForSession(restored)
+    needsConfigurationChoice.value = !restoredConfiguration
+    configuration.value = restoredConfiguration || configurationForScenario('知识讲解', '标准')!
     projectName.value = restored.practice_context?.project?.name || ''
     projectDetails.value = restored.practice_context?.project?.details || ''
     rememberForFuture.value = false
@@ -962,6 +968,7 @@ function preparationSnapshot(): string {
   return JSON.stringify([form.value, configuration.value, projectName.value, projectDetails.value, rememberForFuture.value, selectedMemoryId.value])
 }
 function applyPreparationRoute(): void {
+  needsConfigurationChoice.value = false
   form.value = { targetRole: typeof route.query.target === 'string' ? route.query.target.slice(0, 120) : '', scenario: interviewModes.includes(String(route.query.scenario)) ? String(route.query.scenario) : '知识讲解', difficulty: '标准', sourceId: typeof route.query.source === 'string' ? route.query.source : '' }
   configuration.value = configurationForScenario(form.value.scenario, form.value.difficulty)!
   projectName.value = ''; projectDetails.value = ''; rememberForFuture.value = false; selectedMemoryId.value = null

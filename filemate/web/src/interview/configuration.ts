@@ -1,4 +1,4 @@
-import type { ConfigurationStatus, InterviewCategory, InterviewConfiguration, InterviewDraft, InterviewDraftContent, SaveInterviewDraft } from '../types/interviewConfiguration'
+import type { ConfigurationStatus, InterviewCategory, InterviewConfiguration, InterviewDraft, InterviewDraftContent, SaveInterviewDraft, SessionConfiguration } from '../types/interviewConfiguration'
 
 export const interviewDirections: { id: InterviewCategory; label: string; description: string; tracks: {id:string;label:string;scenario:string|null}[] }[] = [
   {id:'general',label:'通用求职',description:'自我介绍、沟通与职业选择',tracks:[{id:'general',label:'综合面试',scenario:'求职面试'},{id:'hr',label:'HR 沟通',scenario:'HR面'}]},
@@ -19,6 +19,15 @@ export function configurationForScenario(scenario:string, difficulty:string):Int
   }
   return null
 }
+export function configurationForSession(session:{scenario:string;difficulty:string;configuration?:SessionConfiguration}):InterviewConfiguration|null {
+  const configuration=configurationForScenario(session.scenario,session.difficulty)
+  if(!configuration || session.configuration?.origin!=='snapshot')return configuration
+  const snapshot=session.configuration
+  const duration=snapshot.duration_minutes
+  if(typeof duration==='number' && Number.isInteger(duration) && duration>=1 && duration<=60)configuration.duration_minutes=duration
+  configuration.media_preferences={...configuration.media_preferences,...snapshot.media_preferences}
+  return configuration
+}
 export function legacyScenario(config:InterviewConfiguration):string|null {
   if(!Number.isInteger(config.duration_minutes)||config.duration_minutes<1||config.duration_minutes>60)return null
   if(config.question_strategy!=='fixed' || config.category==='creator')return null
@@ -35,7 +44,7 @@ export function unavailableReason(config:InterviewConfiguration):string {
 }
 export interface DraftClientState { ready:boolean; enabled:boolean; busy:boolean; remote:InterviewDraft; error:string }
 export function createDraftController(api:{read:()=>Promise<ConfigurationStatus>;save:(input:SaveInterviewDraft)=>Promise<InterviewDraft>}, key=()=>crypto.randomUUID(), notify:(state:DraftClientState)=>void=()=>{}) {
-  let state:DraftClientState={ready:false,enabled:false,busy:false,remote:{revision:0,content:null},error:''}
+  let state:DraftClientState={ready:false,enabled:false,busy:false,remote:{revision:0,version_token:null,content:null},error:''}
   let disposed=false, pending:SaveInterviewDraft|null=null
   const update=(patch:Partial<DraftClientState>)=>{if(!disposed){state={...state,...patch};notify(state)}}
   return {
@@ -49,7 +58,7 @@ export function createDraftController(api:{read:()=>Promise<ConfigurationStatus>
     },
     async save(content:InterviewDraftContent){
       if(disposed||state.busy||!state.ready||!state.enabled)return
-      if(!pending||JSON.stringify(pending.content)!==JSON.stringify(content))pending={content:JSON.parse(JSON.stringify(content)),expected_revision:state.remote.revision,request_key:key()}
+      if(!pending||JSON.stringify(pending.content)!==JSON.stringify(content))pending={content:JSON.parse(JSON.stringify(content)),expected_revision:state.remote.revision,expected_token:state.remote.version_token??null,request_key:key()}
       update({busy:true,error:''})
       try{const result=await api.save(pending);if(disposed)return;pending=null;update({remote:result})}
       catch(e){update({error:e instanceof Error?e.message:'保存失败，当前输入仍保留。可重试；如有版本冲突请读取最新草稿。'})}

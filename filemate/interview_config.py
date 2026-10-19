@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
@@ -75,6 +76,7 @@ class SaveDraft(BaseModel):
 
     content: DraftContent
     expected_revision: int = Field(ge=0)
+    expected_token: str | None = Field(min_length=12, max_length=80)
     request_key: str = Field(min_length=12, max_length=80, pattern=r"^[a-zA-Z0-9_-]+$")
 
 
@@ -111,15 +113,17 @@ class ConfigurationRepository:
     def read_draft(self) -> dict[str, Any]:
         row = self.storage._conn().execute("SELECT * FROM interview_configuration_draft WHERE singleton=1").fetchone()
         if not row:
-            return {"revision": 0, "content": None, "updated_at": None, "error": None}
+            return {"revision": 0, "version_token": None, "content": None, "updated_at": None, "error": None}
         try:
             content = DraftContent.model_validate_json(row["content"]).model_dump()
             error = None
         except (ValueError, ValidationError):
             content, error = None, "草稿无法读取；原记录保留，可重新保存当前配置"
-        return {"revision": row["revision"], "content": content, "updated_at": row["updated_at"], "error": error}
+        return {"revision": row["revision"], "version_token": row["request_key"], "content": content,
+                "updated_at": row["updated_at"], "error": error}
 
-    def save_draft(self, content: DraftContent, revision: int, request_key: str) -> dict[str, Any]:
+    def save_draft(self, content: DraftContent, revision: int, request_key: str,
+                   expected_token: str | None = None) -> dict[str, Any]:
         from filemate.execution.storage import _now_iso
 
         serialized = json.dumps(content.model_dump(), ensure_ascii=False, sort_keys=True)
@@ -130,10 +134,19 @@ class ConfigurationRepository:
                 if row["content"] != serialized:
                     raise ValueError("同一保存请求内容已变化，请重新保存")
                 return self.read_draft()
-            if (row["revision"] if row else 0) != revision:
-                raise ValueError("草稿已在其他页面更新；先读取最新草稿，再决定保留哪一份")
+            if ((row["revision"] if row else 0) != revision
+                    or (row["request_key"] if row else None) != expected_token):
+                raise ValueError("草稿已更新或从备份恢复；先读取最新草稿，再决定保留哪一份")
             conn.execute("INSERT INTO interview_configuration_draft VALUES (1,?,?,?,?) "
                          "ON CONFLICT(singleton) DO UPDATE SET revision=excluded.revision,content=excluded.content,"
                          "request_key=excluded.request_key,updated_at=excluded.updated_at",
                          (revision + 1, serialized, request_key, _now_iso()))
-        return self.read_draft()
+            return self.read_draft()
+
+
+def normalize_restored_configuration(conn) -> None:
+    """Invalidate outstanding draft writes after either backup restore path."""
+    exists = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                          "AND name='interview_configuration_draft'").fetchone()
+    if exists:
+        conn.execute("UPDATE interview_configuration_draft SET request_key=?", (uuid.uuid4().hex,))
