@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1690" viewBox="0 0 1440 1690" role="img" aria-labelledby="title desc">
+<title id="title">FileMate Interview 2.0 第一阶段六页结构草图</title>
+<desc id="desc">首页、配置、训练、主播专项、证据报告和历史的结构提案。不是已实现页面，无虚构评分。</desc>
+<style>text{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;fill:#142943;font-size:18px}.title{font-size:30px;font-weight:700}.heading{font-size:23px;font-weight:700}.meta{font-size:16px;fill:#465d77}.on{fill:#fff}.accent{fill:#244bc0}.bold{font-weight:700}</style>
+<rect width="1440" height="1690" fill="#dce4ed"/>
+<text x="42" y="54" class="title">FileMate / Interview 2.0</text>
+<text x="42" y="88" class="meta">第一阶段结构草图 · 非已实现页面 · 保留现有四主题、中文无衬线及统一左侧导航</text>
+<rect x="42" y="108" width="1356" height="44" rx="8" fill="#c8d7eb"/>
+<text x="60" y="136">已确认：学生训练优先 / 知识＋电商主播 / 10分钟实战 / 可选本地观察 / 统一结构＋场景评分</text>
+<g transform="translate(42,180)">
+<rect x="0" y="0" width="666" height="460" rx="16" fill="#f8fafc"/>
+<rect x="0" y="0" width="666" height="58" rx="16" fill="#172c49"/>
+<rect x="0" y="34" width="666" height="24" rx="0" fill="#172c49"/>
+<text x="22" y="37" class="on heading">01 / 面试首页</text>
+<text x="22" y="89" class="meta">入口只保留四个核心方向，最近训练可直接继续</text>
+<rect x="22" y="110" width="300" height="78" rx="10" fill="#e5ebf4"/>
+<text x="38" y="140" class="heading">通用求职</text>
+<text x="38" y="168" class="meta">综合 / HR</text>
+<rect x="344" y="110" width="300" height="78" rx="10" fill="#e5ebf4"/>
+<text x="360" y="140" class="heading">专业技术</text>
+<text x="360" y="168" class="meta">岗位技术 / 算法</text>
+<rect x="22" y="204" width="300" height="78" rx="10" fill="#e5ebf4"/>
+<text x="38" y="234" class="heading">项目与答辩</text>
+<text x="38" y="262" class="meta">项目 / 竞赛 / 学术</text>
+<rect x="344" y="204" width="300" height="78" rx="10" fill="#e5ebf4"/>
+<text x="360" y="234" class="heading">主播与表达</text>
+<text x="360" y="262" class="meta">知识 / 电商</text>
+<rect x="22" y="307" width="180" height="45" rx="10" fill="#244bc0"/>
+<text x="38" y="336" class="on bold">快速开始</text>
+<rect x="218" y="307" width="210" height="45" rx="10" fill="#e0e8f6"/>
+<text x="234" y="336" class="accent bold">学习表达训练</text>
+<path d="M22,374 L644,374" stroke="#bccbdf" stroke-width="2"/>
+<text x="22" y="408" class="bold">最近训练 → 继续 / 回看原文与报告</text>
+<text x="22" y="438" class="meta">已有历史、题库和学习证据保留。</text>
+</g>
+<g transform="translate(732,180)">
+<rect x="0" y="0" width="666" height="460" rx="16" fill="#f8fafc"/>
+<rect x="0" y="0" width="666" height="58" rx="16" fill="#172c49"/>
+<rect x="0" y="34" width="666" height="24" rx="0" fill="#172c49"/>
+<text x="22" y="37" class="on heading">02 / 统一配置</text>
+<text x="22" y="89" class="meta">快速开始与高级设置分层，未交付能力明确标记</text>
+<text x="22" y="127" class="bold">训练目标 / 岗位 / 授权资料</text>
+<rect x="22" y="143" width="622" height="46" rx="10" fill="#e5ebf4"/>
+<text x="38" y="173" class="">填写本次想练习的目标，而非重复选择导航</text>
+<text x="22" y="222" class="">时长：3 / 5 / 10 / 15 / 30 / 自定义</text>
+<text x="22" y="260" class="">策略：固定 / 随机 / AI追问 / 混合</text>
+<text x="22" y="298" class="">高级设置 → 语言、难度、设备与隐私</text>
+<rect x="22" y="316" width="622" height="47" rx="10" fill="#d8e4f7"/>
+<text x="38" y="346" class="meta">权限默认关闭；文本分析、朗读分别确认</text>
+<rect x="22" y="388" width="202" height="45" rx="10" fill="#244bc0"/>
+<text x="38" y="417" class="on bold">确认并开始</text>
+<text x="244" y="418" class="meta">限时能力在引擎交付前不可用</text>
+</g>
+<g transform="translate(42,670)">
+<rect x="0" y="0" width="666" height="460" rx="16" fill="#f8fafc"/>
+<rect x="0" y="0" width="666" height="58" rx="16" fill="#172c49"/>
+<rect x="0" y="34" width="666" height="24" rx="0" fill="#172c49"/>
+<text x="22" y="37" class="on heading">03 / 训练进行</text>
+<text x="22" y="89" class="meta">当前任务优先；设备不占据主操作区</text>
+<rect x="22" y="110" width="400" height="66" rx="10" fill="#d8e4f7"/>
+<text x="38" y="138" class="bold">当前任务 / 准备 → 作答 → 反馈</text>
+<text x="38" y="162" class="meta">倒计时与保存状态在同一区域</text>
+<text x="22" y="216" class="heading">把最重要的问题放大</text>
+<text x="22" y="248" class="">逐题作答，显示原句反馈。</text>
+<rect x="22" y="268" width="400" height="89" rx="10" fill="#e5ebf4"/>
+<text x="38" y="301" class="">文字回答 / 按需语音输入</text>
+<text x="38" y="331" class="meta">保存失败保留草稿并提供重试</text>
+<rect x="22" y="381" width="180" height="45" rx="10" fill="#244bc0"/>
+<text x="38" y="410" class="on bold">保存回答</text>
+<rect x="218" y="381" width="180" height="45" rx="10" fill="#e0e8f6"/>
+<text x="234" y="410" class="accent bold">结束训练</text>
+<rect x="444" y="110" width="200" height="247" rx="10" fill="#e5ebf4"/>
+<text x="460" y="145" class="bold">教练 / 可选画面</text>
+<text x="460" y="187" class="meta">麦克风：关闭</text>
+<text x="460" y="223" class="meta">摄像头：关闭</text>
+<text x="460" y="259" class="meta">按需朗读</text>
+<text x="460" y="295" class="meta">设备设置</text>
+<text x="460" y="331" class="meta">无摄像头可训练</text>
+</g>
+<g transform="translate(732,670)">
+<rect x="0" y="0" width="666" height="460" rx="16" fill="#f8fafc"/>
+<rect x="0" y="0" width="666" height="58" rx="16" fill="#172c49"/>
+<rect x="0" y="34" width="666" height="24" rx="0" fill="#172c49"/>
+<text x="22" y="37" class="on heading">04 / 主播专项</text>
+<text x="22" y="89" class="meta">知识与电商共享引擎；任务池与评分标准独立</text>
+<rect x="22" y="110" width="372" height="214" rx="10" fill="#d8e4f7"/>
+<text x="38" y="146" class="bold">当前挑战 / 准备与作答时间</text>
+<text x="38" y="188" class="">开场 → 即兴 → 互动 → 复盘</text>
+<text x="38" y="232" class="">授权内容 / 合成商品事实</text>
+<text x="38" y="271" class="meta">才艺或不适用挑战可跳过</text>
+<text x="38" y="307" class="meta">真实回答决定后续任务</text>
+<rect x="416" y="110" width="228" height="214" rx="10" fill="#e5ebf4"/>
+<text x="432" y="146" class="bold">虚拟观众评论</text>
+<text x="432" y="188" class="meta">显示当前事件</text>
+<text x="432" y="225" class="meta">冷却 / 去重 / 限量</text>
+<text x="432" y="262" class="meta">模型失败保留回答</text>
+<text x="432" y="299" class="meta">不做虚假商品承诺</text>
+<rect x="22" y="355" width="208" height="45" rx="10" fill="#244bc0"/>
+<text x="38" y="384" class="on bold">回应当前问题</text>
+<rect x="246" y="355" width="180" height="45" rx="10" fill="#e0e8f6"/>
+<text x="262" y="384" class="accent bold">主动结束</text>
+<text x="22" y="431" class="meta">目标：真实10分钟；此图不代表已完成该验收。</text>
+</g>
+<g transform="translate(42,1160)">
+<rect x="0" y="0" width="666" height="460" rx="16" fill="#f8fafc"/>
+<rect x="0" y="0" width="666" height="58" rx="16" fill="#172c49"/>
+<rect x="0" y="34" width="666" height="24" rx="0" fill="#172c49"/>
+<text x="22" y="37" class="on heading">05 / 证据报告</text>
+<text x="22" y="89" class="meta">先显示完整性和证据，再显示可计算的参考分</text>
+<rect x="22" y="110" width="622" height="48" rx="10" fill="#d8e4f7"/>
+<text x="38" y="141" class="">AI训练参考 / 专家待校准 / 缺证据时报告不完整</text>
+<rect x="22" y="176" width="202" height="70" rx="10" fill="#e5ebf4"/>
+<text x="36" y="203" class="bold">维度一</text>
+<text x="36" y="230" class="meta">待采集 / 无虚构分数</text>
+<rect x="232" y="176" width="202" height="70" rx="10" fill="#e5ebf4"/>
+<text x="246" y="203" class="bold">维度二</text>
+<text x="246" y="230" class="meta">待采集 / 无虚构分数</text>
+<rect x="442" y="176" width="202" height="70" rx="10" fill="#e5ebf4"/>
+<text x="456" y="203" class="bold">维度三</text>
+<text x="456" y="230" class="meta">待采集 / 无虚构分数</text>
+<rect x="22" y="258" width="202" height="70" rx="10" fill="#e5ebf4"/>
+<text x="36" y="285" class="bold">维度四</text>
+<text x="36" y="312" class="meta">待采集 / 无虚构分数</text>
+<rect x="232" y="258" width="202" height="70" rx="10" fill="#e5ebf4"/>
+<text x="246" y="285" class="bold">维度五</text>
+<text x="246" y="312" class="meta">待采集 / 无虚构分数</text>
+<rect x="442" y="258" width="202" height="70" rx="10" fill="#e5ebf4"/>
+<text x="456" y="285" class="bold">维度六</text>
+<text x="456" y="312" class="meta">待采集 / 无虚构分数</text>
+<text x="22" y="365" class="bold">原句证据 → 时间轴 → 下一步练习</text>
+<rect x="22" y="392" width="180" height="45" rx="10" fill="#244bc0"/>
+<text x="38" y="421" class="on bold">导出报告</text>
+<rect x="218" y="392" width="180" height="45" rx="10" fill="#e0e8f6"/>
+<text x="234" y="421" class="accent bold">核对原文</text>
+<text x="430" y="419" class="meta">雷达配可读表格</text>
+</g>
+<g transform="translate(732,1160)">
+<rect x="0" y="0" width="666" height="460" rx="16" fill="#f8fafc"/>
+<rect x="0" y="0" width="666" height="58" rx="16" fill="#172c49"/>
+<rect x="0" y="34" width="666" height="24" rx="0" fill="#172c49"/>
+<text x="22" y="37" class="on heading">06 / 训练历史</text>
+<text x="22" y="89" class="meta">可恢复的会话与可比较的成绩分开呈现</text>
+<text x="22" y="132" class="bold">场景 / 时间 / Rubric版本筛选</text>
+<rect x="22" y="151" width="622" height="68" rx="10" fill="#e5ebf4"/>
+<text x="38" y="179" class="bold">已保存训练</text>
+<text x="38" y="205" class="meta">继续 / 回看原文与报告</text>
+<rect x="22" y="231" width="622" height="68" rx="10" fill="#e5ebf4"/>
+<text x="38" y="259" class="bold">同口径历史对比</text>
+<text x="38" y="285" class="meta">版本或证据条件不同 → 不比较</text>
+<rect x="22" y="311" width="622" height="68" rx="10" fill="#e5ebf4"/>
+<text x="38" y="339" class="bold">专项再练与资料关联</text>
+<text x="38" y="365" class="meta">根据实际不足，不编造进步曲线</text>
+<text x="22" y="424" class="meta">录像不在当前页面时，明确说明不可回放的原因。</text>
+</g>
+<text x="42" y="1670" class="meta">审计基线：2026-10-19 / 保留旧数据与原始分类 / 进入下一阶段前等待整体确认</text>
+</svg>
