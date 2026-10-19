@@ -50,7 +50,7 @@ export class BrowserTranscription {
       if(changed&&segments.length)this.text(prefix+(prefix?join:'')+final)
     }
     r.onend=()=>{if(current()){this.recognition=null;this.clearTimers();this.status(this.state.segments.length?'completed':'no_speech')}}
-    r.onerror=event=>{if(current()){this.recognition=null;this.clearTimers();this.epoch++;try{r.abort()}catch{/* 回调失效后终止供应商会话。 */}this.status(event.error==='not-allowed'||event.error==='service-not-allowed'?'denied':event.error==='no-speech'?'no_speech':'interrupted')}}
+    r.onerror=event=>{if(current()){this.recognition=null;this.clearTimers();this.epoch++;try{r.abort()}catch{/* 回调失效后终止供应商会话。 */}this.status(this.state.segments.length?'interrupted':event.error==='not-allowed'||event.error==='service-not-allowed'?'denied':event.error==='no-speech'?'no_speech':'interrupted')}}
     try{r.start()}catch{this.recognition=null;this.epoch++;this.clearTimers();this.status('interrupted')}
   }
   stop(){const r=this.recognition;if(!r)return;clearTimeout(this.stopTimer);this.stopTimer=setTimeout(()=>{this.dispose();this.status('interrupted')},5000);try{r.stop()}catch{this.dispose();this.status('interrupted')}}

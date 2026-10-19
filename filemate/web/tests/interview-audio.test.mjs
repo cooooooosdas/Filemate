@@ -68,3 +68,13 @@ test('transcription provider that never starts is released after15seconds',t=>{
  const tr=new BrowserTranscription(()=>({start(){},stop(){},abort(){aborted++}}));tr.setAllowed(true);tr.start('zh-CN','prefix');t.mock.timers.tick(15000)
  assert.equal(tr.state.status,'interrupted');assert.equal(aborted,1);tr.dispose()
 })
+
+
+test('permission or no-speech errors after final text retain interrupted evidence',()=>{
+ for(const error of ['not-allowed','no-speech']){
+  let r;const factory=()=>r={start(){},stop(){},abort(){}}
+  const asr=new BrowserTranscription(factory);asr.setAllowed(true);asr.start('zh-CN','')
+  r.onresult({results:[{isFinal:true,0:{transcript:'已识别',confidence:0.3}}]})
+  r.onerror({error});assert.equal(asr.state.status,'interrupted');assert.equal(asr.state.segments[0].text,'已识别');asr.dispose()
+ }
+})

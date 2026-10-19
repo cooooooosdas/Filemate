@@ -26,6 +26,7 @@
         <details><summary>本次回答原文</summary><blockquote>{{ currentAnswer }}</blockquote></details>
         <div class="coach-actions"><button v-if="!answerLocked" type="button" :disabled="busy" @click="$emit('reanswer')">修改后再答</button><button v-if="coach.canRetry" type="button" :disabled="busy" @click="$emit('retry-analysis')">{{ coach.analysisStatus === 'succeeded' ? '重新分析本次回答' : '重试本次分析' }}</button><button class="primary" type="button" :disabled="busy || answerLocked || !coach.canAdvance" @click="$emit('advance')">{{ coach.questionIndex + 1 === total ? '完成并查看汇总' : '继续下一题' }}</button></div>
       </section>
+      <slot name="answer-media" />
       <label class="coach-consent"><input type="checkbox" :checked="externalConsent" :disabled="(busy || answerLocked) && !externalConsent" @change="$emit('consent-change', ($event.target as HTMLInputElement).checked)" /><span>本场提交后自动分析问题与文字回答；不发送音视频。可随时关闭。</span></label>
       <details v-if="coach.attemptId" class="coach-history" @toggle="historyToggle">
         <summary>查看重答历史与首末对照</summary>
