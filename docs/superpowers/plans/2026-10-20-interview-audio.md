@@ -1,6 +1,6 @@
 # Interview 2.0 Audio Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Approved Stage4: independent local audio recording, immediate per-answer replay/export, optional browser transcription, objective evidence and existing natural speech; whole-session replay list remains available.
 **Architecture:** Browser-only media adapters own bounded resources and immutable draft/attempt bindings; existing JSON evidence columns persist validated summaries/transcription provenance with answers. No new media upload endpoint, model, database table or schema migration.
@@ -30,37 +30,37 @@
 **Files:** create `filemate/web/src/types/interviewAudio.ts`, `interview/audio-capture.ts`, `interview/transcription.ts`, `interview/audio-evidence.ts`, new Node tests.
 **Interfaces:** `AudioCapture.start(binding)`, `stop()`, `dispose()` publish a bounded `LocalAudioTake` withBlob, duration and local RMS/low-energy/clipping summaries. `Transcription.start(language,onText)` returns final-only text plus bounded segments and provider estimates; stop/revoke preserves finals. Browser dependencies injected for deterministic resource tests.
 
-- [ ] RED tests for denied/late permission, stop-final-chunk, ended/error/caps, decoded known waveform vs silence/no samples, final/interim/dedup/prefix/confidence handling.
-- [ ] Run new Node tests, expected absent-module/behavior failure.
-- [ ] Implement adapters with10min/20MiB take limits, monotonic timing, cleanup and cancellation; bounded 8kHz decoded audio analysis, expose missing/failed states instead of zeros.
-- [ ] Run frontend suite, expected PASS; commit selected files.
+- [x] RED tests for denied/late permission, stop-final-chunk, ended/error/caps, decoded known waveform vs silence/no samples, final/interim/dedup/prefix/confidence handling.
+- [x] Run new Node tests, expected absent-module/behavior failure.
+- [x] Implement adapters with10min/20MiB take limits, monotonic timing, cleanup and cancellation; bounded 8kHz decoded audio analysis, expose missing/failed states instead of zeros.
+- [x] Run frontend suite, expected PASS; commit selected files.
 
 ## Task2: Durable evidence and truthful reports
 
 **Files:** coach models/validation, `understanding/interview.py`, runtime request validation, reports/types and API docs/tests.
 **Interfaces:** existing `fluency_metrics` accepts new discriminated `source=browser_media_v1`: optional `audio` summary and `transcription` result with explicit status/provider/language/segments/confidence; at least one evidence object. Legacy source remains compatible. Reports expose separate `audio` and `transcription` fields per turn, page summary uses actual sampled turns only.
 
-- [ ] RED tests for bounded finite metrics, missing evidence, no score alteration, persisted versions, report/export, existing backup/delete and runtime invalid request422.
-- [ ] Run new backend tests, expected unknown-source/missing-report failure.
-- [ ] Implement strict normalization and local-only evidence propagation; preserve metadata in subsequent AI analysis without treating it as competence. Markdown/PDF include method and missing states.
-- [ ] Run targeted coach/runtime/review/backup/privacy tests, expected PASS; commit.
+- [x] RED tests for bounded finite metrics, missing evidence, no score alteration, persisted versions, report/export, existing backup/delete and runtime invalid request422.
+- [x] Run new backend tests, expected unknown-source/missing-report failure.
+- [x] Implement strict normalization and local-only evidence propagation; preserve metadata in subsequent AI analysis without treating it as competence. Markdown/PDF include method and missing states.
+- [x] Run targeted coach/runtime/review/backup/privacy tests, expected PASS; commit.
 
 ## Task3: Per-answer replay and session collection
 
 **Files:** new `InterviewAudioPanel.vue`, `useInterviewAudio.ts`, integrate coach panel/Interview.vue and existing report UI; new controller tests.
 **Interfaces:** composable owns capture/draft/attempt media and URL cleanup, exports via `saveDownload`. A frozen submission payload binds evidence to the pending request; only a matching receipt binds a take to an immutable attempt. Panel shows record, stop, local audio controls, independent transcription consent/action and objective evidence; answered/history/summary read existing retained takes, absent audio explicitly saysrefresh-cleared.
 
-- [ ] RED controller tests for context changes, reanswer, lost response, repeated receipt, quota, removal/export, speech exclusion and cleanup.
-- [ ] Implement guarded recording and immediate playback afterstop/save; per-session list/export controls, unsaved-take navigation warning and explicit remove/replace confirmation. Keep legacy behavior when flagoff.
-- [ ] Run Node suite, vue-tsc and production build, expected PASS; commit.
+- [x] RED controller tests for context changes, reanswer, lost response, repeated receipt, quota, removal/export, speech exclusion and cleanup.
+- [x] Implement guarded recording and immediate playback afterstop/save; per-session list/export controls, unsaved-take navigation warning and explicit remove/replace confirmation. Keep legacy behavior when flagoff.
+- [x] Run Node suite, vue-tsc and production build, expected PASS; commit.
 
 ## Task4: Fault acceptance and stage handoff
 
 **Files:** stage report A–E, execution log, scratch scripts/evidence only in `_working/interview-audio-20261020`.
 
-- [ ] Use generated real audio samples through actual browser MediaRecorder/WebAudio/playback/download; separate this from stubbed ASR tests and physical microphone checks. Inject permission/track/network/ASR/TTS failures and verify text survives. Responsive390/768/1440 and featureoff history.
-- [ ] Run `scripts/verify.ps1 -IsolateFrontend`; expect exit0; list platform/hardware exclusions honestly.
-- [ ] One fresh-context final whole-branch reviewer, one RED→GREEN Important fix pass; no re-review.
-- [ ] Verify24 preserved hashes, document all rulings/known dependencies and next-stage questions; keep local branch, no deployment.
+- [x] Use generated real audio samples through actual browser MediaRecorder/WebAudio/playback/download; separate this from stubbed ASR tests and physical microphone checks. Inject permission/track/network/ASR/TTS failures and verify text survives. Responsive390/768/1440 and featureoff history.
+- [x] Run `scripts/verify.ps1 -IsolateFrontend`; expect exit0; list platform/hardware exclusions honestly.
+- [x] One fresh-context final whole-branch reviewer, one RED→GREEN Important fix pass; no re-review.
+- [x] Verify24 preserved hashes, document all rulings/known dependencies and next-stage questions; keep local branch, no deployment.
 
 Self-review: Stage4 requirements map to all four tasks; no new persistence or provider credentials required. Binary audio stays temporary; summaries are versioned answer evidence. Review inputs have tests. Implementation details above are engineering calls inside the accepted stage, not a new product scope.
