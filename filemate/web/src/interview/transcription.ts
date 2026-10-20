@@ -28,7 +28,7 @@ export class BrowserTranscription {
     const current=()=>this.epoch===epoch&&this.recognition===r
     this.state={provider:'browser_web_speech',status:'starting',language,segments:[],confidence:null,preview:''};this.changed()
     r.lang=language;r.continuous=true;r.interimResults=true
-    this.timer=setTimeout(()=>{if(current()){this.stop();this.status('interrupted')}},600000)
+    this.timer=setTimeout(()=>{if(current()){this.dispose();this.status('interrupted')}},600000)
     this.startTimer=setTimeout(()=>{if(current()){this.dispose();this.status('interrupted')}},15000)
     r.onstart=()=>{if(current()){clearTimeout(this.startTimer);this.status('listening')}}
     r.onresult=event=>{

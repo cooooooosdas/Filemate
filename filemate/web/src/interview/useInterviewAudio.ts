@@ -5,7 +5,7 @@ import { BrowserTranscription } from './transcription'
 import type { AudioBinding, TranscriptionEvidence } from '../types/interviewAudio'
 import { saveDownload } from '../services/downloads'
 
-export function useInterviewAudio(onText:(text:string)=>void,stopSpeech:()=>void){
+export function useInterviewAudio(onText:(text:string)=>void,stopSpeech:()=>void,pendingSave:()=>boolean=()=>false){
   const collection=new AudioCollection()
   const items=shallowRef(collection.items),captureState=shallowRef({phase:'idle' as string,error:null as string|null})
   const allowed=ref(false),error=ref('')
@@ -33,13 +33,14 @@ export function useInterviewAudio(onText:(text:string)=>void,stopSpeech:()=>void
     transcription.value={...asr.state};pausePlayback();collection.context(next);binding=next?{...next}:null;publish()
   }
   async function record(){
+    if(pendingSave()){error.value='请先确认上次保存结果，再录制新回答。';return}
     if(!binding||busy.value)return
     if(!collection.canRecord){error.value='本页最多30段、60MiB；请先导出并删除部分录音。';return}
     // 新录音由界面先确认旧草稿；已保存版本不会被替换。
     collection.invalidate();stopOthers();error.value='';await capture.start(binding)
   }
   function consent(value:boolean){allowed.value=value;asr.setAllowed(value)}
-  function transcribe(language:'zh-CN'|'en-US',prefix:string){if(busy.value||!binding)return;stopOthers();collection.invalidate();asr.start(language,prefix)}
+  function transcribe(language:'zh-CN'|'en-US',prefix:string){if(pendingSave()){error.value='请先确认上次保存结果，再开始新转写。';return};if(busy.value||!binding)return;stopOthers();collection.invalidate();asr.start(language,prefix)}
   function freeze(text:string){return collection.freeze(text,transcription.value)}
   function receipt(value:FrozenAudio,attemptId:string,sessionId:string){collection.receipt(value,attemptId,sessionId);publish()}
   function remove(id:string){collection.remove(id);publish()}

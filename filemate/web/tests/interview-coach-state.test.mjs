@@ -52,3 +52,12 @@ test('lost_submit_receipt_cannot_analyze_or_own_later_tab_attempt',async()=>{
  await c.open('one');c.setDraft('本次原回答');await c.submit();const result=await c.submit()
  assert.equal(result.receipt.attempt_id,'a2');assert.deepEqual(analyzed,[]);assert.equal(c.state.draft,'本次原回答');assert.equal(c.state.error.code,'saved_attempt_superseded')
 })
+
+
+test('fixed-question lost save exposes replay without a runtime draft context',async()=>{
+ let current=snapshot(),calls=0;const api={get:async()=>current,submit:async(_id,input)=>{
+  calls++;current={...current,revision:1,phase:'feedback',current_attempt:{attempt_id:'saved',answer:input.answer}};
+  if(calls===1)throw Error('response lost');return {snapshot:current,receipt:{kind:'submit',request_key:input.request_key,attempt_id:'saved'}}
+ }}
+ const c=createCoachController(api,()=> 'fixed_question_replay');await c.open('one');c.setDraft('保留回答');await c.submit();assert.equal(c.canReplaySave,true);await c.submit();assert.equal(c.state.draft,'');assert.equal(c.canReplaySave,false)
+})

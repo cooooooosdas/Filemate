@@ -78,3 +78,12 @@ test('permission or no-speech errors after final text retain interrupted evidenc
   r.onerror({error});assert.equal(asr.state.status,'interrupted');assert.equal(asr.state.segments[0].text,'已识别');asr.dispose()
  }
 })
+
+test('hard transcription limit aborts atomically before actions unlock',t=>{
+ t.mock.timers.enable({apis:['setTimeout']});let r,text='prefix',aborts=0
+ const asr=new BrowserTranscription(()=>r={start(){this.onstart?.()},stop(){},abort(){aborts++}},value=>text=value)
+ asr.setAllowed(true);asr.start('zh-CN','prefix');const callback=r.onresult
+ callback({results:[{isFinal:true,0:{transcript:'saved'}}]});t.mock.timers.tick(600000)
+ assert.equal(asr.state.status,'interrupted');assert.equal(aborts,1)
+ callback({results:[{isFinal:true,0:{transcript:'late'}}]});assert.equal(text,'prefixsaved');assert.equal(asr.state.segments[0].text,'saved');asr.dispose()
+})

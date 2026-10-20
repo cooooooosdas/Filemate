@@ -53,7 +53,7 @@ export function createCoachController(api:CoachApi,key:()=>string=()=>crypto.ran
  }
  return {
   get state(){return state},
-  get canReplaySave(){return !!savedRequest && savedRequest.input.answer===state.draft && savedRequest.input.question_index===state.draftContext?.questionIndex},
+  get canReplaySave(){return !!savedRequest && savedRequest.input.answer===state.draft && savedRequest.input.question_index===(state.draftContext?.questionIndex ?? state.snapshot?.displayed_index)},
   async open(id:string){savedRequest=null;autoAnalyzed.clear();send({type:'open',id,epoch:state.epoch+1});await refresh();if(state.sessionId===id && state.snapshot?.session.runtime && draftStore){try{const restored=draftStore.load(id);if(restored)send({type:'draft',text:restored.text,context:restored.context,composing:false})}catch{/* 恢复草稿失败不影响已保存回答。 */}}},refresh,
   setDraft(text:string,composing=false){send({type:'draft',text,composing,context:state.draftContext ?? draftContext()});persist()},
   async submit(metrics:Pick<CoachAnswer,'fluency_metrics'|'visual_metrics'>={}) {

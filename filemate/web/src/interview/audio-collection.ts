@@ -24,13 +24,13 @@ export class AudioCollection {
     if(this.frozen?.key===text&&this.frozen.sessionId===this.binding?.sessionId)return this.frozen
     const take=[...this.items].reverse().find(t=>!t.attemptId&&bindingKey(t.binding)===bindingKey(this.binding))
     const usable=transcription&&!['idle','permission_required','starting','listening'].includes(transcription.status)?transcription:null
-    const metrics:MediaEvidence|undefined=take||usable?{source:'browser_media_v1',duration_seconds:take?.captureSeconds??0,audio:take?{status:take.summary?'measured':'unavailable',summary:take.summary}:null,transcription:usable}:undefined
+    const metrics:MediaEvidence|undefined=take||usable?{source:'browser_media_v1',duration_seconds:take?.captureSeconds??0,audio:take?{status:take.summary?'measured':'unavailable',summary:take.summary}:null,transcription:usable?{provider:usable.provider,status:usable.status,language:usable.language,segments:usable.segments,confidence:usable.confidence}:null}:undefined
     this.frozen={key:text,sessionId:this.binding?.sessionId??'',takeId:take?.id??null,metrics:metrics?structuredClone(metrics):undefined};return this.frozen
   }
   receipt(frozen:FrozenAudio,attemptId:string,sessionId:string){
     if(this.frozen!==frozen||sessionId!==frozen.sessionId||sessionId!==this.binding?.sessionId)return false
     this.items=this.items.map(t=>t.id===frozen.takeId?{...t,attemptId}:t);this.frozen=null;return true
   }
-  remove(id:string){this.items=this.items.filter(t=>{if(t.id!==id)return true;this.urls.revoke(t.url);return false});this.invalidate()}
+  remove(id:string){this.items=this.items.filter(t=>{if(t.id!==id)return true;this.urls.revoke(t.url);return false})}
   clear(){for(const take of this.items)this.urls.revoke(take.url);this.items=[];this.invalidate()}
 }
