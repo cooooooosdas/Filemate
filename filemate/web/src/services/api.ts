@@ -15,6 +15,7 @@ export async function getEncouragementQuote(): Promise<unknown> {
 }
 import type { CareerComparison, CareerEvent, CareerOverview, CareerPosition, CareerRecord, CareerTraining, CareerPlanPreview, CareerLearningPlan } from '../types/career'
 import type { ContentAnalysis, InterviewDeletePreview, InterviewReport, InterviewReviewEvent, VisualMetrics } from '../types/interviewReview'
+import type { AssessmentCommand, AssessmentComparison, AssessmentContext, AssessmentRecord, AssessmentSummary } from '../types/interviewAssessment'
 import type { CodingProblem, CodingSubmission, CodingOverview, ProgrammingStatus } from '../types/programming'
 import type { KnowledgeGraphData, GraphBatch, GraphPlanPreview, GraphPlanResult } from '../types/knowledgeGraph'
 import type {
@@ -1141,6 +1142,24 @@ export async function answerInterview(
 
 export async function getInterviewReviewStatus(): Promise<{ enabled: boolean; calibration: string }> {
   return (await api.get<any, ApiResponse<{ enabled: boolean; calibration: string }>>('/interview/review/status', { timeout: 10000 })).data!
+}
+export async function getAssessmentContext(id: string): Promise<AssessmentContext> {
+  return (await api.get<any, ApiResponse<AssessmentContext>>(`/interviews/${id}/assessments/context`, { timeout: 15000 })).data!
+}
+export async function createAssessment(id: string, command: AssessmentCommand): Promise<AssessmentRecord> {
+  return (await api.post<any, ApiResponse<AssessmentRecord>>(`/interviews/${id}/assessments`, command, { timeout: 75000 })).data!
+}
+export async function readAssessment(id: string, key: string): Promise<AssessmentRecord> {
+  return (await api.get<any, ApiResponse<AssessmentRecord>>(`/interviews/${id}/assessments/${key}`, { timeout: 15000 })).data!
+}
+export async function assessmentHistory(offset = 0): Promise<{ items: AssessmentSummary[]; total: number }> {
+  return (await api.get<any, ApiResponse<{ items: AssessmentSummary[]; total: number }>>('/interview/assessments/history', { params: { limit: 20, offset }, timeout: 15000 })).data!
+}
+export async function compareAssessments(left: string, right: string): Promise<AssessmentComparison> {
+  return (await api.get<any, ApiResponse<AssessmentComparison>>('/interview/assessments/compare', { params: { left, right }, timeout: 15000 })).data!
+}
+export async function exportAssessment(id: string, key: string, format: 'pdf' | 'json' | 'markdown'): Promise<Blob> {
+  return await api.get(`/interviews/${id}/assessments/${key}/export`, { params: { format }, responseType: 'blob', timeout: 20000 }) as unknown as Blob
 }
 export async function getInterviewReview(id: string): Promise<{ report: InterviewReport | null; events: InterviewReviewEvent[] }> {
   return (await api.get<any, ApiResponse<{ report: InterviewReport | null; events: InterviewReviewEvent[] }>>(`/interviews/${id}/review`, { timeout: 15000 })).data!

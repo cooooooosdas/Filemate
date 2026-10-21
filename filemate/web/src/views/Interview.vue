@@ -238,7 +238,11 @@
           </div>
         </details>
       </section>
-      <InterviewReviewPanel v-if="reviewEnabled || session.turns.length" :read-only="!reviewEnabled" :session="session" :analysis-busy="coachEnabled && coach.pending.value==='analysis'" :coach-mode="coachEnabled" :recording-indexes="Object.keys(localRecordings).map(Number)" :media-busy="videoRecording || videoStopping || recording || loading || interviewAudio.busy.value || interviewVideo.busy.value" @updated="reviewUpdated" @deleted="deletedInterview" @cleared="vision.reset()" @seek="seekRecording" />
+      <InterviewAssessmentPanel :session="session" :read-only="!reviewEnabled" :reset-key="assessmentReset" :busy="videoRecording || videoStopping || recording || loading || interviewAudio.busy.value || interviewVideo.busy.value || (coachEnabled && coach.pending.value==='analysis')" @availability="assessmentAvailable = $event" />
+      <details v-if="reviewEnabled || session.turns.length" class="legacy-review" :open="!assessmentAvailable">
+        <summary v-if="assessmentAvailable">原文与媒体证据、旧版复盘及数据管理</summary>
+        <InterviewReviewPanel :read-only="!reviewEnabled" :session="session" :analysis-busy="coachEnabled && coach.pending.value==='analysis'" :coach-mode="coachEnabled" :recording-indexes="Object.keys(localRecordings).map(Number)" :media-busy="videoRecording || videoStopping || recording || loading || interviewAudio.busy.value || interviewVideo.busy.value" @updated="reviewUpdated" @deleted="deletedInterview" @cleared="vision.reset(); assessmentReset++" @seek="seekRecording" />
+      </details>
     </template>
   </div>
 </template>
@@ -277,6 +281,7 @@ import type { AttemptView } from '../types/interviewCoach'
 import CompanionCard from '../components/CompanionCard.vue'
 import DataState from '../components/DataState.vue'
 import InterviewReviewPanel from '../components/InterviewReviewPanel.vue'
+import InterviewAssessmentPanel from '../components/InterviewAssessmentPanel.vue'
 import InterviewCreator from '../components/InterviewCreator.vue'
 import InterviewRuntimePanel from '../components/InterviewRuntimePanel.vue'
 import type { RuntimeKind } from '../types/interviewRuntime'
@@ -502,6 +507,8 @@ const cameraVideo = ref<HTMLVideoElement | null>(null)
 const cameraActive = ref(false)
 const cameraError = ref('')
 const reviewEnabled = ref(import.meta.env.VITE_ENABLE_INTERVIEW_REVIEW !== 'false')
+const assessmentAvailable = ref(false)
+const assessmentReset = ref(0)
 const legacyExternalConsent = ref(false)
 const vision = useInterviewVision()
 let submitKey = ''
