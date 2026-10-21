@@ -22,7 +22,7 @@ deploy = SimpleNamespace(**{name: namespace[name] for name in functions})
 def test_actual_current_migration_contract_allows_v28_append(tmp_path) -> None:
     storage = Path(__file__).resolve().parents[2] / 'filemate/execution/storage.py'
     contract = deploy.migration_contract(storage)
-    assert contract[-1][0] == 29 and contract[-1][1] == 'interview_runtime'
+    assert contract[-1][0] == 30 and contract[-1][1] == 'interview_six_assessments'
     assert 'CREATE TABLE' in contract[-1][2]
     old = tmp_path / 'released.py'
     old.write_text('_MIGRATIONS = ' + repr(tuple(contract[:-1])), encoding='utf-8')
