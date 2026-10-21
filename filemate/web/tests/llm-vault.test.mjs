@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { browserVaultAvailable, isModelRequest, validateApiKey } from '../src/services/llm-vault.ts'
+import { browserVaultAvailable, isModelRequest, requiresModelCredential, validateApiKey } from '../src/services/llm-vault.ts'
+
+test('course model credential is scoped to the exact extract route and explicit llm mode', () => {
+  const route = '/api/knowledge-graph/courses/c/drafts/d/sources/s/extract'
+  assert.equal(requiresModelCredential('POST', route, { mode: 'llm' }), true)
+  for (const mode of ['local', undefined]) assert.equal(requiresModelCredential('POST', route, { mode }), false)
+  for (const path of [route + '/extra', route + '?key=x', route.replace('/extract', '/confirm'), '/api/knowledge-graph/courses/c/merges/confirm']) {
+    assert.equal(requiresModelCredential('POST', path, { mode: 'llm' }), false)
+  }
+  assert.equal(requiresModelCredential('GET', route, { mode: 'llm' }), false)
+})
 
 test('keys reject whitespace and invalid header characters without echoing their value', () => {
   assert.equal(validateApiKey('  sk-synthetic-only  '), 'sk-synthetic-only')

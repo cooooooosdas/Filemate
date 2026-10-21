@@ -562,6 +562,15 @@ async def isolate_model_credentials(request: Request, call_next):
         return JSONResponse(status_code=422, content={
             "success": False, "data": None, "error": str(exc),
         })
+    if request.url.path.startswith('/api/knowledge-graph/courses/'):
+        try:
+            body = await request.json()
+        except ValueError:
+            body = None
+        if not isinstance(body, dict) or body.get('mode') != 'llm':
+            return JSONResponse(status_code=403, content={
+                'success': False, 'data': None, 'error': '本地提取不接收模型密钥',
+            })
     with model_request_key(value):
         return await call_next(request)
 
@@ -1714,6 +1723,16 @@ class GraphDraftRequest(BaseModel):
 
 class GraphPlanRequest(BaseModel):
     evidence_revision: str = Field(min_length=64, max_length=64)
+
+
+def _course_graph_storage() -> SQLiteStorage:
+    context = _tenant_context.get()
+    return _tenant_storage(context[0]) if context else _local_storage
+
+
+from filemate.course_graph.api import create_router as _course_graph_router
+
+app.include_router(_course_graph_router(_course_graph_storage))
 
 
 def _require_graph_enabled() -> None:

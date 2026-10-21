@@ -11,6 +11,7 @@ REQUEST_API_KEY: ContextVar[str] = ContextVar("filemate_request_api_key", defaul
 MODEL_PATHS = (
     r"/api/llm/test", r"/process", r"/ai/(summarize|knowledge-cards|questions|notes|study-plan|chat)",
     r"/knowledge/sources/[^/]+/artifacts", r"/api/knowledge-graph/drafts",
+    r"/api/knowledge-graph/courses/[^/]+/drafts/[^/]+/sources/[^/]+/extract",
     r"/interviews", r"/interviews/[^/]+/answers",
     r"/interviews/[^/]+/turns/[^/]+/analyze",
     r"/api/programming/submissions/[^/]+/review",

@@ -18,7 +18,7 @@ class ItemDecision(BaseModel):
     verdict: Literal["accept", "reject", "revise"]
     label: str | None = Field(default=None, min_length=1, max_length=120, pattern=r"\S")
     aliases: list[str] = Field(default_factory=list, max_length=20)
-    relation: str | None = Field(default=None, max_length=30)
+    relation: Literal["prerequisite", "depends_on", "part_of", "contains", "application", "related_to"] | None = None
     from_label: str | None = Field(default=None, min_length=1, max_length=120)
     to_label: str | None = Field(default=None, min_length=1, max_length=120)
     semantic_checked: bool = False

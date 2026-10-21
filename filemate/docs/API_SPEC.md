@@ -1035,3 +1035,40 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 ## 2026-10-22 知识图谱B级开发候选
 
 业务schema追加31（`course_knowledge_graph`），创建课程、章节、来源归属、逐来源提取、概念、关系、证据和操作记录8张表。旧图谱批次、ID和学习记录保持不变，不回填课程。当前仅存储层已进入实现，课程HTTP合同按[实施计划](../../docs/superpowers/plans/2026-10-22-course-knowledge-graph-foundation.md)在任务7接入，不宣称路径已可调用。线上状态仍以发布回执为准；本次不迁移生产库。
+
+
+## 2026-10-22 课程知识图谱 B 候选（schema31，默认关闭）
+
+后端 `FILEMATE_ENABLE_COURSE_GRAPH=1`、构建时 `VITE_ENABLE_COURSE_GRAPH=true` 分别开放新接口/面板。缺省0/false；关闭不删除数据，不影响旧 `/api/knowledge-graph`。仅本地候选，未部署。每次按当前匿名/账号身份获取真实 SQLiteStorage；跨空间资源404。沿用现役 Origin、模型额度和临时请求密钥上下文。以下 `R=/api/knowledge-graph/courses`，响应 `{success,data,error}`。
+
+请求严格拒绝多余字段/隐式类型转换。ID为字符串，request_key匹配`[a-zA-Z0-9_-]{16,80}`；同键异体409。分页`limit=50 (1..200),offset=0 (0..1000000),q='' (≤160)`；历史无q。变更均在短事务中，不跨模型请求持锁。
+
+| 方法／路径 | 请求JSON或参数 | data |
+|---|---|---|
+| GET R | 分页 | items课程摘要/total/limit/offset |
+| POST R | name(1..80),request_key | course_id/name/revision/日期 |
+| GET R/{cid} | 无 | 课程＋chapters/sources（含inactive） |
+| PUT R/{cid}/chapters/{id} | title(1..120),parent_id=null,sort_order=0(≤100000),expected_revision | 章节；新建id为前端UUID、revision=0 |
+| POST R/{cid}/sources | source_ids(1..10且唯一),chapter_id=null,expected_revision | 最新课程；已有Source挂接，不上传 |
+| GET R/{cid}/sources/{sid}/remove-preview | 无 | confirmation_token/support_impact/retains_learning_history |
+| POST .../remove | confirmed=true,confirmation_token,request_key | operation_id/affected；只取消课程归属，可撤销 |
+| POST R/{cid}/drafts | source_ids(1..10),mode(local/llm),request_key | draft_id/course_id/status/revision_digest/sources；只建组 |
+| GET R/{cid}/drafts/{did} | 无 | 同上；逐来源payload/status/error_code/source_current/coverage；刷新恢复 |
+| POST .../sources/{sid}/extract | mode（须与组一致）,allow_external_model=false,request_key | 同上；单份同步提取，失败持久化后返回固定码 |
+| POST .../cancel | request_key | 快照；保留ready/partial，禁止未完来源迟到写入 |
+| POST .../decisions | expected_digest,decisions(1..2000) | 新快照和revision_digest |
+| POST .../review-preview | 无 | token/revision_digest/nodes/relations/items（原引文＋决策） |
+| POST .../confirm | confirmed=true,confirmation_token,request_key | 原子发布回执/operation_id |
+| GET R/{cid}/graph | 分页 | nodes/edges/total/limit/offset/self_edge_count/omitted_edge_count；只返回本页关系，非全图计数 |
+| GET R/{cid}/concepts/{nid} | 无 | 代表概念、成员ID、当前有效source_refs、merge_candidates |
+| POST R/{cid}/merges/preview | concept_ids(2..20),target_id | concepts/ids/before/self_edge_count/revision_digest/token；同课程无环 |
+| POST .../confirm | 同上＋confirmed=true,confirmation_token,request_key | 融合回执，保留原ID与引用 |
+| GET R/{cid}/operations | limit/offset | items/total；日期/类型/状态/draft_id/reversible；无引文正文 |
+| POST .../{oid}/preview | action(undo/restore) | token/action/status/affected |
+| POST .../{oid}/{action} | confirmed=true,confirmation_token,request_key | 幂等撤销或恢复回执 |
+
+决策项：`item_id,verdict=accept/reject/revise,label?,aliases=[](≤20),relation?,from_label?,to_label?,semantic_checked=false`。relation仅prerequisite/depends_on/part_of/contains/application/related_to。invalid候选即使修改名称仍不可确认；needs_semantic_review必须人工勾选核对。只发布明确选中结果，无默认全选。没有来源或证据时显示待评测，B不重算旧掌握度。
+
+只有完整的POST `R/{cid}/drafts/{did}/sources/{sid}/extract`且body.mode=llm接收浏览器密钥；必须Origin受信、`X-FileMate-Action:model`，密钥只在当前请求context，不进入DB/日志/回执。创建组、GET、审核、取消、融合和相似后缀路径都不允许密钥。本地mode不发送密钥。LLM每来源最多20000字符、1次45秒调用、6000输出token；不自动fallback成成功或隐藏重试，明确同意allow_external_model后调用。客户端一次执行一来源。失败可用新request_key显式重试，仍受全局累计/并发限额。
+
+错误data.error_code为固定码，422参数/未授权/无有效选中项，404资源不存在，409版本/幂等键/确认过期/操作依赖冲突（可带blocking_operation_id），429 budget_exceeded，503治理/存储/开关不可用，502 extraction_failed。模型异常原文不回传，GET草稿仍可读失败状态。Token有效900秒，绑定原选择与版本；已有回执的同一确认幂等。来源正文/chunks变化、移出课程、删除会使引用失效；彻底删除预览含课程图谱影响，仍删除旧学习记录；移出课程保留旧记录。个人备份含新表，兼容schema30备份；恢复轮换全部执行epoch、取消运行租约、清除旧确认，不重放模型。课程图与旧图谱分别存储，B不静默迁移旧批次。

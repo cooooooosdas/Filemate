@@ -3,7 +3,7 @@ import type { CoachSnapshot, CoachMutationResult, CoachAnswer, CoachAnalysis, Co
 import axios from 'axios'
 import type { AccountState, AccountUser, RegisterAccount } from '../types/account'
 import { HITOKOTO_URL } from '../home/encouragement'
-import { browserVaultAvailable, getBrowserApiKey, hasBrowserApiKey, isModelRequest, removeBrowserApiKey, saveBrowserApiKey, validateApiKey } from './llm-vault'
+import { browserVaultAvailable, getBrowserApiKey, hasBrowserApiKey, requiresModelCredential, removeBrowserApiKey, saveBrowserApiKey, validateApiKey } from './llm-vault'
 
 export async function getEncouragementQuote(): Promise<unknown> {
   const response = await fetch(HITOKOTO_URL, {
@@ -153,8 +153,7 @@ export async function checkHealth(): Promise<boolean> {
 // 请求拦截器
 api.interceptors.request.use(
   async config => {
-    if (usesBrowserLLMVault() && isModelRequest(config.method, config.url)
-      && (config.url !== '/api/resume/generate' || config.data?.mode === 'llm')) {
+    if (usesBrowserLLMVault() && requiresModelCredential(config.method, config.url, config.data)) {
       const destination = new URL(config.url!, new URL(config.baseURL || '/', window.location.origin))
       if (destination.origin !== window.location.origin) throw new Error('浏览器密钥只能用于当前 FileMate 网站')
       if (!config.headers.has('X-FileMate-LLM-Key') && browserVaultAvailable()) {

@@ -191,11 +191,11 @@
 
 **Interfaces:** `create_router(storage_provider: Callable[[], SQLiteStorage]) -> APIRouter`；server提供`_course_graph_storage() -> SQLiteStorage`，按`_tenant_context`选当前真实storage，不能在注册时缓存一个用户。请求DTO和路由完整实现上表；GET图谱不返回整份候选payload，详情按需加载。
 
-- [ ] **Step 1 — 写失败测试。** `test_anonymous_and_account_course_isolation`两个匿名/登录身份交叉读写均404；`test_model_consent_and_browser_key_context`模型未授权422，传入的合成假密钥仅当前extract请求可读、退出后清空；`test_non_model_routes_and_similar_paths_never_receive_key`GET/confirm/merge/恶意后缀不在白名单；`test_switch_off_preserves_legacy_graph`新模块503、旧图谱200；`test_http_retry_and_parameter_boundaries`同键同体幂等、异体409、11来源/非法relation/多余字段422；`test_provider_error_redacts_and_preserves_graph`供应商异常不泄漏假密钥/正文、不覆盖确认图。
-- [ ] **Step 2 — 验证红灯。** `uv run pytest filemate/tests/course_graph/test_api.py -q`；预期新路径404或合同缺失，不把失败误报为已部署结果。
-- [ ] **Step 3 — 最小实现。** 同步前后端白名单精确正则，前端只有mode=llm时才注入key；LLMClient在请求resource_scope内调用，保留现役配额/usage/同源限制。错误码映射CourseGraphError，外部异常只写类型/固定码；不把模型异常原文返回页面。API_SPEC逐路由写请求/响应、来源与确认失效、分页、开关和旧合同边界。
-- [ ] **Step 4 — 验证绿灯。** 上述API测试、`uv run pytest filemate/tests/test_graph_api.py -q`、`npm --prefix filemate/web test`通过；确认旧页面不需要新开关/课程即可工作。没有改动原24测试文件。
-- [ ] **Step 5 — 提交。** `feat(graph): 接通课程图谱接口与授权边界`。
+- [x] **Step 1 — 写失败测试。** `test_anonymous_and_account_course_isolation`两个匿名/登录身份交叉读写均404；`test_model_consent_and_browser_key_context`模型未授权422，传入的合成假密钥仅当前extract请求可读、退出后清空；`test_non_model_routes_and_similar_paths_never_receive_key`GET/confirm/merge/恶意后缀不在白名单；`test_switch_off_preserves_legacy_graph`新模块503、旧图谱200；`test_http_retry_and_parameter_boundaries`同键同体幂等、异体409、11来源/非法relation/多余字段422；`test_provider_error_redacts_and_preserves_graph`供应商异常不泄漏假密钥/正文、不覆盖确认图。
+- [x] **Step 2 — 验证红灯。** `uv run pytest filemate/tests/course_graph/test_api.py -q`；预期新路径404或合同缺失，不把失败误报为已部署结果。
+- [x] **Step 3 — 最小实现。** 同步前后端白名单精确正则，前端只有mode=llm时才注入key；LLMClient在请求resource_scope内调用，保留现役配额/usage/同源限制。错误码映射CourseGraphError，外部异常只写类型/固定码；不把模型异常原文返回页面。API_SPEC逐路由写请求/响应、来源与确认失效、分页、开关和旧合同边界。
+- [x] **Step 4 — 验证绿灯。** 上述API测试、`uv run pytest filemate/tests/test_graph_api.py -q`、`npm --prefix filemate/web test`通过；确认旧页面不需要新开关/课程即可工作。没有改动原24测试文件。
+- [x] **Step 5 — 提交。** `feat(graph): 接通课程图谱接口与授权边界`。
 
 ## Task 8: B级真实审核界面
 
