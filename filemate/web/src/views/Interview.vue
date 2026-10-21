@@ -82,7 +82,7 @@
         <button v-if="session.practice_context.remember_for_future" type="button" class="ghost" :disabled="loading || memoryBusy || recording || videoRecording || videoStopping" @click="forgetCurrentPractice">停止复用本场</button>
         <DataState v-if="memoryError" :error="memoryError" />
       </section>
-      <InterviewRuntimePanel v-if="session.runtime" :runtime="session.runtime" :busy="['save','advance','consent'].includes(coach.pending.value)" @command="runtimeAction" />
+      <InterviewRuntimePanel v-if="session.runtime" :runtime="session.runtime" :busy="!coach.snapshot.value || coach.snapshot.value.session.interview_id !== session.interview_id || ['save','advance','consent'].includes(coach.pending.value)" @command="runtimeAction" />
       <section v-if="session.runtime && coach.draftConflict.value" class="focus-note" role="alert"><strong>这段草稿属于原任务或原回答版本</strong><p>请先复制保留；清空旧草稿后再回答当前任务，避免串题。</p><blockquote>{{ answer }}</blockquote><button class="ghost" @click="discardRuntimeDraft">清空旧草稿，回答当前任务</button></section>
       <p v-if="session.runtime && answer.trim()" class="focus-note">{{ coach.draftRecoveryAvailable.value ? '草稿仅临时保存在当前浏览器标签页；关闭标签页或清除站点数据可能丢失。' : '浏览器存储不可用，刷新前请复制这段草稿。' }}</p>
       <p v-if="session.runtime && runtimeLocked && answer.trim()" class="focus-note">本场已停止接收回答。这段未提交文字仍在页面中，请复制保存：{{ answer }}</p>
