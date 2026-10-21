@@ -288,6 +288,7 @@ import { useInterviewVision } from '../interview/useInterviewVision'
 import { visualLabels } from '../interview/observations'
 import { useInterviewVideo } from '../interview/useInterviewVideo'
 import { videoIssue } from '../interview/video-messages'
+import { watchMediaEnvironment } from '../interview/media-lifecycle'
 import InterviewVideoPanel from '../components/InterviewVideoPanel.vue'
 import InterviewVideoLibrary from '../components/InterviewVideoLibrary.vue'
 import { publishCompanionEvent, type CompanionMood } from '../composables/useCompanion'
@@ -343,6 +344,7 @@ const historyError = ref('')
 const resumeError = ref('')
 const requestedInterviewId = ref('')
 let disposed = false
+let disposeMediaEnvironment: (()=>void) | undefined
 let syncingSessionTarget: string | null = null
 const knowledgeSources = ref<KnowledgeSource[]>([])
 const session = ref<InterviewSession | null>(null)
@@ -1123,6 +1125,7 @@ watch(() => route.fullPath, fullPath => {
 
 onBeforeUnmount(() => {
   draftController.dispose()
+  disposeMediaEnvironment?.()
   window.removeEventListener('beforeunload', protectBrowserExit)
   disposed = true
   interviewAudio.dispose(); interviewVideo.dispose()
@@ -1135,6 +1138,7 @@ onBeforeUnmount(() => {
   window.speechSynthesis?.cancel()
 })
 onMounted(async () => {
+  if(videoEnabled)disposeMediaEnvironment=watchMediaEnvironment(document,navigator.mediaDevices,{hidden:()=>{interviewVideo.interrupted();vision.finish();vision.stop()},devicesChanged:()=>{void interviewVideo.refresh()}})
   window.addEventListener('beforeunload', protectBrowserExit)
   void draftController.load()
   if (reviewEnabled.value) { try { reviewEnabled.value = (await getInterviewReviewStatus()).enabled } catch { reviewEnabled.value = false } }
