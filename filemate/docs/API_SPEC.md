@@ -1002,3 +1002,12 @@ language:zh-CN|en-US,segments,confidence}`；最多100段，每段1000字符，�
 原始录音Blob仅在页面内存：单次10分钟/20MiB，单页60MiB/30段；不上传、不写SQLite、不进备份。
 刷新/离页清除，用户可在当前页面逐题回听、单独导出（沿用用户下载目录设置）。
 浏览器语音转写为单独授权的可选服务，可能向浏览器厂商发送音频；授权与录音、微软自然语音分别控制。
+
+
+### Interview2.0 Stage5 camera/video candidate (2026-10-21)
+
+`VITE_ENABLE_INTERVIEW_VIDEO=false` defaults off; requires coach. This is a browser-only opt-in with no new endpoint, media upload, database table or schema migration. Preview requests video only; selectors never acquire devices themselves. Explicit selected IDs use exact constraints and remain page-local; no device IDs/labels enter reports, server logs or backups. Optional recording sound requests its own microphone permission; rejection does not silently start a recording with missing audio.
+
+Recording limits:640×480/15fps ideal(24max),1Mbps video/64kbps audio;30min/100MiB per clip,20 clips/200MiB per page, permission15sec, stop5sec. Received partial chunks remain exportable with page-local warnings on disconnect/error/timeout; no claim that every interrupted WebM can be decoded. Hidden page stops and closes preview; return requires an explicit click. Original video is temporary page memory, refresh/leave/delete clears it, downloads remain user-managed; backups contain saved answers and existing visual summaries, no raw videos.
+
+Replay binds to session/question/attempt/token. Only a matching coach receipt attaches a clip to an answer version. Re-answer preserves prior clips, pending-save retry freezes the same visual metrics even if local video is deleted. Existing `visual_metrics` contract is unchanged: optional local observable actions, not emotion/identity/attention inference, not competence scores. Feature-off keeps old records/exports and the legacy camera interface. Closing candidate UI does not delete any database data.

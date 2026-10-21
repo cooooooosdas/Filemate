@@ -87,11 +87,11 @@
       <p v-if="session.runtime && answer.trim()" class="focus-note">{{ coach.draftRecoveryAvailable.value ? '草稿仅临时保存在当前浏览器标签页；关闭标签页或清除站点数据可能丢失。' : '浏览器存储不可用，刷新前请复制这段草稿。' }}</p>
       <p v-if="session.runtime && runtimeLocked && answer.trim()" class="focus-note">本场已停止接收回答。这段未提交文字仍在页面中，请复制保存：{{ answer }}</p>
       <section class="studio">
-        <InterviewCoachPanel v-if="coachEnabled && coach.view.value" :pending-save="coach.replaySave.value" :answer-locked="runtimeLocked" :history-locked="!!session.runtime && !['finished','expired'].includes(session.runtime.status)" :answered-questions="session.turns.map(t=>({index:t.question_index,question:t.question}))" :completed="session.status==='completed'" :coach="coach.view.value" :draft="answer" :busy="coachBusy || recording || videoRecording || videoStopping || videoStarting || interviewAudio.busy.value" :total="session.questions.length" :editing="coachEditing" :composing="coach.composing.value" :external-consent="coach.snapshot.value?.external_consent || false" :current-answer="coach.snapshot.value?.current_attempt?.answer || ''" :error="coach.error.value?.message" :attempts="coachAttempts" :selected-attempt="selectedAttempt" :more-history="historyBefore != null" :history-error="coachHistoryError" :comparison="coachComparison" @update:draft="answer = $event" @composition="coach.setDraft(answer, $event)" @submit="submitCoach" @retry-analysis="coach.analyze()" @advance="advanceCoach" @reanswer="reanswerCoach" @select-question="focusCoach" @consent-change="coach.consent($event)" @load-history="loadCoachHistory" @select-attempt="selectedAttempt = $event" @reload="coach.refresh()">
+        <InterviewCoachPanel v-if="coachEnabled && coach.view.value" :pending-save="coach.replaySave.value" :answer-locked="runtimeLocked" :history-locked="!!session.runtime && !['finished','expired'].includes(session.runtime.status)" :answered-questions="session.turns.map(t=>({index:t.question_index,question:t.question}))" :completed="session.status==='completed'" :coach="coach.view.value" :draft="answer" :busy="coachBusy || recording || videoRecording || videoStopping || videoStarting || interviewAudio.busy.value || interviewVideo.busy.value" :total="session.questions.length" :editing="coachEditing" :composing="coach.composing.value" :external-consent="coach.snapshot.value?.external_consent || false" :current-answer="coach.snapshot.value?.current_attempt?.answer || ''" :error="coach.error.value?.message" :attempts="coachAttempts" :selected-attempt="selectedAttempt" :more-history="historyBefore != null" :history-error="coachHistoryError" :comparison="coachComparison" @update:draft="answer = $event" @composition="coach.setDraft(answer, $event)" @submit="submitCoach" @retry-analysis="coach.analyze()" @advance="advanceCoach" @reanswer="reanswerCoach" @select-question="focusCoach" @consent-change="coach.consent($event)" @load-history="loadCoachHistory" @select-attempt="selectedAttempt = $event" @reload="coach.refresh()">
           <template v-if="!audioEnabled" #answer-tools><button type="button" :disabled="coachBusy" @click="toggleRecording">{{ recording ? '停止录音' : '语音回答' }}</button><p class="speech-privacy">语音识别可能使用浏览器厂商的服务。摄像头和本地录像可在伙伴区按需开启。</p></template>
-          <template #answer-media><InterviewAudioPanel v-if="audioEnabled" :takes="audioTakes" :phase="interviewAudio.captureState.value.phase" :capture-error="interviewAudio.captureState.value.error" :transcription="interviewAudio.transcription.value" :allowed="interviewAudio.allowed.value" :busy="interviewAudio.busy.value" :blocked="coachBusy || recording || videoRecording || videoStopping || videoStarting" :locked="runtimeLocked || coach.replaySave.value || (coach.view.value?.phase==='feedback' && !coachEditing)" :error="interviewAudio.error.value" @record="recordAudio" @stop="interviewAudio.stop()" @consent="interviewAudio.consent($event)" @transcribe="transcribeAudio" @download="interviewAudio.download($event)" @remove="removeAudio" @play="coachSpeech.stop()" /></template>
-          <template #history-media><InterviewAudioPanel v-if="audioEnabled" :takes="interviewAudio.items.value.filter(t=>t.attemptId===selectedAttempt?.attempt_id)" :phase="interviewAudio.captureState.value.phase" :capture-error="interviewAudio.captureState.value.error" :transcription="interviewAudio.transcription.value" :allowed="interviewAudio.allowed.value" :busy="interviewAudio.busy.value" :blocked="coachBusy || recording || videoRecording || videoStopping || videoStarting" :locked="runtimeLocked || coach.replaySave.value || (coach.view.value?.phase==='feedback' && !coachEditing)" :error="interviewAudio.error.value" summary @record="recordAudio" @stop="interviewAudio.stop()" @consent="interviewAudio.consent($event)" @transcribe="transcribeAudio" @download="interviewAudio.download($event)" @remove="removeAudio" @play="coachSpeech.stop()" /><video v-if="selectedAttempt && coachRecordings[selectedAttempt.attempt_id]" :src="coachRecordings[selectedAttempt.attempt_id].url" controls playsinline /><p v-else>这版没有当前页面录像；已保存文字仍可回看。</p></template>
-          <template #summary><InterviewAudioPanel v-if="audioEnabled" :takes="interviewAudio.items.value" :phase="interviewAudio.captureState.value.phase" :capture-error="interviewAudio.captureState.value.error" :transcription="interviewAudio.transcription.value" :allowed="interviewAudio.allowed.value" :busy="interviewAudio.busy.value" :blocked="coachBusy || recording || videoRecording || videoStopping || videoStarting" :locked="runtimeLocked || coach.replaySave.value || (coach.view.value?.phase==='feedback' && !coachEditing)" :error="interviewAudio.error.value" summary @record="recordAudio" @stop="interviewAudio.stop()" @consent="interviewAudio.consent($event)" @transcribe="transcribeAudio" @download="interviewAudio.download($event)" @remove="removeAudio" @play="coachSpeech.stop()" /><button type="button" class="ghost" @click="reset">再练一次</button></template>
+          <template #answer-media><InterviewAudioPanel v-if="audioEnabled" :takes="audioTakes" :phase="interviewAudio.captureState.value.phase" :capture-error="interviewAudio.captureState.value.error" :transcription="interviewAudio.transcription.value" :allowed="interviewAudio.allowed.value" :busy="interviewAudio.busy.value" :blocked="coachBusy || recording || videoRecording || videoStopping || videoStarting || interviewVideo.busy.value" :locked="runtimeLocked || coach.replaySave.value || (coach.view.value?.phase==='feedback' && !coachEditing)" :error="interviewAudio.error.value" @record="recordAudio" @stop="interviewAudio.stop()" @consent="interviewAudio.consent($event)" @transcribe="transcribeAudio" @download="interviewAudio.download($event)" @remove="removeAudio" @play="coachSpeech.stop();interviewVideo.pausePlayback()" /><InterviewVideoLibrary v-if="videoEnabled" :takes="videoTakes" title="本题录像 · 停止后立即回看" :busy="interviewVideo.busy.value || interviewAudio.busy.value" @download="interviewVideo.download($event)" @remove="removeVideo" @play="coachSpeech.stop()" /></template>
+          <template #history-media><InterviewAudioPanel v-if="audioEnabled" :takes="interviewAudio.items.value.filter(t=>t.attemptId===selectedAttempt?.attempt_id)" :phase="interviewAudio.captureState.value.phase" :capture-error="interviewAudio.captureState.value.error" :transcription="interviewAudio.transcription.value" :allowed="interviewAudio.allowed.value" :busy="interviewAudio.busy.value" :blocked="coachBusy || recording || videoRecording || videoStopping || videoStarting || interviewVideo.busy.value" :locked="runtimeLocked || coach.replaySave.value || (coach.view.value?.phase==='feedback' && !coachEditing)" :error="interviewAudio.error.value" summary @record="recordAudio" @stop="interviewAudio.stop()" @consent="interviewAudio.consent($event)" @transcribe="transcribeAudio" @download="interviewAudio.download($event)" @remove="removeAudio" @play="coachSpeech.stop();interviewVideo.pausePlayback()" /><InterviewVideoLibrary v-if="videoEnabled" :takes="interviewVideo.items.value.filter(t=>t.attemptId===selectedAttempt?.attempt_id)" title="这版回答的录像" :busy="interviewVideo.busy.value || interviewAudio.busy.value" @download="interviewVideo.download($event)" @remove="removeVideo" @play="coachSpeech.stop()" /><video v-if="!videoEnabled && selectedAttempt && coachRecordings[selectedAttempt.attempt_id]" :src="coachRecordings[selectedAttempt.attempt_id].url" controls playsinline /><p v-else-if="!videoEnabled">这版没有当前页面录像；已保存文字仍可回看。</p></template>
+          <template #summary><InterviewAudioPanel v-if="audioEnabled" :takes="interviewAudio.items.value" :phase="interviewAudio.captureState.value.phase" :capture-error="interviewAudio.captureState.value.error" :transcription="interviewAudio.transcription.value" :allowed="interviewAudio.allowed.value" :busy="interviewAudio.busy.value" :blocked="coachBusy || recording || videoRecording || videoStopping || videoStarting || interviewVideo.busy.value" :locked="runtimeLocked || coach.replaySave.value || (coach.view.value?.phase==='feedback' && !coachEditing)" :error="interviewAudio.error.value" summary @record="recordAudio" @stop="interviewAudio.stop()" @consent="interviewAudio.consent($event)" @transcribe="transcribeAudio" @download="interviewAudio.download($event)" @remove="removeAudio" @play="coachSpeech.stop();interviewVideo.pausePlayback()" /><InterviewVideoLibrary v-if="videoEnabled" :takes="interviewVideo.items.value" title="整场录像汇总" :busy="interviewVideo.busy.value || interviewAudio.busy.value" @download="interviewVideo.download($event)" @remove="removeVideo" @play="coachSpeech.stop()" /><button type="button" class="ghost" @click="reset">再练一次</button></template>
         </InterviewCoachPanel>
         <DataState v-else-if="coachEnabled" :error="coach.error.value?.message || ''" :loading="!coach.error.value" @retry="coach.open(session.interview_id)" />
         <div v-else class="conversation-panel">
@@ -137,7 +137,25 @@
           </div>
           <div><p class="role">FileMate 面试伙伴</p><p class="online"><i></i>在线 · {{ session.scenario === '英语面' ? '英语训练' : '中文普通话' }}</p></div>
           <template v-if="coachEnabled"><label class="coach-voice-consent"><input v-model="coachSpeech.voiceConsent.value" type="checkbox" /><span>允许将点击朗读的文字发给 Microsoft 自然语音服务</span></label><label class="coach-voice-select">朗读声线<select v-model="voiceId"><option v-for="voice in NATURAL_VOICES" :key="voice.voiceURI" :value="voice.voiceURI">{{ voice.name }}</option></select></label><div class="coach-voice-actions"><button type="button" class="ghost" :disabled="!coach.view.value?.question" @click="speakQuestion">朗读当前问题</button><button type="button" class="ghost" :disabled="!coach.view.value?.analysis" @click="readCoachFeedback">朗读可见反馈</button><button v-if="coachSpeech.speaking.value" type="button" class="ghost" @click="coachSpeech.stop">停止朗读</button></div><p v-if="coachSpeech.error.value" role="alert">{{ coachSpeech.error.value }}</p><p v-if="feedbackTooLong">反馈过长，朗读仅包含总评；各项建议请直接阅读。</p></template><button v-else class="ghost" :disabled="!session.current_question" @click="speakQuestion">重新播报问题</button>
-          <div class="camera-dock" :class="{ active: cameraActive }">
+          <InterviewVideoPanel v-if="videoEnabled" :camera="interviewVideo.camera.value" :phase="interviewVideo.captureState.value.phase" :busy="interviewVideo.busy.value" :blocked="coachBusy || runtimeLocked || coach.replaySave.value || interviewAudio.busy.value || recording || (coach.view.value?.phase==='feedback' && !coachEditing)" v-model:camera-id="interviewVideo.cameraId.value" v-model:microphone-id="interviewVideo.microphoneId.value" v-model:with-audio="interviewVideo.withAudio.value" :error="interviewVideo.error.value || videoIssue(interviewVideo.captureState.value.error)" @camera="interviewVideo.toggleCamera()" @record="recordVideo" @stop="interviewVideo.stop()" @refresh="interviewVideo.refresh()" @preview="cameraVideo=$event">
+            <div v-if="reviewEnabled" class="vision-controls">
+              <button :disabled="interviewVideo.camera.value.phase!=='ready' || interviewVideo.busy.value || vision.state.value === 'loading'" @click="toggleVision">{{ vision.state.value === 'loading' ? '加载视觉模型…' : ['ready', 'observing'].includes(vision.state.value) ? '关闭本地视觉观察' : '开启本地视觉观察' }}</button>
+              <small role="status">{{ vision.hint.value }}</small>
+              <small>每秒约2次采样；观察头部、眼部与嘴角动作，不判断情绪或注意力。</small>
+              <section v-if="vision.state.value === 'observing'" class="live-face" aria-label="实时面部动作">
+                <h3>实时面部动作</h3><p>{{ vision.live.value?.status || '等待有效画面…' }}</p>
+                <template v-if="vision.live.value">
+                  <div v-for="item in [{key: 'smile', label: '微笑动作'}, {key: 'brow', label: '皱眉动作'}, {key: 'jaw', label: '张口动作'}] as const" :key="item.key" class="face-reading">
+                    <span>{{ item.label }}</span><strong>{{ vision.live.value[item.key] ?? '待测' }}{{ vision.live.value[item.key] == null ? '' : ' / 100' }}</strong>
+                    <meter v-if="vision.live.value[item.key] != null" :value="vision.live.value[item.key]!" min="0" max="100" :aria-label="item.label" />
+                  </div>
+                  <p>头部偏转 {{ vision.live.value.yaw == null ? '待测' : `${vision.live.value.yaw}°` }} · 俯仰 {{ vision.live.value.pitch == null ? '待测' : `${vision.live.value.pitch}°` }}</p>
+                </template>
+                <small>0–100 为模型动作系数换算，不是开心、紧张或疑惑的概率；光线不足或无人脸时停止读数。实时系数不保存、不上传，不用于面试评分。</small>
+              </section>
+            </div>
+          </InterviewVideoPanel>
+          <div v-else class="camera-dock" :class="{ active: cameraActive }">
             <div class="camera-preview">
               <video ref="cameraVideo" v-show="cameraActive" autoplay muted playsinline />
               <div v-if="!cameraActive" class="camera-placeholder">
@@ -220,7 +238,7 @@
           </div>
         </details>
       </section>
-      <InterviewReviewPanel v-if="reviewEnabled || session.turns.length" :read-only="!reviewEnabled" :session="session" :analysis-busy="coachEnabled && coach.pending.value==='analysis'" :coach-mode="coachEnabled" :recording-indexes="Object.keys(localRecordings).map(Number)" :media-busy="videoRecording || videoStopping || recording || loading || interviewAudio.busy.value" @updated="reviewUpdated" @deleted="deletedInterview" @cleared="vision.reset()" @seek="seekRecording" />
+      <InterviewReviewPanel v-if="reviewEnabled || session.turns.length" :read-only="!reviewEnabled" :session="session" :analysis-busy="coachEnabled && coach.pending.value==='analysis'" :coach-mode="coachEnabled" :recording-indexes="Object.keys(localRecordings).map(Number)" :media-busy="videoRecording || videoStopping || recording || loading || interviewAudio.busy.value || interviewVideo.busy.value" @updated="reviewUpdated" @deleted="deletedInterview" @cleared="vision.reset()" @seek="seekRecording" />
     </template>
   </div>
 </template>
@@ -268,6 +286,10 @@ import { getInterviewConfiguration, saveInterviewDraft } from '../services/api'
 import type { InterviewConfiguration } from '../types/interviewConfiguration'
 import { useInterviewVision } from '../interview/useInterviewVision'
 import { visualLabels } from '../interview/observations'
+import { useInterviewVideo } from '../interview/useInterviewVideo'
+import { videoIssue } from '../interview/video-messages'
+import InterviewVideoPanel from '../components/InterviewVideoPanel.vue'
+import InterviewVideoLibrary from '../components/InterviewVideoLibrary.vue'
 import { publishCompanionEvent, type CompanionMood } from '../composables/useCompanion'
 import mascotUrl from '../assets/filemate-mascot.png'
 import '../styles/interview-practice.css'
@@ -331,13 +353,14 @@ const requestedMedia = computed(() => {
 })
 const coachEnabled = import.meta.env.VITE_ENABLE_INTERVIEW_COACH === 'true'
 const audioEnabled = coachEnabled && import.meta.env.VITE_ENABLE_INTERVIEW_AUDIO === 'true'
+const videoEnabled = coachEnabled && import.meta.env.VITE_ENABLE_INTERVIEW_VIDEO === 'true'
 const coach = useInterviewCoach()
 const runtimeEnabled = computed(()=>coachEnabled && configurationState.value.runtimeEnabled===true)
 const runtimeLocked = computed(()=>!!session.value?.runtime && session.value.runtime.status!=='running')
 let preparationKey='', preparationFingerprint=''
 async function runtimeAction(kind:RuntimeKind){
  if(kind==='finish'){try{await ElMessageBox.confirm(answer.value.trim()?'未提交文字不会写入报告，请先复制保存。确定提前结束本场？':'已保存回答保留，可随时生成复盘报告。确定提前结束？','结束实战',{confirmButtonText:'结束本场',cancelButtonText:'继续训练'})}catch{return}}
- if(kind==='finish'||kind==='skip'){await interviewAudio.stop();stopSpeechRecording();stopVideoRecording(true);coachSpeech.stop()}
+ if(kind==='finish'||kind==='skip'){await interviewVideo.stop();await interviewAudio.stop();stopSpeechRecording();stopVideoRecording(true);coachSpeech.stop()}
  const updated=await coach.runtimeAction(kind)
  if(updated && kind==='skip'){answer.value='';coach.setDraft('');coachEditing.value=false}
 }
@@ -359,25 +382,45 @@ const coachComparison = computed(() => {
  return turn?.attempt_comparison ?? null
 })
 const interviewAudio=useInterviewAudio(text=>{answer.value=text},()=>coachSpeech.stop(),()=>coach.replaySave.value)
-const audioBinding=computed(()=>{
+const interviewVideo=useInterviewVideo({
+ blocked:()=>coachBusy.value || runtimeLocked.value || recording.value || interviewAudio.busy.value || (coach.view.value?.phase==='feedback' && !coachEditing.value),
+ pendingSave:()=>coach.replaySave.value,
+ stopOthers:async()=>{coachSpeech.stop();window.speechSynthesis?.cancel();stopSpeechRecording();await interviewAudio.stop();interviewAudio.pausePlayback()},
+ finishVision:()=>{vision.finish()}
+})
+const videoTakes=computed(()=>interviewVideo.items.value.filter(t=>t.binding.questionIndex===currentQuestionIndex.value))
+async function recordVideo(){
+ await interviewVideo.record()
+ if(interviewVideo.captureState.value.phase==='recording' && reviewEnabled.value && cameraVideo.value)vision.observe(cameraVideo.value,interviewVideo.captureState.value.started)
+}
+async function removeVideo(id:string){
+ try{await ElMessageBox.confirm('删除这段本页录像，已保存回答与观察摘要保留。需要保留录像请先导出。','删除录像',{confirmButtonText:'删除片段',cancelButtonText:'保留录像'})}catch{return}
+ interviewVideo.remove(id)
+}
+const mediaBinding=computed(()=>{
  const s=coach.snapshot.value
- return audioEnabled&&s&&s.phase!=='summary'?{sessionId:s.session.interview_id,questionIndex:s.displayed_index,attemptId:s.current_attempt?.attempt_id??null,token:`${s.session.runtime?.version_token??'practice'}:${audioDraftEpoch.value}`}:null
+ return coachEnabled&&s&&s.phase!=='summary'?{sessionId:s.session.interview_id,questionIndex:s.displayed_index,attemptId:s.current_attempt?.attempt_id??null,token:`${s.session.runtime?.version_token??'practice'}:${audioDraftEpoch.value}`}:null
 })
 const audioTakes=computed(()=>interviewAudio.items.value.filter(t=>t.binding.questionIndex===currentQuestionIndex.value))
+const audioBinding=computed(()=>audioEnabled?mediaBinding.value:null)
 function syncAudioContext(){if(audioEnabled)interviewAudio.context(audioBinding.value)}
-watch(runtimeLocked,locked=>{if(locked&&audioEnabled)void interviewAudio.stop()})
+watch(runtimeLocked,locked=>{if(locked&&audioEnabled)void interviewAudio.stop();if(locked&&videoEnabled)void interviewVideo.stop()})
+watch(mediaBinding,value=>{if(videoEnabled && coach.snapshot.value?.phase!=='summary')interviewVideo.context(value)},{deep:true})
 watch(audioBinding,()=>{if(coach.snapshot.value?.phase!=='summary')syncAudioContext()},{deep:true})
 async function recordAudio(){
- if(!audioEnabled || runtimeLocked.value || coachBusy.value || coach.replaySave.value)return
+ if(!audioEnabled || runtimeLocked.value || coachBusy.value || coach.replaySave.value || interviewVideo.busy.value)return
  const old=audioTakes.value.filter(t=>!t.attemptId && bindingKey(t.binding)===bindingKey(audioBinding.value))
  if(old.length){try{await ElMessageBox.confirm('重新录音会删除本题未提交的旧录音；需要保留请先导出。','重新录音',{confirmButtonText:'删除旧录音并重录',cancelButtonText:'保留旧录音'})}catch{return};for(const t of old)interviewAudio.remove(t.id)}
  syncAudioContext();await interviewAudio.record()
 }
 async function removeAudio(id:string){try{await ElMessageBox.confirm('此操作只删除页面中的这段录音；已保存回答摘要及下载文件保留。','删除本机录音',{confirmButtonText:'删除这段',cancelButtonText:'保留'})}catch{return};interviewAudio.remove(id)}
-function transcribeAudio(){if(!audioEnabled || runtimeLocked.value || coachBusy.value)return;syncAudioContext();interviewAudio.transcribe(session.value?.scenario==='英语面'?'en-US':'zh-CN',answer.value)}
+function transcribeAudio(){
+ if(interviewVideo.busy.value || !audioEnabled || runtimeLocked.value || coachBusy.value)return
+ syncAudioContext();interviewAudio.transcribe(session.value?.scenario==='英语面'?'en-US':'zh-CN',answer.value)
+}
 const feedbackText = computed(() => [coach.view.value?.feedback, ...Object.values(coach.view.value?.analysis?.areas || {}).flatMap(a => [a.evidence, a.suggestion])].filter(Boolean).join('。'))
 const feedbackTooLong = computed(() => Array.from(feedbackText.value).length > 5000)
-function readCoachFeedback(){if(interviewAudio.busy.value)return;interviewAudio.pausePlayback();coachSpeech.read(feedbackTooLong.value ? (coach.view.value?.feedback || '') : feedbackText.value,voiceId.value)}
+function readCoachFeedback(){if(interviewAudio.busy.value || interviewVideo.busy.value)return;interviewVideo.pausePlayback();interviewAudio.pausePlayback();coachSpeech.read(feedbackTooLong.value ? (coach.view.value?.feedback || '') : feedbackText.value,voiceId.value)}
 async function loadCoachHistory(more=false){
  const state=coach.snapshot.value, a=state?.current_attempt
  if(!state || !a) return
@@ -386,20 +429,23 @@ async function loadCoachHistory(more=false){
  catch {coachHistoryError.value='历史读取失败，可重新展开重试。'}
 }
 function clearCoachQuestion(){
- audioDraftEpoch.value++;interviewAudio.invalidate();
+ audioDraftEpoch.value++;interviewAudio.invalidate();interviewVideo.invalidate();
  mediaEpoch++;draftMediaId=crypto.randomUUID();coachSpeech.stop();stopSpeechRecording();vision.reset();fluencyMetrics.value=undefined;fluencyMarkers.value=[];recordingDuration.value=0;coachAttempts.value=[];selectedAttempt.value=null;historyBefore.value=null
 }
 async function submitCoach(){
- if(recording.value || videoRecording.value || videoStopping.value || videoStarting.value || interviewAudio.busy.value)return
+ if(recording.value || videoRecording.value || videoStopping.value || videoStarting.value || interviewAudio.busy.value || interviewVideo.busy.value)return
  coachSpeech.stop();coach.setDraft(answer.value)
  const index=currentQuestionIndex.value, mediaId=draftMediaId
  const metrics=fluencyMetrics.value ? {duration_seconds:fluencyMetrics.value.duration_seconds,filler_count:fluencyMetrics.value.filler_count,long_pause_count:fluencyMetrics.value.long_pause_count,source:fluencyMetrics.value.source,markers:fluencyMetrics.value.markers,recording_offset_seconds:fluencyMetrics.value.recording_offset_seconds} : undefined
  const frozen=audioEnabled?interviewAudio.freeze(answer.value):null
- const saved=await coach.submit({fluency_metrics:audioEnabled?frozen?.metrics:metrics,visual_metrics:reviewEnabled.value?vision.finish():undefined})
+ const visual=reviewEnabled.value?vision.finish():undefined
+ const frozenVideo=videoEnabled?interviewVideo.freeze(answer.value,visual):null
+ const saved=await coach.submit({fluency_metrics:audioEnabled?frozen?.metrics:metrics,visual_metrics:videoEnabled?frozenVideo?.metrics:visual})
  if(!saved || disposed)return
  const record=localRecordings.value[index]
  const savedId=saved.receipt.attempt_id
  if(frozen && typeof savedId==='string')interviewAudio.receipt(frozen,savedId,saved.snapshot.session.interview_id)
+ if(frozenVideo && typeof savedId==='string')interviewVideo.receipt(frozenVideo,savedId,saved.snapshot.session.interview_id)
  if(record?.ownerId===mediaId && typeof savedId==='string'){record.ownerId=savedId;coachRecordings.value={...coachRecordings.value,[savedId]:record}}
  if(saved.snapshot.current_attempt?.attempt_id!==savedId){const next={...localRecordings.value};delete next[index];localRecordings.value=next;return}
  coachEditing.value=false;vision.reset()
@@ -421,7 +467,7 @@ async function advanceCoach(){
  await nextTick();document.getElementById('coach-question')?.focus()
 }
 async function focusCoach(index:number|null){
- if(coachBusy.value || recording.value || videoRecording.value || videoStopping.value)return
+ if(coachBusy.value || recording.value || videoRecording.value || videoStopping.value || interviewVideo.busy.value)return
  if(answer.value.trim()){try{await ElMessageBox.confirm('切换会放弃未提交草稿，已保存版本保留。','切换题目',{confirmButtonText:'放弃草稿并切换',cancelButtonText:'继续修改'})}catch{return}}
  const result=await coach.focus(index);if(!result)return
  answer.value='';clearCoachQuestion();coachEditing.value=false
@@ -547,7 +593,7 @@ const completionCompanion = computed((): {
 })
 
 const speakQuestion = () => {
-  if(coachEnabled){if(interviewAudio.busy.value)return;interviewAudio.pausePlayback();coachSpeech.read(coach.view.value?.question || '',voiceId.value);return}
+  if(coachEnabled){if(interviewAudio.busy.value || interviewVideo.busy.value)return;interviewVideo.pausePlayback();interviewAudio.pausePlayback();coachSpeech.read(coach.view.value?.question || '',voiceId.value);return}
   const text = session.value?.current_question
   if (!text || !('speechSynthesis' in window)) return
   window.speechSynthesis.cancel()
@@ -692,7 +738,7 @@ const forgetCurrentPractice = () => {
 const restoreInterview = async (interviewId: string, fromRoute = false) => {
   if (!interviewId || loading.value) return
   if (!fromRoute && !(await confirmLeave())) return
-  stopSpeechRecording(); stopVideoRecording(true); stopCamera(); clearLocalRecordings(); interviewAudio.clear()
+  stopSpeechRecording(); stopVideoRecording(true); stopCamera(); clearLocalRecordings(); interviewAudio.clear(); interviewVideo.clear()
   window.speechSynthesis?.cancel()
   session.value = null
   answer.value = ''
@@ -738,6 +784,7 @@ const finalizeFluency = () => {
 }
 
 const toggleRecording = () => {
+  if(interviewVideo.busy.value)return
   coachSpeech.stop()
   if (recording.value) { recognition?.stop(); return }
   if (recognition) return
@@ -840,7 +887,7 @@ const toggleVision = async () => {
   if (['ready', 'observing'].includes(vision.state.value)) { vision.finish(); vision.stop(); return }
   if (await vision.enable()) {
     await nextTick()
-    if (cameraActive.value && cameraVideo.value) vision.observe(cameraVideo.value)
+    if ((videoEnabled ? interviewVideo.camera.value.phase==='ready' : cameraActive.value) && cameraVideo.value) vision.observe(cameraVideo.value)
   }
 }
 
@@ -997,7 +1044,7 @@ const resetInterviewState = async () => {
   stopCamera()
   vision.reset()
   clearLocalRecordings()
-  interviewAudio.clear()
+  interviewAudio.clear(); interviewVideo.clear()
   coach.dispose()
   session.value = null
   focusWrongId.value = ''
@@ -1037,9 +1084,9 @@ applyPreparationRoute()
 const initialPreparation = ref(preparationSnapshot())
 
 const draftPresent = computed(() => hasInterviewDraft({
-  answer: answer.value, recording: recording.value || interviewAudio.busy.value, videoStarting: videoStarting.value,
+  answer: answer.value, recording: recording.value || interviewAudio.busy.value || interviewVideo.busy.value, videoStarting: videoStarting.value,
   videoRecording: videoRecording.value, videoStopping: videoStopping.value,
-  localRecordings: Object.keys(localRecordings.value).length + interviewAudio.items.value.length,
+  localRecordings: Object.keys(localRecordings.value).length + interviewAudio.items.value.length + interviewVideo.items.value.length,
   preparation: !session.value && preparationSnapshot() !== initialPreparation.value
 }))
 
@@ -1063,7 +1110,7 @@ watch(() => route.fullPath, fullPath => {
   if (fullPath === syncingSessionTarget) return
   const id = typeof route.query.interview === 'string' ? route.query.interview : ''
   if (id === session.value?.interview_id) return
-  stopSpeechRecording(); stopVideoRecording(true); stopCamera(); clearLocalRecordings(); interviewAudio.clear()
+  stopSpeechRecording(); stopVideoRecording(true); stopCamera(); clearLocalRecordings(); interviewAudio.clear(); interviewVideo.clear()
   window.speechSynthesis?.cancel()
   answer.value = ''
   if (id) { void restoreInterview(id, true); return }
@@ -1078,7 +1125,7 @@ onBeforeUnmount(() => {
   draftController.dispose()
   window.removeEventListener('beforeunload', protectBrowserExit)
   disposed = true
-  interviewAudio.dispose()
+  interviewAudio.dispose(); interviewVideo.dispose()
   coach.dispose();coachSpeech.stop()
   stopSpeechRecording()
   stopVideoRecording(true)

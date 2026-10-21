@@ -1,5 +1,7 @@
 # FileMate
 
+2026-10-21 第五阶段本地候选：设备选择、独立录像与逐题／整场回看使用 `VITE_ENABLE_INTERVIEW_VIDEO=true`（需coach），默认关闭。录像只在本页内存保存，主动开启摄像头，声音单独勾选；每段30分钟／100MiB，每页20段／200MiB，导出后自行保管。没有媒体上传或schema迁移；实现与验收见[第五阶段计划](docs/superpowers/plans/2026-10-21-interview-video.md)。本条不是上线或实体设备验收声明。
+
 2026-10-18 已上线：[四主题与导出设置回执](docs/APPEARANCE_SETTINGS_RELEASE_2026-10-18.md)。Web fd0fe159、main f7bbc265，保留schema27后端；后端1237/前端78通过，公网15组通过。支持跟随系统和本机导出目录；原生系统窗口与普通下载OS落盘仍待实机确认，整体CONDITIONAL PASS。
 
 2026-10-17 已上线：[逐题面试教练发布回执](docs/INTERVIEW_COACH_RELEASE_2026-10-17.md)。Web/API运行45520e81，PR61合入main faba5f56；Linux1237后端/72前端、249库正式备份恢复及248业务库升级27、公网12组与桌面/移动汇总复验通过。已准备兼容关闭版，保留schema27后端；总体CONDITIONAL PASS，真实学习效果与原始功能缺项仍保留。下方各批记录描述其当时状态。
