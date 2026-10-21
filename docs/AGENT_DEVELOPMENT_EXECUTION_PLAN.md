@@ -1,6 +1,6 @@
 # FileMate 多 Agent 执行开发文档
 
-2026-10-21最新边界：[模拟面试2.0发布回执](INTERVIEW_2_0_RELEASE_2026-10-21.md)已取代下方旧“本地未推送”状态，历史记录保留其当时范围。用户新建知识图谱2.0专项，严格按[分级执行记录](KNOWLEDGE_GRAPH_2_0_EXECUTION.md)推进；当前仅[A级审计与设计](superpowers/specs/2026-10-21-knowledge-graph-2-design.md)待验收，B—E未开始。本次未改产品代码或迁移，旧功能/科研缺项不因此关闭。
+2026-10-22最新边界：[模拟面试2.0发布回执](INTERVIEW_2_0_RELEASE_2026-10-21.md)已取代下方旧“本地未推送”状态，历史记录保留其当时范围。知识图谱2.0严格按[分级执行记录](KNOWLEDGE_GRAPH_2_0_EXECUTION.md)推进；[A级审计与设计](superpowers/specs/2026-10-21-knowledge-graph-2-design.md)已获用户明确通过，五项B前方向及删除边界已确认，[B级九项实现计划](superpowers/plans/2026-10-22-course-knowledge-graph-foundation.md)待审阅、尚未实施，C—E未开始。本次未改产品代码或迁移，旧功能/科研缺项不因此关闭。
 
 2026-10-20：Interview 2.0第三阶段连续计时、知识／电商规则实战、事件与草稿恢复已完成本地工程验收，见[阶段交付](INTERVIEW_2_0_PHASE3_DELIVERY_2026-10-20.md)。真实墙钟611.496秒、后端1253／前端95、构建与资源门禁通过；一次独立审阅的三项Important已修复，两项Minor明示保留。分支`codex/interview-v2-runtime`未推送部署；须本阶段确认后进入阶段4语音，不将六维评分、设备兼容性或真实学习效果标为完成。
 

@@ -1,6 +1,6 @@
 # FileMate
 
-2026-10-21 知识图谱2.0专项进入A级审计与设计：[审计及候选架构](docs/superpowers/specs/2026-10-21-knowledge-graph-2-design.md)、[分级执行记录](docs/KNOWLEDGE_GRAPH_2_0_EXECUTION.md)。两天后冻结、数据结构先行、课程内审核融合、学术工作台方向已确认；本级仅文档与隔离合成证据，业务代码/schema/线上版本未改。A级待用户验收，B—E未开始；本地后端1312/前端140及图谱浏览器7组通过，不代表真实模型提取质量或真实学习效果已验收。
+2026-10-22 知识图谱2.0专项A级已获用户明确验收：[审计及候选架构](docs/superpowers/specs/2026-10-21-knowledge-graph-2-design.md)、[分级执行记录](docs/KNOWLEDGE_GRAPH_2_0_EXECUTION.md)。B前五项方向和移出课程／彻底删除边界已确认，[九项实现计划](docs/superpowers/plans/2026-10-22-course-knowledge-graph-foundation.md)待审阅；尚未实施B，业务代码/schema/线上版本未改。A级本地后端1312/前端140及图谱浏览器7组是历史审计结果，不代表B功能、真实模型提取质量或真实学习效果已验收。
 
 2026-10-21 已上线：[模拟面试2.0发布回执](docs/INTERVIEW_2_0_RELEASE_2026-10-21.md)。Web 3bac02e8、API 878124b5，配置／连续实战／六维证据报告已启用，业务schema30；Linux1330后端、140前端及最终公网11组通过，324库正式备份恢复与323业务库升级通过。额外修复状态未读取完时的无响应点击；新独立录音录像仍关闭，实体设备、评分校准和真实学生研究待验收，总体CONDITIONAL PASS。下方本地交付记录保留当时状态。
 
