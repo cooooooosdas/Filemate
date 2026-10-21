@@ -27,10 +27,11 @@ class ItemDecision(BaseModel):
 class CourseGraphError(ValueError):
     """Expose a fixed code without supplier content."""
 
-    def __init__(self, code: str, status_code: int = 409):
+    def __init__(self, code: str, status_code: int = 409, details: dict[str, Any] | None = None):
         super().__init__(code)
         self.code = code
         self.status_code = status_code
+        self.details = details or {}
 
 
 def normalize_term(value: str) -> str:

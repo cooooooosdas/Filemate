@@ -167,11 +167,11 @@
 
 **Interfaces:** `merge_candidates(storage, course_id: str, concept_id: str, limit: int=20) -> list[dict[str, Any]]`；`preview_merge(storage, course_id: str, concept_ids: list[str], target_id: str) -> dict[str, Any]`；`confirm_merge(storage, course_id: str, concept_ids: list[str], target_id: str, confirmation_token: str, request_key: str, confirmed: bool) -> dict[str, Any]`；`preview_operation(storage, course_id: str, operation_id: str, action: Literal['undo','restore']) -> dict[str, Any]`；`transition_operation(storage, course_id: str, operation_id: str, action: str, confirmation_token: str, request_key: str, confirmed: bool) -> dict[str, Any]`；`course_graph(storage, course_id: str, limit: int=50, offset: int=0, q: str='') -> dict[str, Any]`。合并确认重传相同concept_ids/target_id，服务端以当前对象版本重算摘要并校验预览凭据，不能仅凭token猜测未持久化的选择。
 
-- [ ] **Step 1 — 写失败测试。** `test_same_course_merge_keeps_original_ids_and_quotes`两份资料的栈预览合并后单个可见代表、两个原始ID/引用仍在；`test_stack_queue_and_cross_course_never_auto_merge`栈/队列/优先队列不按共现自动融合，跨课合并409；`test_undo_specific_merge_preserves_quiz_and_plan`撤销一个不相关操作之后仍可撤销指定融合，旧作答/题集/计划逐行不变；`test_dependent_edit_blocks_unsafe_undo`后续编辑依赖相同对象则409，展示依赖操作，不静默覆盖；`test_merge_cycle_and_self_edge_are_explicit`检查前置环与融合自环。
-- [ ] **Step 2 — 验证红灯。** `uv run pytest filemate/tests/course_graph/test_fusion.py -q`；预期新合并接口不存在。
-- [ ] **Step 3 — 最小实现。** 相同规范化术语/已确认别名只产生建议，合并必须预览确认。合并写同课一层canonical代表关系，保留成员ID及原边；展示去重时保留全部出处，融合自环不展示为推荐边并明确计数。prerequisite/反向depends_on合成有向依赖图做有界环检查。操作最小逆变更仅保存ID/状态/版本/归属；撤销或恢复验证受影响对象指纹，有后续依赖明确409。移出来源/隐私删除后的旧引用不能由恢复重新造出。
-- [ ] **Step 4 — 验证绿灯。** 本文件通过；两连接相同确认只生成一个operation；跨课程投影0泄漏。B投影只返回知识关系/来源与尚未评测提示，不生成新掌握率或冒充D学习分析。
-- [ ] **Step 5 — 提交。** `feat(graph): 支持课程内融合与可追溯撤销`。
+- [x] **Step 1 — 写失败测试。** `test_same_course_merge_keeps_original_ids_and_quotes`两份资料的栈预览合并后单个可见代表、两个原始ID/引用仍在；`test_stack_queue_and_cross_course_never_auto_merge`栈/队列/优先队列不按共现自动融合，跨课合并409；`test_undo_specific_merge_preserves_quiz_and_plan`撤销一个不相关操作之后仍可撤销指定融合，旧作答/题集/计划逐行不变；`test_dependent_edit_blocks_unsafe_undo`后续编辑依赖相同对象则409，展示依赖操作，不静默覆盖；`test_merge_cycle_and_self_edge_are_explicit`检查前置环与融合自环。
+- [x] **Step 2 — 验证红灯。** `uv run pytest filemate/tests/course_graph/test_fusion.py -q`；预期新合并接口不存在。
+- [x] **Step 3 — 最小实现。** 相同规范化术语/已确认别名只产生建议，合并必须预览确认。合并写同课一层canonical代表关系，保留成员ID及原边；展示去重时保留全部出处，融合自环不展示为推荐边并明确计数。prerequisite/反向depends_on合成有向依赖图做有界环检查。操作最小逆变更仅保存ID/状态/版本/归属；撤销或恢复验证受影响对象指纹，有后续依赖明确409。移出来源/隐私删除后的旧引用不能由恢复重新造出。
+- [x] **Step 4 — 验证绿灯。** 本文件通过；两连接相同确认只生成一个operation；跨课程投影0泄漏。B投影只返回知识关系/来源与尚未评测提示，不生成新掌握率或冒充D学习分析。
+- [x] **Step 5 — 提交。** `feat(graph): 支持课程内融合与可追溯撤销`。
 
 ## Task 6: 来源生命周期、备份与隐私
 

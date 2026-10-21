@@ -172,6 +172,7 @@ def confirm_review(storage: SQLiteStorage, course_id: str, draft_id: str, reques
             raise CourseGraphError("preview_expired_or_changed") from None
         ids: dict[str, list[str]] = {"concepts": [], "relations": [], "evidence": []}
         published_nodes = {}
+        dependencies = set()
         for source, item, parsed, decision in selected:
             if item["kind"] != "node":
                 continue
@@ -193,6 +194,7 @@ def confirm_review(storage: SQLiteStorage, course_id: str, draft_id: str, reques
                 ids["concepts"].append(nid)
                 ids["evidence"].append(_evidence(conn, course_id, source, parsed, nid, "node"))
             published_nodes[(source["source_id"], parsed["label"])] = nid
+            dependencies.add(nid)
             item["review_status"], item["published_id"] = "confirmed", nid
         for source, item, parsed, _ in selected:
             if item["kind"] != "edge":
@@ -206,6 +208,7 @@ def confirm_review(storage: SQLiteStorage, course_id: str, draft_id: str, reques
                                           AND source_revision=? AND legacy_node_id=? AND status='confirmed'""",
                                        (course_id, source["source_id"], source["source_revision"], node["parsed"]["legacy_node_id"])).fetchone()[0]
                 endpoints.append(nid)
+                dependencies.add(nid)
             old = conn.execute("""SELECT r.relation_id FROM kg_relations r JOIN kg_evidence e USING(relation_id)
                                   WHERE r.course_id=? AND r.from_id=? AND r.to_id=? AND r.type=?
                                   AND e.source_id=? AND e.source_revision=? AND e.excerpt=? AND e.status='confirmed'
@@ -222,11 +225,15 @@ def confirm_review(storage: SQLiteStorage, course_id: str, draft_id: str, reques
         for source in touched.values():
             conn.execute("UPDATE kg_extractions SET payload=? WHERE extraction_id=?",
                          (json.dumps(source["payload"], ensure_ascii=False), source["extraction_id"]))
+        from filemate.course_graph.fusion import dependency_check
+
+        dependency_check(storage, conn, course_id)
         oid = str(uuid4())
         receipt = {"operation_id": oid, "affected": {k: len(v) for k, v in ids.items()}}
         states = object_states(conn, course_id, ids)
         record_change(conn, course_id, request_key, "review", command,
                       {"receipt": receipt, "ids": ids, "after": states, "expected": digest(states),
-                       "draft_id": draft_id, "item_ids": [n["item_id"] for _, n, _, _ in selected]}, oid)
+                       "draft_id": draft_id, "dependencies": sorted(dependencies),
+                       "item_ids": [n["item_id"] for _, n, _, _ in selected]}, oid)
         data_actions.finish(conn, "course_graph_review", f"{course_id}:{draft_id}", confirmation_token, receipt)
         return receipt
