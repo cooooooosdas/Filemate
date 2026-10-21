@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { VideoCollection } from '../src/interview/video-collection.ts'
 import { VIDEO_LIMITS } from '../src/interview/video-capture.ts'
+import { reactive } from 'vue'
 const binding={sessionId:'one',questionIndex:0,attemptId:null,token:'draft'}
 const take=(id='clip',b=binding)=>({id,binding:b,blob:new Blob(['video']),duration:2,hasAudio:false,partial:false,issue:null})
 
@@ -32,4 +33,28 @@ test('empty, oversized and wrong-session recordings are refused before URL alloc
  const c=new VideoCollection({create:()=>{throw Error('must not allocate')},revoke:()=>{}});c.context(binding)
  assert.equal(c.add({...take(),blob:new Blob([])}),false);assert.equal(c.add({...take(),blob:{size:VIDEO_LIMITS.bytes+1}}),false)
  assert.equal(c.add(take('wrong',{...binding,sessionId:'wrong'})),false);c.clear()
+})
+
+test('reactive vision summaries freeze as detached JSON evidence without blocking save',()=>{
+ const c=new VideoCollection();c.context(binding)
+ const visual=reactive({source:'mediapipe_local_v1',timeline_origin:'visual',duration_seconds:2,sample_count:2,face_samples:0,low_light_samples:0,dropped_samples:0,events:[{kind:'no_face',start:0,end:2}],events_truncated:false})
+ const frozen=c.freeze('answer',visual);visual.events[0].end=99;visual.sample_count=99
+ assert.equal(frozen.metrics.sample_count,2);assert.equal(frozen.metrics.events[0].end,2);assert.doesNotThrow(()=>JSON.stringify(frozen));c.clear()
+})
+
+
+test('explicit conflicted draft abandonment drops frozen video and visual evidence even for identical replacement text',async()=>{
+ const {readFileSync}=await import('node:fs')
+ const source=readFileSync(new URL('../src/views/Interview.vue',import.meta.url),'utf8')
+ const body=source.slice(source.indexOf('async function discardRuntimeDraft(){'),source.indexOf('async function advanceCoach(){'))
+ const c=new VideoCollection();c.context(binding);c.add(take())
+ const prior=c.freeze('identical',{sample_count:3,events:[]})
+ c.context({...binding,attemptId:'remote',token:'new-runtime-token'})
+ const visual={value:{sample_count:3,events:[]}};const answer={value:'identical'},epoch={value:0},editing={value:false}
+ const discard=new Function('ElMessageBox','interviewAudio','interviewVideo','vision','audioDraftEpoch','answer','coach','coachEditing',body+';return discardRuntimeDraft')(
+  {confirm:async()=>{}},{invalidate(){}},{invalidate:()=>c.invalidate()},{reset(){visual.value=undefined}},epoch,answer,{setDraft(){}},editing)
+ await discard();c.context({...binding,attemptId:'remote',token:'new-runtime-token:'+epoch.value})
+ const replacement=c.freeze('identical',visual.value)
+ assert.notEqual(replacement,prior);assert.equal(replacement.takeId,null);assert.equal(replacement.metrics,undefined)
+ assert.equal(c.receipt(replacement,'new-answer','one'),true);assert.equal(c.items[0].attemptId,null);c.clear()
 })

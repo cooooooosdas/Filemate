@@ -14,6 +14,7 @@ interface Run {
   chunks: Blob[]; bytes: number; maxBytes: number; started: number; stopped?: number
   issue: string | null; partial: boolean; hasAudio: boolean
   permission?: ReturnType<typeof setTimeout>; limit?: ReturnType<typeof setTimeout>; stopTimer?: ReturnType<typeof setTimeout>
+  cancelPermission?: () => void
   resolves: ((take: LocalVideoTake | null) => void)[]
 }
 function defaultRecorder(stream: MediaStream) {
@@ -32,6 +33,7 @@ export class VideoCapture {
   private publish(patch: Partial<VideoCaptureState>) { this.state = { ...this.state, ...patch }; this.changed(this.state) }
   private release(run: Run) {
     clearTimeout(run.permission); clearTimeout(run.limit); clearTimeout(run.stopTimer)
+    run.cancelPermission?.(); run.cancelPermission = undefined
     if (run.recorder) run.recorder.ondataavailable = run.recorder.onstop = run.recorder.onerror = null
     for (const track of run.tracks) { track.onended = track.onmute = null; track.stop() }
     run.tracks = []
@@ -44,8 +46,15 @@ export class VideoCapture {
     run.permission = setTimeout(() => { if (this.run === run) { this.dispose(); this.publish({ error: 'permission_timeout' }) } }, 15000)
     try {
       if (microphoneId !== null) {
-        const mic = await this.deps.getMedia({ video: false, audio: microphoneId ? { deviceId: { exact: microphoneId }, channelCount: 1 } : { channelCount: 1 } })
-        if (this.run !== run) { mic.getTracks().forEach(t => t.stop()); return }
+        const cancelled = new Promise<null>(resolve => { run.cancelPermission = () => resolve(null) })
+        const request = this.deps.getMedia({ video: false, audio: microphoneId ? { deviceId: { exact: microphoneId }, channelCount: 1 } : { channelCount: 1 } })
+        // 浏览器授权提示无法撤销；等待可取消，晚到的设备仍须释放。
+        let discarded = false
+        const discard = (stream: MediaStream) => { if (!discarded) { discarded = true; stream.getTracks().forEach(track => track.stop()) } }
+        void request.then(stream => { if (this.run !== run) discard(stream) }, () => {})
+        const mic = await Promise.race([request, cancelled])
+        if (!mic) return
+        if (this.run !== run) { discard(mic); return }
         run.tracks.push(...mic.getTracks())
         if (!mic.getAudioTracks().some(t => t.readyState === 'live')) throw new Error('microphone_unavailable')
         run.hasAudio = true

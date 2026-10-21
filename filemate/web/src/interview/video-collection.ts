@@ -27,7 +27,7 @@ export class VideoCollection {
   freeze(text: string, metrics: VisualMetrics | undefined): FrozenVideo {
     if (this.frozen?.text === text && this.frozen.sessionId === this.binding?.sessionId && this.frozen.questionIndex === this.binding.questionIndex) return this.frozen
     const take = [...this.items].reverse().find(t => !t.attemptId && same(this.binding, t.binding))
-    this.frozen = { text, sessionId: this.binding?.sessionId ?? '', questionIndex: this.binding?.questionIndex ?? -1, takeId: take?.id ?? null, metrics: metrics ? structuredClone(metrics) : undefined }; return this.frozen
+    this.frozen = { text, sessionId: this.binding?.sessionId ?? '', questionIndex: this.binding?.questionIndex ?? -1, takeId: take?.id ?? null, metrics: metrics ? { ...metrics, events: metrics.events.map(event => ({ ...event })) } : undefined }; return this.frozen
   }
   receipt(frozen: FrozenVideo, attemptId: string, sessionId: string) {
     if (this.frozen !== frozen || frozen.sessionId !== sessionId || sessionId !== this.binding?.sessionId || frozen.questionIndex !== this.binding.questionIndex) return false

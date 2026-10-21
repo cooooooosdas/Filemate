@@ -10,7 +10,7 @@ interface Options { blocked: () => boolean; pendingSave: () => boolean; stopOthe
 export function useInterviewVideo(options: Options) {
   const collection = new VideoCollection()
   const items = shallowRef(collection.items), error = ref(''), cameraId = ref(''), microphoneId = ref(''), withAudio = ref(false), starting = ref(false)
-  let binding: AudioBinding | null = null, disposed = false
+  let binding: AudioBinding | null = null, disposed = false, recordEpoch = 0
   const publish = () => { items.value = [...collection.items] }
   const capture = new VideoCapture({}, state => {
     if (disposed) return
@@ -28,11 +28,11 @@ export function useInterviewVideo(options: Options) {
   const camera = shallowRef(preview.state)
   const busy = computed(() => starting.value || captureState.value.phase !== 'idle')
   function pausePlayback() { document.querySelectorAll<HTMLMediaElement>('.interview-video-library video').forEach(el => el.pause()) }
-  async function stop(issue?: string) { starting.value = false; const take = await capture.stop(issue); options.finishVision(); return take }
+  async function stop(issue?: string) { recordEpoch++; starting.value = false; const take = await capture.stop(issue); options.finishVision(); return take }
   function context(next: AudioBinding | null) {
     if (JSON.stringify(binding) === JSON.stringify(next)) return
     if (binding?.sessionId !== next?.sessionId) { clear() }
-    else { void capture.stop('context_changed'); options.finishVision(); pausePlayback() }
+    else { void stop('context_changed'); pausePlayback() }
     collection.context(next); binding = next ? { ...next } : null; publish()
   }
   async function toggleCamera() {
@@ -43,13 +43,13 @@ export function useInterviewVideo(options: Options) {
   async function record() {
     if (!binding || !camera.value.stream || busy.value || options.blocked() || options.pendingSave()) return
     if (!collection.canRecord) { error.value = '本页最多20段、200MiB；请先导出并删除部分录像。'; return }
-    const key = JSON.stringify(binding); starting.value = true; error.value = ''; pausePlayback()
+    const key = JSON.stringify(binding), epoch = ++recordEpoch; starting.value = true; error.value = ''; pausePlayback()
     try {
       await options.stopOthers()
-      if (!starting.value || key !== JSON.stringify(binding) || !camera.value.stream || options.pendingSave()) return
+      if (epoch !== recordEpoch || !starting.value || key !== JSON.stringify(binding) || !camera.value.stream || options.pendingSave()) return
       collection.invalidate()
       await capture.start(binding, camera.value.stream, withAudio.value ? microphoneId.value : null, collection.remainingBytes)
-    } finally { starting.value = false }
+    } finally { if (epoch === recordEpoch) starting.value = false }
   }
   async function download(id: string) {
     const take = collection.items.find(t => t.id === id); if (!take) return
@@ -58,8 +58,8 @@ export function useInterviewVideo(options: Options) {
   }
   function remove(id: string) { collection.remove(id); publish() }
   function receipt(frozen: FrozenVideo, attempt: string, session: string) { collection.receipt(frozen, attempt, session); publish() }
-  function interrupted() { void capture.stop('page_hidden'); preview.close('page_hidden'); options.finishVision(); pausePlayback() }
-  function clear() { starting.value = false; capture.dispose(); preview.close(); options.finishVision(); pausePlayback(); collection.clear(); publish(); binding = null; withAudio.value = false; cameraId.value = microphoneId.value = '' }
+  function interrupted() { void stop('page_hidden'); preview.close('page_hidden'); options.finishVision(); pausePlayback() }
+  function clear() { recordEpoch++; starting.value = false; capture.dispose(); preview.close(); options.finishVision(); pausePlayback(); collection.clear(); publish(); binding = null; withAudio.value = false; cameraId.value = microphoneId.value = '' }
   function dispose() { clear(); preview.dispose(); disposed = true }
   return { items, camera, captureState, cameraId, microphoneId, withAudio, busy, error, context, toggleCamera, record, stop, download, remove, receipt, interrupted, clear, dispose, pausePlayback, refresh: () => preview.refresh(), invalidate: () => collection.invalidate(), freeze: (text: string, metrics: VisualMetrics | undefined) => collection.freeze(text, metrics) }
 }

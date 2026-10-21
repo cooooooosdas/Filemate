@@ -64,3 +64,26 @@ test('duration limit, hidden interruption and dispose preserve resource bounds',
  t.mock.timers.tick(VIDEO_LIMITS.seconds*1000);assert.equal((await c.stop()).issue,'duration_limit')
  await c.start(binding,stream(),null);const take=await c.stop('page_hidden');assert.equal(take.partial,true);assert.equal(take.issue,'page_hidden');c.dispose();assert.equal(c.state.take,null)
 })
+
+
+test('unanswered permission settles start on timeout or cancellation and late grant cannot replace a new run',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']})
+ for(const reason of ['timeout','stop','dispose']){
+  let grant,settled=false;const late=track('audio');const c=new VideoCapture({getMedia:()=>new Promise(r=>grant=r),makeStream:stream,makeRecorder:recorder})
+  const pending=c.start(binding,stream(),'').then(()=>{settled=true})
+  if(reason==='timeout')t.mock.timers.tick(15000);else if(reason==='stop')await c.stop('page_hidden');else c.dispose()
+  for(let i=0;i<8;i++)await Promise.resolve()
+  assert.equal(settled,true,reason+' must settle without waiting for user permission')
+  await c.start({...binding,token:'new'},stream(),null);assert.equal(c.state.phase,'recording')
+  grant(stream([late]));await pending;for(let i=0;i<4;i++)await Promise.resolve()
+  assert.equal(late.stops,1);assert.equal(c.state.phase,'recording');assert.equal((await c.stop()).binding.token,'new');c.dispose()
+ }
+})
+
+
+test('cancellation between permission fulfillment and recorder continuation releases microphone exactly once',async()=>{
+ let grant;const permission=new Promise(resolve=>grant=resolve),mic=track('audio')
+ const c=new VideoCapture({getMedia:()=>permission,makeStream:stream,makeRecorder:recorder})
+ const starting=c.start(binding,stream(),'');permission.then(()=>c.dispose());grant(stream([mic]));await starting
+ assert.equal(mic.stops,1);assert.equal(c.state.phase,'idle');c.dispose();assert.equal(mic.stops,1)
+})
