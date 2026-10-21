@@ -26,6 +26,7 @@ export interface SixReport {
   rubric: InterviewRubric
   input: {
     interview_id: string; target_role: string; scenario: string; configuration: Record<string, unknown>
+    comparison_conditions?: { version: number; difficulty: string | null; duration_minutes: number | null; source_id: string; questions_digest: string; task_prompts_digest: string }
     turns: { attempt_id: string; version: number; question_index: number; question: string; answer: string }[]
     tasks: { task_id: string; title: string; status: string; attempt_id: string | null }[]
     events: { event_key: string; kind: string; text: string; created_at: string; attempt_id: string | null }[]

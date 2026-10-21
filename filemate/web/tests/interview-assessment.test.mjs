@@ -75,3 +75,37 @@ test('history selection race and disposal suppress late updates', async () => {
   await flow.load('two')
   assert.equal(flow.state.sessionId,'one')
 })
+
+test('confirmed clear discards local reports and pending commands even when refresh fails', async () => {
+  const { createAssessmentFlow } = await helpers()
+  let offline=false
+  const sent=[]
+  const flow=createAssessmentFlow({context:async()=>{if(offline)throw Error('offline');return {input_digest:'same',enabled:true,answered:1,history:[{interview_id:'one',assessment_id:'old',status:'succeeded'}]}},
+    read:async()=>({assessment_id:'old',report:{version:'2.6'}}),create:async(id,body)=>{sent.push(body);throw Error('lost')}})
+  await flow.load('one');await flow.generate('local',false)
+  flow.reset()
+  assert.equal(flow.state.selected,null)
+  assert.equal(flow.state.context,null)
+  offline=true;await flow.load('one')
+  assert.equal(flow.state.selected,null)
+  offline=false;await flow.load('one');await flow.generate('local',false)
+  assert.notEqual(sent[0].request_key,sent[1].request_key)
+})
+
+test('cancel waits for server terminal state and releases controls without manual refresh', async () => {
+  const { createAssessmentFlow } = await helpers()
+  let release, cancelled=false, polls=0
+  const old={assessment_id:'old',report:{version:'2.6'}}
+  const flow=createAssessmentFlow({context:async()=>({input_digest:'same',enabled:true,answered:1,history:[...(cancelled?[{assessment_id:'new',status:++polls<2?'cancelling':'cancelled',error_code:'cancelled'}]:[]),{interview_id:'one',assessment_id:'old',status:'succeeded'}]}),
+    read:async()=>old,create:async()=>new Promise(r=>release=r),cancel:async()=>{cancelled=true}},()=>{},async()=>{})
+  await flow.load('one')
+  const generation=flow.generate('model',true)
+  await flow.cancel()
+  assert.ok(polls>=2)
+  assert.equal(flow.state.busy,false)
+  assert.equal(flow.state.cancelling,false)
+  assert.equal(flow.state.context.history[0].status,'cancelled')
+  assert.match(flow.state.error,/已取消/)
+  release({assessment_id:'late',report:{version:'2.6'}});await generation
+  assert.equal(flow.state.selected.assessment_id,'old')
+})

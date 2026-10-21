@@ -296,3 +296,114 @@ def test_restore_with_live_assessment_is_rejected_and_expired_claim_recovers(con
     preview = backup.preview(raw)
     backup.restore(preview["backup_id"], preview["confirmation_token"])
     assert repo.read(sid, claim["assessment_id"])["status"] == "interrupted"
+
+
+def test_markdown_export_keeps_untrusted_fields_as_literal_text(context):
+    from filemate.interview_assessment.reports import markdown
+
+    store, sid, _, _ = context
+    repo = module().AssessmentRepository(store)
+    report = repo.create_local(sid, command(repo, sid))["report"]
+    payload = '<img src="https://attacker.invalid/pixel">\n\n# forged\n![remote](https://attacker.invalid/x)'
+    report["input"]["target_role"] = payload
+    report["input"]["turns"][0]["answer"] = payload
+    report["result"]["dimensions"][0]["reason"] = payload
+    report["result"]["dimensions"][0]["suggestion"] = payload
+    report["result"]["dimensions"][0]["evidence"] = [
+        {"kind": "answer", "attempt_id": "a", "quote": payload}
+    ]
+    output = markdown(report)
+    assert "<img" not in output and "![remote]" not in output and "\n# forged" not in output
+    assert "&lt;img" in output and "# FileMate 六维面试训练报告" in output
+
+
+@pytest.mark.parametrize(
+    "corruption", ["shape", "quote", "score", "weight", "input", "rubric", "owner", "provenance"]
+)
+def test_saved_report_validation_uses_immutable_original_snapshots(context, corruption):
+    store, sid, coach, _ = context
+    repo = module().AssessmentRepository(store)
+    record = service(repo, Provider(store.get_interview(sid))).create(
+        sid, command(repo, sid, mode="model")
+    )
+    report, aid = record["report"], record["assessment_id"]
+    state = coach.snapshot(sid)
+    coach.submit(
+        sid,
+        SubmitAnswer(
+            answer="第二版回答，不应该影响合法历史。",
+            question_index=0,
+            request_key="assessment_revision2",
+            expected_revision=state.revision,
+            expected_attempt_id=state.current_attempt.attempt_id,
+        ),
+    )
+    assert repo.read(sid, aid) == record
+    if corruption == "shape":
+        changed = {"version": "2.6"}
+    else:
+        changed = json.loads(json.dumps(report))
+        if corruption == "quote":
+            changed["result"]["dimensions"][0]["evidence"][0]["quote"] = "不存在的引用"
+        elif corruption == "score":
+            changed["result"]["overall_score"] = 100
+        elif corruption == "weight":
+            changed["result"]["dimensions"][0]["weight"] = 100
+        elif corruption == "input":
+            changed["input"]["turns"][0]["answer"] = "伪造原回答"
+        elif corruption == "rubric":
+            changed["rubric"]["version"] = "forged"
+        elif corruption == "owner":
+            changed["assessment_id"] = "foreign"
+        else:
+            changed["provenance"]["model"] = "forged"
+    store._conn().execute(
+        "UPDATE artifacts SET content=? WHERE artifact_id=?",
+        (json.dumps(changed, ensure_ascii=False), report["artifact_id"]),
+    )
+    store._conn().commit()
+    with pytest.raises(CoachError, match="assessment_evidence_unavailable"):
+        repo.read(sid, aid)
+
+
+def test_runtime_wall_clock_expiry_blocks_late_report_but_allows_new_post_session_consent(
+    tmp_path,
+):
+    from datetime import timedelta
+
+    from filemate.interview_assessment.rules import parse_result
+    from filemate.interview_runtime import RuntimeRepository, utc_now
+    from filemate.tests.test_interview_runtime import act, prepared
+
+    store = SQLiteStorage(tmp_path / "expiry.db")
+    store.init_schema()
+    runtime = RuntimeRepository(store, clock=utc_now)
+    state = act(runtime, prepared(runtime), "start").snapshot
+    state = act(runtime, state, "submit", answer="资源绑定对象生命周期并自动释放。").snapshot
+    sid = state.session["interview_id"]
+    repo = module().AssessmentRepository(store)
+    claim = repo.claim(sid, command(repo, sid, mode="model"), {"model": "test"})
+    result = parse_result(
+        json.dumps(model_payload(claim["rubric"], claim["input"])), claim["rubric"], claim["input"]
+    )
+    # Expire only the runtime; the independent assessment lease remains valid.
+    store._conn().execute(
+        "UPDATE interview_runtime SET deadline=? WHERE interview_id=?",
+        ((utc_now() - timedelta(seconds=1)).isoformat(), sid),
+    )
+    store._conn().commit()
+    assert repo.finish(claim, result=result)["status"] == "cancelled"
+    # Context must settle expiry even when no client is polling the runtime endpoint.
+    context_data = repo.context(sid)
+    assert store.get_interview(sid)["runtime"]["status"] == "expired"
+    new_command = module().AssessmentCommand(
+        request_key="assessment_after_end",
+        expected_digest=context_data["input_digest"],
+        mode="model",
+        external_consent=True,
+    )
+    assert (
+        service(repo, Provider(store.get_interview(sid))).create(sid, new_command)["status"]
+        == "succeeded"
+    )
+    store.close()

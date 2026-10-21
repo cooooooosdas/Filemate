@@ -15,7 +15,7 @@
       <div class="actions"><button :disabled="blocked || !consent || !state.context?.answered || !state.context.model_requests_remaining" @click="generate('model')"><IconChartRadar :size="21" />{{ state.busy ? '正在生成新版本…' : '生成六维参考评价' }}</button><button v-if="state.busy || serverBusy" @click="cancel">取消分析</button></div>
     </div>
     <p v-else class="notice">六维重算已关闭，已有版本仍可阅读和导出。</p>
-    <p v-if="state.loading || state.busy" role="status">{{ state.busy ? '正在核对原文与评分依据，旧报告保留。' : '正在读取报告与版本…' }}</p>
+    <p v-if="state.loading || state.busy" role="status">{{ state.cancelling ? '正在取消，等待当前模型请求结束…' : state.busy ? '正在核对原文与评分依据，旧报告保留。' : '正在读取报告与版本…' }}</p>
     <p v-if="state.error || error" role="alert" class="notice error">{{ state.error || error }}</p>
     <p v-if="selectedIsHistorical" class="notice">正在查看历史快照。当前回答或任务已变化，历史分数不会代替最新回答的评价。</p>
     <article v-if="report">
@@ -70,7 +70,7 @@ import type { AssessmentComparison, AssessmentSummary } from '../types/interview
 const props = defineProps<{ session: InterviewSession; busy: boolean; resetKey: number; readOnly: boolean }>()
 const emit = defineEmits<{ availability: [value: boolean] }>()
 const state = shallowRef<AssessmentFlowState>({ sessionId: '', context: null, selected: null, loading: false, busy: false, error: '' })
-const flow = createAssessmentFlow({ context: getAssessmentContext, create: createAssessment, read: readAssessment }, value => state.value = value)
+const flow = createAssessmentFlow({ context: getAssessmentContext, create: createAssessment, read: readAssessment, cancel: cancelInterviewAnalysis }, value => state.value = value)
 const buildEnabled = import.meta.env.VITE_ENABLE_INTERVIEW_ASSESSMENT === 'true'
 const writable = computed(() => buildEnabled && state.value.context?.enabled && !props.readOnly)
 const available = computed(() => !!writable.value || !!state.value.context?.history.length)
@@ -92,7 +92,7 @@ const formatDate = (value: string) => new Date(value).toLocaleString('zh-CN', { 
 
 async function refresh() { consent.value = false; error.value = ''; comparison.value = null; await flow.load(props.session.interview_id) }
 async function generate(mode: 'local' | 'model') { if (blocked.value || !writable.value) return; comparison.value = null; error.value = ''; try { await flow.generate(mode, consent.value) } finally { consent.value = false } }
-async function cancel() { try { await cancelInterviewAnalysis(props.session.interview_id); await refresh() } catch (e) { error.value = message(e) } }
+async function cancel() { consent.value = false; error.value = ''; comparison.value = null; await flow.cancel() }
 async function download(format: typeof formats[number]) {
   if (!state.value.selected || !report.value || blocked.value) return
   const current = epoch, selected = state.value.selected
@@ -121,7 +121,8 @@ async function loadHistory(reset: boolean) {
 function historyOpened() { if (!allHistory.value) history.value = state.value.context?.history || [] }
 watch(available, value => emit('availability', value), { immediate: true })
 watch(() => state.value.context, context => { if (!allHistory.value) history.value = context?.history || [] })
-watch(() => [props.session.interview_id, props.resetKey, reportInputKey(props.session, props.busy)], () => {
+watch(() => [props.session.interview_id, props.resetKey, reportInputKey(props.session, props.busy)], (value, previous) => {
+  if (previous && value[1] !== previous[1]) { flow.reset(); history.value = []; historyTotal.value = 0 }
   epoch++; consent.value = false; error.value = ''; comparison.value = null; allHistory.value = false; historyLoading.value = false; exporting.value = false; comparing.value = false
   void flow.load(props.session.interview_id)
 }, { immediate: true })

@@ -35,24 +35,30 @@ interface FlowApi {
   context(id: string): Promise<AssessmentContext>
   read(id: string, key: string): Promise<AssessmentRecord>
   create(id: string, command: AssessmentCommand): Promise<AssessmentRecord>
+  cancel?(id: string): Promise<unknown>
 }
 export interface AssessmentFlowState {
   sessionId: string; context: AssessmentContext | null; selected: AssessmentRecord | null
-  loading: boolean; busy: boolean; error: string
+  loading: boolean; busy: boolean; error: string; cancelling?: boolean
 }
 
-export function createAssessmentFlow(api: FlowApi, changed: (state: AssessmentFlowState) => void = () => {}) {
+export function createAssessmentFlow(api: FlowApi, changed: (state: AssessmentFlowState) => void = () => {}, wait: (ms: number) => Promise<void> = ms => new Promise(resolve => setTimeout(resolve, ms))) {
   const state: AssessmentFlowState = { sessionId: '', context: null, selected: null, loading: false, busy: false, error: '' }
   let epoch = 0, disposed = false, pending: AssessmentCommand | null = null
   const publish = () => { if (!disposed) changed({ ...state }) }
   const valid = (version: number) => !disposed && version === epoch
   const message = (error: unknown) => error instanceof Error ? error.message : '连接未完成，请重试。'
 
+  function reset() {
+    epoch++; pending = null
+    state.context = null; state.selected = null; state.loading = false; state.busy = false; state.cancelling = false; state.error = ''; publish()
+  }
+
   async function load(id: string) {
     if (disposed) return
     const version = ++epoch
     if (id !== state.sessionId) { state.context = null; state.selected = null; pending = null }
-    state.sessionId = id; state.loading = true; state.busy = false; state.error = ''; publish()
+    state.sessionId = id; state.loading = true; state.busy = false; state.cancelling = false; state.error = ''; publish()
     try {
       const context = await api.context(id)
       if (!valid(version)) return
@@ -105,5 +111,28 @@ export function createAssessmentFlow(api: FlowApi, changed: (state: AssessmentFl
     } catch (error) { if (valid(version)) state.error = message(error) }
     finally { if (valid(version)) { state.loading = false; publish() } }
   }
-  return { state, load, generate, select, dispose() { disposed = true; epoch++; pending = null } }
+
+  async function cancel() {
+    if (disposed || state.cancelling || !api.cancel) return
+    const version = ++epoch, id = state.sessionId, deadline = Date.now() + 65000
+    state.busy = true; state.cancelling = true; state.error = ''; publish()
+    try {
+      await api.cancel(id)
+      if (!valid(version)) return
+      pending = null
+      for (let poll = 0; poll < 66 && Date.now() < deadline; poll++) {
+        const context = await api.context(id)
+        if (!valid(version)) return
+        state.context = context; publish()
+        if (!context.history.some(item => ['running', 'cancelling'].includes(item.status))) {
+          state.error = assessmentFailure(context.history[0]?.error_code || 'cancelled')
+          return
+        }
+        await wait(1000)
+      }
+      if (valid(version)) state.error = '取消仍在处理，请刷新记录确认终态；旧报告保留。'
+    } catch (error) { if (valid(version)) state.error = message(error) }
+    finally { if (valid(version)) { state.busy = false; state.cancelling = false; publish() } }
+  }
+  return { state, load, generate, select, reset, cancel, dispose() { disposed = true; epoch++; pending = null } }
 }

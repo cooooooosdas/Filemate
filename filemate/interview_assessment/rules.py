@@ -153,7 +153,31 @@ def snapshot(interview: dict[str, Any]) -> dict[str, Any]:
         "total": interview.get("total", len(interview.get("questions", []))),
         "configuration": {
             k: interview.get("configuration", {}).get(k)
-            for k in ("category", "track", "language", "difficulty_strategy", "execution_mode")
+            for k in (
+                "category",
+                "track",
+                "language",
+                "difficulty",
+                "duration_minutes",
+                "question_strategy",
+                "difficulty_strategy",
+                "execution_mode",
+            )
+        },
+        "comparison_conditions": {
+            "version": 1,
+            "difficulty": interview.get("configuration", {}).get(
+                "difficulty", interview.get("difficulty")
+            ),
+            "duration_minutes": interview.get("configuration", {}).get("duration_minutes"),
+            "source_id": interview.get("source_id") or "",
+            "questions_digest": digest(interview.get("questions", [t["question"] for t in turns])),
+            "task_prompts_digest": digest(
+                [
+                    {key: task.get(key) for key in ("kind", "title", "prompt")}
+                    for task in runtime.get("tasks", [])
+                ]
+            ),
         },
         "turns": turns,
         "tasks": runtime.get("tasks", []),
@@ -369,10 +393,18 @@ def analyze(llm: Any, rubric: dict[str, Any], snap: dict[str, Any]) -> dict[str,
 
 
 def compare_reports(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
+    if any(not report["input"].get("comparison_conditions") for report in (left, right)):
+        return {
+            "comparable": False,
+            "reason": "历史报告缺少完整的难度、时长或来源快照，不能直接比较；原报告仍可阅读。",
+            "dimensions": [],
+        }
+
     def conditions(report):
         return {
             "rubric": digest(report["rubric"]),
             "configuration": report["input"]["configuration"],
+            "comparison_conditions": report["input"]["comparison_conditions"],
             "target_role": report["input"]["target_role"],
             "provenance": report["provenance"],
             "evidence_kinds": sorted({e["kind"] for e in catalog(report["input"]).values()}),
@@ -381,7 +413,7 @@ def compare_reports(left: dict[str, Any], right: dict[str, Any]) -> dict[str, An
     if conditions(left) != conditions(right):
         return {
             "comparable": False,
-            "reason": "场景、标准版本、语言、岗位、模型／规则版本或证据条件不同，不能直接比较。",
+            "reason": "场景、难度、时长、来源题目、标准版本、语言、岗位、模型／规则版本或证据条件不同，不能直接比较。",
             "dimensions": [],
         }
     other = {d["id"]: d for d in right["result"]["dimensions"]}

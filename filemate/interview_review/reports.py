@@ -7,7 +7,7 @@ import io
 import json
 import re
 import threading
-from html import escape
+from html import escape, unescape
 from pathlib import Path
 from typing import Any
 
@@ -247,7 +247,10 @@ def report_pdf(report: dict[str, Any]) -> bytes:
                 story.append(Spacer(1, 4))
             continue
         heading = re.match(r"^(#{1,3}) (.*)$", line)
-        story.append(Paragraph(escape(heading[2] if heading else line),
+        text = heading[2] if heading else line
+        if report.get("version") == "2.6":
+            text = unescape(text)
+        story.append(Paragraph(escape(text),
                                styles[len(heading[1])] if heading else body))
         after_heading = bool(heading)
 

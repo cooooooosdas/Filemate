@@ -13,6 +13,7 @@ from filemate.interview_coach.repository import CoachError, CoachRepository
 from filemate.interview_review.repository import ReviewRepository
 
 from .rules import PROMPT_VERSION, RULES_VERSION, digest, pending_result, rubric_for, snapshot
+from .validation import validate_report
 
 
 def now() -> str:
@@ -47,6 +48,16 @@ class AssessmentRepository:
         self.storage = storage
         self.coach = CoachRepository(storage)
 
+    def _settle_runtime(self, sid: str) -> None:
+        if (
+            self.storage._conn()
+            .execute("SELECT 1 FROM interview_runtime WHERE interview_id=?", (sid,))
+            .fetchone()
+        ):
+            from filemate.interview_runtime import RuntimeRepository, utc_now
+
+            RuntimeRepository(self.storage, clock=utc_now).snapshot(sid)
+
     def _input(self, sid: str):
         interview = self.storage.get_interview(sid)
         if interview is None:
@@ -65,6 +76,7 @@ class AssessmentRepository:
         )
 
     def context(self, sid: str) -> dict[str, Any]:
+        self._settle_runtime(sid)
         with self.storage._write_lock, self.storage._conn() as conn:
             snap, rubric = self._input(sid)
             self._interrupt(conn, sid)
@@ -114,10 +126,21 @@ class AssessmentRepository:
         )
         if not row:
             raise CoachError("assessment_not_found", 404)
-        artifact = self.storage.get_artifact(row["artifact_id"]) if row["artifact_id"] else None
-        report = artifact["content"] if artifact else None
-        if report is not None and (not isinstance(report, dict) or report.get("version") != "2.6"):
-            raise CoachError("assessment_evidence_unavailable")
+        try:
+            artifact = self.storage.get_artifact(row["artifact_id"]) if row["artifact_id"] else None
+            report = artifact["content"] if artifact else None
+            if row["status"] == "succeeded" or report is not None:
+                saved = (
+                    self.storage._conn()
+                    .execute(
+                        "SELECT content_digest FROM interview_rubrics WHERE rubric_id=? AND version=?",
+                        (row["rubric_id"], row["rubric_version"]),
+                    )
+                    .fetchone()
+                )
+                validate_report(report, row, saved[0] if saved else "")
+        except (ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
+            raise CoachError("assessment_evidence_unavailable") from exc
         return {
             "assessment_id": row["assessment_id"],
             "interview_id": sid,
@@ -145,6 +168,7 @@ class AssessmentRepository:
         return self.read(sid, row["assessment_id"])
 
     def claim(self, sid: str, command: AssessmentCommand, provenance: dict[str, Any]):
+        self._settle_runtime(sid)
         self.coach.snapshot(sid)
         with self.coach.transaction() as conn:
             self._interrupt(conn, sid)
@@ -301,6 +325,10 @@ class AssessmentRepository:
                 and review[0] == row["review_revision"]
                 and now() <= row["deadline_at"]
             )
+            if claim["input"]["runtime_status"] == "running":
+                from filemate.interview_runtime import runtime_analysis_allowed
+
+                fresh = fresh and runtime_analysis_allowed(conn, sid)
             status = "succeeded" if result else "failed"
             if not fresh:
                 status, result, error_code = "cancelled", None, "superseded"

@@ -174,3 +174,32 @@ def test_model_repair_is_bounded_and_provider_adapter_receives_only_text_evidenc
     assert result["overall_score"] == 80 and len(calls) == 2
     assert all(c["retry"] == 1 and c["timeout"] <= 30 for c in calls)
     assert "fluency_metrics" not in calls[0]["messages"][1]["content"]
+
+
+@pytest.mark.parametrize("condition", ["difficulty", "duration_minutes", "source_id", "questions"])
+def test_comparison_requires_saved_difficulty_duration_and_source_conditions(condition):
+    r = rules()
+    first, second = interview(), interview()
+    for data in (first, second):
+        data["configuration"].update(difficulty="标准", duration_minutes=10)
+        data["source_id"] = "course-one"
+        data["questions"] = [data["turns"][0]["question"]]
+    if condition in {"difficulty", "duration_minutes"}:
+        second["configuration"][condition] = "入门" if condition == "difficulty" else 30
+    else:
+        second[condition] = "course-two" if condition == "source_id" else ["不同问题"]
+
+    def report(data):
+        rubric, snap = r.rubric_for(data), r.snapshot(data)
+        return {
+            "rubric": rubric,
+            "input": snap,
+            "result": r.pending_result(rubric, snap),
+            "provenance": {"model": "test"},
+        }
+
+    left, right = report(first), report(second)
+    assert not r.compare_reports(left, right)["comparable"]
+    assert r.compare_reports(left, copy.deepcopy(left))["comparable"]
+    del left["input"]["comparison_conditions"]
+    assert not r.compare_reports(left, right)["comparable"]
