@@ -122,7 +122,7 @@
 
 **Interfaces:** `normalize_term(value: str) -> str`定义在models；`extract_local_course(text: str) -> dict[str, Any]`复用旧规则并识别原文明示别名；`validate_candidates(payload: Any, text: str, source_id: str, chunks: list[dict[str, Any]]) -> dict[str, Any]`返回`nodes/edges/issues/coverage`；`CourseGraphProvider(client: Any).extract(text: str) -> dict[str, Any]`只调用现役`call_structured`，带有界JSON envelope Schema，再逐项严格校验。
 
-- [ ] **Step 1 — 写失败测试。** `test_partial_invalid_keeps_valid`输入一合法节点、一伪造引文节点，断言合法数1、invalid数1、后者不可接受；`test_cooccurrence_is_not_prerequisite`对“栈和队列都是线性结构。”的栈→队列前置边判invalid；`test_explicit_direction_and_negation`正确保留“栈是DFS的前置知识”方向，拒绝否定/可能句的确定边；`test_literal_aliases_only`仅原文`Stack（栈）`支持模型别名，不按常识补BFS翻译；`test_envelope_limits_and_missing_pages`检查81节点整份失败、无页码仍为null。
+- [x] **Step 1 — 写失败测试。** `test_partial_invalid_keeps_valid`输入一合法节点、一伪造引文节点，断言合法数1、invalid数1、后者不可接受；`test_cooccurrence_is_not_prerequisite`对“栈和队列都是线性结构。”的栈→队列前置边判invalid；`test_explicit_direction_and_negation`正确保留“栈是DFS的前置知识”方向，拒绝否定/可能句的确定边；`test_literal_aliases_only`仅原文`Stack（栈）`支持模型别名，不按常识补BFS翻译；`test_envelope_limits_and_missing_pages`检查81节点整份失败、无页码仍为null。
 
   核心断言示例（仅计划，未运行）：
 
@@ -132,10 +132,10 @@
   result = validate_candidates(payload, "栈：后进先出。", "synthetic-source", [])
   assert [item["validation"] for item in result["nodes"]] == ["valid", "invalid"]
   ```
-- [ ] **Step 2 — 验证红灯。** `uv run pytest filemate/tests/course_graph/test_extraction.py -q`；预期新函数未定义，保存输出。
-- [ ] **Step 3 — 最小实现。** 原始术语与逐字引用不可被显示名编辑覆盖；定义必须是引用内的连续原文。关系列明“规则支持/需语义核对/无效”，已知共现不支持依赖、悬空两端、反向/否定冲突不能确认；复杂但有效引文仍须用户逐项核对，不宣传机器已证明语义。根结构/超限失败；坏项保留有界原因，不输出供应商异常正文。新Prompt版本`course-graph-b1`，不让资料指令改授权。
-- [ ] **Step 4 — 验证绿灯。** 上述文件及`uv run pytest filemate/tests/test_knowledge_graph.py -q`全部通过。固定Provider替身仅作合成回归，单列真实模型质量待测。
-- [ ] **Step 5 — 提交。** `feat(graph): 增加逐项引用与关系候选校验`。
+- [x] **Step 2 — 验证红灯。** `uv run pytest filemate/tests/course_graph/test_extraction.py -q`；预期新函数未定义，保存输出。
+- [x] **Step 3 — 最小实现。** 原始术语与逐字引用不可被显示名编辑覆盖；定义必须是引用内的连续原文。关系列明“规则支持/需语义核对/无效”，已知共现不支持依赖、悬空两端、反向/否定冲突不能确认；复杂但有效引文仍须用户逐项核对，不宣传机器已证明语义。根结构/超限失败；坏项保留有界原因，不输出供应商异常正文。新Prompt版本`course-graph-b1`，不让资料指令改授权。
+- [x] **Step 4 — 验证绿灯。** 上述文件及`uv run pytest filemate/tests/test_knowledge_graph.py -q`全部通过。固定Provider替身仅作合成回归，单列真实模型质量待测。
+- [x] **Step 5 — 提交。** `feat(graph): 增加逐项引用与关系候选校验`。
 
 ## Task 3: 多资料提取的持久状态与恢复
 
