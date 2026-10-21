@@ -155,11 +155,11 @@
 
 **Interfaces:** `ItemDecision(item_id, verdict: Literal['accept','reject','revise'], label: str | None, aliases: list[str], relation: str | None, semantic_checked: bool)`，from/to修订作为显式可选字段；`save_decisions(storage, course_id, draft_id, expected_digest: str, decisions: list[ItemDecision]) -> dict[str, Any]`；`preview_review(storage, course_id, draft_id) -> dict[str, Any]`；`confirm_review(storage, course_id, draft_id, request_key: str, confirmation_token: str, confirmed: bool) -> dict[str, Any]`。预览取服务端已保存决策，客户端不能在确认时悄悄替换选择。
 
-- [ ] **Step 1 — 写失败测试。** `test_only_accepted_items_publish`接受一个节点、拒绝一个、留一个待审核，只发布第一个；`test_invalid_or_unchecked_relation_cannot_publish`非法引用/known unsupported边即便伪造accept也拒绝，需语义核对项未勾核对也拒绝；`test_revision_and_token_prevent_stale_confirmation`另一窗口改决策或资料后旧token=409；`test_confirm_retry_is_idempotent`同键同请求只产生一份结果和审核事件；`test_edge_with_unaccepted_endpoint_is_blocked`禁止确认缺端点边。
-- [ ] **Step 2 — 验证红灯。** `uv run pytest filemate/tests/course_graph/test_review.py -q`；预期新审核接口不存在。
-- [ ] **Step 3 — 最小实现。** 状态pending/confirmed/rejected/revoked均持久化；显示名修订保留原术语及来源引用，人工别名标明origin=user，不能冒充原文别名。每次修订from/to/relation均用原始术语与当前Source快照重新校验，不沿用修订前valid；无效引文不能只改显示名变成有效。预览digest绑定Source、决策、course和候选版本；复用`data_actions`发证。确认事务重新校验全部选中项、写稳定概念/关系/来源映射和同一操作回执；旧批次不复制为“已审核”，不向旧API可确认批次写入新候选。
-- [ ] **Step 4 — 验证绿灯。** 上述文件及旧graph存储回归通过；注入写入中断，无半套节点/证据或成功回执。相同旧节点再确认不无限复制；重复原文但两个不同概念不得只按label静默融合。
-- [ ] **Step 5 — 提交。** `feat(graph): 实现逐项审核与确认事务`。
+- [x] **Step 1 — 写失败测试。** `test_only_accepted_items_publish`接受一个节点、拒绝一个、留一个待审核，只发布第一个；`test_invalid_or_unchecked_relation_cannot_publish`非法引用/known unsupported边即便伪造accept也拒绝，需语义核对项未勾核对也拒绝；`test_revision_and_token_prevent_stale_confirmation`另一窗口改决策或资料后旧token=409；`test_confirm_retry_is_idempotent`同键同请求只产生一份结果和审核事件；`test_edge_with_unaccepted_endpoint_is_blocked`禁止确认缺端点边。
+- [x] **Step 2 — 验证红灯。** `uv run pytest filemate/tests/course_graph/test_review.py -q`；预期新审核接口不存在。
+- [x] **Step 3 — 最小实现。** 状态pending/confirmed/rejected/revoked均持久化；显示名修订保留原术语及来源引用，人工别名标明origin=user，不能冒充原文别名。每次修订from/to/relation均用原始术语与当前Source快照重新校验，不沿用修订前valid；无效引文不能只改显示名变成有效。预览digest绑定Source、决策、course和候选版本；复用`data_actions`发证。确认事务重新校验全部选中项、写稳定概念/关系/来源映射和同一操作回执；旧批次不复制为“已审核”，不向旧API可确认批次写入新候选。
+- [x] **Step 4 — 验证绿灯。** 上述文件及旧graph存储回归通过；注入写入中断，无半套节点/证据或成功回执。相同旧节点再确认不无限复制；重复原文但两个不同概念不得只按label静默融合。
+- [x] **Step 5 — 提交。** `feat(graph): 实现逐项审核与确认事务`。
 
 ## Task 5: 同课程融合与指定操作撤销
 

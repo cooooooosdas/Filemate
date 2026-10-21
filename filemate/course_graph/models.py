@@ -5,7 +5,23 @@ import json
 import re
 import unicodedata
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ItemDecision(BaseModel):
+    """Capture an explicit bounded human review decision."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    item_id: str = Field(min_length=1, max_length=80)
+    verdict: Literal["accept", "reject", "revise"]
+    label: str | None = Field(default=None, min_length=1, max_length=120, pattern=r"\S")
+    aliases: list[str] = Field(default_factory=list, max_length=20)
+    relation: str | None = Field(default=None, max_length=30)
+    from_label: str | None = Field(default=None, min_length=1, max_length=120)
+    to_label: str | None = Field(default=None, min_length=1, max_length=120)
+    semantic_checked: bool = False
 
 
 class CourseGraphError(ValueError):

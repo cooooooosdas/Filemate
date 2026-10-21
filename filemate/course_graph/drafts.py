@@ -95,21 +95,27 @@ class DraftService:
                             error_code='lease_expired',updated_at=? WHERE course_id=? AND draft_id=?
                             AND status='running' AND (lease_until IS NULL OR lease_until<=?)""",
                          (self._now().isoformat(), course_id, draft_id, self._now().isoformat()))
-            rows = conn.execute("SELECT * FROM kg_extractions WHERE course_id=? AND draft_id=? ORDER BY source_id",
-                                (course_id, draft_id)).fetchall()
-            sources = []
-            for row in rows:
-                item = dict(row)
-                item["payload"] = json.loads(item["payload"])
-                item["source_current"] = self._current(conn, row)
-                sources.append(item)
-            # 删除来源后仅保留操作中的匿名ID，正文候选由FK清除。
-            for original in group["metadata"]["sources"]:
-                if original["source_id"] not in {r["source_id"] for r in sources}:
-                    sources.append({"source_id": original["source_id"], "status": "unavailable", "payload": {},
-                                    "source_current": False})
-            return {"course_id": course_id, "draft_id": draft_id, "status": group["status"],
-                    "input_digest": group["input_digest"], "revision_digest": digest(sources), "sources": sources}
+            return self.read_snapshot(conn, course_id, draft_id, group)
+
+    def read_snapshot(self, conn, course_id: str, draft_id: str,
+                      group: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Read the same draft contract inside an existing confirmation transaction."""
+        group = group or self._group(conn, course_id, draft_id)
+        rows = conn.execute("SELECT * FROM kg_extractions WHERE course_id=? AND draft_id=? ORDER BY source_id",
+                            (course_id, draft_id)).fetchall()
+        sources = []
+        for row in rows:
+            item = dict(row)
+            item["payload"] = json.loads(item["payload"])
+            item["source_current"] = self._current(conn, row)
+            sources.append(item)
+        # 删除来源后仅保留操作中的匿名ID，正文候选由FK清除。
+        for original in group["metadata"]["sources"]:
+            if original["source_id"] not in {r["source_id"] for r in sources}:
+                sources.append({"source_id": original["source_id"], "status": "unavailable", "payload": {},
+                                "source_current": False})
+        return {"course_id": course_id, "draft_id": draft_id, "status": group["status"],
+                "input_digest": group["input_digest"], "revision_digest": digest(sources), "sources": sources}
 
     def extract_source(self, course_id: str, draft_id: str, source_id: str,
                        request_key: str, allow_external_model: bool) -> dict[str, Any]:
@@ -147,6 +153,8 @@ class DraftService:
                         for item in payload.get("nodes", []) + payload.get("edges", []):
                             item["decision"] = "pending"
                             item.pop("revision", None)
+                            item.pop("review_status", None)
+                            item.pop("published_id", None)
                         conn.execute("UPDATE kg_extractions SET status=?,payload=?,error_code=NULL,updated_at=? WHERE extraction_id=?",
                                      (cached["status"], json.dumps(payload, ensure_ascii=False), self._now().isoformat(),
                                       row["extraction_id"]))
