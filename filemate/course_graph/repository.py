@@ -1,5 +1,6 @@
 """Tenant-local course persistence with short write transactions."""
 
+import json
 import sqlite3
 from contextlib import contextmanager
 from typing import Any
@@ -35,6 +36,31 @@ def require_course(conn: sqlite3.Connection, course_id: str) -> dict[str, Any]:
     if row is None:
         raise CourseGraphError("course_not_found", 404)
     return dict(row)
+
+
+def get_request(conn: sqlite3.Connection, course_id: str, request_key: str,
+                kind: str, input_digest: str) -> dict[str, Any] | None:
+    """Bind every idempotency key to one command and normalized body."""
+    row = conn.execute("SELECT * FROM kg_changes WHERE course_id=? AND request_key=?",
+                       (course_id, request_key)).fetchone()
+    if row is None:
+        return None
+    if row["kind"] != kind or row["input_digest"] != input_digest:
+        raise CourseGraphError("request_key_conflict")
+    result = dict(row)
+    result["metadata"] = json.loads(result["metadata"])
+    return result
+
+
+def record_change(conn: sqlite3.Connection, course_id: str, request_key: str, kind: str,
+                  input_digest: str, metadata: dict[str, Any], operation_id: str | None = None) -> str:
+    """Persist only command identities and inverse metadata in operation history."""
+    oid, stamp = operation_id or str(uuid4()), now_iso()
+    conn.execute("""INSERT INTO kg_changes(operation_id,course_id,kind,request_key,input_digest,
+                    metadata,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)""",
+                 (oid, course_id, kind, request_key, input_digest,
+                  json.dumps(metadata, ensure_ascii=False), stamp, stamp))
+    return oid
 
 
 class CourseGraphRepository:

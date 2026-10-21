@@ -143,11 +143,11 @@
 
 **Interfaces:** `DraftService(storage: SQLiteStorage, provider_factory: Callable[[], Any], clock: Callable[[], datetime])`；`create_group(course_id: str, source_ids: list[str], mode: str, request_key: str) -> dict[str, Any]`；`snapshot(course_id: str, draft_id: str) -> dict[str, Any]`；`extract_source(course_id: str, draft_id: str, source_id: str, request_key: str, allow_external_model: bool) -> dict[str, Any]`；`cancel(course_id: str, draft_id: str, request_key: str) -> dict[str, Any]`。
 
-- [ ] **Step 1 — 写失败测试。** `test_one_failed_source_does_not_drop_others`三份来源只有第二份模型失败，第一份候选仍可重开；`test_two_connections_claim_once`两连接同键只调用Provider一次；`test_stale_or_cancelled_result_never_commits`阻塞Provider时更新正文/取消，再释放，断言无迟到候选；`test_reload_expired_claim_is_interrupted`模拟60秒lease过期，状态可重试、不自动启动模型；`test_completed_same_input_reuses_result`相同来源集合/内容/模式复用已完成组，不增加提取或调用AI；不同来源集合中的已完成来源可复用结果并标明缓存来源，最终确认不复制概念。
-- [ ] **Step 2 — 验证红灯。** `uv run pytest filemate/tests/course_graph/test_drafts.py -q`；预期服务缺失或认领语义不满足。
-- [ ] **Step 3 — 最小实现。** 分组请求只持久化至多10份Source引用，`kg_extractions`逐来源记录状态pending/running/ready/partial/failed/interrupted；同组/同键绑定完整输入摘要，相同组输入复用既有分组。不同组重复来源时可保存标明cache_origin的候选副本，不再次调用AI；概念/旧键映射仍按确认唯一约束去重。失败允许明确重试；认领事务结束后再调用Provider，完成时校验epoch、lease、Source revision和课程归属。同步HTTP逐份执行，不建后台任务系统，不持久化请求密钥；取消不能删除已确认结果。
-- [ ] **Step 4 — 验证绿灯。** 上述文件全部通过；用`resource_scope`及假供应商验证额度拒绝时Provider调用0次、失败记录脱敏；其他身份和其他学习页不受全局锁阻塞。
-- [ ] **Step 5 — 提交。** `feat(graph): 持久化多资料提取与失败恢复`。
+- [x] **Step 1 — 写失败测试。** `test_one_failed_source_does_not_drop_others`三份来源只有第二份模型失败，第一份候选仍可重开；`test_two_connections_claim_once`两连接同键只调用Provider一次；`test_stale_or_cancelled_result_never_commits`阻塞Provider时更新正文/取消，再释放，断言无迟到候选；`test_reload_expired_claim_is_interrupted`模拟60秒lease过期，状态可重试、不自动启动模型；`test_completed_same_input_reuses_result`相同来源集合/内容/模式复用已完成组，不增加提取或调用AI；不同来源集合中的已完成来源可复用结果并标明缓存来源，最终确认不复制概念。
+- [x] **Step 2 — 验证红灯。** `uv run pytest filemate/tests/course_graph/test_drafts.py -q`；预期服务缺失或认领语义不满足。
+- [x] **Step 3 — 最小实现。** 分组请求只持久化至多10份Source引用，`kg_extractions`逐来源记录状态pending/running/ready/partial/failed/interrupted；同组/同键绑定完整输入摘要，相同组输入复用既有分组。不同组重复来源时可保存标明cache_origin的候选副本，不再次调用AI；概念/旧键映射仍按确认唯一约束去重。失败允许明确重试；认领事务结束后再调用Provider，完成时校验epoch、lease、Source revision和课程归属。同步HTTP逐份执行，不建后台任务系统，不持久化请求密钥；取消不能删除已确认结果。
+- [x] **Step 4 — 验证绿灯。** 上述文件全部通过；用`resource_scope`及假供应商验证额度拒绝时Provider调用0次、失败记录脱敏；其他身份和其他学习页不受全局锁阻塞。
+- [x] **Step 5 — 提交。** `feat(graph): 持久化多资料提取与失败恢复`。
 
 ## Task 4: 逐项审核与原子确认
 
