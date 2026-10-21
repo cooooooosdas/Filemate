@@ -23,6 +23,7 @@ from filemate.execution import (
     interview_configuration_schema,
     interview_runtime_schema,
 )
+from filemate.interview_assessment import schema as interview_assessment_schema
 from filemate.interview_coach import schema as interview_coach_schema
 from filemate.task_resources import admit_plan, admit_tasks
 
@@ -625,6 +626,7 @@ _MIGRATIONS = (
     (27, "immutable_interview_answers", interview_coach_schema.SCHEMA),
     (28, "interview_configuration", interview_configuration_schema.SCHEMA),
     (29, "interview_runtime", interview_runtime_schema.SCHEMA),
+    (30, "interview_six_assessments", interview_assessment_schema.SCHEMA),
 )
 
 

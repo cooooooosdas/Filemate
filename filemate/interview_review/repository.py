@@ -130,6 +130,7 @@ class ReviewRepository:
             conn.execute("UPDATE interview_review_state SET revision=revision+1 WHERE interview_id=?",
                          (interview_id,))
             conn.execute("UPDATE interview_coach_analysis_runs SET status='cancelling' WHERE interview_id=? AND status='running'", (interview_id,))
+            conn.execute("UPDATE interview_assessments SET status='cancelling',error_code='cancelled' WHERE interview_id=? AND status='running'", (interview_id,))
             conn.execute("UPDATE interview_coach_state SET revision=revision+1,updated_at=? WHERE interview_id=?", (_now_iso(), interview_id))
             self._event(interview_id, "analysis_cancelled")
         return {"cancelled": True}
@@ -151,6 +152,8 @@ class ReviewRepository:
             report_ids = self._report_ids(interview_id)
             for artifact_id in report_ids:
                 conn.execute("DELETE FROM artifacts WHERE artifact_id=?", (artifact_id,))
+            conn.execute("DELETE FROM interview_assessment_evidence WHERE assessment_id IN (SELECT assessment_id FROM interview_assessments WHERE interview_id=?)", (interview_id,))
+            conn.execute("UPDATE interview_assessments SET status=CASE WHEN status IN ('running','cancelling') THEN 'cancelling' ELSE 'cancelled' END,error_code='cleared',input_snapshot='{}',rubric_snapshot='{}',artifact_id=NULL WHERE interview_id=?", (interview_id,))
             conn.execute("UPDATE interview_answer_attempts SET visual_metrics='{}' WHERE interview_id=?", (interview_id,))
             conn.execute("UPDATE interview_coach_analysis_runs SET evaluation='{}',error_code='cleared',status=CASE WHEN status IN ('running','cancelling') THEN 'cancelling' ELSE 'cancelled' END WHERE interview_id=?", (interview_id,))
             conn.execute("UPDATE interview_coach_state SET external_consent=0,consent_revision=consent_revision+1,revision=revision+1,updated_at=? WHERE interview_id=?", (_now_iso(), interview_id))
@@ -175,7 +178,7 @@ class ReviewRepository:
         interview, revision = self.snapshot(interview_id)
         conn = self.storage._conn()
         counts = {label: conn.execute(f'SELECT COUNT(*) FROM {table} WHERE interview_id=?', (interview_id,)).fetchone()[0]
-                  for label, table in [('answer_attempts','interview_answer_attempts'),('analysis_runs','interview_coach_analysis_runs'),('coach_actions','interview_coach_actions'),('runtime_tasks','interview_tasks'),('runtime_events','interview_events')]}
+                  for label, table in [('answer_attempts','interview_answer_attempts'),('analysis_runs','interview_coach_analysis_runs'),('assessments','interview_assessments'),('coach_actions','interview_coach_actions'),('runtime_tasks','interview_tasks'),('runtime_events','interview_events')]}
         coach = conn.execute('SELECT revision FROM interview_coach_state WHERE interview_id=?', (interview_id,)).fetchone()
         reports = len(self._report_ids(interview_id))
         token = hashlib.sha256(json.dumps([evidence_digest(interview),revision,coach[0] if coach else None,counts,reports],sort_keys=True).encode()).hexdigest()

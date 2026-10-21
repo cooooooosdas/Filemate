@@ -54,6 +54,7 @@ try {
         filemate/tests/test_p1_personal_backup.py `
         filemate/programming `
         filemate/interview_audio.py filemate/tests/test_interview_audio.py `
+        filemate/interview_assessment filemate/tests/test_interview_assessment.py filemate/tests/test_interview_assessment_storage.py filemate/tests/test_interview_assessment_api.py `
         filemate/interview_coach filemate/tests/test_interview_coach_storage.py filemate/tests/test_interview_coach_commands.py filemate/tests/test_interview_coach_analysis.py filemate/tests/test_interview_coach_api.py filemate/tests/test_interview_coach_evidence.py filemate/tests/test_interview_coach_privacy.py filemate/interview_runtime.py filemate/execution/interview_runtime_schema.py filemate/tests/test_interview_runtime.py filemate/tests/test_interview_runtime_api.py filemate/interview_review filemate/interview_config.py filemate/tests/test_interview_configuration.py filemate/tests/test_interview_configuration_api.py `
         filemate/career `
         filemate/operations `

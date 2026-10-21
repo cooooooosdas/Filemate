@@ -1014,3 +1014,18 @@ Replay binds to session/question/attempt/token. Only a matching coach receipt at
 
 
 Stage5 cancellation semantics: the UI stops waiting for microphone permission after15seconds or explicit cancellation; a browser permission dialog itself cannot be forcibly dismissed. Late grants release tracks without reviving an old recording or clearing a newer operation. Visual evidence is detached from reactive UI values before answer submission. Unknown save outcomes reuse the frozen evidence; explicitly abandoning a confirmed-conflict draft invalidates video and visual evidence. Audio/video playback and capture/transcription are mutually exclusive. These are browser behaviors; endpoint and schema contracts are unchanged.
+
+## 面试2.0 第六阶段：六维标准与可重算报告（本地候选）
+
+业务 schema30：interview_rubrics（ID+version）、interview_assessments（状态/快照/Artifact）、interview_assessment_evidence（回答版本与旧分析run的FK引用）、interview_assessment_limits（不可由清空重置的累计额度）。旧四维报告不改写，六维报告version=2.6，Artifact type仍为interview_report，metadata记录assessment_id。
+
+- GET /interviews/{id}/assessments/context：enabled、input_digest、rubric完整定义、answered、model_requests_remaining、最近20条history。
+- POST /interviews/{id}/assessments：严格body `{request_key,expected_digest,mode:"local"|"model",external_consent:false}`；key16至80位字母数字下划线短横线，摘要64位hex。local只整理证据、分数为空；model必须逐次明确授权并通过LOCAL_ONLY、来源权限及总开关检查。返回assessment_id、interview_id、status、mode、error_code、created_at、input_digest、report（失败为空）。传输/格式失败作为持久化failed状态返回200，不伪造成功分数；资源/权限/并发冲突按404/409/429/503。
+- GET /interviews/{id}/assessments/{assessment_id}：当前租户内读取指定版本，report保留原标准和原回答快照。
+- GET /interviews/{id}/assessments/{assessment_id}/export?format=json|markdown|pdf：no-store下载，PDF复用中文字体与转义渲染器；导出留下有限操作记录。
+- GET /interview/assessments/history?limit=20&offset=0：当前学习空间分页，limit1..100；已清空墓碑不出现在列表。
+- GET /interview/assessments/compare?left={assessment_id}&right={assessment_id}：两边都需属于当前空间且有报告。标准快照、配置/语言、岗位、模型/提示/规则版本与证据种类一致才comparable=true；缺任一对应评分时delta=null；不可比给明确reason，不画成长曲线。
+
+标准包含每维id/name/range/weight/required/evidence_kind/scope/anchors，Rubric ID+version及内容摘要不可在同版本改写。model只可返回六个维度，不得返回总分；服务端校验严格JSON、有限0..100分数、真实引用ID和模态。每个已评分维度必须至少有当前回答原句，互动/时间维度另需同一回答的已回应事件或已完成任务时间。口头清晰度缺经验证的声音证据时为空，旧ASR回调和摄像头摘要不入新能力分。核心缺失时overall_score=null；否则仅对有效权重归一并在weighting说明，缺失维度不补0。
+
+重复request_key仅返回原记录，改body为409；晚到结果核对输入摘要、同意/复盘修订、随机执行epoch、65秒租约和当前开关。取消/清空后保持cancelling互斥直到调用返回或租约到期。旧逐题分析与六维模型调用互斥。每场模型最多6次申请，各预留2次调用；最多100份报告记录；关闭只阻止新写入。真实模型供应商仍经现役适配层与全局用量治理。新表纳入个人及管理员备份；恢复running/cancelling为interrupted，轮换epoch，撤销原有外发同意，不重放设备或AI。清空擦除六维报告/证据快照，保留去重墓碑与额度；删除整场预览包含assessments计数并级联删除所有版本及Artifact。

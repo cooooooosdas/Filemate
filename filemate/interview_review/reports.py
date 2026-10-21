@@ -144,6 +144,10 @@ def build_report(interview: dict[str, Any]) -> dict[str, Any]:
 
 def report_markdown(report: dict[str, Any]) -> str:
     """导出保留原句、数据来源和缺失说明的Markdown。"""
+    if report.get('version') == '2.6':
+        from filemate.interview_assessment.reports import markdown
+
+        return markdown(report)
     expression = report["expression"]
     pace = (f"{expression['words_per_minute']} 词/分钟"
             if expression.get("words_per_minute") is not None

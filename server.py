@@ -49,6 +49,7 @@ from filemate.execution.confirmation_executor import (
     ExecutionError,
 )
 from filemate.execution.storage import QuestionRevisionConflict, SQLiteStorage
+from filemate.interview_assessment.repository import AssessmentCommand, AssessmentRepository
 from filemate.interview_coach.models import (
     AdvanceCommand,
     AnalysisCommand,
@@ -4588,6 +4589,13 @@ async def interview_coach_error_handler(request: Request, exc: CoachError):
         "runtime_task_not_skippable": "只有尚未作答的互动挑战可以跳过",
         "runtime_answer_required": "请先填写回答",
         "runtime_request_conflict": "请求键对应不同内容，请保留输入并重新读取",
+        "assessment_stale": "回答、权限或任务已变化，本次重算未发布；请刷新后重新操作",
+        "assessment_answer_required": "请先提交至少一条回答，再生成六维报告",
+        "assessment_evidence_unavailable": "回答证据或场景标准无法读取，原回答与旧报告保留",
+        "assessment_report_unavailable": "此版本尚无可导出的六维报告，请查看分析状态",
+        "assessment_rubric_conflict": "同一标准版本内容不一致，已停止重算，请联系维护者",
+        "assessment_budget": "本场六维模型重算已达到6次上限；已有报告仍可查看和导出",
+        "assessment_limit": "本场报告已达到100份上限，请导出后整理记录",
     }
     message = messages.get(exc.code, "面试或回答不存在" if exc.status_code == 404 else "记录已变化，请保留草稿并重新读取")
     data = {"error_code": exc.code, "retryable": exc.status_code in {429, 502, 503}}
@@ -4828,6 +4836,83 @@ def export_interview_report(interview_id: str, format: Literal["json", "markdown
         })
     except (KeyError, ValueError) as exc:
         raise _interview_review_error(exc) from exc
+
+
+def _assessment_repository():
+    return AssessmentRepository(_interview_review_repository().storage)
+
+
+def _assessment_enabled():
+    return (os.getenv('FILEMATE_ENABLE_INTERVIEW_ASSESSMENT', '0') == '1'
+            and os.getenv('FILEMATE_ENABLE_INTERVIEW_COACH', '0') == '1'
+            and os.getenv('FILEMATE_ENABLE_INTERVIEW_REVIEW', '1') != '0')
+
+
+@app.get('/interviews/{interview_id}/assessments/context')
+def assessment_context(interview_id: str):
+    return ApiResponse(success=True, data={**_assessment_repository().context(interview_id), 'enabled': _assessment_enabled()})
+
+
+@app.post('/interviews/{interview_id}/assessments')
+def create_assessment(interview_id: str, command: AssessmentCommand):
+    from filemate.interview_assessment.service import AssessmentService
+
+    if not _assessment_enabled():
+        raise HTTPException(503, '六维重算暂未启用，旧报告与已有六维报告仍可读取和导出')
+    if command.mode == 'model':
+        if not command.external_consent:
+            raise CoachError('consent_required')
+        _guard_interview_external(interview_id)
+    service = AssessmentService(_assessment_repository(), _coach_llm, enabled=_assessment_enabled)
+    return ApiResponse(success=True, data=service.create(interview_id, command))
+
+
+@app.get('/interview/assessments/history')
+def assessment_history(limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0)):
+    return ApiResponse(success=True, data=_assessment_repository().history(limit=limit, offset=offset))
+
+
+def _owned_assessment(assessment_id: str):
+    repo = _assessment_repository()
+    row = repo.storage._conn().execute('SELECT interview_id FROM interview_assessments WHERE assessment_id=?', (assessment_id,)).fetchone()
+    if not row:
+        raise CoachError('assessment_not_found', 404)
+    result = repo.read(row[0], assessment_id)
+    if not result['report']:
+        raise CoachError('assessment_report_unavailable')
+    return result
+
+
+@app.get('/interview/assessments/compare')
+def compare_assessments(left: str = Query(min_length=16, max_length=80), right: str = Query(min_length=16, max_length=80)):
+    from filemate.interview_assessment.rules import compare_reports
+
+    return ApiResponse(success=True, data=compare_reports(_owned_assessment(left)['report'], _owned_assessment(right)['report']))
+
+
+@app.get('/interviews/{interview_id}/assessments/{assessment_id}')
+def read_assessment(interview_id: str, assessment_id: str):
+    return ApiResponse(success=True, data=_assessment_repository().read(interview_id, assessment_id))
+
+
+@app.get('/interviews/{interview_id}/assessments/{assessment_id}/export')
+def export_assessment(interview_id: str, assessment_id: str, format: Literal['json', 'markdown', 'pdf'] = 'json'):
+    from filemate.interview_review.reports import report_markdown, report_pdf
+
+    report = _assessment_repository().read(interview_id, assessment_id)['report']
+    if not report:
+        raise CoachError('assessment_report_unavailable')
+    if format == 'pdf':
+        data, mime, ext = report_pdf(report), 'application/pdf', 'pdf'
+    elif format == 'markdown':
+        data, mime, ext = report_markdown(report).encode(), 'text/markdown; charset=utf-8', 'md'
+    else:
+        data, mime, ext = json.dumps(report, ensure_ascii=False, indent=2).encode(), 'application/json', 'json'
+    repo = _interview_review_repository()
+    with repo.storage._conn():
+        repo._event(interview_id, 'assessment_exported', {'assessment_id': assessment_id, 'format': format})
+    return Response(content=data, media_type=mime, headers={'Cache-Control': 'no-store',
+                    'Content-Disposition': f'attachment; filename="filemate-assessment-{assessment_id}.{ext}"'})
 
 
 def _career_repository() -> Any:

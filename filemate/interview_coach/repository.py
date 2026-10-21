@@ -673,7 +673,7 @@ class CoachRepository:
             if conn.execute(
                 "SELECT 1 FROM interview_coach_analysis_runs WHERE interview_id=? AND status IN ('running','cancelling')",
                 (interview_id,),
-            ).fetchone():
+            ).fetchone() or conn.execute("SELECT 1 FROM interview_assessments WHERE interview_id=? AND status IN ('running','cancelling') AND deadline_at>?", (interview_id, now())).fetchone():
                 raise CoachError("analysis_in_progress")
             view = attempt_view(conn, attempt)
             if view.data_error:
