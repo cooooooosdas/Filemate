@@ -342,6 +342,11 @@ class InterviewEvaluator:
         speech_language: str = "zh-CN",
     ) -> dict[str, Any]:
         """把浏览器语音节奏转成透明、低权重的流畅性参考分。"""
+        if metrics and metrics.get("source") == "browser_media_v1":
+            from filemate.interview_audio import MediaEvidence
+
+            evaluation["fluency"] = MediaEvidence.model_validate(metrics).model_dump()
+            return evaluation
         if not metrics or metrics.get("source") != "speech_recognition":
             return evaluation
 

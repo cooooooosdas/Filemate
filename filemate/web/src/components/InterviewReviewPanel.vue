@@ -1,6 +1,6 @@
 <template>
   <section class="interview-review-panel" aria-labelledby="interview-report-title">
-    <header><div><p>学习空间复盘 · V2.4</p><h2 id="interview-report-title">面试复盘报告</h2></div><span>专家校准：待校准</span></header>
+    <header><div><p>学习空间复盘 · V2.5</p><h2 id="interview-report-title">面试复盘报告</h2></div><span>专家校准：待校准</span></header>
     <p class="privacy-note">视频只在当前页面内存中，不上传，刷新后清除。回答、节奏和观察摘要保存在学习空间；模型建议仅供训练参考。</p>
     <div class="report-actions">
       <button v-if="!readOnly" class="primary" :disabled="busy || !session.turns.length" @click="generate">{{ generating ? '正在生成…' : report ? '更新规则复盘报告' : '生成规则复盘报告' }}</button>
@@ -18,6 +18,9 @@
     <article v-if="report" class="report-body">
       <p>{{ report.purpose }}</p>
       <div class="report-facts"><span>已回答 <b>{{ report.answered }} / {{ report.total }}</b></span><span>内容评估 <b>{{ report.assessed }} 题</b></span><span>语音证据 <b>{{ report.expression.speech_turns }} 题</b></span><span>视觉采样 <b>{{ report.visual.sample_count }}</b></span></div>
+      <h3>独立音频证据</h3>
+      <p v-if="report.audio?.sampled_turns">{{ report.audio.sampled_turns }}题可测量，共{{ report.audio.duration_seconds }}秒。{{ report.audio.method }}</p>
+      <p v-else>未采集可测量的独立音频；不推算语速或能力分数。</p>
       <h3>表达与停顿</h3>
       <p>语速：{{ report.expression.words_per_minute != null ? `${report.expression.words_per_minute} 词/分钟` : report.expression.chars_per_minute == null ? '待评测' : `${report.expression.chars_per_minute} 字/分钟` }}；口头语：{{ report.expression.filler_count ?? '待评测' }}；较长识别间隔：{{ report.expression.long_pause_count ?? '待评测' }}。</p>
       <small>{{ report.expression.method }}</small>
@@ -28,7 +31,7 @@
       <p v-if="!report.timeline.length">没有采集时间证据，待评测。</p>
       <ol v-else class="report-timeline"><li v-for="(event, index) in report.timeline" :key="index"><button :disabled="event.timebase !== 'recording' || !recordingIndexes.includes(event.question_index)" @click="$emit('seek', event.question_index, event.start)">第{{ event.question_index + 1 }}题 · {{ time(event.start) }}{{ event.end > event.start ? `-${time(event.end)}` : '' }} · {{ event.label }}</button><small>{{ event.timebase === 'recording' ? recordingIndexes.includes(event.question_index) ? '本地录像时间' : '录像已清除，保留观察时间' : event.timebase === 'speech' ? '语音识别时间，未与录像对齐' : '视觉采集时间，未与录像对齐' }}</small></li></ol>
       <h3>专业内容与逻辑结构</h3>
-      <details v-for="turn in report.turns" :key="turn.turn_id"><summary>第{{ turn.question_index + 1 }}题 · {{ turn.content_analysis.areas ? '模型参考建议' : '内容待评估' }}</summary><p>{{ turn.question }}</p><blockquote>{{ turn.answer }}</blockquote><p>规则表达线索：{{ turn.structure.cues.join('、') || '未观察到预设线索' }}；这些线索不代表内容准确。</p><p v-if="turn.data_error" class="report-error">部分分析数据异常，已跳过，原回答保留。</p><div v-for="(area, name) in turn.content_analysis.areas" :key="name" class="analysis-area"><b>{{ areaLabels[String(name)] || name }} · {{ statusLabels[area.status] }}</b><p v-if="area.evidence">原句：{{ area.evidence }}</p><p>{{ area.suggestion }}</p></div><p v-if="turn.content_analysis.keywords?.length">原回答关键词：{{ turn.content_analysis.keywords.join("、") }}</p><div v-for="(quote, name) in turn.content_analysis.dimension_evidence" :key="name" class="quote-evidence">{{ name }}维度原句：{{ quote }}</div></details>
+      <details v-for="turn in report.turns" :key="turn.turn_id"><summary>第{{ turn.question_index + 1 }}题 · {{ turn.content_analysis.areas ? '模型参考建议' : '内容待评估' }}</summary><p>{{ turn.question }}</p><blockquote>{{ turn.answer }}</blockquote><p>规则表达线索：{{ turn.structure.cues.join('、') || '未观察到预设线索' }}；这些线索不代表内容准确。</p><p v-if="turn.audio">本机音频：{{ turn.audio.summary ? `${turn.audio.summary.duration_seconds}秒，低能量${turn.audio.summary.low_energy_seconds}秒` : '摘要无法测量' }}。设备上报，非能力评分。</p><p v-if="turn.transcription">转写：{{ turn.transcription.status }}；供应商置信估计{{ turn.transcription.confidence == null ? '未提供' : turn.transcription.confidence.toFixed(2) }}（非准确率）。原文：{{ turn.transcription.segments.map(s => s.text).join(' / ') || '无最终识别结果' }}</p><p v-if="turn.data_error" class="report-error">部分分析数据异常，已跳过，原回答保留。</p><div v-for="(area, name) in turn.content_analysis.areas" :key="name" class="analysis-area"><b>{{ areaLabels[String(name)] || name }} · {{ statusLabels[area.status] }}</b><p v-if="area.evidence">原句：{{ area.evidence }}</p><p>{{ area.suggestion }}</p></div><p v-if="turn.content_analysis.keywords?.length">原回答关键词：{{ turn.content_analysis.keywords.join("、") }}</p><div v-for="(quote, name) in turn.content_analysis.dimension_evidence" :key="name" class="quote-evidence">{{ name }}维度原句：{{ quote }}</div></details>
       <h3>薄弱项与下一步</h3>
       <p v-if="!report.review_focus.length">薄弱知识点待评估，不由回答长度或面部动作推断。</p>
       <ul v-else><li v-for="(item, index) in report.review_focus" :key="index">第{{ item.question_index + 1 }}题 · {{ item.area }}（模型待核对）：{{ item.suggestion }}</li></ul>

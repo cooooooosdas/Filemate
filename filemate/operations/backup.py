@@ -566,6 +566,7 @@ def restore_backup(backup: Path, target: Path, confirmation: str) -> dict[str, A
             raise ValueError('当前删除账本复制失败，新目录不可启用')
     normalized = 0
     from filemate.interview_coach.repository import normalize_restored_coach
+    from filemate.interview_config import normalize_restored_configuration
 
     for entry in manifest['entries']:
         if entry['kind'] != 'database' or entry['database'].get('database_kind') == 'resource_governance':
@@ -577,6 +578,13 @@ def restore_backup(backup: Path, target: Path, confirmation: str) -> dict[str, A
                 conn.execute('BEGIN IMMEDIATE')
                 exists = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='interview_coach_state'").fetchone()
                 normalize_restored_coach(conn)
+                normalize_restored_configuration(conn)
+                from filemate.interview_runtime import normalize_restored_runtime
+
+                normalize_restored_runtime(conn)
+                from filemate.interview_assessment.repository import normalize_restored_assessments
+
+                normalize_restored_assessments(conn)
                 if conn.execute('PRAGMA foreign_key_check').fetchone():
                     raise ValueError('恢复安全规范化失败，新目录不可启用')
                 normalized += int(bool(exists))

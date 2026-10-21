@@ -15,6 +15,7 @@ export async function getEncouragementQuote(): Promise<unknown> {
 }
 import type { CareerComparison, CareerEvent, CareerOverview, CareerPosition, CareerRecord, CareerTraining, CareerPlanPreview, CareerLearningPlan } from '../types/career'
 import type { ContentAnalysis, InterviewDeletePreview, InterviewReport, InterviewReviewEvent, VisualMetrics } from '../types/interviewReview'
+import type { AssessmentCommand, AssessmentComparison, AssessmentContext, AssessmentRecord, AssessmentSummary } from '../types/interviewAssessment'
 import type { CodingProblem, CodingSubmission, CodingOverview, ProgrammingStatus } from '../types/programming'
 import type { KnowledgeGraphData, GraphBatch, GraphPlanPreview, GraphPlanResult } from '../types/knowledgeGraph'
 import type {
@@ -1013,6 +1014,8 @@ export interface SourceEvidenceRef {
 }
 
 export interface InterviewSession {
+  runtime?: import('../types/interviewRuntime').InterviewRuntime | null
+  configuration?: import('../types/interviewConfiguration').SessionConfiguration
   interview_id: string
   agent_run_id?: string | null
   target_role: string
@@ -1053,7 +1056,8 @@ export async function startInterview(
   focusWrongId?: string,
   goalId?: string,
   allowExternalAnalysis?: boolean,
-  practice?: { projectName: string; projectDetails: string; rememberForFuture: boolean; memoryId: string | null }
+  practice?: { projectName: string; projectDetails: string; rememberForFuture: boolean; memoryId: string | null },
+  configuration?: import('../types/interviewConfiguration').InterviewConfiguration
 ): Promise<InterviewSession> {
   const response = await api.post<any, ApiResponse<InterviewSession>>('/interviews', {
     target_role: targetRole,
@@ -1066,10 +1070,23 @@ export async function startInterview(
     project_name: practice?.projectName || '',
     project_details: practice?.projectDetails || '',
     remember_for_future: practice?.rememberForFuture || false,
-    memory_id: practice?.memoryId || null
+    memory_id: practice?.memoryId || null,
+    ...(configuration ? { configuration } : {})
   })
   if (response.success && response.data) return response.data
   throw new Error(response.error || '创建模拟面试失败')
+}
+
+export async function getInterviewConfiguration(): Promise<import('../types/interviewConfiguration').ConfigurationStatus> {
+  const result = await api.get<any, ApiResponse<import('../types/interviewConfiguration').ConfigurationStatus>>('/interview/configuration', { timeout: 15000 })
+  if (result.success && result.data) return result.data
+  throw new Error(result.error || '训练配置读取失败')
+}
+
+export async function saveInterviewDraft(input: import('../types/interviewConfiguration').SaveInterviewDraft): Promise<import('../types/interviewConfiguration').InterviewDraft> {
+  const result = await api.put<any, ApiResponse<import('../types/interviewConfiguration').InterviewDraft>>('/interview/configuration/draft', input, { timeout: 15000 })
+  if (result.success && result.data) return result.data
+  throw new Error(result.error || '草稿保存失败；当前输入仍保留，请读取最新草稿后重试')
 }
 
 export interface InterviewPracticeMemory {
@@ -1125,6 +1142,24 @@ export async function answerInterview(
 
 export async function getInterviewReviewStatus(): Promise<{ enabled: boolean; calibration: string }> {
   return (await api.get<any, ApiResponse<{ enabled: boolean; calibration: string }>>('/interview/review/status', { timeout: 10000 })).data!
+}
+export async function getAssessmentContext(id: string): Promise<AssessmentContext> {
+  return (await api.get<any, ApiResponse<AssessmentContext>>(`/interviews/${id}/assessments/context`, { timeout: 15000 })).data!
+}
+export async function createAssessment(id: string, command: AssessmentCommand): Promise<AssessmentRecord> {
+  return (await api.post<any, ApiResponse<AssessmentRecord>>(`/interviews/${id}/assessments`, command, { timeout: 75000 })).data!
+}
+export async function readAssessment(id: string, key: string): Promise<AssessmentRecord> {
+  return (await api.get<any, ApiResponse<AssessmentRecord>>(`/interviews/${id}/assessments/${key}`, { timeout: 15000 })).data!
+}
+export async function assessmentHistory(offset = 0): Promise<{ items: AssessmentSummary[]; total: number }> {
+  return (await api.get<any, ApiResponse<{ items: AssessmentSummary[]; total: number }>>('/interview/assessments/history', { params: { limit: 20, offset }, timeout: 15000 })).data!
+}
+export async function compareAssessments(left: string, right: string): Promise<AssessmentComparison> {
+  return (await api.get<any, ApiResponse<AssessmentComparison>>('/interview/assessments/compare', { params: { left, right }, timeout: 15000 })).data!
+}
+export async function exportAssessment(id: string, key: string, format: 'pdf' | 'json' | 'markdown'): Promise<Blob> {
+  return await api.get(`/interviews/${id}/assessments/${key}/export`, { params: { format }, responseType: 'blob', timeout: 20000 }) as unknown as Blob
 }
 export async function getInterviewReview(id: string): Promise<{ report: InterviewReport | null; events: InterviewReviewEvent[] }> {
   return (await api.get<any, ApiResponse<{ report: InterviewReport | null; events: InterviewReviewEvent[] }>>(`/interviews/${id}/review`, { timeout: 15000 })).data!
@@ -1880,3 +1915,6 @@ export const setInterviewCoachConsent=(id:string,input:CoachConsent):Promise<Coa
 export const getInterviewAttempts=(id:string,turnId:string,options:{limit?:number;before_version?:number}={}):Promise<CoachAttempts>=>coachResult(api.get<unknown,ApiResponse<CoachAttempts>>(`/interviews/${encodeURIComponent(id)}/turns/${encodeURIComponent(turnId)}/attempts`,{params:options,timeout:15000}))
 
 export const focusInterviewCoach=(id:string,input:CoachFocus):Promise<CoachMutationResult>=>coachResult(api.post<unknown,ApiResponse<CoachMutationResult>>(`/interviews/${encodeURIComponent(id)}/coach/focus`,input,{timeout:15000}))
+
+export const prepareInterviewRuntime=(content:import('../types/interviewConfiguration').InterviewDraftContent,request_key:string):Promise<CoachSnapshot>=>coachResult(api.post<unknown,ApiResponse<CoachSnapshot>>('/interviews/runtime',{content,request_key},{timeout:15000}))
+export const commandInterviewRuntime=(id:string,input:import('../types/interviewRuntime').RuntimeCommand):Promise<CoachMutationResult>=>coachResult(api.post<unknown,ApiResponse<CoachMutationResult>>(`/interviews/${encodeURIComponent(id)}/runtime/commands`,input,{timeout:20000}))

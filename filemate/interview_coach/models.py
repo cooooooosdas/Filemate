@@ -80,9 +80,11 @@ class SubmitAnswer(Command):
     def validated_metrics(cls, value, info):
         if value is None:
             return None
+        from filemate.interview_audio import MediaEvidence
         from filemate.interview_review.models import VisualMetrics
 
-        schema = FluencyMetrics if info.field_name == "fluency_metrics" else VisualMetrics
+        schema = (MediaEvidence if value.get("source") == "browser_media_v1" else FluencyMetrics) \
+            if info.field_name == "fluency_metrics" else VisualMetrics
         return schema.model_validate(value).model_dump()
 
     @field_validator("answer")

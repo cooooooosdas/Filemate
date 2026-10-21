@@ -947,3 +947,87 @@ GET /api/llm/status新增credential_storage=browser|system，前端按该模式�
 `POST /interviews/{id}/coach/focus`接收`request_key`、`expected_revision`和`question_index`（已答题索引，null表示已完成场次汇总），仅切换阅读位置，不新增回答、不推进提交进度，不改冻结题目。允许完成后在原场次重答和重试。新端点同样受COACH写开关、认证及空间权限保护。
 
 授权开启仍严格比较revision；明确撤销`allowed=false`允许使用小于等于当前revision的已知修订，直接收紧当前权限，保证分析claim增加revision后仍可撤销；同键回执规则不变。保存回执`receipt.attempt_id`是本次操作归属，`snapshot.current_attempt`可能属于另一个较新版本，调用方不得混用或对较新版本自动分析。语音派生指标由服务端计算保存；报告按attempt/run/source_revision及分析pending使当前显示失效。
+# 面试 2.0 统一配置（业务 schema28，2026-10-19）
+
+复用现有身份／空间路由、CORS、访问控制与请求限流；以下草稿只属于当前空间的数据库。无额外用户画像表。
+
+| 接口 | 合同 |
+| --- | --- |
+| `GET /interview/configuration` | `{success,data:{enabled,draft,capabilities}}`；关闭写入仍可读。`draft={revision,version_token,content,updated_at,error}`；无草稿revision0/version_token=null/content=null；损坏时保留记录并返回可恢复错误。能力明确标记fixed_questions、timing_active=false、creator_active=false。 |
+| `PUT /interview/configuration/draft` | `{content,expected_revision,expected_token,request_key}`；content包含configuration、target_role≤120、source_id≤64、project_name≤120、project_details≤6000；严格拒绝未声明字段（包括权限）。expected_token必填，取最新读取的version_token，无草稿时为null；request_key为12–80位字母数字下划线或连字符。同一最新请求及内容可重试；过期revision／token或同key变更内容409，关闭503，校验失败422。保存是显式替换当前草稿；读取不覆盖本地输入。 |
+| `POST /interviews` | 原合同保留，新增可选configuration。若提供，必须与scenario/difficulty一致；不支持的组合422且不创建会话。配置与会话同事务保存为不可变快照。关闭新写入时带配置请求503，省略配置的旧请求仍可用。 |
+| `GET /interviews/{id}` / coach快照 | 新增configuration投影；origin=snapshot/legacy/unavailable。旧数据时长未知为null，原scenario保留；损坏配置仍可读原题和回答。 |
+
+configuration严格字段：schema_version=1；category=general/technical/project/creator/learning_expression；track必须属于category；language=zh-CN/en-US；difficulty=入门/标准/压力面（UI“进阶”对应旧压力面难度）；duration_minutes为1–60整数（含3/5/10/15/30预设与自定义；目标，未计时）；difficulty_strategy=standard/challenge；question_strategy=fixed/random/ai/mixed；media_preferences包含camera/microphone/transcription/local_recording/post_analysis布尔意向，默认全false，不能授予权限。默认general/general、中文、标准、10分钟、standard、fixed。英文和challenge只支持general/general，二者不可叠加；creator及非fixed模式仅草稿可保存，启动拒绝。
+
+映射：general/general→求职面试、general/hr→HR面；technical/technical→技术面、technical/algorithm→算法面；project/project→项目面、competition→竞赛答辩、academic→保研复试；learning_expression/explain→知识讲解；英文综合→英语面，挑战综合→压力面。知识讲解仍受本地分析限制。未提供configuration的历史请求维持原选题合同。
+
+草稿version_token复用最新保存请求的标识，不是认证凭据。个人备份和管理员快照恢复时重新生成此标识，防止恢复旧revision后旧标签页覆盖新内容；恢复无草稿表的旧备份时为null，同样拒绝持有旧标识的保存。标识与revision均匹配才允许新保存，网络重试保留同一request_key与原payload。恢复历史会话后“再练一次”保留实际场景、目标时长和媒体意向；未知旧场景可回看，但新建前须重新选择方向。
+
+表`interview_session_config`以interview_id为主键和级联外键；表`interview_configuration_draft`为当前空间唯一、带revision的草稿。个人导出、签名备份、管理员快照、整空间删除均通过动态表集合覆盖新表；恢复schema27等无新表备份时配置按旧模式只读投影。草稿不存AI／媒体权限，不自动请求设备或分析；既有恢复授权撤销继续生效。单场删除级联移除快照，独立草稿由用户显式保存替换或整空间删除清除。关闭功能不降级数据库；二进制回退需迁移前完整快照并在新目录验证，不承诺任意降级。
+
+### Interview 2.0 Stage 3 — continuous runtime (schema29)
+
+`FILEMATE_ENABLE_INTERVIEW_RUNTIME=1` plus COACH=1 and CONFIG enabled permit writes; default off. Reads, exports, reports and deletion remain available when off.
+
+- `POST /interviews/runtime`: `{content: DraftContent, request_key: string(16..80)}` → prepared CoachSnapshot, `session.runtime` contains status/revision/version_token/seed/duration_seconds/started_at/deadline/ended_at/current_task/audience_count/ai_reserved/tasks/events/server_now/remaining_seconds/event_cooldown_seconds. Same preparation key and digest replays the same session; changed content conflicts.
+- `GET /interviews/{id}/runtime`: authoritative CoachSnapshot; expiry persists once, without AI/device/network side effects. All tenant scoped; another space receives404.
+- `POST /interviews/{id}/runtime/commands`: `{kind,request_key,expected_revision,expected_token,task_index?,answer?,expected_attempt_id?,fluency_metrics?,visual_metrics?}` → `{snapshot,receipt}`. Kinds: start/resume/submit/advance/event/skip/finish. Revision/token refer to runtime, not coach; receipt submit includes immutable attempt_id. No pause or deadline reset. Start requires prepared, resume requires restored interrupted status. Task/attempt/revision conflicts409. Replay returns the original receipt and current snapshot, even after expiry. Only unanswered challenge can be skipped.
+- `DraftContent.configuration.execution_mode`: fixed(default) or timed; timed currently Chinese fixed/random rules. Creator knowledge/commerce require project_details containing authorized facts. source_id import and AI/mixed generation are rejected422 in this stage. Media intentions never grant permission.
+- `session.runtime.events` are bounded command/audience evidence records, audience comments clearly simulated (max30, cooldown15s). Task attempt_id links immutable answer evidence; no copied answer text in event records. New events invalidate report digest; countdown alone does not.
+- Existing /answers, /coach/answers and /coach/advance reject timed sessions409 before model calls. /coach/focus is history-only after timed completion. AI feedback explicitly authorized, existing evidence validation applies; each claim reserves2 transports including repair, max12/session. Failures retain answers; late results after expiry/finish cannot publish.
+- Restore preserves deadlines and tasks/answers, rotates runtime version tokens, interrupts running sessions, revokes AI consent. Deleting a confirmed interview cascades runtime/tasks/events; preview includes runtime_tasks/runtime_events. JSON/Markdown/PDF reports include task and simulated-comment evidence. No new six-dimension score or real-user calibration claim.
+
+Runtime UI drafts are temporary sessionStorage records bound to the session/task/current attempt/version token and restored only after an authorized snapshot. A changed task/token/attempt preserves text and blocks a new write until explicitly cleared. Definite 4xx rejection discards cached write preconditions; ambiguous transport failure keeps the original idempotent request. No draft is sent for external AI until explicitly submitted under consent.
+
+
+### Interview 2.0 Stage4：独立音频证据（本地验收）
+
+仅 coach answers 与 runtime commands 的 `fluency_metrics` 新增 `source=browser_media_v1`。
+旧 `speech_recognition` 继续可读写；旧顺序答题接口保持原合同。
+新结构：`duration_seconds` 0–600；`audio` 和 `transcription` 至少一项非空。
+`audio={status:measured|unavailable, summary}`；measured 必须有摘要，unavailable 必须为 null。
+摘要为 `method=web_audio_energy_v1`、duration_seconds(0,600.1]、sample_rate[8000,96000]、
+sample_count≥1、rms[0,1.01]、low_energy_seconds≤音频时长、clipping_ratio[0,1]、threshold=0.01。
+采样数与采样率必须和时长匹配；所有数字有限，不允许额外字段。
+`transcription={provider:browser_web_speech,status:completed|interrupted|denied|no_speech|unsupported,
+language:zh-CN|en-US,segments,confidence}`；最多100段，每段1000字符，总计12000。
+每段包含text、confidence(供应商原始估计或null)、callback_seconds[0,600]（回调时刻，不是词时间戳）。
+平均confidence由已提供的段值计算，全部缺失时null；非准确率。不接收正在识别的中间态。
+这些摘要只是设备上报、未经服务端核验，不影响内容评分。非法指标在请求边界返回422。
+报告2.5追加audio汇总及逐题audio/transcription；旧字段保留，JSON/Markdown/PDF均可导出。
+已有回答JSON列及备份承载摘要，无schema迁移。删除练习同步删除各回答版本及其摘要。
+
+`VITE_ENABLE_INTERVIEW_AUDIO=true`（默认关闭，需coach启用）开启浏览器独立录音与转写面板。
+原始录音Blob仅在页面内存：单次10分钟/20MiB，单页60MiB/30段；不上传、不写SQLite、不进备份。
+刷新/离页清除，用户可在当前页面逐题回听、单独导出（沿用用户下载目录设置）。
+浏览器语音转写为单独授权的可选服务，可能向浏览器厂商发送音频；授权与录音、微软自然语音分别控制。
+
+
+### Interview2.0 Stage5 camera/video candidate (2026-10-21)
+
+`VITE_ENABLE_INTERVIEW_VIDEO=false` defaults off; requires coach. This is a browser-only opt-in with no new endpoint, media upload, database table or schema migration. Preview requests video only; selectors never acquire devices themselves. Explicit selected IDs use exact constraints and remain page-local; no device IDs/labels enter reports, server logs or backups. Optional recording sound requests its own microphone permission; rejection does not silently start a recording with missing audio.
+
+Recording limits:640×480/15fps ideal(24max),1Mbps video/64kbps audio;30min/100MiB per clip,20 clips/200MiB per page, permission15sec, stop5sec. Received partial chunks remain exportable with page-local warnings on disconnect/error/timeout; no claim that every interrupted WebM can be decoded. Hidden page stops and closes preview; return requires an explicit click. Original video is temporary page memory, refresh/leave/delete clears it, downloads remain user-managed; backups contain saved answers and existing visual summaries, no raw videos.
+
+Replay binds to session/question/attempt/token. Only a matching coach receipt attaches a clip to an answer version. Re-answer preserves prior clips, pending-save retry freezes the same visual metrics even if local video is deleted. Existing `visual_metrics` contract is unchanged: optional local observable actions, not emotion/identity/attention inference, not competence scores. Feature-off keeps old records/exports and the legacy camera interface. Closing candidate UI does not delete any database data.
+
+
+Stage5 cancellation semantics: the UI stops waiting for microphone permission after15seconds or explicit cancellation; a browser permission dialog itself cannot be forcibly dismissed. Late grants release tracks without reviving an old recording or clearing a newer operation. Visual evidence is detached from reactive UI values before answer submission. Unknown save outcomes reuse the frozen evidence; explicitly abandoning a confirmed-conflict draft invalidates video and visual evidence. Audio/video playback and capture/transcription are mutually exclusive. These are browser behaviors; endpoint and schema contracts are unchanged.
+
+## 面试2.0 第六阶段：六维标准与可重算报告（本地候选）
+
+业务 schema30：interview_rubrics（ID+version）、interview_assessments（状态/快照/Artifact）、interview_assessment_evidence（回答版本与旧分析run的FK引用）、interview_assessment_limits（不可由清空重置的累计额度）。旧四维报告不改写，六维报告version=2.6，Artifact type仍为interview_report，metadata记录assessment_id。
+
+- GET /interviews/{id}/assessments/context：enabled、input_digest、rubric完整定义、answered、model_requests_remaining、最近20条history。
+- POST /interviews/{id}/assessments：严格body `{request_key,expected_digest,mode:"local"|"model",external_consent:false}`；key16至80位字母数字下划线短横线，摘要64位hex。local只整理证据、分数为空；model必须逐次明确授权并通过LOCAL_ONLY、来源权限及总开关检查。返回assessment_id、interview_id、status、mode、error_code、created_at、input_digest、report（失败为空）。传输/格式失败作为持久化failed状态返回200，不伪造成功分数；资源/权限/并发冲突按404/409/429/503。
+- GET /interviews/{id}/assessments/{assessment_id}：当前租户内读取指定版本，report保留原标准和原回答快照。
+- GET /interviews/{id}/assessments/{assessment_id}/export?format=json|markdown|pdf：no-store下载，PDF复用中文字体与转义渲染器；导出留下有限操作记录。
+- GET /interview/assessments/history?limit=20&offset=0：当前学习空间分页，limit1..100；已清空墓碑不出现在列表。
+- GET /interview/assessments/compare?left={assessment_id}&right={assessment_id}：两边都需属于当前空间且有报告。标准快照、配置/语言、岗位、模型/提示/规则版本与证据种类一致才comparable=true；缺任一对应评分时delta=null；不可比给明确reason，不画成长曲线。
+
+标准包含每维id/name/range/weight/required/evidence_kind/scope/anchors，Rubric ID+version及内容摘要不可在同版本改写。model只可返回六个维度，不得返回总分；服务端校验严格JSON、有限0..100分数、真实引用ID和模态。每个已评分维度必须至少有当前回答原句，互动/时间维度另需同一回答的已回应事件或已完成任务时间。口头清晰度缺经验证的声音证据时为空，旧ASR回调和摄像头摘要不入新能力分。核心缺失时overall_score=null；否则仅对有效权重归一并在weighting说明，缺失维度不补0。
+
+重复request_key仅返回原记录，改body为409；晚到结果核对输入摘要、同意/复盘修订、随机执行epoch、65秒租约和当前开关。取消/清空后保持cancelling互斥直到调用返回或租约到期。旧逐题分析与六维模型调用互斥。每场模型最多6次申请，各预留2次调用；最多100份报告记录；关闭只阻止新写入。真实模型供应商仍经现役适配层与全局用量治理。新表纳入个人及管理员备份；恢复running/cancelling为interrupted，轮换epoch，撤销原有外发同意，不重放设备或AI。清空擦除六维报告/证据快照，保留去重墓碑与额度；删除整场预览包含assessments计数并级联删除所有版本及Artifact。
+
+第六阶段收尾合同：比较条件另存 `input.comparison_conditions`（version=1、实际难度、时长、source_id、原始题目及任务prompt摘要）；这些条件缺失的旧报告仍可读，但明确不可比。读取/导出/比较均先对原 claim 的输入摘要、标准摘要、归属、模型来源及逐项引用/模态/服务端加权结果进行核验，损坏返回有限的 `assessment_evidence_unavailable` 错误，不按当前回答改写历史。Markdown 对所有动态文本转义，原样内容以 JSON 保留；PDF 解码文本后仍在 Paragraph 前转义。实战运行期间发起的分析还检查服务器截止时刻，过期后旧结果不发布；context会结算到期状态，结束后可重新单次授权重算。浏览器取消后有界等待终态，不重发模型请求；确认清空先同步擦除本页报告、比较及待重试命令，再刷新。聚合长回答暂无单次输入大小/成本预检，供应商上下文及学习空间字节预算仍可能拒绝请求，旧成果保留。

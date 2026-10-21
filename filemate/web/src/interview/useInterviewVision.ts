@@ -1,4 +1,5 @@
 import { onBeforeUnmount, ref } from 'vue'
+import { FrameWatchdog } from './media-lifecycle'
 import type { VisualMetrics } from '../types/interviewReview'
 import { ObservationAccumulator } from './observations'
 import { liveFaceIndicators, type LiveFaceSample } from './liveFace'
@@ -12,7 +13,7 @@ export function useInterviewVision() {
   let timer: number | undefined
   let epoch = 0
   let workerGeneration = 0
-  let busy = false
+  const frames = new FrameWatchdog()
   let startTime = 0
   let origin: 'recording' | 'visual' = 'visual'
   let accumulator = new ObservationAccumulator()
@@ -32,8 +33,8 @@ export function useInterviewVision() {
     context.drawImage(video, 0, 0, 640, 480)
     return captureCanvas.transferToImageBitmap()
   }
-  function reset() { pause(); epoch++; accumulator = new ObservationAccumulator(); metrics.value = undefined; live.value = undefined; startTime = 0; busy = false }
-  function pause() { if (timer !== undefined) clearInterval(timer); timer = undefined; live.value = undefined; if (state.value === 'observing') state.value = 'ready' }
+  function reset() { pause(); epoch++; accumulator = new ObservationAccumulator(); metrics.value = undefined; live.value = undefined; startTime = 0; frames.clear() }
+  function pause() { frames.clear(); if (timer !== undefined) clearInterval(timer); timer = undefined; live.value = undefined; if (state.value === 'observing') state.value = 'ready' }
   function stop() {
     pause(); epoch++; workerGeneration++; worker?.terminate(); worker = undefined
     if (initializationTimer !== undefined) clearTimeout(initializationTimer)
@@ -65,8 +66,7 @@ export function useInterviewVision() {
             state.value = 'ready'; hint.value = '本地视觉已就绪，开启后实时采集动作；画面不上传。'; resolve(true)
           } else if (event.data.type === 'error') { clearTimeout(initializationTimer); fail(event.data.reason) }
           else if (event.data.type === 'sample') {
-            busy = false
-            if (event.data.epoch !== epoch) return
+            if (event.data.epoch !== epoch || !frames.release(event.data.epoch)) return
             if (state.value !== 'observing') return
             const sample: LiveFaceSample = event.data
             live.value = liveFaceIndicators(sample)
@@ -84,7 +84,7 @@ export function useInterviewVision() {
     pause()
     reset()
     // Worker remains valid when resetting only the collection epoch.
-    startTime = recordingStart || performance.now()
+    startTime = recordingStart ?? performance.now()
     origin = recordingStart ? 'recording' : 'visual'
     const captureEpoch = epoch
     state.value = 'observing'
@@ -92,16 +92,19 @@ export function useInterviewVision() {
       if (!worker || captureEpoch !== epoch || state.value !== 'observing') return
       const second = (performance.now() - startTime) / 1000
       if (second >= 1800) { pause(); hint.value = '本轮视觉观察已达到30分钟上限。'; return }
-      if (busy || video.paused || video.readyState < 2) { accumulator.dropped++; return }
-      busy = true
+      if (frames.pending || video.paused || video.readyState < 2) { accumulator.dropped++; return }
+      frames.begin(captureEpoch, () => {
+        if (captureEpoch !== epoch) return
+        finish(); stop(); state.value = 'error'; hint.value = '本地视觉处理超时，已停止采样；已有观察和录像保留，可主动重试。'
+      })
       try {
         const bitmap = await captureFrame(video)
-        if (!worker || captureEpoch !== epoch) { bitmap.close(); busy = false; return }
+        if (!worker || captureEpoch !== epoch) { bitmap.close(); frames.release(captureEpoch); return }
         worker.postMessage({ type: 'frame', bitmap, timestamp: performance.now(), second, epoch }, [bitmap])
-      } catch { busy = false; pause(); state.value = 'error'; hint.value = '无法读取本地画面，已采集观察保留。' }
+      } catch { if(captureEpoch !== epoch)return; frames.release(captureEpoch); pause(); state.value = 'error'; hint.value = '无法读取本地画面，已采集观察保留。' }
     }, 500)
   }
-  function finish() { pause(); epoch++; busy = false; if (startTime) { metrics.value = accumulator.snapshot(Math.min(1800, (performance.now() - startTime) / 1000), origin); startTime = 0 }; return metrics.value }
+  function finish() { pause(); epoch++; frames.clear(); if (startTime) { metrics.value = accumulator.snapshot(Math.min(1800, (performance.now() - startTime) / 1000), origin); startTime = 0 }; return metrics.value }
   onBeforeUnmount(stop)
   return { state, hint, metrics, live, enable, observe, finish, pause, stop, reset }
 }

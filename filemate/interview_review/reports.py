@@ -7,11 +7,12 @@ import io
 import json
 import re
 import threading
-from html import escape
+from html import escape, unescape
 from pathlib import Path
 from typing import Any
 
 from filemate.interview_review.models import CONTENT_LABELS, VISUAL_LABELS
+from filemate.interview_runtime import runtime_evidence
 from filemate.study.explanation_cycle import describe_answer_structure
 
 _PDF_FONT_LOCK = threading.Lock()
@@ -25,6 +26,8 @@ def evidence_digest(interview: dict[str, Any]) -> str:
             'visual_metrics','content_analysis','scoring_mode','analysis_data_error','attempt_id','attempt_version',
             'attempt_created_at','analysis_status','analysis_run_id','source_revision')
     payload['turns'] = [{key: turn.get(key) for key in keys} for turn in interview['turns']]
+    if interview.get('runtime'):
+        payload['runtime'] = runtime_evidence(interview['runtime'])
     return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
 
 
@@ -32,6 +35,7 @@ def build_report(interview: dict[str, Any]) -> dict[str, Any]:
     """合并内容、节奏和视觉观察，不生成无样本的能力判断。"""
     turns, timeline, concerns = [], [], []
     durations, paces, fillers, pauses = [], [], 0, 0
+    audio_durations = []
     english_durations, english_paces = [], []
     visual_samples, face_samples, dim_samples = 0, 0, 0
     for turn in interview["turns"]:
@@ -47,6 +51,10 @@ def build_report(interview: dict[str, Any]) -> dict[str, Any]:
                 english_paces.append(metrics["words_per_minute"])
             fillers += metrics.get("filler_count", 0)
             pauses += metrics.get("long_pause_count", 0)
+        media = fluency if fluency.get("source") == "browser_media_v1" else {}
+        audio = media.get("audio")
+        if audio and audio.get("status") == "measured" and audio.get("summary"):
+            audio_durations.append(audio["summary"]["duration_seconds"])
         visual_valid = visual.get("source") == "mediapipe_local_v1"
         if visual_valid:
             visual_samples += visual.get("sample_count", 0)
@@ -81,6 +89,7 @@ def build_report(interview: dict[str, Any]) -> dict[str, Any]:
             "score": turn["score"], "scoring_mode": turn["scoring_mode"],
             "feedback": turn["feedback"], "content_analysis": analysis,
             "structure": describe_answer_structure(turn["answer"]),
+            "audio": audio, "transcription": media.get("transcription"),
             "fluency": metrics, "visual": visual if visual_valid else {},
             "data_error": bool(turn.get("analysis_data_error")),
             **{key: turn.get(key) for key in ('attempt_id','attempt_version','analysis_status','analysis_run_id',
@@ -88,9 +97,10 @@ def build_report(interview: dict[str, Any]) -> dict[str, Any]:
         })
     timeline.sort(key=lambda e: (e["question_index"], e["timebase"], e["start"]))
     return {
-        "version": "2.4", "interview_id": interview["interview_id"],
+        "version": "2.5", "interview_id": interview["interview_id"],
         "target_role": interview["target_role"], "scenario": interview["scenario"],
         "status": interview["status"], "answered": len(turns), "total": len(interview["questions"]),
+        "runtime": runtime_evidence(interview.get('runtime')),
         "assessed": interview["assessed_turn_count"], "overall_score": interview["overall_score"],
         "calibration": "待校准（没有真实专家评分样本）",
         "purpose": "用于训练和复盘，模型评分是参考，不用于录用决定或心理状态推断。",
@@ -106,6 +116,11 @@ def build_report(interview: dict[str, Any]) -> dict[str, Any]:
             "long_pause_count": pauses if durations else None,
             "method": "浏览器识别回调间隔和文本口头语计数；不是音频静音检测或医学卡顿诊断。",
         },
+        "audio": {
+            "sampled_turns": len(audio_durations),
+            "duration_seconds": round(sum(audio_durations), 2) if audio_durations else None,
+            "method": "设备上报WebAudio能量阈值摘要，未经服务端核验；低能量不等于停顿，非能力评分。",
+        },
         "visual": {
             "sample_count": visual_samples,
             "face_observed_ratio": round(face_samples / visual_samples, 3) if visual_samples else None,
@@ -118,6 +133,7 @@ def build_report(interview: dict[str, Any]) -> dict[str, Any]:
             "回看有时间证据的位置，尝试按情境、任务、行动、结果重新组织经历。",
         ] + (["部分采样画面亮度较低，视觉观察可信度可能下降。"] if dim_samples else []),
         "privacy": {
+            "audio": "独立录音只存页面内存，不上传或进入备份；刷新清除。已导出的录音需自行管理。",
             "video": "录像仅存当前浏览器页面内存；不上传，刷新或删除后清除。",
             "records": "回答、节奏、观察摘要和报告保存在当前学习空间SQLite，可单独清空分析或删除练习。",
             "external": "只有主动授权的回答内容分析会外发问题、回答和目标方向；不发送音视频和人脸点。供应商保存策略需另行核对。",
@@ -128,6 +144,10 @@ def build_report(interview: dict[str, Any]) -> dict[str, Any]:
 
 def report_markdown(report: dict[str, Any]) -> str:
     """导出保留原句、数据来源和缺失说明的Markdown。"""
+    if report.get('version') == '2.6':
+        from filemate.interview_assessment.reports import markdown
+
+        return markdown(report)
     expression = report["expression"]
     pace = (f"{expression['words_per_minute']} 词/分钟"
             if expression.get("words_per_minute") is not None
@@ -144,11 +164,37 @@ def report_markdown(report: dict[str, Any]) -> str:
              report["expression"]["method"], "", "## 面部可观察行为", "",
              f"有效采样：{report['visual']['sample_count']}；检出比例：{report['visual']['face_observed_ratio'] if report['visual']['face_observed_ratio'] is not None else '待评测'}",
              report["visual"]["method"], "", "## 回答与专业内容", ""]
+    if report.get("runtime"):
+        runtime = report["runtime"]
+        lines.extend(["## 实战任务与互动", "", f"状态：{runtime['status']}；开始：{runtime['started_at']}；原截止：{runtime['deadline']}",
+                      "互动均为规则生成的模拟观众，不代表真实观众评价。"])
+        for task in runtime["tasks"]:
+            lines.append(f"{task['title']}：{task['status']}；回答依据：{task['attempt_id'] or '无，待评估'}")
+        for event in runtime["events"]:
+            if event["kind"] == "audience":
+                lines.append(f"{event['created_at']} {event['text']}；回答依据：{event['attempt_id'] or '未回应'}")
+        lines.append("")
     for turn in report["turns"]:
         lines.extend([f"### 第{turn['question_index'] + 1}题", "", turn["question"], "",
                       "回答：", "", turn["answer"], "", f"来源：{turn['scoring_mode']}",
                       f"评分：{turn['score'] if turn['score'] is not None else '待评估'}", turn["feedback"],
                       "表达线索：" + ("、".join(turn["structure"]["cues"]) or "未观察到预设线索")])
+        audio = turn.get("audio")
+        if audio:
+            summary = audio.get("summary")
+            lines.append("本机音频：" + (
+                f"{summary['duration_seconds']}秒；低能量{summary['low_energy_seconds']}秒；"
+                f"RMS {summary['rms']}；削波比例{summary['clipping_ratio']}。非能力评分，设备上报未经核验。"
+                if summary else "已录音，摘要无法测量；非能力评分。"
+            ))
+        transcript = turn.get("transcription")
+        if transcript:
+            lines.append(f"转写来源：{transcript['provider']} / {transcript['status']}")
+            confidence = transcript.get("confidence")
+            lines.append(f"供应商置信估计（非准确率）：{confidence if confidence is not None else '未提供'}")
+            lines.append("识别原文（可与人工修改后的回答不同）：" +
+                         " / ".join(segment["text"] for segment in transcript["segments"]))
+            lines.append("callback_seconds仅为回调时间，不是词语时间戳。")
         for key, item in turn["content_analysis"].get("areas", {}).items():
             lines.extend([f"{CONTENT_LABELS[key]}：{item['status']}（模型参考）",
                           f"原句证据：{item['evidence'] or '无，属于缺失项建议'}", item["suggestion"]])
@@ -201,7 +247,10 @@ def report_pdf(report: dict[str, Any]) -> bytes:
                 story.append(Spacer(1, 4))
             continue
         heading = re.match(r"^(#{1,3}) (.*)$", line)
-        story.append(Paragraph(escape(heading[2] if heading else line),
+        text = heading[2] if heading else line
+        if report.get("version") == "2.6":
+            text = unescape(text)
+        story.append(Paragraph(escape(text),
                                styles[len(heading[1])] if heading else body))
         after_heading = bool(heading)
 

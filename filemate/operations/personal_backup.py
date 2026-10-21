@@ -345,6 +345,8 @@ class PersonalBackup:
                     raise ValueError('有任务执行中，请结束后重新预览恢复')
                 if conn.execute("SELECT 1 FROM interview_coach_analysis_runs WHERE status IN ('running','cancelling') LIMIT 1").fetchone():
                     raise ValueError('有面试分析任务执行中，请结束后重新预览恢复')
+                if conn.execute("SELECT 1 FROM interview_assessments WHERE status IN ('running','cancelling') LIMIT 1").fetchone():
+                    raise ValueError('有六维分析任务执行中，请结束后重新预览恢复')
                 cache_file = self.cache / (identifier + '.zip'); _check_node(cache_file)
                 raw = cache_file.read_bytes()
                 if _sha(raw) != identifier:
@@ -377,8 +379,16 @@ class PersonalBackup:
                         names = ','.join('"' + column + '"' for column in columns)
                         conn.execute(f'INSERT INTO "{name}" ({names}) VALUES ({placeholders})', [row[column] for column in columns])
                 from filemate.interview_coach.repository import normalize_restored_coach
+                from filemate.interview_config import normalize_restored_configuration
 
                 normalize_restored_coach(conn)
+                normalize_restored_configuration(conn)
+                from filemate.interview_runtime import normalize_restored_runtime
+
+                normalize_restored_runtime(conn)
+                from filemate.interview_assessment.repository import normalize_restored_assessments
+
+                normalize_restored_assessments(conn)
                 conn.execute("UPDATE sessions SET status='failed',error='备份恢复的历史会话；文件操作不重放'")
                 conn.execute("UPDATE execution_records SET status='failed',error='备份恢复后禁止重放文件操作'")
                 conn.execute("DELETE FROM data_action_previews WHERE action!='personal_restore'")

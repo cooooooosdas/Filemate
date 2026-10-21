@@ -411,7 +411,7 @@ def test_admin_backup_includes_and_restores_ledger_separately(managed, tmp_path)
     with resource_scope(restored, OWNER_A, 'account') as scope:
         assert restored.view(scope)['daily']['attempts'] == 1
     summary = backup._summary(created)
-    assert summary['schema_versions'] == [27] and summary['resource_schema_versions'] == [2]
+    assert summary['schema_versions'] == [30] and summary['resource_schema_versions'] == [2]
 
 
 def test_restored_ledger_cannot_resurrect_erased_owner_usage(store, tmp_path):

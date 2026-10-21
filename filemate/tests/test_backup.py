@@ -62,7 +62,7 @@ def test_preview_and_three_databases_restore(managed: Path, tmp_path: Path) -> N
         entry["database"]["schema_version"]
         for entry in report["manifest"]["entries"]
         if entry["kind"] == "database"
-    } == {27}
+    } == {30}
     target = tmp_path / "staged"
     restore_plan = backup.plan_restore(snapshot, target)
     assert not target.exists()
@@ -284,3 +284,24 @@ def test_invalid_database_is_not_backed_up(managed: Path, tmp_path: Path, fault:
     with pytest.raises((ValueError, sqlite3.Error)):
         _create(managed, tmp_path / "invalid-backup")
     assert not (tmp_path / "invalid-backup").exists()
+
+
+def test_admin_restore_rotates_interview_draft_version(managed: Path, tmp_path: Path) -> None:
+    from filemate.interview_config import ConfigurationRepository, DraftContent
+
+    storage = SQLiteStorage(managed / 'filemate.db')
+    repo = ConfigurationRepository(storage)
+    before = repo.save_draft(DraftContent(target_role='合成目标'), 0, 'admin-draft-request01')
+    storage.close()
+    snapshot = tmp_path / 'backup'
+    _create(managed, snapshot)
+    target = tmp_path / 'staged'
+    plan = backup.plan_restore(snapshot, target)
+    backup.restore_backup(snapshot, target, plan['confirmation'])
+    restored_storage = SQLiteStorage(target / 'filemate.db')
+    restored = ConfigurationRepository(restored_storage)
+    assert restored.read_draft()['version_token'] != before['version_token']
+    with pytest.raises(ValueError, match='草稿'):
+        restored.save_draft(DraftContent(target_role='旧页面'), before['revision'], 'admin-draft-request02', before['version_token'])
+    assert restored.read_draft()['content']['target_role'] == '合成目标'
+    restored_storage.close()

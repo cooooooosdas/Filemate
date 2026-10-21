@@ -17,7 +17,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from filemate.execution import data_actions
+from filemate import interview_config
+from filemate.execution import (
+    data_actions,
+    interview_configuration_schema,
+    interview_runtime_schema,
+)
+from filemate.interview_assessment import schema as interview_assessment_schema
 from filemate.interview_coach import schema as interview_coach_schema
 from filemate.task_resources import admit_plan, admit_tasks
 
@@ -618,6 +624,9 @@ _MIGRATIONS = (
     (25, "accounts_and_revocable_sessions", _ACCOUNT_SCHEMA),
     (26, "confirmed_data_actions", data_actions.SCHEMA),
     (27, "immutable_interview_answers", interview_coach_schema.SCHEMA),
+    (28, "interview_configuration", interview_configuration_schema.SCHEMA),
+    (29, "interview_runtime", interview_runtime_schema.SCHEMA),
+    (30, "interview_six_assessments", interview_assessment_schema.SCHEMA),
 )
 
 
@@ -2211,11 +2220,15 @@ class SQLiteStorage:
         questions: list[str],
         question_ids: list[str | None] | None = None,
         agent_run_id: str | None = None,
+        configuration: dict[str, Any] | None = None,
         commit: bool = True,
     ) -> dict[str, Any]:
         """创建模拟面试。"""
         if question_ids is not None and len(question_ids) != len(questions):
             raise ValueError("题目 ID 必须与题目逐项对应")
+        config = interview_config.InterviewConfiguration.model_validate(configuration) if configuration is not None else None
+        if config and (config.session_scenario() != scenario or config.difficulty != difficulty):
+            raise ValueError("配置与会话场景或难度不一致")
         interview_id = uuid.uuid4().hex[:16]
         with self._write_lock:
             self._conn().execute(
@@ -2242,6 +2255,9 @@ class SQLiteStorage:
             initialize_state(self._conn(), dict(self._conn().execute(
                 "SELECT * FROM interview_sessions WHERE interview_id=?", (interview_id,),
             ).fetchone()))
+            if config:
+                self._conn().execute("INSERT INTO interview_session_config VALUES (?,?,?)",
+                                     (interview_id, config.model_dump_json(), _now_iso()))
             if commit:
                 self._conn().commit()
         return self.get_interview(interview_id)
@@ -2272,6 +2288,14 @@ class SQLiteStorage:
         assessed = [t["score"] for t in interview["turns"] if t["score"] is not None]
         interview["assessed_turn_count"] = len(assessed)
         interview["overall_score"] = round(sum(assessed) / len(assessed), 2) if assessed else None
+        interview["configuration"] = interview_config.session_configuration(
+            self._conn(), interview_id, interview["scenario"], interview["difficulty"]
+        )
+        from filemate.interview_runtime import runtime_projection
+
+        interview["runtime"] = runtime_projection(self._conn(), interview_id)
+        if interview["runtime"]:
+            interview["configuration"]["timing_active"] = True
         return interview
 
     def save_interview_turn(
@@ -2308,6 +2332,10 @@ class SQLiteStorage:
     ) -> str:
         """Write the compatibility turn and immutable version in one transaction."""
         interview_id = payload["interview_id"]
+        if origin != "coach":
+            from filemate.interview_runtime import guard_legacy_write
+
+            guard_legacy_write(conn, interview_id)
         question_index = payload["question_index"]
         question = payload["question"]
         answer = payload["answer"]
