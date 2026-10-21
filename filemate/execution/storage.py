@@ -1400,6 +1400,9 @@ class SQLiteStorage:
                 "SELECT COUNT(*) FROM knowledge_graph_events WHERE source_id=?", (source_id,),
             ).fetchone()[0],
         }
+        from filemate.course_graph.privacy import source_impact
+
+        counts.update(source_impact(self, source_id)["counts"])
         return {
             "source_id": source_id,
             "original_name": source.get("original_name"),
@@ -1444,6 +1447,9 @@ class SQLiteStorage:
             rows = conn.execute(f"SELECT * FROM {table} WHERE source_id=? ORDER BY rowid",
                                 (source_id,)).fetchall()
             snapshot[table] = [dict(row) for row in rows]
+        from filemate.course_graph.privacy import source_revision_fragment
+
+        snapshot["course_graph"] = source_revision_fragment(self, source_id)
         return data_actions.digest(snapshot)
 
     def source_deletion_preview(self, source_id: str) -> dict[str, Any] | None:

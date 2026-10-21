@@ -259,6 +259,10 @@ def transition_operation(storage, course_id: str, operation_id: str, action: str
             for state in desired["evidence"]:
                 conn.execute("UPDATE kg_evidence SET status=? WHERE course_id=? AND evidence_id=?",
                              (state["status"], course_id, state["id"]))
+            for state in desired.get("memberships", []):
+                conn.execute("UPDATE kg_course_sources SET active=?,chapter_id=?,revision=revision+1 WHERE course_id=? AND source_id=?",
+                             (state["active"], state["chapter_id"], course_id, state["id"]))
+                conn.execute("UPDATE kg_courses SET revision=revision+1,updated_at=? WHERE course_id=?", (now_iso(), course_id))
             if op["kind"] == "review":
                 for row in conn.execute("SELECT extraction_id,payload FROM kg_extractions WHERE course_id=? AND draft_id=?",
                                         (course_id, meta["draft_id"])):

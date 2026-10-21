@@ -179,11 +179,11 @@
 
 **Interfaces:** `source_impact(storage, source_id: str) -> dict[str, Any]`返回新增行数、受影响概念/关系ID与保留/失去支持数；`source_revision_fragment(storage, source_id: str) -> dict[str, Any]`供现役删除指纹调用；`preview_remove_source(storage, course_id: str, source_id: str) -> dict[str, Any]`；`remove_source(storage, course_id: str, source_id: str, confirmation_token: str, request_key: str, confirmed: bool) -> dict[str, Any]`；`normalize_restored_course_graph(conn: sqlite3.Connection) -> None`。
 
-- [ ] **Step 1 — 写失败测试。** `test_remove_course_source_preserves_learning_history`移出后Source/原作答/错题/计划逐行保留；`test_other_source_support_survives_purge`彻底删除一个来源后另一出处继续有效，概念保留；`test_last_support_is_unavailable_not_deleted`最后来源移出或删除后节点标无来源、关系不用于当前依赖；`test_updated_text_or_chunks_invalidates_all_course_mappings`同Source两课程都按revision失效，不影响其他来源；`test_backup_30_and_new_roundtrip`旧备份可读、新备份能还原，运行中的extract状态归一为interrupted且旧epoch不能完成；`test_delete_token_covers_graph_changes`预览后改图谱，旧删除凭据409。
-- [ ] **Step 2 — 验证红灯。** `uv run pytest filemate/tests/course_graph/test_privacy.py -q`；预期新影响计数或保留行为未实现。
-- [ ] **Step 3 — 最小实现。** 引用有效性实时检查归属active＋Source revision＋审核状态，不靠可能漏触发的更新钩子。扩展现役彻底删除预览、摘要和事务影响，FK清理候选/引用但保留课程概念；不另改旧表CASCADE合同。新图谱日志不存被删除正文/答案；Source当前正文与revision不是历史原文恢复库。复用个人备份动态表枚举；归一化extract租约/epoch并清除失效确认，不重放AI/旧操作。
-- [ ] **Step 4 — 验证绿灯。** 上述文件及`uv run pytest filemate/tests/test_p1_privacy_boundary.py filemate/tests/test_p1_personal_backup.py filemate/tests/test_backup.py -q`通过。备份在副本演练，失败不覆盖现有数据；账户/空间删除不留新库或侧写文件。
-- [ ] **Step 5 — 提交。** `feat(graph): 联通来源生命周期与个人备份`。
+- [x] **Step 1 — 写失败测试。** `test_remove_course_source_preserves_learning_history`移出后Source/原作答/错题/计划逐行保留；`test_other_source_support_survives_purge`彻底删除一个来源后另一出处继续有效，概念保留；`test_last_support_is_unavailable_not_deleted`最后来源移出或删除后节点标无来源、关系不用于当前依赖；`test_updated_text_or_chunks_invalidates_all_course_mappings`同Source两课程都按revision失效，不影响其他来源；`test_backup_30_and_new_roundtrip`旧备份可读、新备份能还原，运行中的extract状态归一为interrupted且旧epoch不能完成；`test_delete_token_covers_graph_changes`预览后改图谱，旧删除凭据409。
+- [x] **Step 2 — 验证红灯。** `uv run pytest filemate/tests/course_graph/test_privacy.py -q`；预期新影响计数或保留行为未实现。
+- [x] **Step 3 — 最小实现。** 引用有效性实时检查归属active＋Source revision＋审核状态，不靠可能漏触发的更新钩子。扩展现役彻底删除预览、摘要和事务影响，FK清理候选/引用但保留课程概念；不另改旧表CASCADE合同。新图谱日志不存被删除正文/答案；Source当前正文与revision不是历史原文恢复库。复用个人备份动态表枚举；归一化extract租约/epoch并清除失效确认，不重放AI/旧操作。
+- [x] **Step 4 — 验证绿灯。** 上述文件及`uv run pytest filemate/tests/test_p1_privacy_boundary.py filemate/tests/test_p1_personal_backup.py filemate/tests/test_backup.py -q`通过。备份在副本演练，失败不覆盖现有数据；账户/空间删除不留新库或侧写文件。
+- [x] **Step 5 — 提交。** `feat(graph): 联通来源生命周期与个人备份`。
 
 ## Task 7: HTTP合同、身份、密钥与失败恢复
 

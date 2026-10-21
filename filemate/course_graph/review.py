@@ -117,6 +117,8 @@ def object_states(conn, course_id: str, ids: dict[str, list[str]]) -> dict[str, 
     tables = {"concepts": ("kg_concepts", "concept_id", "status,revision,canonical_id"),
               "relations": ("kg_relations", "relation_id", "status,revision"),
               "evidence": ("kg_evidence", "evidence_id", "status,source_id,source_revision")}
+    if "memberships" in ids:
+        tables["memberships"] = ("kg_course_sources", "source_id", "active,revision,chapter_id")
     result = {}
     for kind, (table, pk, columns) in tables.items():
         result[kind] = []
