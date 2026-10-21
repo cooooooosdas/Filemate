@@ -1,0 +1,78 @@
+{
+  "synthetic": true,
+  "method": "3 serial in-process snapshots and searched projections; no network or browser layout; other verification may run concurrently",
+  "results": [
+    {
+      "nodes": 100,
+      "sources": 2,
+      "graph_ms_samples": [
+        14.139499980956316,
+        2.553400001488626,
+        2.8707000019494444
+      ],
+      "graph_ms_median": 2.8707000019494444,
+      "search_ms_samples": [
+        2.7313999889884144,
+        2.2649999882560223,
+        2.4446999887004495
+      ],
+      "search_ms_median": 2.4446999887004495,
+      "json_bytes": 77450,
+      "page_nodes": 100,
+      "returned_edges": 98,
+      "edge_total": 98,
+      "db_bytes": 4096,
+      "schema": 30,
+      "integrity": "ok",
+      "foreign_key_errors": 0
+    },
+    {
+      "nodes": 1000,
+      "sources": 13,
+      "graph_ms_samples": [
+        18.30659998813644,
+        8.538099995348603,
+        8.758699987083673
+      ],
+      "graph_ms_median": 8.758699987083673,
+      "search_ms_samples": [
+        8.314400009112433,
+        7.835600001271814,
+        8.182699995813891
+      ],
+      "search_ms_median": 8.182699995813891,
+      "json_bytes": 163992,
+      "page_nodes": 200,
+      "returned_edges": 197,
+      "edge_total": 987,
+      "db_bytes": 4096,
+      "schema": 30,
+      "integrity": "ok",
+      "foreign_key_errors": 0
+    },
+    {
+      "nodes": 10000,
+      "sources": 125,
+      "graph_ms_samples": [
+        96.33600001689047,
+        73.85369998519309,
+        72.47459999052808
+      ],
+      "graph_ms_median": 73.85369998519309,
+      "search_ms_samples": [
+        92.86080001038499,
+        78.953599993838,
+        86.0765999823343
+      ],
+      "search_ms_median": 86.0765999823343,
+      "json_bytes": 187154,
+      "page_nodes": 200,
+      "returned_edges": 197,
+      "edge_total": 9875,
+      "db_bytes": 6078464,
+      "schema": 30,
+      "integrity": "ok",
+      "foreign_key_errors": 0
+    }
+  ]
+}

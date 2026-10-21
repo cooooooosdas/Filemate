@@ -2,7 +2,7 @@
 
 > 版本：v1.1 | 作者：胡希 | 日期：2026-08-09
 >
-> 本文描述 2.0 长期目标，不是当前部署清单。现役架构以根目录 `README.md`、`server.py`、SQLite migrations 和 Vue 路由为准。当前使用 Vue 3 + FastAPI + SQLite v9 + 本地词法检索；Neo4j、向量数据库、GraphRAG、完整 Agent、认证、WebSocket 和云部署仍属于规划能力。
+> 本文描述 2.0 长期目标，不是当前部署清单。2026-10-21边界更正：现役以根目录 `README.md`、`server.py`、SQLite migrations 和 Vue 路由为准，业务schema已到30；账号/身份隔离、有限Agent能力和云端发布已有实现及匹配范围验收，不再统称规划。当前图谱使用SQLite与ECharts，检索以本地词法为主；Neo4j、向量数据库、GraphRAG及图谱学习Agent仍属后续方向。最新生产状态见[发布回执](INTERVIEW_2_0_RELEASE_2026-10-21.md)，本次知识图谱2.0范围见[A级审计](superpowers/specs/2026-10-21-knowledge-graph-2-design.md)，下方架构正文保留为历史目标设计。
 
 ---
 
