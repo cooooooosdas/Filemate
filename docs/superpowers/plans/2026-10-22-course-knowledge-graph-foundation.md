@@ -10,7 +10,7 @@
 
 **Spec:** [A级设计与已确认决策](../specs/2026-10-21-knowledge-graph-2-design.md)；[用户A—E原始需求](C:/Users/胡希/.codex/attachments/3e20eecc-02f2-4775-b8c7-786e578d61f4/已粘贴的文本.txt)。
 
-状态：2026-10-22用户明确“A级通过”；B前五项问题及删除边界已确认。**本文件是实现计划，待用户审阅；任务均未实施。** 建议由当前会话逐项实施，完成后独立审阅，避免存储、预览与撤销接口分散修改。
+状态：2026-10-22用户明确“A级通过”，确认B前五项问题、删除边界，并已审阅本计划、同意继续。**由当前会话逐项实施中，完成后独立审阅；未完成卡保持未勾选。**
 
 ## Global Constraints
 
@@ -55,7 +55,7 @@
 
 ## 存储与接口决定
 
-以下是实现者提出、待本计划审阅后冻结的工程选择，不冒称用户指定了表名或数值。
+以下工程选择已随本计划审阅确认，不冒称用户逐一指定了表名或数值；后续如需调整须记录原因与影响。
 
 ### 数据模型
 
@@ -110,11 +110,11 @@
 
 **Interfaces:** `CourseGraphRepository(storage: SQLiteStorage)`；`create_course(name: str, request_key: str) -> dict[str, Any]`；`put_chapter(course_id: str, chapter_id: str, title: str, parent_id: str | None, sort_order: int, expected_revision: int) -> dict[str, Any]`；`attach_sources(course_id: str, source_ids: list[str], chapter_id: str | None, expected_revision: int) -> dict[str, Any]`。`CourseGraphError(code: str, status_code: int=409)`统一向上抛出。
 
-- [ ] **Step 1 — 写失败测试。** `test_30_upgrade_preserves_legacy_ids_and_history`在只应用现役迁移的副本中保存Source/旧批次/作答，升级后逐行值相同；`test_reopen_is_idempotent`重复初始化不增迁移/课程；`test_cross_course_fk_and_chapter_cycle_rejected`跨课父章节/关系直接SQL也无法写入；`test_symbol_labels_not_collapsed`断言`normalize_term(' C++ ') == 'c++'`且不等于`normalize_term('C')`。conftest仅建tmp_path库并yield后close，不复用真实库。
-- [ ] **Step 2 — 验证红灯。** `uv run pytest filemate/tests/course_graph/test_storage.py -q`；预期新包/接口不存在而失败，保存输出。
-- [ ] **Step 3 — 最小实现。** 按上表冻结DDL与复合外键、索引；再次确认迁移头30后追加31注册。实现`normalize_term(value: str) -> str`并保留有意义符号。所有方法校验当前租户Source存在，stable UUID不取label；显式同键输入摘要检查。课程名称1–80、章节标题1–120，父章节禁止环；不自动回填旧数据课程。
-- [ ] **Step 4 — 验证绿灯。** 跑上述文件及`uv run pytest filemate/tests/test_storage.py filemate/tests/test_graph_storage.py -q`；要求全部通过、FK=0、integrity=ok，失败迁移不登记版本且旧数据仍可读。
-- [ ] **Step 5 — 提交。** 仅本任务文件；`feat(graph): 新增课程边界与增量存储`。
+- [x] **Step 1 — 写失败测试。** `test_30_upgrade_preserves_legacy_ids_and_history`在只应用现役迁移的副本中保存Source/旧批次/作答，升级后逐行值相同；`test_reopen_is_idempotent`重复初始化不增迁移/课程；`test_cross_course_fk_and_chapter_cycle_rejected`跨课父章节/关系直接SQL也无法写入；`test_symbol_labels_not_collapsed`断言`normalize_term(' C++ ') == 'c++'`且不等于`normalize_term('C')`。conftest仅建tmp_path库并yield后close，不复用真实库。
+- [x] **Step 2 — 验证红灯。** `uv run pytest filemate/tests/course_graph/test_storage.py -q`；预期新包/接口不存在而失败，保存输出。
+- [x] **Step 3 — 最小实现。** 按上表冻结DDL与复合外键、索引；再次确认迁移头30后追加31注册。实现`normalize_term(value: str) -> str`并保留有意义符号。所有方法校验当前租户Source存在，stable UUID不取label；显式同键输入摘要检查。课程名称1–80、章节标题1–120，父章节禁止环；不自动回填旧数据课程。
+- [x] **Step 4 — 验证绿灯。** 跑上述文件及`uv run pytest filemate/tests/test_storage.py filemate/tests/test_graph_storage.py -q`；要求全部通过、FK=0、integrity=ok，失败迁移不登记版本且旧数据仍可读。
+- [x] **Step 5 — 提交。** 仅本任务文件；`feat(graph): 新增课程边界与增量存储`。
 
 ## Task 2: 逐项有效性与提取适配
 
@@ -229,4 +229,4 @@
 
 自审已核对：9项任务覆盖B1—B5；声明的接口在所属任务定义；每项Review Focus有对应失败测试；先写红灯、保存失败、最小实现、绿灯再提交；Source当前正文/版本指纹、移出与彻底删除、模型密钥白名单、恢复中的运行状态均有明确合同。稳定ID不被标签替换，候选、课程图谱与旧学习事实不建立平行“掌握度真相”。
 
-**尚待：用户审阅本实现计划及执行方式。完成后按executing-plans逐卡实施；不重复询问已确认的五项方向与删除边界。**
+**按executing-plans逐卡实施；不重复询问已确认的五项方向、删除边界或执行方式。全部完成后仍须等待用户明确“B级通过”。**

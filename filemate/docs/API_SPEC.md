@@ -1031,3 +1031,7 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 重复request_key仅返回原记录，改body为409；晚到结果核对输入摘要、同意/复盘修订、随机执行epoch、65秒租约和当前开关。取消/清空后保持cancelling互斥直到调用返回或租约到期。旧逐题分析与六维模型调用互斥。每场模型最多6次申请，各预留2次调用；最多100份报告记录；关闭只阻止新写入。真实模型供应商仍经现役适配层与全局用量治理。新表纳入个人及管理员备份；恢复running/cancelling为interrupted，轮换epoch，撤销原有外发同意，不重放设备或AI。清空擦除六维报告/证据快照，保留去重墓碑与额度；删除整场预览包含assessments计数并级联删除所有版本及Artifact。
 
 第六阶段收尾合同：比较条件另存 `input.comparison_conditions`（version=1、实际难度、时长、source_id、原始题目及任务prompt摘要）；这些条件缺失的旧报告仍可读，但明确不可比。读取/导出/比较均先对原 claim 的输入摘要、标准摘要、归属、模型来源及逐项引用/模态/服务端加权结果进行核验，损坏返回有限的 `assessment_evidence_unavailable` 错误，不按当前回答改写历史。Markdown 对所有动态文本转义，原样内容以 JSON 保留；PDF 解码文本后仍在 Paragraph 前转义。实战运行期间发起的分析还检查服务器截止时刻，过期后旧结果不发布；context会结算到期状态，结束后可重新单次授权重算。浏览器取消后有界等待终态，不重发模型请求；确认清空先同步擦除本页报告、比较及待重试命令，再刷新。聚合长回答暂无单次输入大小/成本预检，供应商上下文及学习空间字节预算仍可能拒绝请求，旧成果保留。
+
+## 2026-10-22 知识图谱B级开发候选
+
+业务schema追加31（`course_knowledge_graph`），创建课程、章节、来源归属、逐来源提取、概念、关系、证据和操作记录8张表。旧图谱批次、ID和学习记录保持不变，不回填课程。当前仅存储层已进入实现，课程HTTP合同按[实施计划](../../docs/superpowers/plans/2026-10-22-course-knowledge-graph-foundation.md)在任务7接入，不宣称路径已可调用。线上状态仍以发布回执为准；本次不迁移生产库。

@@ -19,6 +19,7 @@ from typing import Any
 
 from filemate import interview_config
 from filemate.execution import (
+    course_graph_schema,
     data_actions,
     interview_configuration_schema,
     interview_runtime_schema,
@@ -627,6 +628,7 @@ _MIGRATIONS = (
     (28, "interview_configuration", interview_configuration_schema.SCHEMA),
     (29, "interview_runtime", interview_runtime_schema.SCHEMA),
     (30, "interview_six_assessments", interview_assessment_schema.SCHEMA),
+    (31, "course_knowledge_graph", course_graph_schema.SCHEMA),
 )
 
 

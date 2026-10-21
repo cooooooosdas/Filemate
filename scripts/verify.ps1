@@ -47,6 +47,7 @@ try {
         filemate/tests/test_retrieval.py `
         filemate/tests/test_study.py `
         filemate/study `
+        filemate/course_graph filemate/tests/course_graph `
         filemate/portfolio `
         filemate/tests/test_p1_resume.py `
         filemate/tests/test_p1_growth_report.py `

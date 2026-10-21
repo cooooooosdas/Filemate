@@ -70,7 +70,7 @@ class TestMigrationUpgrade:
         before = store.get_graph_batch("legacy")
         store.init_schema()
         store.init_schema()
-        assert store.get_schema_version() == 30
+        assert store.get_schema_version() == 31
         assert store.get_graph_batch("legacy") == before
         assert store.get_source(source)["raw_text"] == "堆"
         assert store.list_graph_events() == []
@@ -93,9 +93,9 @@ class TestMigrationUpgrade:
         s = SQLiteStorage(db)
         s.init_schema()
 
-        assert s.get_schema_version() == 30
+        assert s.get_schema_version() == 31
         assert [m["version"] for m in s.list_migrations()] == [
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
         ]
 
         conn = s._conn()
@@ -159,7 +159,7 @@ class TestMigrationUpgrade:
         storage = SQLiteStorage(db)
         storage.init_schema()
 
-        assert storage.get_schema_version() == 30
+        assert storage.get_schema_version() == 31
         migrations = {item["version"]: item["name"] for item in storage.list_migrations()}
         assert migrations[9] == "ai_learning"
         assert migrations[12] == "interview_question_bank_compatibility"
@@ -307,12 +307,12 @@ class TestSchemaInit:
             assert expected in names
 
     def test_versioned_migrations_applied(self, storage: SQLiteStorage) -> None:
-        assert storage.get_schema_version() == 30
+        assert storage.get_schema_version() == 31
         migrations = storage.list_migrations()
         assert [item["version"] for item in migrations] == [
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
         ]
-        assert migrations[-1]["name"] == "interview_six_assessments"
+        assert migrations[-1]["name"] == "course_knowledge_graph"
 
     def test_knowledge_tables_and_local_workspace_exist(
         self,
