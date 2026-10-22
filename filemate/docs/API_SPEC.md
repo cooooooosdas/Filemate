@@ -1072,3 +1072,12 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 只有完整的POST `R/{cid}/drafts/{did}/sources/{sid}/extract`且body.mode=llm接收浏览器密钥；必须Origin受信、`X-FileMate-Action:model`，密钥只在当前请求context，不进入DB/日志/回执。创建组、GET、审核、取消、融合和相似后缀路径都不允许密钥。本地mode不发送密钥。LLM每来源最多20000字符、1次45秒调用、6000输出token；不自动fallback成成功或隐藏重试，明确同意allow_external_model后调用。客户端一次执行一来源。失败可用新request_key显式重试，仍受全局累计/并发限额。
 
 错误data.error_code为固定码，422参数/未授权/无有效选中项，404资源不存在，409版本/幂等键/确认过期/操作依赖冲突（可带blocking_operation_id），429 budget_exceeded，503治理/存储/开关不可用，502 extraction_failed。模型异常原文不回传，GET草稿仍可读失败状态。Token有效900秒，绑定原选择与版本；已有回执的同一确认幂等。来源正文/chunks变化、移出课程、删除会使引用失效；彻底删除预览含课程图谱影响，仍删除旧学习记录；移出课程保留旧记录。个人备份含新表，兼容schema30备份；恢复轮换全部执行epoch、取消运行租约、清除旧确认，不重放模型。课程图与旧图谱分别存储，B不静默迁移旧批次。
+
+
+### B级独立审阅修复（2026-10-22，extractor course-graph-b2）
+
+新B出现身份以course/source/revision/normalize_term(原术语)生成确定性evidence_id，保留+/#/-；不再单凭旧的有损knowledge key复用概念。legacy_node_id仍是原旧键提示，不塞入新格式；存在歧义时置空，候选/预览parsed.legacy_mapping_ambiguous=true，UI明确不自动关联旧题目。旧B1随机证据ID仅在不可变提取候选原术语可核对时复用，不依据人工显示名；不能核对返回409 legacy_mapping_unverified。旧图谱ID不改。B1未确认草稿因提取器版本变化需重新建组，已确认引用仍保留；不增加migration32。
+
+取消后的新建只复用真实且未取消的审核组，命令别名不作为新draft容器。撤销的候选不再被预览/确认重新选中，恢复必须走历史。稳定的融合成员原ID可读取代表详情；名称/已审核别名搜索覆盖完整成员集合。融合预览concepts现在包含source_count/source_status/member_ids/source_refs（含原文件名和当前有效原文），版本仍受确认凭据约束。删除来源后的extract固定404 source_not_found。
+
+客户端已明确落盘的502单来源失败可继续同组其他来源；429/503治理故障停止后续，网络结果未知时先读快照，不能确认终态则保留原请求键，不新建重放。已完成来源不再调用模型。

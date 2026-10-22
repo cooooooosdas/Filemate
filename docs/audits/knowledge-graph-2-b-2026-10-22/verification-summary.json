@@ -1,0 +1,83 @@
+{
+  "scope": "B candidate local Windows engineering acceptance, not production release or real learning effects",
+  "full_gate": {
+    "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend",
+    "exit_code": 0,
+    "backend": {
+      "passed": 1389,
+      "skipped": 22,
+      "deselected": 5,
+      "warnings": 3
+    },
+    "frontend": {
+      "passed": 149,
+      "failed": 0
+    },
+    "typecheck": true,
+    "build": true,
+    "initial_bundle": true
+  },
+  "browser": {
+    "two_source_review": true,
+    "display_label_revision": true,
+    "explicit_rejection": true,
+    "merge_two_independent_source_refs": true,
+    "undo_restore_specific_merge": true,
+    "persistence_after_reload": true,
+    "second_course_isolation": true,
+    "cancel_no_next_request": true,
+    "stale_extract_rejected": 409,
+    "html_quote_inert": true,
+    "offline_error_retains_graph_then_recovers": true,
+    "simulated_503_ui_recovers": true,
+    "feature_off_default_build_legacy_http": 200,
+    "new_api_disabled": 503
+  },
+  "viewports": [
+    [
+      1920,
+      1080
+    ],
+    [
+      1366,
+      768
+    ],
+    [
+      1024,
+      768
+    ],
+    [
+      1180,
+      820
+    ],
+    [
+      390,
+      844
+    ]
+  ],
+  "horizontal_overflow": false,
+  "minimum_button_height": 48.046875,
+  "themes_primary_contrast": {
+    "blue-gray": 7.31,
+    "mist": 7.31,
+    "graphite": 8.21,
+    "midnight": 6.51
+  },
+  "preserved_existing_tests": {
+    "total": 24,
+    "unchanged_sha256": 24
+  },
+  "final_independent_review": {
+    "reviewed_head": "cc0769d",
+    "critical": 0,
+    "important": 7,
+    "minor_regraded_important": 1,
+    "fixed_by_executor": 8,
+    "method": "observed RED regressions then one fix pass, full gate exit0, no re-review"
+  },
+  "real_model": {
+    "calls": 3,
+    "reported_total_tokens": 1269,
+    "final_b2_symbol_concepts": 5
+  }
+}

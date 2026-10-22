@@ -4,7 +4,7 @@
 
 ## 1. 本阶段完成内容
 
-工程闭环已实现；全量门禁通过，最终独立审阅尚在收尾，用户B验收待确认。默认前后端开关均关闭。未宣称Knowledge Graph 2.0全部完成，学习联动和大画布仍在后续等级。
+本地B级工程闭环已完成；独立审阅提出的重要问题已一次修复并通过回归，用户B验收待确认。默认前后端开关均关闭。未宣称Knowledge Graph 2.0全部完成，学习联动和大画布仍在后续等级。
 
 - 同一身份私有SQLite中的课程、章节、已有资料挂接；不同课程各自保留概念。同名及带符号术语不自动融合。
 - 每组1–10份，逐份本地或模型提取，最多20000字符、80节点/120关系。候选、状态、截断说明与审核决策持久化；失败不写成成功图谱。
@@ -23,7 +23,7 @@ B1资料与课程组织、B2结构化提取与引文、B3同课融合与撤销�
 
 ## 3. 修改范围与数据库
 
-业务迁移追加31，共8张kg_表；原1–30迁移不改。主实现为`filemate/course_graph/`与`filemate/execution/course_graph_schema.py`。接线涉及storage删除预览、personal_backup恢复、server路由、临时模型凭据白名单、Vue审核状态/三个组件/API/类型、环境示例与门禁清单。
+业务迁移追加31，共8张kg_表；原1–30迁移不改。符号出现身份由确定性evidence_id承载，legacy_node_id仅作无歧义旧键提示；原旧图谱键不改。主实现为`filemate/course_graph/`与`filemate/execution/course_graph_schema.py`。接线涉及storage删除预览、personal_backup恢复、server路由、临时模型凭据白名单、Vue审核状态/三个组件/API/类型、环境示例与门禁清单。
 
 API逐项合同见[API_SPEC](../filemate/docs/API_SPEC.md#2026-10-22-课程知识图谱-b-候选schema31默认关闭)，完整任务见[九项计划](superpowers/plans/2026-10-22-course-knowledge-graph-foundation.md)。新增验收准备脚本`scripts/acceptance/course_graph_fixture.py`仅接受新绝对目录，生成3份原创TXT与合成账号；密码由FILEMATE_AUDIT_PASSWORD临时提供，不输出密码、恢复码或会话。运行方式：`uv run python -m scripts.acceptance.course_graph_fixture --data-root <新绝对目录>`；此目录为专用环境的data根，FILEMATE_DB_PATH指向返回的database_path。
 
@@ -41,25 +41,27 @@ API逐项合同见[API_SPEC](../filemate/docs/API_SPEC.md#2026-10-22-课程知�
 
 ![融合后两份原文](audits/knowledge-graph-2-b-2026-10-22/task-8-persisted.png)
 
+![融合前并列原文核对](audits/knowledge-graph-2-b-2026-10-22/final-merge-evidence.png)
+
 ![移动端长文件名](audits/knowledge-graph-2-b-2026-10-22/viewport-390x844.png)
 
 截图和脱敏JSON见[证据目录](audits/knowledge-graph-2-b-2026-10-22/)。备份、数据库、浏览器会话及原始日志仅留_working，不提交。
 
 ## 5. 实际测试结果
 
-- 默认全量：`powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend`，退出0。Ruff通过；后端1379通过、22跳过、5按not e2e取消选择、3已有警告；前端147通过、0失败；类型/构建/首屏预算通过。此结果含B新增67项后端用例；不是沿用A级数量。
+- 默认全量：`powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend`，退出0。Ruff通过；后端1389通过、22跳过、5按not e2e取消选择、3已有警告；前端149通过、0失败；类型/构建/首屏预算通过。此结果含B新增77项后端用例；不是沿用A级数量。
 - 22跳过来自Linux专属分支、未提供真实附件夹具、可选OCR、符号链接权限；3警告为Starlette/httpx、PyPDF2和请求cookie旧接口。Windows结果不替代Linux发布门禁。
 - 定向RED→GREEN覆盖：迁移隔离、逐项引用、模型认领/取消/配额、原子确认、融合循环/后续依赖、删除/备份迟到竞态、HTTP授权与幂等；前端切换迟到、未保存选择、重试键、取消和已撤销候选。
 - 迁移30→31副本和重复初始化通过，旧Source/批次/历史逐行保留、integrity=ok/FK=0；schema30及31个人备份恢复通过。未在生产库试验迁移。
-- 真实DeepSeek/deepseek-v4-flash：两次HTTP200，各4节点＋1关系；全部10项引文校验有效，人工核对原文明示关系成立。分别1733/1597ms（含HTTP），供应商记录真实token410/409、合计819；没有把预算单位当成费用。见[模型摘要](audits/knowledge-graph-2-b-2026-10-22/real-model-summary.json)。未自动确认模型结果，费用金额未知。
-- 主题验收发现午夜模式主按钮错误使用浅色accent＋白字，对比度1.68。改用现有action-fill，浏览器RED→GREEN；四主题主操作对比度7.31/7.31/8.21/6.51。最终CSS后前端构建结果另记。
+- 真实DeepSeek/deepseek-v4-flash：两次HTTP200，各4节点＋1关系；全部10项引文校验有效，人工核对原文明示关系成立。分别1733/1597ms（含HTTP），供应商记录真实token410/409、合计819；没有把预算单位当成费用。见[模型摘要](audits/knowledge-graph-2-b-2026-10-22/real-model-summary.json)。前两次模型结果未自动确认；最终再以第三份原创符号资料调用并明确审核确认C/C#/C++/A-B/AB，5个独立概念保存，第三次450tokens，3次合计1269tokens。费用金额未知，见[最终符号回归](audits/knowledge-graph-2-b-2026-10-22/final-symbol-model.json)。
+- 主题验收发现午夜模式主按钮错误使用浅色accent＋白字，对比度1.68。改用现有action-fill，浏览器RED→GREEN；四主题主操作对比度7.31/7.31/8.21/6.51。最终修复后的默认门禁已重新执行，前端149项及类型/构建/预算通过。
 - 原有24个用户修改测试文件按预留SHA256全部一致，未暂存。
 
 ## 6. 当前限制
 
 - C大画布、万节点布局/邻域查询、跨课联系、D真实学习联动、E受控Agent与真人实验未实现；本级只按B验收。
 - 原文是当前Source版本，引用失效时不补造历史原文。模型超过20000字符的后文未处理；复杂关系需人工审核，本地规则覆盖有限。
-- B图投影的关系及同名候选查询仍扫描课程内记录；10000节点/30000前置关系以上拒绝循环检查。未声称万节点性能已通过。
+- B图投影的关系及同名候选查询仍扫描课程内记录；10000节点/30000前置关系以上拒绝循环检查。未声称万节点性能已通过。完整屏幕阅读器、实体设备和其他供应商真实调用也未验证。
 - 各模型来源只有一次45秒调用；失败需显式新命令重试，取消不能撤回供应商已消耗费用。供应商质量、网络和真实费用仍有外部依赖。
 - 新旧图谱分开；关闭开关保留数据。回退需使用兼容schema31代码关闭新模块，旧schema30二进制不可直接打开31库；不得用赛前旧备份覆盖新学习数据。
 - 生产迁移、Linux重验及发布未做；本次不更换线上稳定版本。
@@ -77,4 +79,4 @@ API逐项合同见[API_SPEC](../filemate/docs/API_SPEC.md#2026-10-22-课程知�
 3. 移动端是否用“目录／图谱／证据”三个可见入口替代三栏？推荐采用，避免横向压缩。
 4. 冻结前C范围是否先限搜索定位、筛选与证据联动？推荐先实现这些，再安排万节点布局。
 
-独立审阅结论与修复记录将在最终保存前补齐。本报告当前仍是候选，不是上线回执。
+独立审阅报告及全部裁定见[审阅与修复记录](audits/knowledge-graph-2-b-2026-10-22/independent-review.md)：原7项Important及升级的1项500问题均有RED→GREEN回归；未再次派审阅者，最终全量退出0。没有遗留Minor。用户B级验收、生产发布及C级开工仍待确认，本报告不是上线回执。
