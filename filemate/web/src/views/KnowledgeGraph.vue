@@ -1,7 +1,7 @@
 <template>
-  <div class="graph-page">
+  <div :class="courseView ? 'course-page' : 'graph-page'">
     <nav v-if="courseEnabled" class="map-tools" aria-label="图谱版本"><button :aria-pressed="!courseView" @click="switchGraph(false)">资料图谱</button><button :aria-pressed="courseView" @click="switchGraph(true)">课程图谱 · 多资料核对</button></nav>
-    <CourseGraphPanel v-if="courseEnabled && courseView" ref="coursePanel" :sources="sources" />
+    <CourseWorkspace v-if="courseEnabled && courseView" ref="coursePanel" :sources="sources" />
     <div v-show="!courseView">
     <header class="graph-header">
       <div><p class="eyebrow">从资料出发 · 用练习验证</p><h1>我的知识图谱</h1><p>看见知识之间的联系，也看清下一步该复习什么。</p></div>
@@ -116,9 +116,10 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { coursePanelEnabled } from '../course-graph/review-state'
+import { resolveGraphScope } from '../course-graph/browse-state'
 import { Aim, ArrowRight, Minus, Plus, Refresh, Search, Share } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { init, use, type EChartsType } from 'echarts/core'
 import { GraphChart } from 'echarts/charts'
 import { TooltipComponent } from 'echarts/components'
@@ -127,16 +128,16 @@ import { getGraphNodeDetail, getGraphBatchDetail, changeGraphBatch, changeGraphP
 import type { GraphBatch, GraphNode, GraphPlanPreview, GraphPlanResult, KnowledgeGraphData } from '../types/knowledgeGraph'
 
 use([GraphChart, TooltipComponent, CanvasRenderer])
-const CourseGraphPanel = defineAsyncComponent(() => import('../components/course-graph/CourseGraphPanel.vue'))
+const CourseWorkspace = defineAsyncComponent(() => import('../components/course-graph/CourseWorkspace.vue'))
 const courseEnabled = coursePanelEnabled(import.meta.env.VITE_ENABLE_COURSE_GRAPH)
-const courseView = ref(false), coursePanel = ref<{ canLeave(): Promise<boolean> } | null>(null)
+const route = useRoute(), router = useRouter()
+const courseView = computed(() => resolveGraphScope(route.query, courseEnabled) === 'course'), coursePanel = ref<{ canLeave(): Promise<boolean> } | null>(null)
 async function switchGraph(value: boolean) {
   if (value === courseView.value) return
   if (courseView.value && coursePanel.value && !await coursePanel.value.canLeave()) return
-  courseView.value = value
-  if (!value) { await nextTick(); chart?.resize() }
+  await router.push({ query: { graph_scope: value ? 'course' : 'source' } })
+  if (!value) { await load(); await nextTick(); chart?.resize() }
 }
-const route = useRoute()
 const data = shallowRef<KnowledgeGraphData>({ nodes: [], edges: [], batches: [], plans: [], relations: {}, updated_at: '', events: [], profile: { node_count: 0, observed_node_count: 0, unassessed_node_count: 0, attempt_count: 0, pending_wrong_count: 0, excluded_sample_count: 0, study_time: null, status_counts: {}, weaknesses: [] } })
 const sources = shallowRef<KnowledgeSource[]>([])
 const sourceId = ref(''), mode = ref<'local' | 'llm'>('local'), externalConsent = ref(false)
@@ -316,11 +317,15 @@ watch(search, () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => 
 watch([filteredNodes, view], async () => { await nextTick(); renderChart() })
 watch(mode, () => { externalConsent.value = false })
 watch(sourceId, () => { externalConsent.value = false })
-onMounted(load)
+onMounted(async () => { if (courseView.value) { try { sources.value = await getKnowledgeSources(200) } catch { /* 整理面板可重新读取。 */ } } else await load() })
 onUnmounted(() => { disposed = true; loadGeneration++; detailGeneration++; clearTimeout(searchTimer); resizeObserver?.disconnect(); chart?.dispose() })
 </script>
 
 <style scoped>
+.course-page{max-width:1600px;margin:0 auto;padding:12px 20px;color:var(--text-primary)}
+.course-page>.map-tools{padding:0;gap:8px}.course-page>.map-tools button{font:inherit;min-height:44px;padding:8px 12px;border:1px solid var(--border-strong);border-radius:8px;color:var(--text-primary);background:var(--bg-surface)}
+.course-page>.map-tools button[aria-pressed=true]{color:var(--accent);background:var(--accent-soft)}
+@media(max-width:600px){.course-page{padding:12px}}
 .profile-panel{border:1px solid var(--border-subtle);border-radius:14px;background:#FFFFFF;margin-bottom:20px}.profile-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0 24px;border-top:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle);padding:20px 0;gap:18px}.profile-metrics dt{font-size: var(--type-copy);color:var(--text-secondary);line-height:1.6}.profile-metrics dd{font-size:23px;margin:8px 0 0;font-family:ui-monospace,Consolas,monospace}.profile-body{padding:22px 24px}.weakness-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;list-style:none;padding:0}.weakness-list li{border:1px solid var(--border-subtle);border-radius:10px;padding:14px;min-width:0}.weakness-list li>button{justify-content:space-between;width:100%;padding:0;border:0;min-height:44px;text-align:left}.weakness-list strong{overflow-wrap:anywhere}.weakness-list button span{display:flex;align-items:center;gap:6px;font-size: var(--type-action);white-space:nowrap}.weakness-list small{display:block;color:var(--text-muted);font-size: var(--type-copy);overflow-wrap:anywhere}.weakness-list p{font-size: var(--type-meta);margin-top:8px}.prerequisite-links{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size: var(--type-copy);margin-top:12px}.prerequisite-links button{padding:6px 10px;font-size: var(--type-action)}.metric-rules{font-size: var(--type-copy);margin-top:16px}.metric-rules summary,.operation-history summary{min-height:44px;align-content:center;cursor:pointer}.metric-rules p{padding-top:8px}.operation-history{margin-top:20px;padding:16px 24px;border:1px solid var(--border-subtle);border-radius:14px;background:#FFFFFF;font-size: var(--type-meta)}.operation-history li{display:flex;justify-content:space-between;gap:16px;padding:10px 0;line-height:1.6;border-bottom:1px solid var(--border-subtle)}.operation-history span{overflow-wrap:anywhere}.operation-history time{color:var(--text-muted);flex-shrink:0;font-size: var(--type-copy)}.operation-history ol{padding:0;list-style:none}
 @media(max-width:768px){.profile-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.weakness-list{grid-template-columns:1fr}.operation-history li{flex-direction:column;gap:4px}}
 .graph-page{max-width:1480px;margin:0 auto;padding:28px;color:var(--text-primary);font-family:"MiSans","HarmonyOS Sans SC","Microsoft YaHei",sans-serif}

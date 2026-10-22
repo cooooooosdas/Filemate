@@ -222,12 +222,12 @@ test('late_old_course_and_digest_mismatch_cannot_mix', async () => {
 - Consumes: Task4/5控制器与Task3响应；现有ECharts GraphChart/CanvasRenderer、主题token与SVG导出。
 - Produces: `layoutWorkspaceCanvas(data: WorkspaceCanvas): {nodes: PositionedWorkspaceNode[], edges: WorkspaceRelation[]}`，PositionedWorkspaceNode=WorkspaceNode加x/y:number；groups模式另用WorkspaceGroup生成明确kind=group的ECharts显示对象，不冒充概念响应。`CourseCanvas` props=data/selectedId/reducedMotion，events=select(id)/openGroup(groupId)/expand(id)；CourseNavigation events=course/filter/openManager，CourseOutline events=select/page，CourseEvidence events=openCitation/openManager。CourseWorkspace公开`canLeave(): Promise<boolean>`供路由壳调用。
 
-- [ ] **Step 1: 写布局失败用例。** 断言`deterministic_layout_preserves_direction`同数据多次坐标相同；prerequisite布局a在b之前、depends_on按依赖前置排名但连线from/to不改；related_to环不参与拓扑；`isolated_and_long_label_nodes_stay_selectable`、`duplicate_group_members_keep_same_concept_id`、`node_budget_remains_100`。损坏依赖环回安全网格并给错误状态，不卡死或删数据。
-- [ ] **Step 2: 跑RED。** `node --test tests/course-workspace-layout.test.mjs`。
-- [ ] **Step 3: 实现纯布局与三个视图。** 使用ECharts layout=none、确定性章节／层级坐标、16px常用标签，选中描边／箭头与关系文字；缩放0.3–3、拖拽仅页内、重置/回概览。多组概览不是语义节点；点击读取所选子图，不从前端并发拼满分页。大纲明确“按资料所属章节整理”，重复出现的同一ID不重复计数。学习证据视图显示资料引文与个人关联空态；不渲染假分数或D动作。
-- [ ] **Step 4: 完成壳与响应式。** 一个搜索、一个视图切换、一个整理动作；章节／来源条件可清除，进入默认course模式且保留source切换。内容宽≥1080px用220/剩余/320三栏，<1080收目录抽屉，<820详情改覆盖，<640列表主界面；中心不足480px时进一步收栏。这些是工程起点，实测1366含全局导航的实际宽度，不以视口数值强制三栏。组件变化清Observer/事件/实例，主题和reduced-motion同步选中状态。
-- [ ] **Step 5: 跑GREEN并浏览器核对。** 本卡node:test、`npm run build`；用原创B资料核对初始画布可见、放大/拖拽/复位、章节展开、搜索画布外节点、三视图选中ID一致。暂缺Task7原文和管理时不可出现假按钮，保留明确尚未接线状态，仅作开发候选。
-- [ ] **Step 6: 提交。** `feat(graph): 实现课程三栏工作台与章节关系画布`。
+- [x] **Step 1: 写布局失败用例。** 断言`deterministic_layout_preserves_direction`同数据多次坐标相同；prerequisite布局a在b之前、depends_on按依赖前置排名但连线from/to不改；related_to环不参与拓扑；`isolated_and_long_label_nodes_stay_selectable`、`duplicate_group_members_keep_same_concept_id`、`node_budget_remains_100`。损坏依赖环回安全网格并给错误状态，不卡死或删数据。
+- [x] **Step 2: 跑RED。** `node --test tests/course-workspace-layout.test.mjs`。
+- [x] **Step 3: 实现纯布局与三个视图。** 使用ECharts layout=none、确定性章节／层级坐标、16px常用标签，选中描边／箭头与关系文字；缩放0.3–3、拖拽仅页内、重置/回概览。多组概览不是语义节点；点击读取所选子图，不从前端并发拼满分页。大纲明确“按资料所属章节整理”，重复出现的同一ID不重复计数。学习证据视图显示资料引文与个人关联空态；不渲染假分数或D动作。
+- [x] **Step 4: 完成壳与响应式。** 一个搜索、一个视图切换、一个整理动作；章节／来源条件可清除，进入默认course模式且保留source切换。内容宽≥1080px用220/剩余/320三栏，<1080收目录抽屉，<820详情改覆盖，<640列表主界面；中心不足480px时进一步收栏。这些是工程起点，实测1366含全局导航的实际宽度，不以视口数值强制三栏。组件变化清Observer/事件/实例，主题和reduced-motion同步选中状态。
+- [x] **Step 5: 跑GREEN并浏览器核对。** 本卡node:test、`npm run build`；用原创B资料核对初始画布可见、放大/拖拽/复位、章节展开、搜索画布外节点、三视图选中ID一致。暂缺Task7原文和管理时不可出现假按钮，保留明确尚未接线状态，仅作开发候选。
+- [x] **Step 6: 提交。** `feat(graph): 实现课程三栏工作台与章节关系画布`。
 
 ## Task 7: 原文／详情面板与B审核管理整合
 
