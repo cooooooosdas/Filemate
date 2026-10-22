@@ -192,7 +192,7 @@ test('url_wins_and_mobile_does_not_reuse_desktop_graph', () => {
 - Consumes: Task3 API函数经`WorkspaceApi`注入，Task4 CourseBrowse；状态由Vue调用方用reactive/shallowRef观察，控制器本身可在node:test运行。
 - Produces: `createCourseWorkspaceController(api: WorkspaceApi)`返回`state`, `open(browse)`, `selectNode(id)`, `openCitation(eid)`, `closeCitation()`, `search(q)`, `selectSearchResult(item)`, `setView(view)`, `setFilters(filters)`, `refresh()`, `invalidateAfterMutation()`, `resetIdentity(scope)`, `dispose()`。state至少含browse/navigation/canvas/detail/citation/searchPage/loading/error/stale/notice/generation；大快照按替换更新，不深层修改。
 
-- [ ] **Step 1: 写代次和一致性失败用例。**
+- [x] **Step 1: 写代次和一致性失败用例。**
 
 ```javascript
 test('late_old_course_and_digest_mismatch_cannot_mix', async () => {
@@ -209,10 +209,10 @@ test('late_old_course_and_digest_mismatch_cannot_mix', async () => {
 ```
 
 另写`search_locates_unloaded_node_and_clears_only_conflicting_filters`、`search_debounce_enter_cancels_pending_timer`、`network_error_keeps_only_same_identity_snapshot`、`identity_reset_clears_detail_and_aborts_reads`、`revoked_node_clears_selection`、`mutation_refresh_failure_never_replays_write`；用可控promise和时钟，不硬等300ms。WorkspaceApi以Task3六个读方法和浏览scope方法组成；测试注入同名方法（不能使用未定义的getGraph别名），无任何post函数，证明不会重放AI／确认。getCourseChapterPath可按需读路径，不参与每次主bundle。
-- [ ] **Step 2: 跑RED。** `node --test tests/course-workspace-state.test.mjs`，模块缺失为预期。
-- [ ] **Step 3: 实现签名。** generation与AbortController同时保护读请求；nav/canvas/detail digest一致后才提交同一bundle，第一次不一致全部重读一次，第二次只报需要刷新。搜索全课程结果和现有范围对照；选中范围外结果清chapter/source，不清relation，并提示条件变化。401／filemate:session-expired由壳调用resetIdentity；不同身份没有旧快照回退。浏览改动不重新提取。openCitation也受当前course/identity/generation约束；迟到旧引用丢弃，引用digest变化时关闭旧引用并提示刷新，不把它拼到旧详情下。
-- [ ] **Step 4: 跑GREEN。** 本卡＋Task4 tests，逐个验证所有迟到promise及计时器在dispose后不改状态、不发新读。故障后的旧快照标记stale，来源打开仍走服务端新核对。
-- [ ] **Step 5: 提交。** `feat(graph): 增加一致读状态与跨课程故障恢复`。
+- [x] **Step 2: 跑RED。** `node --test tests/course-workspace-state.test.mjs`，模块缺失为预期。
+- [x] **Step 3: 实现签名。** generation与AbortController同时保护读请求；nav/canvas/detail digest一致后才提交同一bundle，第一次不一致全部重读一次，第二次只报需要刷新。搜索全课程结果和现有范围对照；选中范围外结果清chapter/source，不清relation，并提示条件变化。401／filemate:session-expired由壳调用resetIdentity；不同身份没有旧快照回退。浏览改动不重新提取。openCitation也受当前course/identity/generation约束；迟到旧引用丢弃，引用digest变化时关闭旧引用并提示刷新，不把它拼到旧详情下。
+- [x] **Step 4: 跑GREEN。** 本卡＋Task4 tests，逐个验证所有迟到promise及计时器在dispose后不改状态、不发新读。故障后的旧快照标记stale，来源打开仍走服务端新核对。
+- [x] **Step 5: 提交。** `feat(graph): 增加一致读状态与跨课程故障恢复`。
 
 ## Task 6: 三栏工作台、关系画布和大纲
 
