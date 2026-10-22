@@ -140,7 +140,7 @@ def test_focus_outside_first_page_is_kept(large_workspace):
 - Consumes: Task1/2服务、B当前租户Store依赖和CourseRoute。
 - Produces: `get_workspace_citation(storage, course_id, concept_id, evidence_id) -> WorkspaceCitation`；`register_workspace_routes(router: APIRouter, storage_provider: Callable[[], SQLiteStorage]) -> None`注册六路径及同开关；TS响应字段与上方同名类型一致。`getCourseWorkspace(cid, options, signal?)`、`getCourseCanvas(cid, filters, focus?, groupOffset=0, signal?)`、`getCourseChapterPath(cid, chapterId, signal?)`、`getCourseConceptPage(cid, options, signal?)`、`getCourseWorkspaceDetail(cid, nid, offset=0, signal?)`、`getCourseCitation(cid,nid,eid,signal?)`均返回对应Promise，不读密钥；`getCourseBrowserScope(): Promise<string|null>`只读publicLLMStatus的64hex credential_scope，失败返回null，不打开／读取浏览器密钥库。
 
-- [ ] **Step 1: 写引用和边界失败用例。**
+- [x] **Step 1: 写引用和边界失败用例。**
 
 ```python
 def test_unicode_duplicate_quote_uses_saved_range(citation_case):
@@ -152,11 +152,11 @@ def test_unicode_duplicate_quote_uses_saved_range(citation_case):
 ```
 
 另写`test_source_revision_change_is_not_fuzzy_repaired`（409 citation_unavailable）、`test_removed_source_is_unavailable`（409）、`test_deleted_or_foreign_evidence_is_404`、`test_merged_member_reference_is_valid`、`test_read_routes_tenant_isolation_and_flag_off`、`test_strict_filters_and_limits`（重复未知relation／多余参数422）、`test_read_routes_do_not_accept_model_credentials`、`test_old_b_graph_contract_unchanged`。真实租户fixture沿用既有test_api.py，禁止把同一个store用于两身份测试。
-- [ ] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_workspace_source.py filemate/tests/course_graph/test_workspace_api.py -q`，预期新路径404／函数缺失，非注册全局失败。
-- [ ] **Step 3: 实现引用与路由签名。** 先验证当前课程、已确认概念／成员及evidence归属，再核对active会员、source_revision、raw_text[start:end]==excerpt；不把失效引文藏成成功。Python切分Unicode上下文，page/chunk仅用真实字段，不按内容推断页码。query用受控类型与显式禁止extra，复用B错误包、开关、no-store，SQLite错误503，关闭默认不泄露私有数据。
-- [ ] **Step 4: 同步API_SPEC、TS类型及services。** 用URLSearchParams.append处理重复relation，其他ID路径encodeURIComponent，读timeout=15000，AbortSignal可传。HTTP请求不夹带写入header／allow_external_model；只允许现役模型白名单处理密钥。文档把上述六路径记为实施后状态，保留B历史快照标题。
-- [ ] **Step 5: 跑GREEN。** 上述用例＋原`test_api.py`、`test_privacy.py`；`npm --prefix filemate/web run build`及原前端测试无类型回归。断言无新业务表，schema31稳定；若另有迁移须按Global Constraints补验。
-- [ ] **Step 6: 提交。** `feat(graph): 增加工作台只读API与准确引用定位`。
+- [x] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_workspace_source.py filemate/tests/course_graph/test_workspace_api.py -q`，预期新路径404／函数缺失，非注册全局失败。
+- [x] **Step 3: 实现引用与路由签名。** 先验证当前课程、已确认概念／成员及evidence归属，再核对active会员、source_revision、raw_text[start:end]==excerpt；不把失效引文藏成成功。Python切分Unicode上下文，page/chunk仅用真实字段，不按内容推断页码。query用受控类型与显式禁止extra，复用B错误包、开关、no-store，SQLite错误503，关闭默认不泄露私有数据。
+- [x] **Step 4: 同步API_SPEC、TS类型及services。** 用URLSearchParams.append处理重复relation，其他ID路径encodeURIComponent，读timeout=15000，AbortSignal可传。HTTP请求不夹带写入header／allow_external_model；只允许现役模型白名单处理密钥。文档把上述六路径记为实施后状态，保留B历史快照标题。
+- [x] **Step 5: 跑GREEN。** 上述用例＋原`test_api.py`、`test_privacy.py`；`npm --prefix filemate/web run build`及原前端测试无类型回归。断言无新业务表，schema31稳定；若另有迁移须按Global Constraints补验。
+- [x] **Step 6: 提交。** `feat(graph): 增加工作台只读API与准确引用定位`。
 
 ## Task 4: URL、逐课程偏好与身份隔离
 

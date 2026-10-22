@@ -139,6 +139,21 @@ class WorkspaceDetail(TypedDict):
     offset: int
 
 
+class WorkspaceCitation(TypedDict):
+    course_id: str
+    graph_digest: str
+    requested_id: str
+    resolved_id: str
+    evidence_id: str
+    source_id: str
+    original_name: str
+    page: int | None
+    chunk_id: str | None
+    before: str
+    quote: str
+    after: str
+
+
 def validate_page(limit: int, offset: int, maximum: int = 200) -> None:
     """Reject coercion and unbounded direct service calls as well as HTTP calls."""
     if type(limit) is not int or type(offset) is not int or not 1 <= limit <= maximum or not 0 <= offset <= 1_000_000:

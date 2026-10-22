@@ -132,19 +132,24 @@ def _build_groups(chapters, ancestors, nodes):
 def load_workspace_snapshot(storage: SQLiteStorage, course_id: str) -> CourseWorkspaceSnapshot:
     """Read graph state and current fingerprints inside a single SQLite snapshot."""
     with storage.read_snapshot() as snapshot:
-        conn = snapshot._conn()
-        course = require_course(conn, course_id)
-        rows = {}
-        for table, key in (("kg_chapters", "chapter_id"), ("kg_concepts", "concept_id"),
-                           ("kg_relations", "relation_id"), ("kg_evidence", "evidence_id")):
-            rows[table] = [dict(r) for r in conn.execute(
-                f"SELECT * FROM {table} WHERE course_id=? ORDER BY {key}", (course_id,))]
-        sources = {r["source_id"]: dict(r) for r in conn.execute(
-            """SELECT m.*,s.original_name FROM kg_course_sources m JOIN sources s USING(source_id)
-               WHERE m.course_id=? ORDER BY m.source_id""", (course_id,))}
-        fingerprints = {sid: snapshot.get_source_revision(sid) if row["active"] else None
-                        for sid, row in sources.items()}
-        graph_digest = digest({"course": course, "rows": rows, "sources": sources, "fingerprints": fingerprints})
+        return read_workspace_snapshot(snapshot, course_id)
+
+
+def read_workspace_snapshot(snapshot: SQLiteStorage, course_id: str) -> CourseWorkspaceSnapshot:
+    """Share an already-open read transaction with citation range verification."""
+    conn = snapshot._conn()
+    course = require_course(conn, course_id)
+    rows = {}
+    for table, key in (("kg_chapters", "chapter_id"), ("kg_concepts", "concept_id"),
+                       ("kg_relations", "relation_id"), ("kg_evidence", "evidence_id")):
+        rows[table] = [dict(r) for r in conn.execute(
+            f"SELECT * FROM {table} WHERE course_id=? ORDER BY {key}", (course_id,))]
+    sources = {r["source_id"]: dict(r) for r in conn.execute(
+        """SELECT m.*,s.original_name FROM kg_course_sources m JOIN sources s USING(source_id)
+           WHERE m.course_id=? ORDER BY m.source_id""", (course_id,))}
+    fingerprints = {sid: snapshot.get_source_revision(sid) if row["active"] else None
+                    for sid, row in sources.items()}
+    graph_digest = digest({"course": course, "rows": rows, "sources": sources, "fingerprints": fingerprints})
     chapters = {r["chapter_id"]: r for r in rows["kg_chapters"]}
     ancestors = _chapter_ancestors(chapters)
     concepts = {r["concept_id"]: r for r in rows["kg_concepts"]}

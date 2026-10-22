@@ -1081,3 +1081,21 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 取消后的新建只复用真实且未取消的审核组，命令别名不作为新draft容器。撤销的候选不再被预览/确认重新选中，恢复必须走历史。稳定的融合成员原ID可读取代表详情；名称/已审核别名搜索覆盖完整成员集合。融合预览concepts现在包含source_count/source_status/member_ids/source_refs（含原文件名和当前有效原文），版本仍受确认凭据约束。删除来源后的extract固定404 source_not_found。
 
 客户端已明确落盘的502单来源失败可继续同组其他来源；429/503治理故障停止后续，网络结果未知时先读快照，不能确认终态则保留原请求键，不新建重放。已完成来源不再调用模型。
+
+
+## 2026-10-23 C级工作台只读接口（schema31，本地实施中）
+
+沿用B的R前缀、当前身份SQLite、功能开关和错误包装；不接收浏览器模型密钥，不调用AI，不创建业务表。所有响应带course_id与64hex graph_digest，并返回Cache-Control: no-store。digest绑定章节、归属、概念、关系、证据和有效来源指纹，不代表能力分数。
+
+| GET路径 | 参数 | data |
+|---|---|---|
+| R/{cid}/workspace | parent_id可选（@root为根、缺省全部）、group_limit=200/group_offset=0、source_limit=50/source_offset=0 | name/groups/sources/分页计数/total_concepts |
+| R/{cid}/workspace/chapter-path/{id} | 无 | items真实祖先路径；异常树409 chapter_structure_invalid |
+| R/{cid}/concepts-page | chapter_id/source_id/relation/hide_relations、q、limit=50/offset=0 | items含matched_label、total/limit/offset |
+| R/{cid}/canvas | 同筛选、focus、limit=100、group_limit=20/group_offset=0 | mode=groups或concepts，nodes/edges/groups/group_edges，total_concepts/total_edges及truncated/node_has_more/edge_has_more |
+| R/{cid}/workspace/concepts/{nid} | limit=50/offset=0 | requested_id/resolved_id/node/source_refs/total_refs/分页；无merge_candidates |
+| R/{cid}/concepts/{nid}/source-evidence/{eid} | 无 | 当前原文before/quote/after，各侧最多2000个Unicode字符，原文件名/页码/chunk |
+
+分页limit最大200（canvas概念100、group20），offset最大1000000，q最大160字符，ID筛选最大120字符。chapter_id包含子章，可为@unassigned或@no-source；source_id与章节取交集。relation只允许B六类型，可重复参数但不可重复同值；缺省全部，hide_relations=true隐藏所有连线且保留概念，不能同时指定relation。多余或重复标量参数422；未知课程/章节/来源/已撤销概念404。focus解析原ID到代表，过滤冲突409 focus_outside_filter；失效来源不提供关系依据。无过滤时多章或超过100概念先展示组概览，组是导航汇总，不是知识断言。完整课程通过分页列表可达，画布不后台拼接全量。
+
+引用先验证课程、已确认代表/成员和证据归属，再在同一只读事务核对active来源、指纹、保存的raw_text范围与原句相等；来源变化或移出返回409 citation_unavailable，不模糊重定位。删除或他人证据404，数据库异常503 storage_unavailable，不泄露数据库路径。前端读请求15秒、可取消；浏览空间只读取公开状态的opaque scope，不访问密钥库。B原graph/concepts与所有写入协议保持原义。本段是接口实现记录，完整C级浏览器/性能验收尚未完成。

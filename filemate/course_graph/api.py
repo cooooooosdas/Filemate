@@ -231,4 +231,7 @@ def create_router(storage_provider: Callable[[], SQLiteStorage]) -> APIRouter:
     def operation(cid: str, oid: str, action: Literal["undo", "restore"], body: Confirm, store: Store):
         return _result(fusion.transition_operation(store, cid, oid, action, **body.model_dump()))
 
+    from filemate.course_graph.workspace_api import register_workspace_routes
+
+    register_workspace_routes(router, storage_provider)
     return router

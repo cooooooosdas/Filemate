@@ -2,6 +2,7 @@ import { saveDownload } from './downloads'
 import type { CoachSnapshot, CoachMutationResult, CoachAnswer, CoachAnalysis, CoachAdvance, CoachConsent, CoachAttempts, CoachFocus } from '../types/interviewCoach'
 import axios from 'axios'
 import type { CourseActionPreview, CourseChapter, CourseConcept, CourseDecision, CourseDraft, CourseGraphPage, CourseMergePreview, CourseOperation, CourseReviewPreview, GraphConfirmation, GraphCourse, GraphMode, GraphPage } from '../types/courseGraph'
+import type { WorkspaceCanvas, WorkspaceChapterPath, WorkspaceCitation, WorkspaceConceptOptions, WorkspaceConceptPage, WorkspaceDetail, WorkspaceFilter, WorkspaceNavigation, WorkspaceNavigationOptions } from '../types/courseWorkspace'
 import type { AccountState, AccountUser, RegisterAccount } from '../types/account'
 import { HITOKOTO_URL } from '../home/encouragement'
 import { browserVaultAvailable, getBrowserApiKey, hasBrowserApiKey, requiresModelCredential, removeBrowserApiKey, saveBrowserApiKey, validateApiKey } from './llm-vault'
@@ -97,6 +98,41 @@ export const previewCourseOperation = async (cid: string, oid: string, action: '
 export const changeCourseOperation = async (cid: string, oid: string, action: 'undo' | 'restore', body: GraphConfirmation) => (await api.post<unknown, ApiResponse<{ operation_id: string }>>(`${coursePath(cid)}/operations/${encodeURIComponent(oid)}/${action}`, body)).data!
 export const previewCourseSourceRemoval = async (cid: string, sid: string) => (await api.get<unknown, ApiResponse<CourseActionPreview>>(`${coursePath(cid)}/sources/${encodeURIComponent(sid)}/remove-preview`)).data!
 export const removeCourseSource = async (cid: string, sid: string, body: GraphConfirmation) => (await api.post<unknown, ApiResponse<{ operation_id: string }>>(`${coursePath(cid)}/sources/${encodeURIComponent(sid)}/remove`, body)).data!
+
+function workspaceParams(options: WorkspaceConceptOptions | WorkspaceNavigationOptions): URLSearchParams {
+  const params = new URLSearchParams()
+  for (const [name, value] of Object.entries(options)) {
+    if (name === 'relations') {
+      if (Array.isArray(value) && value.length === 0) params.set('hide_relations', 'true')
+      else if (Array.isArray(value)) for (const relation of value) params.append('relation', relation)
+    } else if (value !== undefined && value !== null) params.set(name, String(value))
+  }
+  return params
+}
+async function workspaceRead<T>(path: string, params: URLSearchParams, signal?: AbortSignal): Promise<T> {
+  const response = await api.get<unknown, ApiResponse<T>>(path, { params, signal, timeout: 15000 })
+  if (!response.success || response.data == null) throw new Error(response.error || '课程内容读取失败')
+  return response.data
+}
+export const getCourseWorkspace = (cid: string, options: WorkspaceNavigationOptions = {}, signal?: AbortSignal) =>
+  workspaceRead<WorkspaceNavigation>(`${coursePath(cid)}/workspace`, workspaceParams(options), signal)
+export const getCourseCanvas = (cid: string, filters: WorkspaceFilter, focus?: string, groupOffset = 0, signal?: AbortSignal) => {
+  const params = workspaceParams(filters)
+  if (focus) params.set('focus', focus)
+  params.set('group_offset', String(groupOffset))
+  return workspaceRead<WorkspaceCanvas>(`${coursePath(cid)}/canvas`, params, signal)
+}
+export const getCourseChapterPath = (cid: string, chapterId: string, signal?: AbortSignal) =>
+  workspaceRead<WorkspaceChapterPath>(`${coursePath(cid)}/workspace/chapter-path/${encodeURIComponent(chapterId)}`, new URLSearchParams(), signal)
+export const getCourseConceptPage = (cid: string, options: WorkspaceConceptOptions, signal?: AbortSignal) =>
+  workspaceRead<WorkspaceConceptPage>(`${coursePath(cid)}/concepts-page`, workspaceParams(options), signal)
+export const getCourseWorkspaceDetail = (cid: string, nid: string, offset = 0, signal?: AbortSignal) =>
+  workspaceRead<WorkspaceDetail>(`${coursePath(cid)}/workspace/concepts/${encodeURIComponent(nid)}`, new URLSearchParams({ offset: String(offset) }), signal)
+export const getCourseCitation = (cid: string, nid: string, eid: string, signal?: AbortSignal) =>
+  workspaceRead<WorkspaceCitation>(`${coursePath(cid)}/concepts/${encodeURIComponent(nid)}/source-evidence/${encodeURIComponent(eid)}`, new URLSearchParams(), signal)
+export async function getCourseBrowserScope(): Promise<string | null> {
+  try { return (await publicLLMStatus()).credential_scope ?? null } catch { return null }
+}
 
 export const getResumeProfile = async () => (await api.get<unknown, ApiResponse<import('../types/portfolio').ResumeProfile | null>>('/api/resume/profile')).data ?? null
 export const saveResumeProfile = async (profile: import('../types/portfolio').ResumeProfile) => (await api.put<unknown, ApiResponse<import('../types/portfolio').ResumeProfile>>('/api/resume/profile', profile)).data!
