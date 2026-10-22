@@ -119,7 +119,7 @@ import { coursePanelEnabled } from '../course-graph/review-state'
 import { resolveGraphScope } from '../course-graph/browse-state'
 import { Aim, ArrowRight, Minus, Plus, Refresh, Search, Share } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { init, use, type EChartsType } from 'echarts/core'
 import { GraphChart } from 'echarts/charts'
 import { TooltipComponent } from 'echarts/components'
@@ -131,10 +131,11 @@ use([GraphChart, TooltipComponent, CanvasRenderer])
 const CourseWorkspace = defineAsyncComponent(() => import('../components/course-graph/CourseWorkspace.vue'))
 const courseEnabled = coursePanelEnabled(import.meta.env.VITE_ENABLE_COURSE_GRAPH)
 const route = useRoute(), router = useRouter()
+onBeforeRouteLeave(() => courseView.value ? coursePanel.value?.canLeave() ?? true : true)
+onBeforeRouteUpdate((to, from) => to.query.course !== from.query.course || to.query.graph_scope !== from.query.graph_scope ? coursePanel.value?.canLeave() ?? true : true)
 const courseView = computed(() => resolveGraphScope(route.query, courseEnabled) === 'course'), coursePanel = ref<{ canLeave(): Promise<boolean> } | null>(null)
 async function switchGraph(value: boolean) {
   if (value === courseView.value) return
-  if (courseView.value && coursePanel.value && !await coursePanel.value.canLeave()) return
   await router.push({ query: { graph_scope: value ? 'course' : 'source' } })
   if (!value) { await load(); await nextTick(); chart?.resize() }
 }

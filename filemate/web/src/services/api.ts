@@ -152,7 +152,11 @@ export const exportGrowthReport = async (id: string, format: 'markdown' | 'json'
 export interface PersonalRestorePreview { backup_id: string; confirmation_token: string; backup_created_at: string; restored_counts: Record<string, number>; current_counts: Record<string, number>; file_count: number; current_file_count: number; notice: string }
 export const exportPersonalData = async (format: 'backup' | 'json') => api.get('/api/privacy/export', { params: { format }, responseType: 'blob', timeout: 120000 })
 export const previewPersonalRestore = async (file: File) => { const body = new FormData(); body.append('file', file); return (await api.post<unknown, ApiResponse<PersonalRestorePreview>>('/api/privacy/restore-preview', body, { timeout: 120000, headers: { 'Content-Type': 'multipart/form-data' } })).data! }
-export const restorePersonalData = async (preview: PersonalRestorePreview) => (await api.post<unknown, ApiResponse<{ restored: boolean; cleanup_pending?: boolean }>>('/api/privacy/restore', { backup_id: preview.backup_id, confirmation_token: preview.confirmation_token, confirmed: true }, { timeout: 120000 })).data!
+export const restorePersonalData = async (preview: PersonalRestorePreview) => {
+  const result = (await api.post<unknown, ApiResponse<{ restored: boolean; cleanup_pending?: boolean }>>('/api/privacy/restore', { backup_id: preview.backup_id, confirmation_token: preview.confirmation_token, confirmed: true }, { timeout: 120000 })).data!
+  if (result.restored) window.dispatchEvent(new Event('filemate:data-restored'))
+  return result
+}
 export const cancelPersonalRestore = async (preview: PersonalRestorePreview) => (await api.delete<unknown, ApiResponse<{ cancelled: boolean; cleanup_pending: boolean }>>('/api/privacy/restore-preview', { data: { backup_id: preview.backup_id, confirmation_token: preview.confirmation_token } })).data!
 
 export async function getSkillTree(): Promise<import('../types/skills').SkillTree> {

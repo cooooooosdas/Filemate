@@ -1,13 +1,13 @@
 <template>
   <section ref="root" class="course-workspace" :aria-busy="state.loading || booting">
-    <header class="cw-header"><div><p class="cw-kicker">FileMate · 知识工作台</p><h1>{{ state.navigation?.name || '从一门课开始' }}</h1><p>按章节展开知识，随时核对原文。</p></div><div class="cw-header-actions"><button class="cw-directory-toggle" @click="directoryOpen = true"><IconLayoutSidebar :size="21" aria-hidden="true" />课程目录</button><button :disabled="state.loading || booting" @click="refresh"><IconRefresh :size="20" aria-hidden="true" />刷新</button><span class="cw-caption">课程整理接线中</span></div></header>
+    <header class="cw-header"><div><p class="cw-kicker">FileMate · 知识工作台</p><h1>{{ state.navigation?.name || '从一门课开始' }}</h1><p>按章节展开知识，随时核对原文。</p></div><div class="cw-header-actions"><button id="course-directory-trigger" class="cw-directory-toggle" @click="directoryOpen = true"><IconLayoutSidebar :size="21" aria-hidden="true" />课程目录</button><button :disabled="state.loading || booting" @click="refresh"><IconRefresh :size="20" aria-hidden="true" />刷新</button><button id="course-manager-trigger" @click="panels.open('manager', 'course-manager-trigger')">整理课程</button></div></header>
     <p v-if="bootError" role="alert" class="cw-status cw-error">{{ bootError }}<button @click="initialize">重新读取</button></p>
     <p v-if="state.error" role="alert" class="cw-status cw-error">{{ state.error }}<button @click="refresh">重试读取</button></p>
     <p v-if="state.stale && state.navigation" role="status" class="cw-status">当前保留上次读取的快照，请刷新后核对最新内容。</p>
     <p v-if="state.notice" role="status" class="cw-status">{{ state.notice }}</p>
     <p v-if="booting || state.loading" role="status" class="cw-caption">正在读取课程与知识关系…</p>
     <template v-if="!booting && !state.browse.courseId">
-      <div class="cw-empty"><IconBooks :size="48" aria-hidden="true" /><h2>{{ courses.total ? '选择要继续的课程' : '让资料成为你的知识地图' }}</h2><p>课程整理正在接线；已有课程可以先在下方选择。</p><CourseNavigation v-if="courses.total" :courses="courses" :browse="state.browse" :navigation="null" :loading="state.loading" @course="chooseCourse" @course-page="coursePage" /></div>
+      <div class="cw-empty"><IconBooks :size="48" aria-hidden="true" /><h2>{{ courses.total ? '选择要继续的课程' : '让资料成为你的知识地图' }}</h2><p>先建立课程，再选择已有资料，核对后成为你的知识图谱。</p><button class="cw-primary" @click="panels.open('manager', 'course-manager-trigger')">整理课程与资料</button><CourseNavigation v-if="courses.total" :courses="courses" :browse="state.browse" :navigation="null" :loading="state.loading" @course="chooseCourse" @course-page="coursePage" /></div>
     </template>
     <template v-else-if="state.browse.courseId">
       <div class="cw-tools"><form class="cw-search" @submit.prevent="controller.search(searchText, true)"><IconSearch :size="22" aria-hidden="true" /><input v-model="searchText" maxlength="160" type="search" aria-label="搜索整门课程的知识点" placeholder="搜索整门课程的知识点" @input="controller.search(searchText)" /><button :disabled="state.searching">搜索</button></form><nav class="cw-views" aria-label="知识工作台视图"><button v-for="view in views" :key="view.id" :aria-pressed="state.browse.view === view.id" @click="controller.setView(view.id)"><component :is="view.icon" :size="20" aria-hidden="true" />{{ view.label }}</button></nav><button v-if="state.detail && state.browse.view !== 'evidence'" class="cw-detail-toggle" @click="detailOpen = true">查看来源</button></div>
@@ -19,18 +19,20 @@
         <main class="cw-main">
           <CourseCanvas v-if="state.browse.view === 'graph' && state.canvas" :data="state.canvas" :selected-id="state.detail?.resolved_id || ''" :reduced-motion="reducedMotion" @select="selectNode" @expand="selectNode" @open-group="openGroup" @group-page="controller.pageGroups" @open-list="controller.setView('outline')" @overview="overview" />
           <CourseOutline v-else-if="state.browse.view === 'outline'" :page="state.listPage" :selected-id="state.detail?.resolved_id || ''" :loading="state.loading" @select="selectNode" @page="controller.page" />
-          <CourseEvidence v-else-if="state.browse.view === 'evidence'" :detail="state.detail" @page="controller.pageReferences" />
+          <CourseEvidence v-else-if="state.browse.view === 'evidence'" :detail="state.detail" can-open @open-citation="openCitation" @page="controller.pageReferences" />
           <div v-else class="cw-empty"><h3>课程内容正在读取</h3><p>读取失败时可用上方按钮重试。</p></div>
         </main>
-        <aside v-if="state.browse.view !== 'evidence'" class="cw-detail"><CourseEvidence :detail="state.detail" @page="controller.pageReferences" /></aside>
+        <aside v-if="state.browse.view !== 'evidence'" class="cw-detail"><CourseEvidence :detail="state.detail" can-open @open-citation="openCitation" @page="controller.pageReferences" /></aside>
       </div>
     </template>
-    <el-drawer v-model="directoryOpen" title="课程目录" direction="ltr" size="min(360px, 100vw)" class="cw-dialog" :append-to-body="true"><CourseNavigation :courses="courses" :browse="state.browse" :navigation="state.navigation" :loading="state.loading" @course="chooseCourse" @filter="setFilters" @course-page="coursePage" @navigation-page="controller.pageNavigation" /></el-drawer>
-    <el-drawer v-model="detailOpen" title="知识点与来源" size="min(500px, 100vw)" class="cw-dialog" :append-to-body="true"><CourseEvidence :detail="state.detail" @page="controller.pageReferences" /></el-drawer>
+    <el-drawer @keydown.tab.capture="trapPanelFocus" v-model="directoryOpen" title="课程目录" direction="ltr" size="min(360px, 100vw)" class="cw-dialog" :append-to-body="true"><CourseNavigation :courses="courses" :browse="state.browse" :navigation="state.navigation" :loading="state.loading" @course="chooseCourse" @filter="setFilters" @course-page="coursePage" @navigation-page="controller.pageNavigation" /></el-drawer>
+    <el-drawer @keydown.tab.capture="trapPanelFocus" v-model="detailOpen" @opened="focusCitationTrigger" title="知识点与来源" size="min(500px, 100vw)" class="cw-dialog" :append-to-body="true"><CourseEvidence :detail="state.detail" can-open @open-citation="openCitation" @page="controller.pageReferences" /></el-drawer>
+    <el-drawer @keydown.tab.capture="trapPanelFocus" :model-value="panels.state.active === 'source'" title="核对原文" size="min(720px, 100vw)" class="cw-dialog" append-to-body :before-close="() => closeCitation()"><CourseSourcePanel :citation="state.citation" :loading="state.citationLoading" :error="state.error || state.notice" @retry="openCitation(citationId)" @closed="closeCitation" /></el-drawer>
+    <el-drawer @keydown.tab.capture="trapPanelFocus" :model-value="panels.state.active === 'manager'" title="整理课程与资料" size="min(1280px, 100vw)" class="cw-dialog" append-to-body :before-close="closeManager" :destroy-on-close="false"><CourseManager v-if="panels.state.managerMounted" :key="panels.state.managerEpoch" ref="manager" :course-id="state.browse.courseId" :sources="sources" @changed="changed" /></el-drawer>
   </section>
 </template>
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, shallowReactive, shallowRef, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowReactive, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { IconBooks, IconHierarchy, IconLayoutList, IconLayoutSidebar, IconQuote, IconRefresh, IconSearch } from '@tabler/icons-vue'
 import * as api from '../../services/api'
@@ -43,11 +45,36 @@ import CourseNavigation from './CourseNavigation.vue'
 import CourseCanvas from './CourseCanvas.vue'
 import CourseOutline from './CourseOutline.vue'
 import CourseEvidence from './CourseEvidence.vue'
+import CourseManager from './CourseManager.vue'
+import CourseSourcePanel from './CourseSourcePanel.vue'
+import { createWorkspacePanels, nextPanelFocus } from '../../course-graph/workspace-panels'
 import '../../styles/course-workspace.css'
 
 defineProps<{ sources: api.KnowledgeSource[] }>()
 const route = useRoute(), router = useRouter(), controller = createCourseWorkspaceController(api, shallowReactive), state = controller.state
-const root = ref<HTMLElement | null>(null), width = ref(1200), directoryOpen = ref(false), detailOpen = ref(false)
+const root = ref<HTMLElement | null>(null), width = ref(1200)
+const manager = ref<{ canLeave(): Promise<boolean> } | null>(null)
+const panels = createWorkspacePanels(() => manager.value?.canLeave() ?? Promise.resolve(true), id => { void nextTick(() => document.getElementById(id)?.focus()) }, shallowReactive)
+const directoryOpen = computed({ get: () => panels.state.active === 'directory', set: value => { void (value ? panels.open('directory', 'course-directory-trigger') : panels.close('directory')) } })
+const detailOpen = computed({ get: () => panels.state.active === 'detail', set: value => { void (value ? panels.open('detail') : panels.close('detail')) } })
+function trapPanelFocus(event: KeyboardEvent) {
+  const drawer = (event.target as HTMLElement).closest('[role=dialog]')
+  if (!drawer) return
+  const controls = [...drawer.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex="0"]')].filter(e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden')
+  const index = nextPanelFocus(controls.indexOf(document.activeElement as HTMLElement), controls.length, event.shiftKey)
+  if (index >= 0) { event.preventDefault(); event.stopPropagation(); controls[index]!.focus() }
+}
+let citationId = '', citationTrigger = '', sourceFromDetail = false
+function focusCitationTrigger() { if (citationTrigger) document.getElementById(citationTrigger)?.focus() }
+async function openCitation(id: string, trigger = '') { citationId = id; if (trigger) { citationTrigger = trigger; sourceFromDetail = panels.state.active === 'detail' }; await panels.open('source', citationTrigger); await controller.openCitation(id) }
+async function closeCitation() { controller.closeCitation(); if (await panels.close('source') && sourceFromDetail) { sourceFromDetail = false; detailOpen.value = true } }
+async function closeManager(done: () => void) { if (await panels.close('manager')) done() }
+async function changed(cid: string) {
+  if (cid === state.browse.courseId) await controller.invalidateAfterMutation()
+  try { courses.value = await api.listGraphCourses() } catch { bootError.value = '内容已保存，课程列表暂未刷新，可重试读取。' }
+}
+function restored() { panels.invalidate(); controller.closeCitation(); void initialize() }
+async function canLeave() { return manager.value?.canLeave() ?? true }
 const courses = shallowRef<GraphPage<GraphCourse>>({ items: [], total: 0, limit: 50, offset: 0 })
 const searchText = ref(''), booting = ref(true), bootError = ref(''), reducedMotion = ref(false)
 const views: { id: WorkspaceView; label: string; icon: typeof IconHierarchy }[] = [{ id: 'graph', label: '关系图', icon: IconHierarchy }, { id: 'outline', label: '大纲', icon: IconLayoutList }, { id: 'evidence', label: '证据', icon: IconQuote }]
@@ -98,19 +125,19 @@ async function chooseSearch(item: WorkspaceNode) { await controller.selectSearch
 async function overview() { await controller.open({ ...state.browse, nodeId: '', chapterId: '', sourceId: '', notice: '' }) }
 async function refresh() { if (!ready) await initialize(); else await controller.refresh() }
 function toggleRelation(relation: RelationKind) { const chosen = new Set(state.browse.relations ?? workspaceRelations); if (chosen.has(relation)) chosen.delete(relation); else chosen.add(relation); void controller.setFilters({ chapter_id: state.browse.chapterId || undefined, source_id: state.browse.sourceId || undefined, relations: [...chosen] }) }
-function expired() { ++bootstrap; ready = false; preferences?.clearMemory(); controller.resetIdentity(null); courses.value = { items: [], total: 0, limit: 50, offset: 0 }; bootError.value = '登录状态已变化，请重新登录后读取课程。' }
+function expired() { panels.invalidate(); ++bootstrap; ready = false; preferences?.clearMemory(); controller.resetIdentity(null); courses.value = { items: [], total: 0, limit: 50, offset: 0 }; bootError.value = '登录状态已变化，请重新登录后读取课程。' }
 function motion() { reducedMotion.value = !!media?.matches }
 watch(() => state.browse, syncUrl)
 watch(() => route.fullPath, async () => {
   if (!ready || route.query.graph_scope === 'source') return
   const next = readCourseBrowse(route.query, preferences?.get(String(route.query.course || ''), width.value < 640) || null, width.value < 640)
-  if (JSON.stringify(courseBrowseQuery(next)) !== JSON.stringify(courseBrowseQuery(state.browse))) await controller.open(next)
+  if (JSON.stringify(courseBrowseQuery(next)) !== JSON.stringify(courseBrowseQuery(state.browse))) { if (next.courseId !== state.browse.courseId) panels.invalidate(); searchText.value = ''; await controller.open(next) }
 })
 onMounted(() => {
   if (root.value) { width.value = root.value.clientWidth; resize = new ResizeObserver(entries => { width.value = entries[0]?.contentRect.width || width.value }); resize.observe(root.value) }
   media = matchMedia('(prefers-reduced-motion: reduce)'); motion(); media.addEventListener('change', motion)
-  window.addEventListener('filemate:session-expired', expired); void initialize()
+  window.addEventListener('filemate:session-expired', expired); window.addEventListener('filemate:data-restored', restored); void initialize()
 })
-onUnmounted(() => { disposed = true; ++bootstrap; controller.dispose(); resize?.disconnect(); media?.removeEventListener('change', motion); window.removeEventListener('filemate:session-expired', expired) })
-defineExpose({ canLeave: async () => true })
+onUnmounted(() => { disposed = true; ++bootstrap; controller.dispose(); resize?.disconnect(); media?.removeEventListener('change', motion); window.removeEventListener('filemate:session-expired', expired); window.removeEventListener('filemate:data-restored', restored) })
+defineExpose({ canLeave })
 </script>

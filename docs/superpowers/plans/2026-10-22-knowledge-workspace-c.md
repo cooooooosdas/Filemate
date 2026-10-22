@@ -237,12 +237,12 @@ test('late_old_course_and_digest_mismatch_cannot_mix', async () => {
 - Consumes: Task3 citation/detail API；Task5 `invalidateAfterMutation`；B `createCourseReviewFlow`, `CourseGraphPanel.canLeave()`。
 - Produces: CourseManager props=courseId/sources，events=changed(courseId)/closed；公开canLeave()。嵌入B面板新增optional initialCourseId、managed（缺省false），changed仅在成功确认／融合／移出／撤销／恢复／章节归属写入后发出。父壳成为唯一C路由离开guard；managed=false保留B原行为，不能叠加两次确认。
 
-- [ ] **Step 1: 写管理及失效测试。** `unsaved_review_blocks_close_until_user_choice`、`successful_commit_emits_once_failed_refresh_does_not_reconfirm`、`closing_manager_does_not_cancel_or_restart_saved_work`、`restoring_backup_invalidates_preview_and_read_bundle`、`one_modal_at_a_time_restores_focus`。B token／请求键／epoch保持原义，重复成功回执只刷新读，不再次提交。
-- [ ] **Step 2: 跑RED。** 新node:test先因适配接口缺失失败；真实焦点／屏幕布局不用字符串测试替代，放Step5浏览器验证。
-- [ ] **Step 3: 整合管理。** CourseManager打开覆盖工作区、窄屏全屏，B状态在关闭／重开期间保留且不静默丢失dirty；未保存离开按原确认，正在提取有停止按钮与后台结果说明，不能卸载重开导致第二次AI请求。更换课程前统一canLeave。写入成功→清C旧详情/引用→一次读刷新；备份恢复或身份变更清所有预览，不能复活旧token。修改review-state仅补确定的invalidations，原B tests保留。
-- [ ] **Step 4: 整合详情／原文。** 分页引用50条，显示双源文件名／真实页码。每次点击原文经控制器openCitation读取Task3新结果，转义before/quote/after，quote用原生mark高亮；失效不显示缓存成功。返回选中节点并恢复触发按钮焦点。AI问答仅“打开资料问答”→/ai-tools?source=实际来源，维持原授权；无数据不放可执行练习／任务按钮。
-- [ ] **Step 5: 跑GREEN与浏览器。** 前端新旧course tests、后端B全子集通过；浏览器完成B提取审核融合指定撤销恢复、来源移出与原文失效、长文件名/重复Unicode引用、Escape/Tab焦点约束、手机列表详情返回；宽屏和平板不横向溢出，四主题实际测对比度。保留截图与请求计数，无自动模型调用。
-- [ ] **Step 6: 提交。** `feat(graph): 整合知识详情原文定位与B级审核恢复`。
+- [x] **Step 1: 写管理及失效测试。** `unsaved_review_blocks_close_until_user_choice`、`successful_commit_emits_once_failed_refresh_does_not_reconfirm`、`closing_manager_does_not_cancel_or_restart_saved_work`、`restoring_backup_invalidates_preview_and_read_bundle`、`one_modal_at_a_time_restores_focus`。B token／请求键／epoch保持原义，重复成功回执只刷新读，不再次提交。
+- [x] **Step 2: 跑RED。** 新node:test先因适配接口缺失失败；真实焦点／屏幕布局不用字符串测试替代，放Step5浏览器验证。
+- [x] **Step 3: 整合管理。** CourseManager打开覆盖工作区、窄屏全屏，B状态在关闭／重开期间保留且不静默丢失dirty；未保存离开按原确认，正在提取有停止按钮与后台结果说明，不能卸载重开导致第二次AI请求。更换课程前统一canLeave。写入成功→清C旧详情/引用→一次读刷新；备份恢复或身份变更清所有预览，不能复活旧token。修改review-state仅补确定的invalidations，原B tests保留。
+- [x] **Step 4: 整合详情／原文。** 分页引用50条，显示双源文件名／真实页码。每次点击原文经控制器openCitation读取Task3新结果，转义before/quote/after，quote用原生mark高亮；失效不显示缓存成功。返回选中节点并恢复触发按钮焦点。AI问答仅“打开资料问答”→/ai-tools?source=实际来源，维持原授权；无数据不放可执行练习／任务按钮。
+- [x] **Step 5: 跑GREEN与浏览器。** 前端新旧course tests、后端B全子集通过；浏览器完成B提取审核融合指定撤销恢复、来源移出与原文失效、长文件名/重复Unicode引用、Escape/Tab焦点约束、手机列表详情返回；宽屏和平板不横向溢出，四主题实际测对比度。保留截图与请求计数，无自动模型调用。
+- [x] **Step 6: 提交。** `feat(graph): 整合知识详情原文定位与B级审核恢复`。
 
 ## Task 8: 规模／故障实测与阶段交付
 

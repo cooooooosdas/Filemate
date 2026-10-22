@@ -56,14 +56,17 @@ import { computed, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue
 import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import * as api from '../../services/api'
+import { createCommitNotifier } from '../../course-graph/workspace-panels'
 import { createCourseReviewFlow } from '../../course-graph/review-state'
 import type { CourseChapter, CourseConcept, CourseGraphPage, CourseMergePreview, CourseOperation, GraphConfirmation, GraphCourse, GraphMode, GraphPage } from '../../types/courseGraph'
 import CandidateReview from './CandidateReview.vue'
 import MergePreview from './MergePreview.vue'
 import '../../styles/course-graph.css'
 
-const props = defineProps<{ sources: api.KnowledgeSource[] }>()
-const flow = createCourseReviewFlow({ getCourse: api.getGraphCourse, getDraft: api.getCourseDraft, createDraft: api.createCourseDraft, extract: api.extractCourseSource, cancel: api.cancelCourseDraft, saveDecisions: api.saveCourseDecisions, preview: api.previewCourseReview, confirm: api.confirmCourseReview }, reactive)
+const props = defineProps<{ sources: api.KnowledgeSource[]; initialCourseId?: string; managed?: boolean }>()
+const emit = defineEmits<{ changed: [courseId: string] }>()
+const notifySaved = createCommitNotifier(cid => { if (!disposed) emit('changed', cid) })
+const flow = createCourseReviewFlow({ getCourse: api.getGraphCourse, getDraft: api.getCourseDraft, createDraft: api.createCourseDraft, extract: api.extractCourseSource, cancel: api.cancelCourseDraft, saveDecisions: api.saveCourseDecisions, preview: api.previewCourseReview, confirm: async (cid, did, body) => { const result = await api.confirmCourseReview(cid, did, body); await notifySaved(cid, body.request_key); return result } }, reactive)
 const state = flow.state, steps = ['课程与资料', '核对候选', '概念与出处', '操作历史']
 const tab = ref(0), busy = ref(''), error = ref(''), notice = ref(''), courseSearch = ref(''), newName = ref('')
 const courses = shallowRef<GraphPage<GraphCourse>>({ items: [], total: 0, limit: 50, offset: 0 })
@@ -80,11 +83,11 @@ let disposed = false, viewEpoch = 0, pending: { signature: string; key: string }
 function nameOf(id: string) { return sourceNames.value.get(id) || state.course?.sources?.find(s => s.source_id === id)?.original_name || '原资料不可用' }
 function explain(message: string) { return ({ source_changed: '资料已变化，请重新提取并核对。', endpoint_not_confirmed: '请同时接受关系两端的概念，或先确认它们。', invalid_candidate: '选中项有无效引文，不能确认。', semantic_check_required: '请先勾选需要人工核对的关系。', dependency_cycle: '该操作会形成前置依赖环，请调整关系。', extraction_failed: '本次提取失败；原资料和已确认图谱保留，可重试。', mode_conflict: '提取方式与原组不同，请打开原组或新建审核组。' } as Record<string, string>)[message] || message }
 async function run(kind: string, action: () => Promise<void>) { busy.value = kind; error.value = ''; notice.value = ''; try { await action() } catch (cause) { if (!disposed) { error.value = explain(cause instanceof Error ? cause.message : '请求失败'); if ((cause as { status?: number }).status === 409) { mergePreview.value = null; pending = null } } } finally { if (!disposed) busy.value = '' } }
-async function mutation<T>(signature: string, action: (key: string) => Promise<T>) { if (pending?.signature !== signature) pending = { signature, key: crypto.randomUUID() }; const result = await action(pending.key); pending = null; return result }
+async function mutation<T>(signature: string, action: (key: string) => Promise<T>) { if (pending?.signature !== signature) pending = { signature, key: crypto.randomUUID() }; const key = pending.key, cid = state.courseId; const result = await action(key); pending = null; await notifySaved((result as { course_id?: string })?.course_id || cid, key); return result }
 function confirmation(token: string, key: string): GraphConfirmation { return { confirmed: true, confirmation_token: token, request_key: key } }
-async function canLeave() { if (!state.dirty && !locked.value) return true; try { await ElMessageBox.confirm(state.dirty ? '有未保存的审核选择，离开会放弃这些选择。已保存的草稿保留。' : '当前请求可能仍在后台完成；离开后可从操作历史继续。', '确认离开课程图谱', { confirmButtonText: '离开', cancelButtonText: '继续处理', type: 'warning' }); return true } catch { return false } }
+async function canLeave() { if (!state.dirty && !locked.value) return true; try { await ElMessageBox.confirm(state.dirty ? '有未保存的审核选择。关闭整理面板后仍可继续；切换课程或离开页面会放弃未保存选择。已保存草稿保留。' : '当前请求可能仍在后台完成；离开后可从操作历史继续。', '确认离开课程图谱', { confirmButtonText: '离开', cancelButtonText: '继续处理', type: 'warning' }); return true } catch { return false } }
 defineExpose({ canLeave })
-onBeforeRouteLeave(canLeave)
+onBeforeRouteLeave(() => props.managed ? true : canLeave())
 function unload(event: BeforeUnloadEvent) { if (state.dirty || locked.value) { event.preventDefault(); event.returnValue = '' } }
 async function searchCourses() { await run('courses', async () => { const result = await api.listGraphCourses(courseSearch.value); if (!disposed) courses.value = result }) }
 async function coursePage(delta: number) { await run('courses', async () => { courses.value = await api.listGraphCourses(courseSearch.value, courses.value.offset + delta * 50) }) }
@@ -92,9 +95,9 @@ function resetCourseView() { ++viewEpoch; detail.value = null; mergeNodes.value 
 async function selectCourse(cid: string) { if (!await canLeave()) return; resetCourseView(); await flow.loadCourse(cid); await reloadPanels() }
 async function createCourse() { if (!await canLeave()) return; await run('create', async () => { const course = await mutation(`create:${newName.value}`, key => api.createGraphCourse(newName.value, key)); newName.value = ''; courses.value = await api.listGraphCourses(); resetCourseView(); await flow.loadCourse(course.course_id); tab.value = 0; await reloadPanels() }) }
 function editChapter(chapter: CourseChapter) { chapterEdit.value = chapter; chapterTitle.value = chapter.title; chapterParent.value = chapter.parent_id || '' }
-async function saveChapter() { await run('chapter', async () => { const edit = chapterEdit.value; await api.putGraphChapter(state.courseId, edit?.chapter_id || crypto.randomUUID(), { title: chapterTitle.value, parent_id: chapterParent.value || null, sort_order: edit?.sort_order || 0, expected_revision: edit?.revision || 0 }); state.course = await api.getGraphCourse(state.courseId); chapterEdit.value = null; chapterTitle.value = ''; notice.value = '章节已保存。' }) }
+async function saveChapter() { await run('chapter', async () => { const edit = chapterEdit.value, id = edit?.chapter_id || crypto.randomUUID(); await api.putGraphChapter(state.courseId, id, { title: chapterTitle.value, parent_id: chapterParent.value || null, sort_order: edit?.sort_order || 0, expected_revision: edit?.revision || 0 }); await notifySaved(state.courseId, `chapter:${id}:${edit?.revision || 0}`); state.course = await api.getGraphCourse(state.courseId); chapterEdit.value = null; chapterTitle.value = ''; notice.value = '章节已保存。' }) }
 function toggleSource(id: string, checked: boolean) { flow.selectSources(checked ? [...state.selectedSources, id] : state.selectedSources.filter(s => s !== id)) }
-async function start() { await run('attach', async () => { state.course = await api.attachGraphSources(state.courseId, state.selectedSources, chapterId.value || null, state.course!.revision) }); if (error.value) return; tab.value = 1; await flow.extract(mode.value, consent.value); await loadHistory() }
+async function start() { await run('attach', async () => { state.course = await api.attachGraphSources(state.courseId, state.selectedSources, chapterId.value || null, state.course!.revision); await notifySaved(state.courseId, `attach:${state.course.revision}`) }); if (error.value) return; tab.value = 1; await flow.extract(mode.value, consent.value); await loadHistory() }
 async function retry() { await flow.extract(mode.value, consent.value, true); await loadHistory() }
 async function newDraft() { if (!await canLeave()) return; await flow.loadCourse(state.courseId); tab.value = 0; notice.value = '已打开新审核组，旧组可从历史继续。' }
 async function refreshDraft() { if (!state.draftId) return; if (!await canLeave()) return; const cid = state.courseId, did = state.draftId; await flow.loadCourse(cid, did); mode.value = state.snapshot?.sources[0]?.mode || 'local' }
@@ -116,6 +119,6 @@ function relationName(value: string) { return ({ prerequisite: '前置知识', d
 function operationName(value: string) { return ({ draft: '建立审核组', extract: '提取来源', cancel: '停止提取', review: '确认入图', merge: '融合概念', remove_source: '移出课程', transition: '撤销或恢复' } as Record<string, string>)[value] || value }
 async function refreshGraph() { await run('read-graph', loadGraph) }
 async function refreshHistory() { await run('read-history', loadHistory) }
-onMounted(() => { window.addEventListener('beforeunload', unload); void searchCourses() })
+onMounted(() => { window.addEventListener('beforeunload', unload); void (async () => { await searchCourses(); if (props.initialCourseId && !disposed) { await flow.loadCourse(props.initialCourseId); await reloadPanels() } })() })
 onUnmounted(() => { disposed = true; ++viewEpoch; ++state.epoch; window.removeEventListener('beforeunload', unload) })
 </script>

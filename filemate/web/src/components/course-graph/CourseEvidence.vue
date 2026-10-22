@@ -8,7 +8,7 @@
       <article v-for="ref in detail.source_refs" :key="ref.evidence_id" class="cw-quote">
         <p class="cw-source-name"><IconFileText :size="20" aria-hidden="true" />{{ ref.original_name }}<span v-if="ref.page"> · 第{{ ref.page }}页</span></p>
         <blockquote>{{ ref.excerpt }}</blockquote>
-        <button v-if="canOpen" @click="$emit('openCitation', ref.evidence_id)">定位原文<IconArrowUpRight :size="19" aria-hidden="true" /></button>
+        <button v-if="canOpen" :id="`${anchor}-${ref.evidence_id}`" @click="$emit('openCitation', ref.evidence_id, `${anchor}-${ref.evidence_id}`)">定位原文<IconArrowUpRight :size="19" aria-hidden="true" /></button>
       </article>
       <p v-if="!detail.source_refs.length" class="cw-caption">当前没有可核对的引用。可在整理课程中更新资料。</p>
       <nav v-if="detail.total_refs > detail.limit" class="cw-pagination" aria-label="原文引用分页"><button :disabled="detail.offset === 0" @click="$emit('page', Math.max(0, detail.offset-detail.limit))">前一页</button><span>{{ detail.offset+1 }}–{{ Math.min(detail.total_refs, detail.offset+detail.limit) }} / {{ detail.total_refs }}</span><button :disabled="detail.offset+detail.limit >= detail.total_refs" @click="$emit('page', detail.offset+detail.limit)">后一页</button></nav>
@@ -18,8 +18,11 @@
   </section>
 </template>
 <script setup lang="ts">
+import { useId } from 'vue'
 import { IconArrowUpRight, IconBookmark, IconFileText } from '@tabler/icons-vue'
 import type { WorkspaceDetail } from '../../types/courseWorkspace'
+const anchor = `citation-${useId()}`
 withDefaults(defineProps<{ detail: WorkspaceDetail | null; canOpen?: boolean }>(), { canOpen: false })
-defineEmits<{ openCitation: [id: string]; openManager: []; page: [offset: number] }>()
+defineEmits<{ openCitation: [id: string, trigger: string]; openManager: []; page: [offset: number] }>()
 </script>
+
