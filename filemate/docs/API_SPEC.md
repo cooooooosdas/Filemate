@@ -1034,7 +1034,7 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 
 ## 2026-10-22 知识图谱B级开发候选
 
-业务schema追加31（`course_knowledge_graph`），创建课程、章节、来源归属、逐来源提取、概念、关系、证据和操作记录8张表。旧图谱批次、ID和学习记录保持不变，不回填课程。当前仅存储层已进入实现，课程HTTP合同按[实施计划](../../docs/superpowers/plans/2026-10-22-course-knowledge-graph-foundation.md)在任务7接入，不宣称路径已可调用。线上状态仍以发布回执为准；本次不迁移生产库。
+业务schema追加31（`course_knowledge_graph`），创建课程、章节、来源归属、逐来源提取、概念、关系、证据和操作记录8张表。旧图谱批次、ID和学习记录保持不变，不回填课程。本条为B任务1的历史记录；课程HTTP现已按下方B候选合同接入，本地B已获用户验收。线上状态仍以发布回执为准；本次不迁移生产库。
 
 
 ## 2026-10-22 课程知识图谱 B 候选（schema31，默认关闭）
@@ -1083,7 +1083,7 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 客户端已明确落盘的502单来源失败可继续同组其他来源；429/503治理故障停止后续，网络结果未知时先读快照，不能确认终态则保留原请求键，不新建重放。已完成来源不再调用模型。
 
 
-## 2026-10-23 C级工作台只读接口（schema31，本地实施中）
+## 2026-10-23 C级工作台只读接口（schema31，本地候选，待C验收）
 
 沿用B的R前缀、当前身份SQLite、功能开关和错误包装；不接收浏览器模型密钥，不调用AI，不创建业务表。所有响应带course_id与64hex graph_digest，并返回Cache-Control: no-store。digest绑定章节、归属、概念、关系、证据和有效来源指纹，不代表能力分数。
 
@@ -1098,4 +1098,4 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 
 分页limit最大200（canvas概念100、group20），offset最大1000000，q最大160字符，ID筛选最大120字符。chapter_id包含子章，可为@unassigned或@no-source；source_id与章节取交集。relation只允许B六类型，可重复参数但不可重复同值；缺省全部，hide_relations=true隐藏所有连线且保留概念，不能同时指定relation。多余或重复标量参数422；未知课程/章节/来源/已撤销概念404。focus解析原ID到代表，过滤冲突409 focus_outside_filter；失效来源不提供关系依据。无过滤时多章或超过100概念先展示组概览，组是导航汇总，不是知识断言。完整课程通过分页列表可达，画布不后台拼接全量。
 
-引用先验证课程、已确认代表/成员和证据归属，再在同一只读事务核对active来源、指纹、保存的raw_text范围与原句相等；来源变化或移出返回409 citation_unavailable，不模糊重定位。删除或他人证据404，数据库异常503 storage_unavailable，不泄露数据库路径。前端读请求15秒、可取消；浏览空间只读取公开状态的opaque scope，不访问密钥库。B原graph/concepts与所有写入协议保持原义。本段是接口实现记录，完整C级浏览器/性能验收尚未完成。
+引用先验证课程、已确认代表/成员和证据归属，再在同一只读事务核对active来源、指纹、保存的raw_text范围与原句相等；来源变化或移出返回409 citation_unavailable，不模糊重定位。删除或他人证据404，数据库异常503 storage_unavailable，不泄露数据库路径。前端读请求15秒、可取消；浏览空间只读取公开状态的opaque scope，不访问密钥库。B原graph/concepts与所有写入协议保持原义。本段为已接线的本地候选合同；100／1000／10000合成HTTP与五尺寸浏览器证据见[本地C级交付](../../docs/KNOWLEDGE_GRAPH_2_0_C_DELIVERY.md)。浏览器内存未测，尚未生产部署，等待C级验收。

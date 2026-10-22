@@ -2,6 +2,7 @@
   <section class="cw-canvas" aria-label="课程关系画布">
     <div class="cw-canvas-heading"><p>{{ data.mode === 'groups' ? '按章节展开知识' : '知识关系' }}<span> · {{ data.total_concepts }} 个概念</span></p><button @click="$emit('overview')"><IconFocusCentered :size="20" aria-hidden="true" />回概览</button></div>
     <p v-if="layoutError" class="cw-status" role="status">{{ layoutError }}</p>
+    <p v-if="data.total_concepts === 0" class="cw-status" role="status">当前范围还没有已确认知识点。可在“整理课程”中选择资料并完成审核，或清除范围筛选。</p>
     <div ref="element" class="cw-chart" role="img" aria-label="可缩放的知识关系画布。也可使用下方键盘列表或切换大纲。" />
     <div class="cw-canvas-controls"><button aria-label="放大图谱" @click="zoom(1.25)"><IconPlus :size="22" aria-hidden="true" /></button><button aria-label="缩小图谱" @click="zoom(.8)"><IconMinus :size="22" aria-hidden="true" /></button><button @click="render(true)">重置视图</button><button @click="$emit('openList')">查看大纲</button></div>
     <p class="cw-caption">{{ data.mode === 'groups' ? '点击章节进入；章节连线汇总当前有效关系。' : '箭头保留关系原义；点击概念查看来源，双击展开一跳邻域。' }}</p>
@@ -17,7 +18,7 @@ import { GraphChart } from 'echarts/charts'
 import { TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { IconFocusCentered, IconMinus, IconPlus } from '@tabler/icons-vue'
-import { layoutWorkspaceCanvas, relationLabels } from '../../course-graph/workspace-layout'
+import { layoutWorkspaceCanvas, relationLabels, workspaceGraphViewport } from '../../course-graph/workspace-layout'
 import type { WorkspaceCanvas } from '../../types/courseWorkspace'
 
 use([GraphChart, TooltipComponent, CanvasRenderer])
@@ -25,6 +26,7 @@ const props = defineProps<{ data: WorkspaceCanvas; selectedId: string; reducedMo
 const emit = defineEmits<{ select: [id: string]; openGroup: [id: string]; expand: [id: string]; overview: []; openList: []; groupPage: [offset: number] }>()
 const element = ref<HTMLDivElement | null>(null)
 const layout = computed(() => layoutWorkspaceCanvas(props.data)), layoutError = computed(() => layout.value.error)
+let metrics: PerformanceObserver | undefined, frame = 0
 let chart: EChartsType | undefined, resize: ResizeObserver | undefined, theme: MutationObserver | undefined
 const short = (s: string) => [...s].length > 12 ? [...s].slice(0, 12).join('') + '…' : s
 function render(reset = false) {
@@ -43,18 +45,24 @@ function render(reset = false) {
     }))
   const links = groups ? props.data.group_edges.map(e => ({ source: e.from_group, target: e.to_group,
     label: { show: true, formatter: `${e.relation_count} 条关系`, fontSize: 15, color: secondary } })) : layout.value.edges.map(e => ({
-      source: e.from, target: e.to, label: { show: props.data.nodes.length < 25 || [e.from, e.to].includes(props.selectedId), formatter: relationLabels[e.relation], color: secondary, fontSize: 15 },
+      source: e.from, target: e.to, name: relationLabels[e.relation], label: { show: props.data.nodes.length < 25, formatter: relationLabels[e.relation], color: secondary, fontSize: 15 },
     }))
   chart.setOption({ animation: !props.reducedMotion, animationDurationUpdate: 160, tooltip: { renderMode: 'richText', formatter: (p: unknown) => (p as { name?: string }).name || '' },
-    series: [{ type: 'graph', layout: 'none', roam: true, draggable: true, zoom: reset ? 1 : previous.series?.[0]?.zoom || 1,
+    series: [{ type: 'graph', ...workspaceGraphViewport, layout: 'none', roam: true, draggable: true, zoom: reset ? 1 : previous.series?.[0]?.zoom || 1,
       scaleLimit: { min: .3, max: 3 }, data: nodes, links, edgeSymbol: ['none', 'arrow'], edgeSymbolSize: [0, 8],
       lineStyle: { color: secondary, width: 1.5, opacity: .8, curveness: .06 }, emphasis: { focus: 'adjacency', lineStyle: { width: 3 } } }],
   }, { notMerge: true })
+  if (import.meta.env.DEV) element.value.dataset.animationEnabled = String(chart.getOption().animation)
 }
 function zoom(factor: number) { const current = chart?.getOption() as { series?: { zoom?: number }[] } | undefined; chart?.setOption({ series: [{ zoom: Math.min(3, Math.max(.3, (current?.series?.[0]?.zoom || 1) * factor)) }] }) }
 onMounted(() => {
   if (!element.value) return
   chart = init(element.value)
+  if (import.meta.env.DEV && PerformanceObserver.supportedEntryTypes.includes('longtask')) {
+    const tasks: { start: number; duration: number }[] = []
+    metrics = new PerformanceObserver(list => { tasks.push(...list.getEntries().map(e => ({ start: e.startTime, duration: e.duration }))); if (element.value) element.value.dataset.longTasks = JSON.stringify(tasks.slice(-200)) })
+    metrics.observe({ type: 'longtask', buffered: false }); element.value.dataset.longTasks = '[]'
+  }
   const choose = (event: unknown, expand = false) => {
     const e = event as { dataType: string; data: { id: string; kind: string } }
     if (e.dataType !== 'node') return
@@ -66,8 +74,9 @@ onMounted(() => {
   resize = new ResizeObserver(() => chart?.resize()); resize.observe(element.value)
   theme = new MutationObserver(() => render()); theme.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme', 'style'] })
   render(true)
+  if (import.meta.env.DEV) frame = requestAnimationFrame(() => { chart?.getZr().flush(); if (element.value) element.value.dataset.firstInteractiveMs = String(performance.now()) })
 })
 watch(() => props.data, () => render(true))
 watch(() => [props.selectedId, props.reducedMotion], () => render())
-onUnmounted(() => { resize?.disconnect(); theme?.disconnect(); chart?.dispose() })
+onUnmounted(() => { resize?.disconnect(); theme?.disconnect(); metrics?.disconnect(); cancelAnimationFrame(frame); chart?.dispose(); chart = undefined })
 </script>

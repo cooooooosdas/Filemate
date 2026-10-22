@@ -25,4 +25,3 @@ const anchor = `citation-${useId()}`
 withDefaults(defineProps<{ detail: WorkspaceDetail | null; canOpen?: boolean }>(), { canOpen: false })
 defineEmits<{ openCitation: [id: string, trigger: string]; openManager: []; page: [offset: number] }>()
 </script>
-

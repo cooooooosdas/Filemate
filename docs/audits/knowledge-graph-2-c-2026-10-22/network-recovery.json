@@ -1,0 +1,8 @@
+{
+  "synthetic": true,
+  "networkStopped": true,
+  "retainedSnapshot": true,
+  "staleNotice": "当前保留上次读取的快照，请刷新后核对最新内容。",
+  "error": "Network Error重试读取",
+  "recovered": true
+}

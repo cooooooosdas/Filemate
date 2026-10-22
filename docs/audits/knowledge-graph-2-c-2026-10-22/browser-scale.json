@@ -1,0 +1,26 @@
+[
+  {
+    "size": 100,
+    "first_interactive_ms": 594.8000000007451,
+    "heap_bytes": null,
+    "heap_reason": "DOM browser surface does not expose heap telemetry",
+    "long_tasks": [],
+    "samples": "navigation reload, zoom in/out/reset; preserveAspect=contain; select another node"
+  },
+  {
+    "size": 1000,
+    "first_interactive_ms": 576.3999999985099,
+    "heap_bytes": null,
+    "heap_reason": "DOM browser surface does not expose heap telemetry",
+    "long_tasks": [],
+    "samples": "navigation reload, zoom in/out/reset, select another node; preserveAspect=contain"
+  },
+  {
+    "size": 10000,
+    "first_interactive_ms": 2343,
+    "heap_bytes": null,
+    "heap_reason": "DOM browser surface does not expose heap telemetry",
+    "long_tasks": [],
+    "samples": "navigation reload, zoom in/out/reset, select another node; preserveAspect=contain"
+  }
+]

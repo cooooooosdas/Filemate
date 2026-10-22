@@ -252,14 +252,14 @@ test('late_old_course_and_digest_mismatch_cannot_mix', async () => {
 - Consumes: 所有Task1–7接口；B备份恢复／默认关闭机制。
 - Produces: CLI `uv run python -m scripts.acceptance.course_workspace_benchmark --output-root <新的绝对目录> --sizes 100 1000 10000`，只创建专用合成SQLite并写带synthetic=true的JSON；生成层可通过原审核服务分批发布，直接播种规模夹具须明确标注“性能构造，不证明提取质量”。禁止使用真实用户库，目标已存在则拒绝覆盖。
 
-- [ ] **Step 1: 写基准准备安全用例。** `test_existing_or_relative_output_refused`、`test_requested_sizes_are_exact_and_identity_isolated`、`test_benchmark_results_distinguish_unmeasured_browser_fields`；不存在浏览器数值时为null，不能填0伪装测量。
-- [ ] **Step 2: 跑RED→实现脚本→GREEN。** `uv run pytest filemate/tests/course_graph/test_workspace_benchmark.py -q`；脚本只生成新临时合成环境，报告DB/WAL一并计空间、版本/机器/开关/总节点和实际返回规模，不把分页延迟当全图布局。
-- [ ] **Step 3: 执行100／1000／10000规模。** 每项冷1次热5次，保存查询服务和真实HTTP的workspace、搜索、focus邻域时间、响应字节、首次有界画布可交互、选择/缩放长任务与浏览器内存；浏览器实测不可用的内存指标明确记未测及原因。热门路径5次最大HTTP≤2秒、初始可交互≤3秒、交互样本无>200ms主线程长任务；不声称总体P95。若失败先定位查询／布局瓶颈，修复同卡并保留失败记录，不能以静态截图通过。
-- [ ] **Step 4: 完整用户／故障链。** 新合成账户导入数据结构两份和Python一份→B审核→章节分组→检索另页符号概念→邻域→双来源Unicode定位→切三视图→刷新/返回→管理融合撤销恢复→导出个人备份→移出来源保留历史→预览恢复→重新读digest；FK=0。断网、模拟503、来源正文变更、选中概念撤销、两身份迟到响应和默认关闭各独立留结果，所有成功／错误状态有可达恢复。不开真实相机／语音，不把合成记录作学习效果结论。
-- [ ] **Step 5: 真实五尺寸／四主题复验。** 窄屏长名称、空数据、超量节点/来源、键盘／减少动画／焦点、无溢出、主动作44px及文字对比度；保存截图、浏览器错误、每场关键请求计数与开关关闭时旧深链200/新接口503证据。
-- [ ] **Step 6: 最终门禁。** `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend`退出0；核对原24份测试SHA256、diff范围、schema/备份兼容、未提交敏感文件。记录确切passed/skipped/warnings，不硬编码预期通过总数。
+- [x] **Step 1: 写基准准备安全用例。** `test_existing_or_relative_output_refused`、`test_requested_sizes_are_exact_and_identity_isolated`、`test_benchmark_results_distinguish_unmeasured_browser_fields`；不存在浏览器数值时为null，不能填0伪装测量。
+- [x] **Step 2: 跑RED→实现脚本→GREEN。** `uv run pytest filemate/tests/course_graph/test_workspace_benchmark.py -q`；脚本只生成新临时合成环境，报告DB/WAL一并计空间、版本/机器/开关/总节点和实际返回规模，不把分页延迟当全图布局。
+- [x] **Step 3: 执行100／1000／10000规模。** 每项冷1次热5次，保存查询服务和真实HTTP的workspace、搜索、focus邻域时间、响应字节、首次有界画布可交互、选择/缩放长任务与浏览器内存；浏览器实测不可用的内存指标明确记未测及原因。热门路径5次最大HTTP≤2秒、初始可交互≤3秒、交互样本无>200ms主线程长任务；不声称总体P95。若失败先定位查询／布局瓶颈，修复同卡并保留失败记录，不能以静态截图通过。
+- [x] **Step 4: 完整用户／故障链。** 新合成账户导入数据结构两份和Python一份→B审核→章节分组→检索另页符号概念→邻域→双来源Unicode定位→切三视图→刷新/返回→管理融合撤销恢复→导出个人备份→移出来源保留历史→预览恢复→重新读digest；FK=0。断网、模拟503、来源正文变更、选中概念撤销、两身份迟到响应和默认关闭各独立留结果，所有成功／错误状态有可达恢复。不开真实相机／语音，不把合成记录作学习效果结论。
+- [x] **Step 5: 真实五尺寸／四主题复验。** 窄屏长名称、空数据、超量节点/来源、键盘／减少动画／焦点、无溢出、主动作44px及文字对比度；保存截图、浏览器错误、每场关键请求计数与开关关闭时旧深链200/新接口503证据。
+- [x] **Step 6: 最终门禁。** `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend`退出0；核对原24份测试SHA256、diff范围、schema/备份兼容、未提交敏感文件。记录确切passed/skipped/warnings，不硬编码预期通过总数。
 - [ ] **Step 7: 收尾交付与独立审阅。** 更新C交付的逐项完成状态、真实截图／性能／故障证据、未测与已知限制；native执行结束按executing-plans要求进行一次独立整分支审阅，修复重要问题并复验受影响范围。未完成项不能勾选为通过；交付等待“C级通过”，不推送、不部署、不进入D。
-- [ ] **Step 8: 提交。** 仅暂存本卡实际交付文件，`test(graph): 保存C级工作台功能性能与恢复证据`。
+- [x] **Step 8: 提交。** 仅暂存本卡实际交付文件，`test(graph): 保存C级工作台功能性能与恢复证据`。
 
 ## 自审与执行交接
 

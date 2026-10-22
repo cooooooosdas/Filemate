@@ -1,6 +1,7 @@
 import type { WorkspaceCanvas, WorkspaceNode } from '../types/courseWorkspace.ts'
 
 export type PositionedWorkspaceNode = WorkspaceNode & { x: number; y: number }
+export const workspaceGraphViewport = { left: 70, right: 70, top: 60, bottom: 60, preserveAspect: 'contain' as const }
 export const relationLabels: Record<string, string> = {
   prerequisite: '前置知识', depends_on: '依赖', part_of: '属于', contains: '包含', application: '应用于', related_to: '相关',
 }
@@ -25,12 +26,14 @@ export function layoutWorkspaceCanvas(data: WorkspaceCanvas) {
     }
   }
   const cycle = visited !== nodes.length
-  const rows = new Map<number, number>()
-  const positioned: PositionedWorkspaceNode[] = nodes.map((n, index) => {
-    const column = cycle ? index % 5 : level.get(n.id)!
-    const row = cycle ? Math.floor(index / 5) : rows.get(column) ?? 0
-    rows.set(column, row + 1)
-    return { ...n, x: 120 + column * 240, y: 80 + row * 110 }
-  })
+  const groups = new Map<number, WorkspaceNode[]>()
+  for (const n of nodes) { const rank = cycle ? 0 : level.get(n.id)!; groups.set(rank, [...(groups.get(rank) || []), n]) }
+  const positioned: PositionedWorkspaceNode[] = []
+  let base = 120
+  for (const rank of [...groups.keys()].sort((a, b) => a-b)) {
+    const members = groups.get(rank)!, columns = Math.ceil(Math.sqrt(members.length))
+    members.forEach((n, index) => positioned.push({ ...n, x: base + index % columns*180, y: 80 + Math.floor(index/columns)*110 }))
+    base += columns*180 + 60
+  }
   return { nodes: positioned, edges, error: cycle ? '依赖关系存在环，已用网格保留全部节点，请核对关系。' : data.nodes.length > 100 ? '画布仅显示100个概念，请使用列表继续查看。' : '' }
 }

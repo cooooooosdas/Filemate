@@ -856,3 +856,9 @@ powershell -ExecutionPolicy Bypass -File scripts/verify.ps1
 面试2.0第四阶段本地开发：`VITE_ENABLE_INTERVIEW_AUDIO=true`（默认off；需要coach）启用独立录音、逐题回听/导出及单独授权的浏览器转写。
 录音仅页面内存，刷新丢失；摘要与转写来源随回答版本保存、备份和删除，设备指标不计入能力分数。
 上限10分钟/20MiB每段、60MiB/30段每页；详见[音频合同](filemate/docs/API_SPEC.md)。
+
+## 2026-10-23 课程知识工作台 C 级候选
+
+用户确认的八项C计划已实施：课程目录／有界关系画布／原文证据、三视图、全课程符号搜索、分空间浏览偏好、B审核恢复整合及故障恢复。业务schema31不变，无新运行时依赖。`FILEMATE_ENABLE_COURSE_GRAPH=1`和构建期`VITE_ENABLE_COURSE_GRAPH=true`才启用，缺省仍关闭，旧资料图谱保持可用。开发候选等待“C级通过”，本轮不部署。
+
+完整功能、性能采样、真实浏览器截图与未测限制见[本地C级交付](docs/KNOWLEDGE_GRAPH_2_0_C_DELIVERY.md)。规模脚本只接受全新绝对输出目录；所有合成资料均不作为真实学生学习效果。
