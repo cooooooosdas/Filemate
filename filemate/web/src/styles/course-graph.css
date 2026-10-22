@@ -10,7 +10,8 @@
 .course-graph button { min-height: 44px; border-radius: 9px; border: 1px solid var(--border-subtle); padding: 9px 16px; color: var(--text-primary); background: var(--bg-elevated); cursor: pointer; }
 .course-graph button:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
 .course-graph button:disabled { opacity: .55; cursor: default; }
-.course-graph button.primary, .course-graph button[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent, #fff); }
+.course-graph button.primary, .course-graph button[aria-pressed='true'] { background: var(--action-fill); border-color: var(--action-fill); color: #fff; }
+.course-graph button.primary:hover:not(:disabled), .course-graph button[aria-pressed='true']:hover:not(:disabled) { background: var(--action-hover); border-color: var(--action-hover); }
 .course-graph :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .course-graph input:not([type='checkbox']), .course-graph select { min-height: 44px; padding: 9px 12px; min-width: 0; width: 100%; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--bg-elevated); color: var(--text-primary); }
 .course-graph label { display: grid; gap: 6px; min-width: 0; }
