@@ -1,6 +1,7 @@
 import { saveDownload } from './downloads'
 import type { CoachSnapshot, CoachMutationResult, CoachAnswer, CoachAnalysis, CoachAdvance, CoachConsent, CoachAttempts, CoachFocus } from '../types/interviewCoach'
 import axios from 'axios'
+import type { CourseActionPreview, CourseChapter, CourseConcept, CourseDecision, CourseDraft, CourseGraphPage, CourseMergePreview, CourseOperation, CourseReviewPreview, GraphConfirmation, GraphCourse, GraphMode, GraphPage } from '../types/courseGraph'
 import type { AccountState, AccountUser, RegisterAccount } from '../types/account'
 import { HITOKOTO_URL } from '../home/encouragement'
 import { browserVaultAvailable, getBrowserApiKey, hasBrowserApiKey, requiresModelCredential, removeBrowserApiKey, saveBrowserApiKey, validateApiKey } from './llm-vault'
@@ -71,6 +72,31 @@ const api = axios.create({
     'Content-Type': 'application/json'
   }
 })
+
+const courseRoot = '/api/knowledge-graph/courses'
+const coursePath = (id: string) => `${courseRoot}/${encodeURIComponent(id)}`
+const draftPath = (cid: string, did: string) => `${coursePath(cid)}/drafts/${encodeURIComponent(did)}`
+export const listGraphCourses = async (q = '', offset = 0) => (await api.get<unknown, ApiResponse<GraphPage<GraphCourse>>>(courseRoot, { params: { q, offset } })).data!
+export const createGraphCourse = async (name: string, request_key: string) => (await api.post<unknown, ApiResponse<GraphCourse>>(courseRoot, { name, request_key })).data!
+export const getGraphCourse = async (id: string) => (await api.get<unknown, ApiResponse<GraphCourse>>(coursePath(id))).data!
+export const putGraphChapter = async (cid: string, id: string, body: { title: string; parent_id: string | null; sort_order: number; expected_revision: number }) => (await api.put<unknown, ApiResponse<CourseChapter>>(`${coursePath(cid)}/chapters/${encodeURIComponent(id)}`, body)).data!
+export const attachGraphSources = async (cid: string, source_ids: string[], chapter_id: string | null, expected_revision: number) => (await api.post<unknown, ApiResponse<GraphCourse>>(`${coursePath(cid)}/sources`, { source_ids, chapter_id, expected_revision })).data!
+export const createCourseDraft = async (cid: string, source_ids: string[], mode: GraphMode, request_key: string) => (await api.post<unknown, ApiResponse<CourseDraft>>(`${coursePath(cid)}/drafts`, { source_ids, mode, request_key })).data!
+export const getCourseDraft = async (cid: string, did: string) => (await api.get<unknown, ApiResponse<CourseDraft>>(draftPath(cid, did))).data!
+export const extractCourseSource = async (cid: string, did: string, sid: string, mode: GraphMode, allow_external_model: boolean, request_key: string) => (await api.post<unknown, ApiResponse<CourseDraft>>(`${draftPath(cid, did)}/sources/${encodeURIComponent(sid)}/extract`, { mode, allow_external_model, request_key }, { timeout: 65000 })).data!
+export const cancelCourseDraft = async (cid: string, did: string, request_key: string) => (await api.post<unknown, ApiResponse<CourseDraft>>(`${draftPath(cid, did)}/cancel`, { request_key })).data!
+export const saveCourseDecisions = async (cid: string, did: string, expected_digest: string, decisions: CourseDecision[]) => (await api.post<unknown, ApiResponse<CourseDraft>>(`${draftPath(cid, did)}/decisions`, { expected_digest, decisions })).data!
+export const previewCourseReview = async (cid: string, did: string) => (await api.post<unknown, ApiResponse<CourseReviewPreview>>(`${draftPath(cid, did)}/review-preview`)).data!
+export const confirmCourseReview = async (cid: string, did: string, body: GraphConfirmation) => (await api.post<unknown, ApiResponse<{ operation_id: string }>>(`${draftPath(cid, did)}/confirm`, body)).data!
+export const getCourseGraph = async (cid: string, q = '', offset = 0) => (await api.get<unknown, ApiResponse<CourseGraphPage>>(`${coursePath(cid)}/graph`, { params: { q, offset } })).data!
+export const getCourseConcept = async (cid: string, nid: string) => (await api.get<unknown, ApiResponse<CourseConcept>>(`${coursePath(cid)}/concepts/${encodeURIComponent(nid)}`)).data!
+export const previewCourseMerge = async (cid: string, concept_ids: string[], target_id: string) => (await api.post<unknown, ApiResponse<CourseMergePreview>>(`${coursePath(cid)}/merges/preview`, { concept_ids, target_id })).data!
+export const confirmCourseMerge = async (cid: string, concept_ids: string[], target_id: string, body: GraphConfirmation) => (await api.post<unknown, ApiResponse<{ operation_id: string }>>(`${coursePath(cid)}/merges/confirm`, { concept_ids, target_id, ...body })).data!
+export const getCourseOperations = async (cid: string, offset = 0) => (await api.get<unknown, ApiResponse<GraphPage<CourseOperation>>>(`${coursePath(cid)}/operations`, { params: { offset } })).data!
+export const previewCourseOperation = async (cid: string, oid: string, action: 'undo' | 'restore') => (await api.post<unknown, ApiResponse<CourseActionPreview>>(`${coursePath(cid)}/operations/${encodeURIComponent(oid)}/preview`, { action })).data!
+export const changeCourseOperation = async (cid: string, oid: string, action: 'undo' | 'restore', body: GraphConfirmation) => (await api.post<unknown, ApiResponse<{ operation_id: string }>>(`${coursePath(cid)}/operations/${encodeURIComponent(oid)}/${action}`, body)).data!
+export const previewCourseSourceRemoval = async (cid: string, sid: string) => (await api.get<unknown, ApiResponse<CourseActionPreview>>(`${coursePath(cid)}/sources/${encodeURIComponent(sid)}/remove-preview`)).data!
+export const removeCourseSource = async (cid: string, sid: string, body: GraphConfirmation) => (await api.post<unknown, ApiResponse<{ operation_id: string }>>(`${coursePath(cid)}/sources/${encodeURIComponent(sid)}/remove`, body)).data!
 
 export const getResumeProfile = async () => (await api.get<unknown, ApiResponse<import('../types/portfolio').ResumeProfile | null>>('/api/resume/profile')).data ?? null
 export const saveResumeProfile = async (profile: import('../types/portfolio').ResumeProfile) => (await api.put<unknown, ApiResponse<import('../types/portfolio').ResumeProfile>>('/api/resume/profile', profile)).data!

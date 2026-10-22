@@ -1,0 +1,62 @@
+.course-graph { color: var(--text-primary); font-size: 17px; line-height: 1.65; min-width: 0; }
+.course-graph * { box-sizing: border-box; }
+.course-graph .course-heading { display: flex; justify-content: space-between; gap: 24px; padding: 28px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 18px; }
+.course-graph h2 { font-size: clamp(27px, 3vw, 38px); margin: 0; line-height: 1.25; }
+.course-graph h3 { font-size: 23px; margin: 0 0 12px; }
+.course-graph h4 { font-size: 20px; margin: 0; }
+.course-graph p { margin: 8px 0 16px; }
+.course-graph .eyebrow { font-size: 16px; font-weight: 700; color: var(--accent); margin-top: 0; }
+.course-graph button, .course-graph input, .course-graph select { font: inherit; }
+.course-graph button { min-height: 44px; border-radius: 9px; border: 1px solid var(--border-subtle); padding: 9px 16px; color: var(--text-primary); background: var(--bg-elevated); cursor: pointer; }
+.course-graph button:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.course-graph button:disabled { opacity: .55; cursor: default; }
+.course-graph button.primary, .course-graph button[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent, #fff); }
+.course-graph :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.course-graph input:not([type='checkbox']), .course-graph select { min-height: 44px; padding: 9px 12px; min-width: 0; width: 100%; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--bg-elevated); color: var(--text-primary); }
+.course-graph label { display: grid; gap: 6px; min-width: 0; }
+.course-graph input[type='checkbox'] { width: 21px; height: 21px; flex-shrink: 0; accent-color: var(--accent); }
+.course-graph .check { display: flex; align-items: flex-start; gap: 12px; }
+.course-graph .course-picker, .course-graph .course-section { padding: 24px; margin-top: 20px; border: 1px solid var(--border-subtle); border-radius: 14px; background: var(--bg-surface); }
+.course-graph .inline-form, .course-graph .course-picker > form, .course-graph .action-row, .course-graph .course-buttons, .course-graph .chapter-list, .course-graph .choice-actions, .course-graph nav, .course-graph .mode-buttons { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-block: 16px; }
+.course-graph .inline-form label, .course-graph .course-picker > form label { flex: 1; }
+.course-graph .course-buttons button { overflow-wrap: anywhere; max-width: 100%; }
+.course-graph .course-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.course-graph .course-steps button { display: flex; align-items: center; gap: 10px; text-align: left; }
+.course-graph .course-steps button span { font-weight: 700; font-size: 22px; }
+.course-graph .course-steps button[aria-current='step'] { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+.course-graph .source-choices, .course-graph .source-members, .course-graph .concept-list { list-style: none; padding: 0; margin: 18px 0; }
+.course-graph .source-choices { max-height: 360px; overflow: auto; border-block: 1px solid var(--border-subtle); }
+.course-graph .source-choices label { display: flex; gap: 12px; align-items: center; min-height: 52px; padding: 10px; }
+.course-graph .source-choices span, .course-graph .source-members span, .course-graph blockquote, .course-graph strong, .course-graph h4, .course-graph summary { overflow-wrap: anywhere; white-space: pre-wrap; }
+.course-graph summary { min-height: 48px; padding: 12px 0; cursor: pointer; font-weight: 600; }
+.course-graph .section-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; }
+.course-graph .source-review { border-block-start: 1px solid var(--border-subtle); margin-top: 20px; }
+.course-graph .candidate { padding-block: 22px; border-top: 1px solid var(--border-subtle); }
+.course-graph .candidate-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; }
+.course-graph .candidate-heading > span { font-size: 15px; color: var(--text-secondary); }
+.course-graph blockquote { margin: 14px 0; padding: 14px 18px; background: var(--panel-tint); border-left: 3px solid var(--accent); }
+.course-graph .revision-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; padding: 18px 0; }
+.course-graph .revision-fields p { grid-column: 1 / -1; }
+.course-graph .invalid-items { padding: 12px 18px; background: var(--panel-tint); }
+.course-graph .invalid-items article { padding-block: 16px; border-top: 1px solid var(--border-subtle); }
+.course-graph .review-actions { position: sticky; bottom: 12px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 16px; background: var(--bg-surface); border: 1px solid var(--accent); border-radius: 12px; z-index: 2; }
+.course-graph .review-actions p { margin: 0 auto 0 0; }
+.course-graph .confirmation { padding: 22px; margin-top: 20px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 12px; }
+.course-graph .confirmation ul { padding-left: 24px; }
+.course-graph .confirmation li { margin-block: 16px; }
+.course-graph .concept-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 24px; }
+.course-graph .concept-list li { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border-subtle); padding-block: 8px; }
+.course-graph .concept-list button { flex: 1; text-align: left; min-width: 0; }
+.course-graph .concept-list button span { display: block; font-size: 15px; }
+.course-graph .concept-evidence { padding: 20px; background: var(--panel-tint); border-radius: 12px; align-self: start; }
+.course-graph .evidence { padding-block: 20px; border-bottom: 1px solid var(--border-subtle); }
+.course-graph a { color: var(--accent); text-decoration: underline; text-underline-offset: 4px; }
+.course-graph .merge-section { border-top: 1px solid var(--border-subtle); padding-top: 24px; margin-top: 24px; }
+.course-graph .history-list { padding-left: 22px; }
+.course-graph .history-list li, .course-graph .source-members li { display: flex; gap: 12px; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--border-subtle); }
+.course-graph .history-list span { display: block; color: var(--text-secondary); font-size: 15px; }
+.course-graph .course-message { padding: 18px; margin-top: 16px; border: 1px solid var(--accent); background: var(--bg-surface); border-radius: 12px; }
+.course-graph .course-message.error { border-color: var(--text-primary); }
+@media (max-width: 850px) { .course-graph .concept-layout { grid-template-columns: minmax(0, 1fr); } .course-graph .course-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .course-graph .course-heading, .course-graph .course-picker, .course-graph .course-section { padding: 16px; } .course-graph .course-heading svg { display: none; } .course-graph .inline-form, .course-graph .course-picker > form { display: grid; } .course-graph .review-actions { position: static; } .course-graph .course-steps { gap: 6px; } .course-graph .course-steps button { padding: 10px; font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { .course-graph * { animation: none !important; transition: none !important; } }

@@ -203,11 +203,11 @@
 
 **Interfaces:** API函数统一在`services/api.ts`，分别以`listGraphCourses/createGraphCourse/putGraphChapter/attachGraphSources/createCourseDraft/getCourseDraft/extractCourseSource/cancelCourseDraft/saveCourseDecisions/previewCourseReview/confirmCourseReview/getCourseGraph/getCourseConcept/previewCourseMerge/confirmCourseMerge/getCourseOperations/previewCourseOperation/changeCourseOperation/previewCourseSourceRemoval/removeCourseSource`对应路由。`createCourseReviewFlow(api)`提供`loadCourse/selectSources/extract/saveDecisions/preview/confirm/cancel`，state包含courseId、draftId、epoch、busy、error、pendingCommand；重试沿用request_key。
 
-- [ ] **Step 1 — 写失败测试。** Node测试`late_course_result_does_not_replace_selection`、`confirm_disabled_for_invalid_or_unsaved_decisions`、`retry_reuses_key_and_stale_digest_requires_preview`、`cancel_stops_next_source_and_keeps_ready_results`、`new_course_panel_off_keeps_legacy_route`；前后端均检查来源文件名/引用按文本渲染、不执行HTML。测试每项断言对应状态，不用只检查函数源码字符串代替行为。
-- [ ] **Step 2 — 验证红灯。** `node --test filemate/web/tests/course-graph.test.mjs`预期新状态模块缺失；保存输出。
-- [ ] **Step 3 — 最小界面实现。** 在现有图谱页加入开关控制的“课程图谱”面板，复用已有资料选择，不新增上传入口。课程/章节→多资料提取→逐项核对→确认→合并→来源/历史；有效和无效项分组，默认不全选，确认有数量、出处和语义核对。dirty切换/退出先提示；进度逐来源显示，失败可重试，刷新恢复已保存草稿。原无衬线、SVG、17px正文、44px操作、四主题和键盘焦点；C级再改大布局。
-- [ ] **Step 4 — 验证绿灯。** `node --test filemate/web/tests/course-graph.test.mjs`、`npm --prefix filemate/web test`、`npm --prefix filemate/web run build`及`npm --prefix filemate/web run check:bundle`通过。实际浏览器验证新面板和旧图谱均可进入，取消后不会继续下一份提取。
-- [ ] **Step 5 — 提交。** `feat(graph): 接入课程资料审核与融合面板`。
+- [x] **Step 1 — 写失败测试。** Node测试`late_course_result_does_not_replace_selection`、`confirm_disabled_for_invalid_or_unsaved_decisions`、`retry_reuses_key_and_stale_digest_requires_preview`、`cancel_stops_next_source_and_keeps_ready_results`、`new_course_panel_off_keeps_legacy_route`；前后端均检查来源文件名/引用按文本渲染、不执行HTML。测试每项断言对应状态，不用只检查函数源码字符串代替行为。
+- [x] **Step 2 — 验证红灯。** `node --test filemate/web/tests/course-graph.test.mjs`预期新状态模块缺失；保存输出。
+- [x] **Step 3 — 最小界面实现。** 在现有图谱页加入开关控制的“课程图谱”面板，复用已有资料选择，不新增上传入口。课程/章节→多资料提取→逐项核对→确认→合并→来源/历史；有效和无效项分组，默认不全选，确认有数量、出处和语义核对。dirty切换/退出先提示；进度逐来源显示，失败可重试，刷新恢复已保存草稿。原无衬线、SVG、17px正文、44px操作、四主题和键盘焦点；C级再改大布局。
+- [x] **Step 4 — 验证绿灯。** `node --test filemate/web/tests/course-graph.test.mjs`、`npm --prefix filemate/web test`、`npm --prefix filemate/web run build`及`npm --prefix filemate/web run check:bundle`通过。实际浏览器验证新面板和旧图谱均可进入，取消后不会继续下一份提取。
+- [x] **Step 5 — 提交。** `feat(graph): 接入课程资料审核与融合面板`。
 
 ## Task 9: 整体回归、真实模型与B级交付
 

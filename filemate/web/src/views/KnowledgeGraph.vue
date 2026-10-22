@@ -1,5 +1,8 @@
 <template>
   <div class="graph-page">
+    <nav v-if="courseEnabled" class="map-tools" aria-label="图谱版本"><button :aria-pressed="!courseView" @click="switchGraph(false)">资料图谱</button><button :aria-pressed="courseView" @click="switchGraph(true)">课程图谱 · 多资料核对</button></nav>
+    <CourseGraphPanel v-if="courseEnabled && courseView" ref="coursePanel" :sources="sources" />
+    <div v-show="!courseView">
     <header class="graph-header">
       <div><p class="eyebrow">从资料出发 · 用练习验证</p><h1>我的知识图谱</h1><p>看见知识之间的联系，也看清下一步该复习什么。</p></div>
       <button aria-label="刷新证据" :disabled="loading || Boolean(busy)" @click="load"><el-icon><Refresh /></el-icon>刷新证据</button>
@@ -106,11 +109,13 @@
     </section>
     <details class="operation-history"><summary>操作记录 · 最近 {{ data.events.length }} 条</summary><ol><li v-for="event in data.events" :key="event.event_id"><span>{{ eventLabel(event.action) }} · {{ sourceName(event.source_id) }}</span><time>{{ formatDate(event.created_at) }}</time></li></ol><p v-if="!data.events.length" class="hint">还没有操作记录。此阶段之前的历史不会补造。</p></details>
     <p class="footnote">数据更新于 {{ formatDate(data.updated_at) }} · 知识点按资料区分；同名不代表同一概念。学习画像仅反映已记录的学习活动。</p>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import { coursePanelEnabled } from '../course-graph/review-state'
 import { Aim, ArrowRight, Minus, Plus, Refresh, Search, Share } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 import { useRoute } from 'vue-router'
@@ -122,6 +127,15 @@ import { getGraphNodeDetail, getGraphBatchDetail, changeGraphBatch, changeGraphP
 import type { GraphBatch, GraphNode, GraphPlanPreview, GraphPlanResult, KnowledgeGraphData } from '../types/knowledgeGraph'
 
 use([GraphChart, TooltipComponent, CanvasRenderer])
+const CourseGraphPanel = defineAsyncComponent(() => import('../components/course-graph/CourseGraphPanel.vue'))
+const courseEnabled = coursePanelEnabled(import.meta.env.VITE_ENABLE_COURSE_GRAPH)
+const courseView = ref(false), coursePanel = ref<{ canLeave(): Promise<boolean> } | null>(null)
+async function switchGraph(value: boolean) {
+  if (value === courseView.value) return
+  if (courseView.value && coursePanel.value && !await coursePanel.value.canLeave()) return
+  courseView.value = value
+  if (!value) { await nextTick(); chart?.resize() }
+}
 const route = useRoute()
 const data = shallowRef<KnowledgeGraphData>({ nodes: [], edges: [], batches: [], plans: [], relations: {}, updated_at: '', events: [], profile: { node_count: 0, observed_node_count: 0, unassessed_node_count: 0, attempt_count: 0, pending_wrong_count: 0, excluded_sample_count: 0, study_time: null, status_counts: {}, weaknesses: [] } })
 const sources = shallowRef<KnowledgeSource[]>([])

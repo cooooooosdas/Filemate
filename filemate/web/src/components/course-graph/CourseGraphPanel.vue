@@ -1,0 +1,121 @@
+<template>
+  <section class="course-graph" aria-labelledby="course-graph-heading">
+    <header class="course-heading"><div><p class="eyebrow">课程图谱 · 审核后生效</p><h2 id="course-graph-heading">让每个概念都有出处</h2><p>多份资料一起整理。先核对，再入图；同名概念由你决定是否融合。</p></div><svg width="64" height="64" viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="m16 20 32 24M16 20v28l32-32M16 48h32V16" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="20" r="6" fill="currentColor"/><circle cx="48" cy="16" r="6" fill="currentColor"/><circle cx="16" cy="48" r="6" fill="currentColor"/><circle cx="48" cy="44" r="6" fill="currentColor"/></svg></header>
+    <div v-if="error || state.error" role="alert" class="course-message error"><p>{{ error || explain(state.error) }}</p><button :disabled="locked" @click="reload">重新读取已保存内容</button></div>
+    <p v-if="notice" role="status" class="course-message">{{ notice }}</p>
+    <div class="course-picker">
+      <form @submit.prevent="searchCourses"><label>查找课程<input v-model="courseSearch" maxlength="160" type="search" /></label><button :disabled="locked">查找课程</button></form>
+      <div class="course-buttons"><button v-for="course in courses.items" :key="course.course_id" :disabled="locked" :aria-pressed="state.courseId === course.course_id" @click="selectCourse(course.course_id)">{{ course.name }}</button><span v-if="!courses.total">先建立一门课程</span></div>
+      <nav v-if="courses.total > courses.limit" aria-label="课程分页"><button :disabled="locked || !courses.offset" @click="coursePage(-1)">前一页课程</button><span>{{ courses.offset + 1 }}–{{ Math.min(courses.offset + courses.limit, courses.total) }} / {{ courses.total }}</span><button :disabled="locked || courses.offset + courses.limit >= courses.total" @click="coursePage(1)">后一页课程</button></nav>
+      <form class="inline-form" @submit.prevent="createCourse"><label>新课程名称<input v-model="newName" placeholder="例如：数据结构" maxlength="80" required /></label><button :disabled="locked || !newName.trim()">建立课程</button></form>
+    </div>
+    <template v-if="state.course">
+      <nav class="course-steps" aria-label="课程图谱步骤"><button v-for="(label, i) in steps" :key="label" :aria-current="tab === i ? 'step' : undefined" :disabled="locked" @click="tab = i"><span>{{ i + 1 }}</span>{{ label }}</button></nav>
+      <p v-if="locked" role="status">{{ state.busy === 'extract' ? '正在逐份提取，已完成的结果会保存。' : '正在保存或读取，请稍候…' }}</p>
+      <section v-show="tab === 0" class="course-section" aria-labelledby="course-sources-heading">
+        <h3 id="course-sources-heading">{{ state.course.name }} · 选择已导入资料</h3><p>每组 1–10 份；不上传新副本。章节用于整理资料。</p>
+        <details><summary>管理章节</summary><div class="chapter-list"><button v-for="chapter in state.course.chapters" :key="chapter.chapter_id" :disabled="locked" @click="editChapter(chapter)">{{ chapter.title }}</button><button :disabled="locked" @click="chapterEdit = null; chapterTitle = ''; chapterParent = ''">新建章节</button></div>
+          <form class="inline-form" @submit.prevent="saveChapter"><label>章节标题<input v-model="chapterTitle" maxlength="120" required /></label><label>上级章节<select v-model="chapterParent"><option value="">顶层章节</option><option v-for="chapter in state.course.chapters?.filter(c => c.chapter_id !== chapterEdit?.chapter_id)" :key="chapter.chapter_id" :value="chapter.chapter_id">{{ chapter.title }}</option></select></label><button :disabled="locked || !chapterTitle.trim()">{{ chapterEdit ? '保存章节' : '添加章节' }}</button></form>
+        </details>
+        <label>本组归入<select v-model="chapterId" :disabled="locked || !!state.draftId"><option value="">课程根目录</option><option v-for="chapter in state.course.chapters" :key="chapter.chapter_id" :value="chapter.chapter_id">{{ chapter.title }}</option></select></label>
+        <ul class="source-choices"><li v-for="source in sources" :key="source.source_id"><label><input type="checkbox" :checked="state.selectedSources.includes(source.source_id)" :disabled="locked || !!state.draftId || (state.selectedSources.length >= 10 && !state.selectedSources.includes(source.source_id))" @change="toggleSource(source.source_id, ($event.target as HTMLInputElement).checked)" /><span>{{ source.original_name }}</span></label></li></ul>
+        <router-link v-if="!sources.length" to="/ai-tools">前往学习工作区导入资料</router-link>
+        <div class="mode-buttons" aria-label="提取方式"><button :aria-pressed="mode === 'local'" :disabled="locked || !!state.draftId" @click="mode = 'local'">本地规则</button><button :aria-pressed="mode === 'llm'" :disabled="locked || !!state.draftId" @click="mode = 'llm'">模型辅助</button></div>
+        <label v-if="mode === 'llm'" class="check"><input v-model="consent" type="checkbox" :disabled="locked" />允许将每份资料前 20,000 字符发送给已配置的模型。结果先存为候选；失败可手动重试，可能产生额外费用。</label><p v-else>本地规则只识别原文明示结构，不调用外部模型。</p>
+        <div class="action-row"><button class="primary" :disabled="locked || !state.selectedSources.length || !!state.draftId || (mode === 'llm' && !consent)" @click="start">开始提取这 {{ state.selectedSources.length }} 份资料</button><button v-if="state.draftId" :disabled="locked" @click="newDraft">新建审核组</button></div>
+        <details v-if="state.course.sources?.length"><summary>已关联资料与移出操作</summary><ul class="source-members"><li v-for="source in state.course.sources" :key="source.source_id"><span>{{ source.original_name }} · {{ source.active ? '在课程中' : '已移出' }}</span><button v-if="source.active" :disabled="locked" @click="removeSource(source.source_id)">预览移出课程</button></li></ul><p>移出保留原资料、作答、错题和计划。彻底删除仍在原资料页预览确认。</p></details>
+      </section>
+      <section v-show="tab === 1" class="course-section" aria-labelledby="course-review-heading">
+        <div class="section-heading"><div><h3 id="course-review-heading">逐项核对原文</h3><p>默认不选中。接受、拒绝或修订后先保存，再预览选中结果。</p></div><button v-if="state.draftId" :disabled="locked || state.dirty" @click="refreshDraft">读取最新草稿</button></div>
+        <p v-if="!state.snapshot">尚无审核组。先选择资料并提取，或在操作历史打开已保存草稿。</p>
+        <template v-else>
+          <p>完成 {{ readyCount }} / {{ state.snapshot.sources.length }} 份 · {{ state.snapshot.status === 'cancelled' ? '已停止提取，完成项仍可审核' : '草稿已持久保存' }}</p>
+          <div class="action-row"><button v-if="state.busy === 'extract'" @click="flow.cancel">停止后续提取</button><button :disabled="locked || state.dirty || (mode === 'llm' && !consent) || state.snapshot.status === 'cancelled'" @click="retry">继续或重试失败来源</button></div>
+          <label v-if="mode === 'llm'" class="check"><input v-model="consent" type="checkbox" :disabled="locked" />本次允许外发各来源前 20,000 字符进行模型提取</label>
+          <details v-for="source in state.snapshot.sources" :key="source.source_id" open class="source-review"><summary>{{ nameOf(source.source_id) }} · {{ source.status }}</summary><CandidateReview :source="source" :name="nameOf(source.source_id)" :choices="state.choices" :disabled="locked" @decide="flow.setDecision" /></details>
+          <div class="review-actions"><p>{{ state.dirty ? '有尚未保存的审核选择' : '当前选择已保存' }}</p><button :disabled="locked || !state.dirty" @click="flow.saveDecisions">保存审核选择</button><button :disabled="!flow.canPreview() || !!busy" @click="flow.preview">预览选中结果</button></div>
+          <div v-if="state.preview" class="confirmation" role="region" aria-label="入图确认"><h4>确认这批核对结果</h4><p>{{ state.preview.nodes }} 个概念、{{ state.preview.relations }} 条关系。其他项保持当前状态。</p><ul><li v-for="item in state.preview.items" :key="item.item_id"><strong>{{ item.decision.label || item.parsed.label || `${item.parsed.from} → ${item.parsed.to}` }}</strong> · {{ nameOf(item.source_id) }}<blockquote>{{ item.parsed.excerpt }}</blockquote></li></ul><button class="primary" :disabled="!flow.canConfirm() || !!busy" @click="confirmReview">确认加入课程图谱</button></div>
+        </template>
+      </section>
+      <section v-show="tab === 2" class="course-section" aria-labelledby="course-map-heading">
+        <div class="section-heading"><div><h3 id="course-map-heading">{{ state.course.name }} · 已确认概念</h3><p>本阶段先核对与融合。没有学习证据的概念保持待评测。</p></div><button :disabled="locked" @click="refreshGraph">刷新课程图谱</button></div>
+        <form class="inline-form" @submit.prevent="graphOffset = 0; refreshGraph()"><label>搜索全部概念<input v-model="graphSearch" type="search" maxlength="160" /></label><button :disabled="locked">搜索概念</button></form>
+        <p v-if="!graph.nodes.length">暂无匹配的已确认概念。先完成逐项审核。</p>
+        <div class="concept-layout"><div><ul class="concept-list"><li v-for="node in graph.nodes" :key="node.id"><label><input type="checkbox" :checked="mergeIds.includes(node.id)" :disabled="locked || (mergeIds.length >= 20 && !mergeIds.includes(node.id))" :aria-label="`选择融合${node.label}`" @change="toggleMerge(node, ($event.target as HTMLInputElement).checked)" /></label><button :aria-pressed="detail?.id === node.id" :disabled="locked" @click="showConcept(node.id)"><strong>{{ node.label }}</strong><span>{{ node.source_count }} 个来源 · {{ node.source_status === 'available' ? '待评测' : '无有效来源' }}</span></button></li></ul><nav aria-label="概念分页"><button :disabled="locked || graphOffset === 0" @click="graphOffset -= 50; refreshGraph()">前一页概念</button><span>{{ graph.total }} 个概念</span><button :disabled="locked || graphOffset + 50 >= graph.total" @click="graphOffset += 50; refreshGraph()">后一页概念</button></nav></div>
+          <aside v-if="detail" class="concept-evidence"><h4>{{ detail.label }}</h4><p>{{ detail.member_ids.length }} 条原概念记录 · {{ detail.source_count }} 个有效来源</p><p v-if="!detail.source_refs.length">原来源已变化、移出或删除。学习记录仍保留，不以无来源关系推荐。</p><div v-for="ref in detail.source_refs" :key="ref.evidence_id" class="evidence"><strong>{{ nameOf(ref.source_id) }}</strong><span v-if="ref.page"> · 第 {{ ref.page }} 页</span><blockquote>{{ ref.excerpt }}</blockquote><router-link :to="{ path: '/ai-tools', query: { source: ref.source_id } }">打开原资料</router-link></div><div v-if="detail.merge_candidates?.length"><h4>可核对的同名／别名概念</h4><button v-for="node in detail.merge_candidates" :key="node.concept_id" :disabled="locked" @click="addSuggestion(node.concept_id)">选入融合：{{ node.label }}</button></div></aside></div>
+        <details v-if="graph.edges.length"><summary>查看本页有效关系（{{ graph.edges.length }}）</summary><ul><li v-for="(edge, i) in graph.edges" :key="i">{{ graphLabel(edge.from) }} → {{ graphLabel(edge.to) }} · {{ relationName(edge.relation) }}<blockquote v-for="ref in edge.source_refs" :key="ref.evidence_id">{{ ref.excerpt }} · {{ nameOf(ref.source_id) }}</blockquote></li></ul></details><p v-if="graph.omitted_edge_count">{{ graph.omitted_edge_count }} 条关系的端点在其他页；这不是全图关系数量。</p>
+        <MergePreview :selected="mergeNodes" :target="mergeTarget" :preview="mergePreview" :disabled="locked" @target="mergeTarget = $event; mergePreview = null" @preview="previewMerge" @confirm="confirmMerge" />
+      </section>
+      <section v-show="tab === 3" class="course-section" aria-labelledby="course-history-heading"><h3 id="course-history-heading">操作与已保存草稿</h3><button :disabled="locked" @click="refreshHistory">刷新历史</button><p v-if="!history.total">暂无操作记录。</p><ol class="history-list"><li v-for="op in history.items" :key="op.operation_id"><div><strong>{{ operationName(op.kind) }}</strong><span>{{ new Date(op.created_at).toLocaleString('zh-CN') }} · {{ op.status === 'undone' ? '已撤销' : op.status === 'cancelled' ? '已取消' : '已保存' }}</span></div><button v-if="op.kind === 'draft' && op.draft_id" :disabled="locked" @click="resumeDraft(op.draft_id)">打开审核组</button><button v-if="op.reversible" :disabled="locked" @click="changeOperation(op)">{{ op.status === 'undone' ? '预览恢复' : '预览撤销' }}</button></li></ol><nav v-if="history.total > 50" aria-label="历史分页"><button :disabled="locked || historyOffset === 0" @click="historyOffset -= 50; refreshHistory()">前一页历史</button><button :disabled="locked || historyOffset + 50 >= history.total" @click="historyOffset += 50; refreshHistory()">后一页历史</button></nav></section>
+    </template>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
+import * as api from '../../services/api'
+import { createCourseReviewFlow } from '../../course-graph/review-state'
+import type { CourseChapter, CourseConcept, CourseGraphPage, CourseMergePreview, CourseOperation, GraphConfirmation, GraphCourse, GraphMode, GraphPage } from '../../types/courseGraph'
+import CandidateReview from './CandidateReview.vue'
+import MergePreview from './MergePreview.vue'
+import '../../styles/course-graph.css'
+
+const props = defineProps<{ sources: api.KnowledgeSource[] }>()
+const flow = createCourseReviewFlow({ getCourse: api.getGraphCourse, getDraft: api.getCourseDraft, createDraft: api.createCourseDraft, extract: api.extractCourseSource, cancel: api.cancelCourseDraft, saveDecisions: api.saveCourseDecisions, preview: api.previewCourseReview, confirm: api.confirmCourseReview }, reactive)
+const state = flow.state, steps = ['课程与资料', '核对候选', '概念与出处', '操作历史']
+const tab = ref(0), busy = ref(''), error = ref(''), notice = ref(''), courseSearch = ref(''), newName = ref('')
+const courses = shallowRef<GraphPage<GraphCourse>>({ items: [], total: 0, limit: 50, offset: 0 })
+const mode = ref<GraphMode>('local'), consent = ref(false), chapterId = ref(''), chapterTitle = ref(''), chapterParent = ref('')
+const chapterEdit = shallowRef<CourseChapter | null>(null)
+const graph = shallowRef<CourseGraphPage>({ nodes: [], edges: [], total: 0, limit: 50, offset: 0, self_edge_count: 0, omitted_edge_count: 0 })
+const graphSearch = ref(''), graphOffset = ref(0), detail = shallowRef<CourseConcept | null>(null)
+const history = shallowRef<GraphPage<CourseOperation>>({ items: [], total: 0, limit: 50, offset: 0 }), historyOffset = ref(0)
+const mergeNodes = shallowRef<CourseConcept[]>([]), mergeTarget = ref(''), mergePreview = shallowRef<CourseMergePreview | null>(null)
+const mergeIds = computed(() => mergeNodes.value.map(n => n.id)), locked = computed(() => !!busy.value || !!state.busy)
+const readyCount = computed(() => state.snapshot?.sources.filter(s => ['ready', 'partial'].includes(s.status)).length || 0)
+const sourceNames = computed(() => new Map(props.sources.map(s => [s.source_id, s.original_name])))
+let disposed = false, viewEpoch = 0, pending: { signature: string; key: string } | null = null
+function nameOf(id: string) { return sourceNames.value.get(id) || state.course?.sources?.find(s => s.source_id === id)?.original_name || '原资料不可用' }
+function explain(message: string) { return ({ source_changed: '资料已变化，请重新提取并核对。', endpoint_not_confirmed: '请同时接受关系两端的概念，或先确认它们。', invalid_candidate: '选中项有无效引文，不能确认。', semantic_check_required: '请先勾选需要人工核对的关系。', dependency_cycle: '该操作会形成前置依赖环，请调整关系。', extraction_failed: '本次提取失败；原资料和已确认图谱保留，可重试。', mode_conflict: '提取方式与原组不同，请打开原组或新建审核组。' } as Record<string, string>)[message] || message }
+async function run(kind: string, action: () => Promise<void>) { busy.value = kind; error.value = ''; notice.value = ''; try { await action() } catch (cause) { if (!disposed) { error.value = explain(cause instanceof Error ? cause.message : '请求失败'); if ((cause as { status?: number }).status === 409) { mergePreview.value = null; pending = null } } } finally { if (!disposed) busy.value = '' } }
+async function mutation<T>(signature: string, action: (key: string) => Promise<T>) { if (pending?.signature !== signature) pending = { signature, key: crypto.randomUUID() }; const result = await action(pending.key); pending = null; return result }
+function confirmation(token: string, key: string): GraphConfirmation { return { confirmed: true, confirmation_token: token, request_key: key } }
+async function canLeave() { if (!state.dirty && !locked.value) return true; try { await ElMessageBox.confirm(state.dirty ? '有未保存的审核选择，离开会放弃这些选择。已保存的草稿保留。' : '当前请求可能仍在后台完成；离开后可从操作历史继续。', '确认离开课程图谱', { confirmButtonText: '离开', cancelButtonText: '继续处理', type: 'warning' }); return true } catch { return false } }
+defineExpose({ canLeave })
+onBeforeRouteLeave(canLeave)
+function unload(event: BeforeUnloadEvent) { if (state.dirty || locked.value) { event.preventDefault(); event.returnValue = '' } }
+async function searchCourses() { await run('courses', async () => { const result = await api.listGraphCourses(courseSearch.value); if (!disposed) courses.value = result }) }
+async function coursePage(delta: number) { await run('courses', async () => { courses.value = await api.listGraphCourses(courseSearch.value, courses.value.offset + delta * 50) }) }
+function resetCourseView() { ++viewEpoch; detail.value = null; mergeNodes.value = []; mergeTarget.value = ''; mergePreview.value = null; graphOffset.value = 0; graphSearch.value = ''; historyOffset.value = 0; chapterId.value = ''; chapterEdit.value = null; chapterTitle.value = ''; chapterParent.value = ''; consent.value = false; pending = null }
+async function selectCourse(cid: string) { if (!await canLeave()) return; resetCourseView(); await flow.loadCourse(cid); await reloadPanels() }
+async function createCourse() { if (!await canLeave()) return; await run('create', async () => { const course = await mutation(`create:${newName.value}`, key => api.createGraphCourse(newName.value, key)); newName.value = ''; courses.value = await api.listGraphCourses(); resetCourseView(); await flow.loadCourse(course.course_id); tab.value = 0; await reloadPanels() }) }
+function editChapter(chapter: CourseChapter) { chapterEdit.value = chapter; chapterTitle.value = chapter.title; chapterParent.value = chapter.parent_id || '' }
+async function saveChapter() { await run('chapter', async () => { const edit = chapterEdit.value; await api.putGraphChapter(state.courseId, edit?.chapter_id || crypto.randomUUID(), { title: chapterTitle.value, parent_id: chapterParent.value || null, sort_order: edit?.sort_order || 0, expected_revision: edit?.revision || 0 }); state.course = await api.getGraphCourse(state.courseId); chapterEdit.value = null; chapterTitle.value = ''; notice.value = '章节已保存。' }) }
+function toggleSource(id: string, checked: boolean) { flow.selectSources(checked ? [...state.selectedSources, id] : state.selectedSources.filter(s => s !== id)) }
+async function start() { await run('attach', async () => { state.course = await api.attachGraphSources(state.courseId, state.selectedSources, chapterId.value || null, state.course!.revision) }); if (error.value) return; tab.value = 1; await flow.extract(mode.value, consent.value); await loadHistory() }
+async function retry() { await flow.extract(mode.value, consent.value, true); await loadHistory() }
+async function newDraft() { if (!await canLeave()) return; await flow.loadCourse(state.courseId); tab.value = 0; notice.value = '已打开新审核组，旧组可从历史继续。' }
+async function refreshDraft() { if (!state.draftId) return; if (!await canLeave()) return; const cid = state.courseId, did = state.draftId; await flow.loadCourse(cid, did); mode.value = state.snapshot?.sources[0]?.mode || 'local' }
+async function resumeDraft(did: string) { if (!await canLeave()) return; await flow.loadCourse(state.courseId, did); mode.value = state.snapshot?.sources[0]?.mode || 'local'; tab.value = 1 }
+async function confirmReview() { await flow.confirm(); if (!state.error) { notice.value = '已确认的概念与引用已保存。'; await reloadPanels() } }
+async function loadGraph() { const cid = state.courseId, epoch = viewEpoch; if (!cid) return; const result = await api.getCourseGraph(cid, graphSearch.value, graphOffset.value); if (!disposed && epoch === viewEpoch && cid === state.courseId) graph.value = result }
+async function loadHistory() { const cid = state.courseId, epoch = viewEpoch; if (!cid) return; const result = await api.getCourseOperations(cid, historyOffset.value); if (!disposed && epoch === viewEpoch && cid === state.courseId) history.value = result }
+async function reloadPanels() { await run('read', async () => { await Promise.all([loadGraph(), loadHistory()]) }) }
+async function reload() { if (state.courseId) { if (!await canLeave()) return; const cid = state.courseId, did = state.draftId; await flow.loadCourse(cid, did); await reloadPanels() } else await searchCourses() }
+async function showConcept(id: string) { await run('detail', async () => { detail.value = await api.getCourseConcept(state.courseId, id) }) }
+function toggleMerge(node: CourseConcept, checked: boolean) { mergePreview.value = null; mergeNodes.value = checked ? [...mergeNodes.value, node] : mergeNodes.value.filter(n => n.id !== node.id); if (!mergeIds.value.includes(mergeTarget.value)) mergeTarget.value = mergeIds.value[0] || '' }
+async function addSuggestion(id: string) { if (mergeIds.value.includes(id) || mergeIds.value.length >= 20) return; await run('suggestion', async () => { toggleMerge(await api.getCourseConcept(state.courseId, id), true) }) }
+async function previewMerge() { await run('merge-preview', async () => { mergePreview.value = await api.previewCourseMerge(state.courseId, mergeIds.value, mergeTarget.value) }) }
+async function confirmMerge() { if (!mergePreview.value) return; const token = mergePreview.value.confirmation_token; await run('merge', async () => { await mutation(`merge:${token}`, key => api.confirmCourseMerge(state.courseId, mergeIds.value, mergeTarget.value, confirmation(token, key))); mergePreview.value = null; mergeNodes.value = []; detail.value = null; await loadGraph(); await loadHistory(); notice.value = '融合已保存，原引用保留，可从操作历史撤销。' }) }
+async function removeSource(sid: string) { await run('remove-preview', async () => { const preview = await api.previewCourseSourceRemoval(state.courseId, sid); try { await ElMessageBox.confirm(`将“${nameOf(sid)}”移出课程，${preview.support_impact?.losing_support_concepts || 0} 个概念将失去有效来源。保留资料、作答、错题与计划，可从历史撤销。`, '移出课程预览', { confirmButtonText: '确认移出课程', cancelButtonText: '保留' }) } catch { return } await mutation(`remove:${preview.confirmation_token}`, key => api.removeCourseSource(state.courseId, sid, confirmation(preview.confirmation_token, key))); state.course = await api.getGraphCourse(state.courseId); await Promise.all([loadGraph(), loadHistory()]); notice.value = '已移出课程，学习历史保留。' }) }
+async function changeOperation(op: CourseOperation) { const action = op.status === 'undone' ? 'restore' : 'undo'; await run('operation', async () => { const preview = await api.previewCourseOperation(state.courseId, op.operation_id, action); try { await ElMessageBox.confirm(`涉及 ${Object.values(preview.affected || {}).reduce((a, n) => a + n, 0)} 条记录，不改写学习历史。`, action === 'undo' ? '撤销操作预览' : '恢复操作预览', { confirmButtonText: '确认执行', cancelButtonText: '取消' }) } catch { return } await mutation(`operation:${preview.confirmation_token}`, key => api.changeCourseOperation(state.courseId, op.operation_id, action, confirmation(preview.confirmation_token, key))); detail.value = null; mergePreview.value = null; mergeNodes.value = []; state.course = await api.getGraphCourse(state.courseId); if (state.draftId && !state.dirty) await flow.loadCourse(state.courseId, state.draftId); await Promise.all([loadGraph(), loadHistory()]); notice.value = '操作已保存。' }) }
+function graphLabel(id: string) { return graph.value.nodes.find(n => n.id === id)?.label || '其他页概念' }
+function relationName(value: string) { return ({ prerequisite: '前置知识', depends_on: '依赖于', part_of: '属于', contains: '包含', application: '应用于', related_to: '相关' } as Record<string, string>)[value] || value }
+function operationName(value: string) { return ({ draft: '建立审核组', extract: '提取来源', cancel: '停止提取', review: '确认入图', merge: '融合概念', remove_source: '移出课程', transition: '撤销或恢复' } as Record<string, string>)[value] || value }
+async function refreshGraph() { await run('read-graph', loadGraph) }
+async function refreshHistory() { await run('read-history', loadHistory) }
+onMounted(() => { window.addEventListener('beforeunload', unload); void searchCourses() })
+onUnmounted(() => { disposed = true; ++viewEpoch; ++state.epoch; window.removeEventListener('beforeunload', unload) })
+</script>
