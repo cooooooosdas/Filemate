@@ -166,7 +166,7 @@ def test_unicode_duplicate_quote_uses_saved_range(citation_case):
 - Consumes: Task3的opaque scope；Storage仅getItem/setItem/removeItem三方法，注入以便node:test。
 - Produces: `resolveGraphScope(query: Record<string,unknown>, enabled: boolean): 'source'|'course'`；`readCourseBrowse(query, saved: CoursePreference|null, mobile: boolean): CourseBrowse`；`courseBrowseQuery(state: CourseBrowse): Record<string,string|string[]>`；`createCoursePreferences(storage: PreferenceStorage, scope: string|null)`返回`get(courseId,mobile)`, `set(courseId,mobile,view)`, `lastCourse()`, `forget(courseId)`, `clearMemory()`。CourseBrowse字段scope/courseId/view/nodeId/chapterId/sourceId/relations/notice；view=graph|outline|evidence，relations为RelationKind[]|null（null全部、[]不显示连线）。CoursePreference={desktop?: WorkspaceView,mobile?: WorkspaceView}；PreferenceStorage精确定义三项同名Storage方法。TS WorkspaceFilter={chapter_id?:string,source_id?:string,relations?:RelationKind[]|null}，服务层将[]转换hide_relations=true，不发空字符串类型；URL也允许hide_relations，和relation互斥。所有page/digest/node类型定义均使用Task3统一的courseWorkspace.ts，不在组件另造近似字段。
 
-- [ ] **Step 1: 写纯状态失败用例。**
+- [x] **Step 1: 写纯状态失败用例。**
 
 ```javascript
 test('url_wins_and_mobile_does_not_reuse_desktop_graph', () => {
@@ -179,10 +179,10 @@ test('url_wins_and_mobile_does_not_reuse_desktop_graph', () => {
 ```
 
 另写`storage_denied_and_corrupt_fall_back_to_memory`、`two_scopes_do_not_share_courses`、`query_round_trip_excludes_private_text`、`missing_course_clears_preference_without_selecting_another`。无scope仅页内记忆；localStorage不含引文／文件名／密钥。
-- [ ] **Step 2: 跑RED。** 在filemate/web执行`node --test tests/course-workspace-browse.test.mjs`，预期模块缺失。
-- [ ] **Step 3: 实现签名。** key=`filemate-course-workspace-v1:{scope}`，最多100课程偏好且只存course_id／desktop/mobile view和最近course_id。显式graph_scope优先；无scope参数但有旧source/node则source；其余enabled时course。显式非法view回安全默认并在CourseBrowse.notice说明，不接受数组伪装标量。关系筛选加入URL白名单，q不入URL；未知／非法参数仅产生安全回退notice，不触发写操作。
-- [ ] **Step 4: 跑GREEN。** 本卡node:test与现有`course-graph.test.mjs`通过；URL往返、隐私和禁存储断言全部成立。
-- [ ] **Step 5: 提交。** `feat(graph): 保存分空间浏览偏好并兼容旧图谱深链`。
+- [x] **Step 2: 跑RED。** 在filemate/web执行`node --test tests/course-workspace-browse.test.mjs`，预期模块缺失。
+- [x] **Step 3: 实现签名。** key=`filemate-course-workspace-v1:{scope}`，最多100课程偏好且只存course_id／desktop/mobile view和最近course_id。显式graph_scope优先；无scope参数但有旧source/node则source；其余enabled时course。显式非法view回安全默认并在CourseBrowse.notice说明，不接受数组伪装标量。关系筛选加入URL白名单，q不入URL；未知／非法参数仅产生安全回退notice，不触发写操作。
+- [x] **Step 4: 跑GREEN。** 本卡node:test与现有`course-graph.test.mjs`通过；URL往返、隐私和禁存储断言全部成立。
+- [x] **Step 5: 提交。** `feat(graph): 保存分空间浏览偏好并兼容旧图谱深链`。
 
 ## Task 5: 读快照控制器与迟到／故障恢复
 

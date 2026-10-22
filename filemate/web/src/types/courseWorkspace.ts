@@ -1,6 +1,12 @@
 import type { RelationKind } from './courseGraph'
 
 export type WorkspaceView = 'graph' | 'outline' | 'evidence'
+export interface CoursePreference { desktop?: WorkspaceView; mobile?: WorkspaceView }
+export type PreferenceStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+export interface CourseBrowse {
+  scope: 'source' | 'course'; courseId: string; view: WorkspaceView; nodeId: string
+  chapterId: string; sourceId: string; relations: RelationKind[] | null; notice: string
+}
 export interface WorkspaceFilter { chapter_id?: string; source_id?: string; relations?: RelationKind[] | null }
 export interface WorkspaceNode {
   id: string; label: string; aliases: { label: string; origin: string }[]; chapter_ids: string[]
