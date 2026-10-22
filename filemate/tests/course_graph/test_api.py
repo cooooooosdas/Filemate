@@ -1,6 +1,8 @@
 # ruff: noqa: F811
 """Real HTTP contracts with synthetic identities, documents and credentials."""
 
+from datetime import datetime, timezone
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -114,3 +116,42 @@ def test_provider_error_redacts_and_preserves_graph(api_server, monkeypatch):
         assert saved["sources"][0]["status"] == "failed"
         assert saved["sources"][0]["error_code"] == "extraction_failed"
         assert client.get(f"{ROOT}/{cid}/graph").json()["data"]["nodes"] == []
+
+
+def test_merged_original_id_still_opens_concept(api_server):
+    from filemate.course_graph.drafts import DraftService
+    from filemate.course_graph.repository import CourseGraphRepository
+    from filemate.tests.course_graph.test_fusion import merge
+    from filemate.tests.course_graph.test_review import accept_nodes, draft, publish
+
+    with TestClient(api_server.app) as client:
+        sid = _upload(client)
+        store = next(iter(api_server._tenant_storages.values()))
+        repo = CourseGraphRepository(store)
+        cid = repo.create_course("课程", "create_course_0001")["course_id"]
+        repo.attach_sources(cid, [sid], None, 0)
+        context = (store, repo, cid, sid)
+        publish(context, accept_nodes(context, draft(context)))
+        sid2 = store.save_source(original_name="另一份.txt", source_path="other.txt", raw_text="树：有层级的结构。")
+        repo.attach_sources(cid, [sid2], None, 1)
+        other = (store, repo, cid, sid2)
+        svc = DraftService(store, lambda: None, lambda: datetime.now(timezone.utc))
+        snapshot = svc.create_group(cid, [sid2], "local", "second_source_0001")
+        snapshot = svc.extract_source(cid, snapshot["draft_id"], sid2, "second_extract_001", False)
+        publish(other, accept_nodes(other, snapshot), "second_publish_001")
+        ids = [n["id"] for n in client.get(f"{ROOT}/{cid}/graph").json()["data"]["nodes"] if n["label"] == "树"]
+        merge((context, ids))
+        for nid in ids:
+            result = client.get(f"{ROOT}/{cid}/concepts/{nid}")
+            assert result.status_code == 200, result.text
+            assert set(result.json()["data"]["member_ids"]) == set(ids)
+
+
+def test_deleted_source_extract_returns_fixed_error(api_server):
+    with TestClient(api_server.app) as client:
+        _, sid, _, route = setup(client)
+        store = next(iter(api_server._tenant_storages.values()))
+        store.delete_source(sid)
+        response = client.post(route, json={"mode": "local", "request_key": "extract_deleted_001"})
+        assert response.status_code == 404
+        assert response.json()["data"]["error_code"] == "source_not_found"

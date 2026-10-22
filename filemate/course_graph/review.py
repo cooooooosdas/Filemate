@@ -8,6 +8,7 @@ from uuid import uuid4
 from filemate.course_graph.drafts import DraftService
 from filemate.course_graph.extraction import validate_candidates
 from filemate.course_graph.models import CourseGraphError, ItemDecision, digest, request_key_valid
+from filemate.course_graph.occurrence import find_occurrence, legacy_hint, occurrence_id
 from filemate.course_graph.repository import get_request, record_change, require_course, transaction
 from filemate.execution import data_actions
 from filemate.execution.storage import SQLiteStorage
@@ -56,7 +57,7 @@ def _prepare(storage, conn, course_id, draft_id):
     for source in snap["sources"]:
         selected = [n for n in _items(source) if isinstance(n["decision"], dict)
                     and n["decision"]["verdict"] in {"accept", "revise"}
-                    and n.get("review_status") != "confirmed"]
+                    and n.get("review_status") not in {"confirmed", "revoked"}]
         if not selected:
             continue
         if source["status"] not in {"ready", "partial"} or not source["source_current"]:
@@ -79,6 +80,8 @@ def _prepare(storage, conn, course_id, draft_id):
                 choice = old["decision"]
                 if validated["validation"] == "needs_semantic_review" and not choice["semantic_checked"]:
                     raise CourseGraphError("semantic_check_required", 422)
+                if kind == "nodes":
+                    legacy_hint(conn, course_id, source, validated["parsed"], apply_changes=False)
                 chosen.append((source, old, validated["parsed"], choice))
                 if kind == "nodes":
                     selected_terms.add((source["source_id"], validated["parsed"]["label"]))
@@ -91,12 +94,10 @@ def _prepare(storage, conn, course_id, draft_id):
             if (source["source_id"], term) in selected_terms:
                 continue
             node = next((n for n in source["payload"]["nodes"] if n.get("parsed") and n["parsed"]["label"] == term), None)
-            existing = conn.execute("""SELECT 1 FROM kg_evidence e JOIN kg_concepts c USING(concept_id)
-                                       WHERE e.course_id=? AND e.source_id=? AND e.source_revision=?
-                                       AND e.legacy_node_id=? AND e.status='confirmed' AND c.status='confirmed'""",
-                                    (course_id, source["source_id"], source["source_revision"],
-                                     node["parsed"]["legacy_node_id"] if node else "")).fetchone()
-            if not existing:
+            existing = find_occurrence(conn, course_id, source, node["parsed"]) if node else None
+            concept = conn.execute("SELECT status FROM kg_concepts WHERE concept_id=?",
+                                   (existing["concept_id"],)).fetchone() if existing else None
+            if not existing or existing["status"] != "confirmed" or not concept or concept[0] != "confirmed":
                 raise CourseGraphError("endpoint_not_confirmed", 422)
     return snap, chosen
 
@@ -132,13 +133,15 @@ def object_states(conn, course_id: str, ids: dict[str, list[str]]) -> dict[str, 
 
 
 def _evidence(conn, course_id, source, parsed, target, kind):
-    eid = str(uuid4())
+    eid = (occurrence_id(course_id, source["source_id"], source["source_revision"], parsed["label"])
+           if kind == "node" else str(uuid4()))
+    legacy = legacy_hint(conn, course_id, source, parsed) if kind == "node" else None
     conn.execute("""INSERT INTO kg_evidence(evidence_id,course_id,source_id,source_revision,concept_id,relation_id,
                     legacy_node_id,excerpt,chunk_id,page,char_start,char_end,extraction_id)
                     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                  (eid, course_id, source["source_id"], source["source_revision"],
                   target if kind == "node" else None, target if kind == "edge" else None,
-                  parsed.get("legacy_node_id") if kind == "node" else None, parsed["excerpt"],
+                  legacy, parsed["excerpt"],
                   parsed["chunk_id"], parsed["page"], parsed["char_start"], parsed["char_end"], source["extraction_id"]))
     return eid
 
@@ -178,9 +181,7 @@ def confirm_review(storage: SQLiteStorage, course_id: str, draft_id: str, reques
         for source, item, parsed, decision in selected:
             if item["kind"] != "node":
                 continue
-            existing = conn.execute("""SELECT concept_id,status FROM kg_evidence WHERE course_id=? AND source_id=?
-                                       AND source_revision=? AND legacy_node_id=?""",
-                                    (course_id, source["source_id"], source["source_revision"], parsed["legacy_node_id"])).fetchone()
+            existing = find_occurrence(conn, course_id, source, parsed)
             if existing:
                 if existing["status"] != "confirmed":
                     raise CourseGraphError("occurrence_revoked_use_restore")
@@ -196,6 +197,7 @@ def confirm_review(storage: SQLiteStorage, course_id: str, draft_id: str, reques
                 ids["concepts"].append(nid)
                 ids["evidence"].append(_evidence(conn, course_id, source, parsed, nid, "node"))
             published_nodes[(source["source_id"], parsed["label"])] = nid
+            item["parsed"]["legacy_mapping_ambiguous"] = parsed.get("legacy_mapping_ambiguous", False)
             dependencies.add(nid)
             item["review_status"], item["published_id"] = "confirmed", nid
         for source, item, parsed, _ in selected:
@@ -206,9 +208,7 @@ def confirm_review(storage: SQLiteStorage, course_id: str, draft_id: str, reques
                 nid = published_nodes.get((source["source_id"], term))
                 if nid is None:
                     node = next(n for n in source["payload"]["nodes"] if n.get("parsed") and n["parsed"]["label"] == term)
-                    nid = conn.execute("""SELECT concept_id FROM kg_evidence WHERE course_id=? AND source_id=?
-                                          AND source_revision=? AND legacy_node_id=? AND status='confirmed'""",
-                                       (course_id, source["source_id"], source["source_revision"], node["parsed"]["legacy_node_id"])).fetchone()[0]
+                    nid = find_occurrence(conn, course_id, source, node["parsed"])["concept_id"]
                 endpoints.append(nid)
                 dependencies.add(nid)
             old = conn.execute("""SELECT r.relation_id FROM kg_relations r JOIN kg_evidence e USING(relation_id)

@@ -164,7 +164,7 @@ def create_router(storage_provider: Callable[[], SQLiteStorage]) -> APIRouter:
         service = drafts(store)
         snapshot = service.snapshot(cid, did)
         source = next((s for s in snapshot["sources"] if s["source_id"] == sid), None)
-        if source is None:
+        if source is None or source["status"] == "unavailable":
             raise CourseGraphError("source_not_found", 404)
         if source["mode"] != body.mode:
             raise CourseGraphError("mode_conflict", 409)
@@ -198,7 +198,8 @@ def create_router(storage_provider: Callable[[], SQLiteStorage]) -> APIRouter:
 
     @router.get("/{cid}/concepts/{nid}")
     def concept(cid: str, nid: str, store: Store):
-        return _result({**concept_detail(store, cid, nid), "merge_candidates": fusion.merge_candidates(store, cid, nid)})
+        detail = concept_detail(store, cid, nid)
+        return _result({**detail, "merge_candidates": fusion.merge_candidates(store, cid, detail["id"])})
 
     @router.post("/{cid}/merges/preview")
     def merge_preview(cid: str, body: Merge, store: Store):

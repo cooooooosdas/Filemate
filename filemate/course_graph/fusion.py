@@ -14,6 +14,7 @@ from filemate.course_graph.models import (
     request_key_valid,
 )
 from filemate.course_graph.projection import (  # noqa: F401 -- public service interface
+    _nodes,
     course_graph,
     valid_evidence,
 )
@@ -27,18 +28,21 @@ def merge_candidates(storage, course_id: str, concept_id: str, limit: int = 20) 
         raise CourseGraphError("invalid_limit", 422)
     conn = storage._conn()
     require_course(conn, course_id)
-    rows = [dict(r) for r in conn.execute("""SELECT * FROM kg_concepts WHERE course_id=? AND status='confirmed'
-                                           AND canonical_id IS NULL ORDER BY concept_id""", (course_id,))]
+    members = [dict(r) for r in conn.execute("""SELECT * FROM kg_concepts WHERE course_id=? AND status='confirmed'
+                                              ORDER BY concept_id""", (course_id,))]
+    rows = [r for r in members if r["canonical_id"] is None]
     current = next((r for r in rows if r["concept_id"] == concept_id), None)
     if current is None:
         raise CourseGraphError("concept_not_found", 404)
 
-    def terms(row):
-        return {normalize_term(row["label"]), *(normalize_term(a["label"]) for a in json.loads(row["aliases"]))}
+    term_sets = {}
+    for member in members:
+        term_sets.setdefault(member["canonical_id"] or member["concept_id"], set()).update(
+            {normalize_term(member["label"]), *(normalize_term(a["label"]) for a in json.loads(member["aliases"]))})
 
-    normalized = terms(current)
+    normalized = term_sets[current["concept_id"]]
     return [{"concept_id": r["concept_id"], "label": r["label"], "reason": "same_term_or_reviewed_alias"}
-            for r in rows if r["concept_id"] != concept_id and normalized & terms(r)][:limit]
+            for r in rows if r["concept_id"] != concept_id and normalized & term_sets[r["concept_id"]]][:limit]
 
 
 def dependency_check(storage, conn, course_id: str, mapping: dict[str, str] | None = None) -> int:
@@ -95,7 +99,7 @@ def _selection(concept_ids, target_id):
 def _merge_context(storage, conn, course_id, concept_ids, target_id):
     selection = _selection(concept_ids, target_id)
     require_course(conn, course_id)
-    expanded, labels = set(), []
+    expanded, roots = set(), []
     for identity in concept_ids:
         row = conn.execute("SELECT * FROM kg_concepts WHERE concept_id=?", (identity,)).fetchone()
         if row is None:
@@ -104,7 +108,7 @@ def _merge_context(storage, conn, course_id, concept_ids, target_id):
             raise CourseGraphError("cross_course_merge")
         if row["status"] != "confirmed" or row["canonical_id"] is not None:
             raise CourseGraphError("merge_selection_changed")
-        labels.append({"concept_id": identity, "label": row["label"]})
+        roots.append(row)
         expanded.add(identity)
         expanded.update(r[0] for r in conn.execute("SELECT concept_id FROM kg_concepts WHERE course_id=? AND canonical_id=?",
                                                    (course_id, identity)))
@@ -115,6 +119,11 @@ def _merge_context(storage, conn, course_id, concept_ids, target_id):
     self_edges = dependency_check(storage, conn, course_id, {identity: target_id for identity in expanded})
     support = [(r["source_id"], r["revision"], r["active"], storage.get_source_revision(r["source_id"]))
                for r in conn.execute("SELECT * FROM kg_course_sources WHERE course_id=? ORDER BY source_id", (course_id,))]
+    labels = _nodes(storage, conn, course_id, roots)
+    for node in labels:
+        for ref in node["source_refs"]:
+            source = conn.execute("SELECT original_name FROM sources WHERE source_id=?", (ref["source_id"],)).fetchone()
+            ref["original_name"] = source[0] if source else "原资料不可用"
     return {"selection_digest": selection, "ids": ids, "before": states, "self_edge_count": self_edges,
             "concepts": labels, "revision_digest": digest({"states": states, "selection": selection, "support": support})}
 

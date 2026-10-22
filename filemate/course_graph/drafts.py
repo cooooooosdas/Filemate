@@ -73,7 +73,9 @@ class DraftService:
                 did = previous["metadata"].get("draft_id", previous["operation_id"])
             else:
                 same = conn.execute("""SELECT operation_id FROM kg_changes WHERE course_id=? AND kind='draft'
-                                       AND input_digest=? AND status='applied' ORDER BY created_at LIMIT 1""",
+                                       AND input_digest=? AND status='applied'
+                                       AND operation_id=json_extract(metadata,'$.draft_id')
+                                       ORDER BY created_at LIMIT 1""",
                                     (course_id, hashed)).fetchone()
                 did = same["operation_id"] if same else str(uuid4())
                 record_change(conn, course_id, request_key, "draft", hashed,

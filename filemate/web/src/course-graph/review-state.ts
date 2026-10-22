@@ -32,7 +32,7 @@ export function createCourseReviewFlow(api: FlowApi, observe: (state: ReviewStat
     const pending = state.pendingCommand
     try { const result = await run(pending.key); if (state.pendingCommand === pending) state.pendingCommand = null; return result }
     catch (cause) {
-      if ((cause as { status?: number }).status) state.pendingCommand = null
+      if ((cause as { status?: number }).status && state.pendingCommand === pending) state.pendingCommand = null
       throw cause
     }
   }
@@ -106,6 +106,7 @@ export function createCourseReviewFlow(api: FlowApi, observe: (state: ReviewStat
         apply(result)
       }
       const did = state.draftId
+      let failed = 0
       for (const source of state.snapshot!.sources) {
         if (epoch !== state.epoch) return
         if (!['pending', ...(retry ? ['failed', 'interrupted'] : [])].includes(source.status)) continue
@@ -114,12 +115,21 @@ export function createCourseReviewFlow(api: FlowApi, observe: (state: ReviewStat
           if (epoch === state.epoch) apply(result)
         } catch (cause) {
           // 读取持久失败状态；网络未知结果保留原请求键，重试不会重复计费。
-          if (epoch === state.epoch) {
-            try { const result = await api.getDraft(cid, did); if (epoch === state.epoch) apply(result) } catch { /* 原快照与重试键保留。 */ }
+          if (epoch !== state.epoch) return
+          let saved: CourseDraft | undefined
+          try { saved = await api.getDraft(cid, did); if (epoch === state.epoch) apply(saved) } catch { /* 原快照与重试键保留。 */ }
+          if (epoch !== state.epoch) return
+          const status = saved?.sources.find(s => s.source_id === source.source_id)?.status
+          if (saved?.status !== 'cancelled' && ['ready', 'partial', 'failed', 'unavailable'].includes(status || '')) {
+            state.pendingCommand = null
+            if (status === 'failed' || status === 'unavailable') failed++
+            if ([429, 503].includes((cause as { status?: number }).status || 0)) throw cause
+            continue
           }
           throw cause
         }
       }
+      if (failed) state.error = `${failed} 份来源未完成；其他资料已继续处理，可核对已完成结果或重试失败来源。`
     })
   }
   async function cancel() {

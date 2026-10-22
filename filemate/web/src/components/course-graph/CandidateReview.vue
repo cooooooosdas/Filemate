@@ -9,6 +9,7 @@
       <div class="candidate-heading"><span>{{ item.kind === 'node' ? '概念' : '关系' }}</span><h4>{{ title(item) }}</h4></div>
       <blockquote>{{ item.original.excerpt || '没有可验证的原文' }}</blockquote>
       <p v-if="item.parsed?.page">第 {{ item.parsed.page }} 页</p>
+      <p v-if="item.parsed?.legacy_mapping_ambiguous">旧版术语键有歧义；本概念保持独立，不自动关联旧题目。</p>
       <p v-if="item.validation === 'needs_semantic_review'">引文位置有效；关系含义需你核对。</p>
       <p v-if="item.review_status === 'confirmed'" class="published">已确认入图 · 可在历史中撤销</p>
       <p v-else-if="item.review_status === 'revoked'">已撤销 · 请从历史恢复</p>

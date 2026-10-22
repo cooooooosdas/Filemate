@@ -6,12 +6,12 @@ from uuid import NAMESPACE_URL, uuid5
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from filemate.course_graph.models import CourseGraphError, digest
+from filemate.course_graph.models import CourseGraphError, digest, normalize_term
 from filemate.execution.storage import _knowledge_identity
 from filemate.study.knowledge_graph import extract_local
 
 INPUT_LIMIT = 20_000
-EXTRACTOR_VERSION = "course-graph-b1"
+EXTRACTOR_VERSION = "course-graph-b2"
 RELATIONS = Literal["prerequisite", "depends_on", "part_of", "contains", "application", "related_to"]
 Term = Annotated[str, Field(min_length=1, max_length=120)]
 Quote = Annotated[str, Field(min_length=1, max_length=1000)]
@@ -100,7 +100,6 @@ def validate_candidates(payload: Any, text: str, source_id: str,
         "input_characters": len(covered), "source_truncated": len(text) > INPUT_LIMIT,
     }}
     labels: set[str] = set()
-    identities: dict[str, str] = {}
     for kind, model in (("nodes", Node), ("edges", Edge)):
         for index, raw in enumerate(payload[kind]):
             original = _original(raw)
@@ -123,8 +122,6 @@ def validate_candidates(payload: Any, text: str, source_id: str,
                     label = parsed["label"]
                     legacy, _ = _knowledge_identity({"knowledge_point": label}, source_id=source_id, artifact_id="")
                     parsed["legacy_node_id"] = legacy
-                    if legacy in identities and identities[legacy] != label:
-                        errors.append("legacy_identity_collision")
                     if parsed["definition"] and parsed["definition"] not in quote:
                         errors.append("unsupported_definition")
                     for alias in parsed["aliases"]:
@@ -133,7 +130,6 @@ def validate_candidates(payload: Any, text: str, source_id: str,
                             errors.append("unsupported_alias")
                     if not errors:
                         labels.add(label)
-                        identities[legacy] = label
                 elif parsed["from"] not in labels or parsed["to"] not in labels or parsed["from"] == parsed["to"]:
                     errors.append("missing_endpoint")
                 parsed.update(_location(quote, covered, chunks))
@@ -149,13 +145,21 @@ def validate_candidates(payload: Any, text: str, source_id: str,
                 item["validation"] = "invalid"
                 result["issues"].append({"item_id": item["item_id"], "error_codes": list(errors)})
             result[kind].append(item)
+    legacy_groups = {}
+    for item in result["nodes"]:
+        if item["validation"] == "valid":
+            parsed = item["parsed"]
+            legacy_groups.setdefault(parsed["legacy_node_id"], set()).add(normalize_term(parsed["label"]))
+    for item in result["nodes"]:
+        if item["parsed"]:
+            item["parsed"]["legacy_mapping_ambiguous"] = len(legacy_groups.get(item["parsed"]["legacy_node_id"], ())) > 1
     return result
 
 
 def extract_local_course(text: str) -> dict[str, Any]:
     """Reuse literal rules and add only parenthesized source aliases."""
     limited = text[:INPUT_LIMIT]
-    payload = extract_local(limited)
+    payload = extract_local(limited, preserve_symbols=True)
     translations = {"belongs_to": "part_of", "applies_to": "application", "similar": "related_to"}
     for edge in payload["edges"]:
         edge["relation"] = translations.get(edge["relation"], edge["relation"])

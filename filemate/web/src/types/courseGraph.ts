@@ -4,7 +4,7 @@ export interface CourseDecision { item_id: string; verdict: 'accept' | 'reject' 
 export interface CourseCandidate {
   item_id: string; kind: 'node' | 'edge'; validation: 'valid' | 'needs_semantic_review' | 'invalid'; error_codes?: string[]
   original: { label?: string; from?: string; to?: string; relation?: string; excerpt?: string }
-  parsed?: { label?: string; from?: string; to?: string; relation?: string; excerpt: string; page?: number | null; chunk_id?: string | null }
+  parsed?: { label?: string; from?: string; to?: string; relation?: string; excerpt: string; page?: number | null; chunk_id?: string | null; legacy_mapping_ambiguous?: boolean }
   decision: 'pending' | CourseDecision; review_status?: string
 }
 export interface CourseExtraction { source_id: string; status: string; mode: GraphMode; error_code?: string; source_current: boolean; payload: { nodes?: CourseCandidate[]; edges?: CourseCandidate[]; coverage?: { input_characters: number; source_truncated: boolean } } }
@@ -16,7 +16,7 @@ export interface CourseConcept { id: string; label: string; revision: number; me
 export interface CourseGraphPage { nodes: CourseConcept[]; edges: { from: string; to: string; relation: string; source_refs: CourseSourceRef[] }[]; total: number; limit: number; offset: number; self_edge_count: number; omitted_edge_count: number }
 export interface CourseOperation { operation_id: string; kind: string; status: string; created_at: string; draft_id?: string; reversible: boolean }
 export interface GraphPage<T> { items: T[]; total: number; limit: number; offset: number }
-export interface CourseReviewPreview { confirmation_token: string; revision_digest: string; nodes: number; relations: number; items: { source_id: string; item_id: string; kind: string; parsed: { label?: string; from?: string; to?: string; excerpt: string }; decision: CourseDecision }[] }
-export interface CourseMergePreview { confirmation_token: string; concepts: { concept_id: string; label: string }[]; self_edge_count: number; ids: { concepts: string[] } }
+export interface CourseReviewPreview { confirmation_token: string; revision_digest: string; nodes: number; relations: number; items: { source_id: string; item_id: string; kind: string; parsed: { label?: string; from?: string; to?: string; excerpt: string; legacy_mapping_ambiguous?: boolean }; decision: CourseDecision }[] }
+export interface CourseMergePreview { confirmation_token: string; concepts: (CourseConcept & { concept_id: string; source_refs: (CourseSourceRef & { original_name: string })[] })[]; self_edge_count: number; ids: { concepts: string[] } }
 export interface CourseActionPreview { confirmation_token: string; affected?: Record<string, number>; support_impact?: { preserved_concepts: number; losing_support_concepts: number }; retains_learning_history?: boolean }
 export interface GraphConfirmation { confirmed: true; confirmation_token: string; request_key: string }

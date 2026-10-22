@@ -75,3 +75,25 @@ test('revoked_candidates_are_restored_from_history_and_not_republished', async (
   await flow.loadCourse('c', 'd')
   assert.equal(flow.canPreview(), false)
 })
+
+test('failed_first_source_does_not_starve_later_pending_sources', async () => {
+  const s = snapshot(); s.sources[0].status = 'pending'
+  s.sources.push({ ...s.sources[0], source_id: 'good' })
+  const called = []
+  const flow = createCourseReviewFlow(api({ createDraft: async () => structuredClone(s),
+    getDraft: async () => ({ ...s, sources: s.sources.map(x => x.source_id === 's' ? { ...x, status: 'failed' } : x) }),
+    extract: async (_c, _d, sid) => { called.push(sid); if (sid === 's') throw Object.assign(new Error('extraction_failed'), {status:502}); return { ...s, sources:s.sources.map(x => ({...x,status:x.source_id === 'good' ? 'ready' : 'failed'})) } }
+  }))
+  await flow.loadCourse('c'); flow.selectSources(['s', 'good']); await flow.extract('local', false)
+  assert.deepEqual(called, ['s', 'good'])
+  assert.equal(flow.state.snapshot.sources[1].status, 'ready')
+})
+
+test('unknown_network_extraction_keeps_key_until_its_result_is_known', async () => {
+  const s = snapshot(); s.sources[0].status = 'pending'; const keys = []
+  const flow = createCourseReviewFlow(api({ createDraft: async () => s, getDraft: async () => s,
+    extract: async (_c, _d, _sid, _mode, _consent, key) => { keys.push(key); throw new Error('network') }
+  }))
+  await flow.loadCourse('c'); flow.selectSources(['s']); await flow.extract('local', false); await flow.extract('local', false, true)
+  assert.equal(keys.length, 2); assert.equal(keys[0], keys[1])
+})

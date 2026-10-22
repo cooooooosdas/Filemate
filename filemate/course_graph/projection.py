@@ -46,8 +46,11 @@ def course_graph(storage, course_id: str, limit: int = 50, offset: int = 0, q: s
         conn = snapshot._conn()
         require_course(conn, course_id)
         where = """course_id=? AND status='confirmed' AND canonical_id IS NULL AND
-                   (instr(lower(label),lower(?))>0 OR EXISTS(SELECT 1 FROM json_each(kg_concepts.aliases)
-                   WHERE instr(lower(json_extract(value,'$.label')),lower(?))>0))"""
+                   EXISTS(SELECT 1 FROM kg_concepts member WHERE member.course_id=kg_concepts.course_id
+                   AND member.status='confirmed'
+                   AND (member.concept_id=kg_concepts.concept_id OR member.canonical_id=kg_concepts.concept_id)
+                   AND (instr(lower(member.label),lower(?))>0 OR EXISTS(SELECT 1 FROM json_each(member.aliases)
+                   WHERE instr(lower(json_extract(value,'$.label')),lower(?))>0)))"""
         args = (course_id, q, q)
         total = conn.execute(f"SELECT COUNT(*) FROM kg_concepts WHERE {where}", args).fetchone()[0]
         roots = conn.execute(f"SELECT * FROM kg_concepts WHERE {where} ORDER BY concept_id LIMIT ? OFFSET ?",

@@ -108,7 +108,7 @@ def _correction_feedback(payload: Any, text: str, reason: str) -> str:
     return "\n".join(errors)[:12000]
 
 
-def extract_local(text: str) -> dict[str, Any]:
+def extract_local(text: str, *, preserve_symbols: bool = False) -> dict[str, Any]:
     """从定义、标题和明确关系句提取候选，不补写语义。"""
     nodes: dict[str, dict[str, str]] = {}
     edges: list[dict[str, str]] = []
@@ -120,11 +120,12 @@ def extract_local(text: str) -> dict[str, Any]:
     }
 
     def add(label: str, excerpt: str) -> str:
-        label = label.strip().strip("# ")
+        label = re.sub(r"^#{1,6}\s+", "", label.strip()) if preserve_symbols else label.strip().strip("# ")
         if label and len(nodes) < 80:
             nodes.setdefault(label, {"label": label, "excerpt": excerpt})
         return label
 
+    ascii_term = r"[A-Za-z][A-Za-z0-9+#/-]{0,30}" if preserve_symbols else r"[A-Za-z][A-Za-z0-9+#/-]{1,30}"
     for line in re.split(r"[。！？\n]", text[:INPUT_LIMIT]):
         line = line.strip()
         if not line or len(line) > 500:
@@ -154,7 +155,7 @@ def extract_local(text: str) -> dict[str, Any]:
             if a in nodes and b in nodes and a != b and len(edges) < 120:
                 edges.append({"from": a, "to": b, "relation": relation, "excerpt": line})
         definition = re.match(
-            r"^([A-Za-z][A-Za-z0-9+#/-]{1,30}|[\u4e00-\u9fff]{1,30})[：:]\s*\S", line,
+            rf"^({ascii_term}|[\u4e00-\u9fff]{{1,30}})[：:]\s*\S", line,
         )
         heading = re.match(r"^#{1,6}\s+(.{1,40})$", line)
         if definition:
