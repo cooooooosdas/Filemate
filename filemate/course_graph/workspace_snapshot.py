@@ -6,7 +6,12 @@ from typing import Any
 
 from filemate.course_graph.models import CourseGraphError, digest
 from filemate.course_graph.repository import require_course
-from filemate.course_graph.workspace_models import SYSTEM_GROUPS, WorkspaceFilter, WorkspaceGroup, WorkspaceNode
+from filemate.course_graph.workspace_models import (
+    SYSTEM_GROUPS,
+    WorkspaceFilter,
+    WorkspaceGroup,
+    WorkspaceNode,
+)
 from filemate.execution.storage import SQLiteStorage
 
 
@@ -119,8 +124,8 @@ def _build_groups(chapters, ancestors, nodes):
     for cid, row in chapters.items():
         if row["parent_id"]:
             groups[row["parent_id"]]["child_count"] += 1
-    for cid in groups:
-        groups[cid]["concept_count"] = len(members[cid])
+    for cid, group in groups.items():
+        group["concept_count"] = len(members[cid])
     return groups, members
 
 

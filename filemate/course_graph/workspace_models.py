@@ -92,6 +92,53 @@ class WorkspaceConceptPage(TypedDict):
     offset: int
 
 
+class WorkspaceGroupEdge(TypedDict):
+    from_group: str
+    to_group: str
+    relation_count: int
+
+
+class WorkspaceCanvas(TypedDict):
+    course_id: str
+    graph_digest: str
+    mode: Literal["groups", "concepts"]
+    nodes: list[WorkspaceNode]
+    edges: list[WorkspaceRelation]
+    groups: list[WorkspaceGroup]
+    group_edges: list[WorkspaceGroupEdge]
+    total_concepts: int
+    total_edges: int
+    truncated: bool
+    node_has_more: bool
+    edge_has_more: bool
+    group_total: int
+    group_offset: int
+    group_limit: int
+    requested_id: str | None
+    resolved_id: str | None
+
+
+class WorkspaceSourceRef(TypedDict):
+    evidence_id: str
+    source_id: str
+    original_name: str
+    excerpt: str
+    page: int | None
+    chunk_id: str | None
+
+
+class WorkspaceDetail(TypedDict):
+    course_id: str
+    graph_digest: str
+    requested_id: str
+    resolved_id: str
+    node: WorkspaceNode
+    source_refs: list[WorkspaceSourceRef]
+    total_refs: int
+    limit: int
+    offset: int
+
+
 def validate_page(limit: int, offset: int, maximum: int = 200) -> None:
     """Reject coercion and unbounded direct service calls as well as HTTP calls."""
     if type(limit) is not int or type(offset) is not int or not 1 <= limit <= maximum or not 0 <= offset <= 1_000_000:

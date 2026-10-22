@@ -113,7 +113,7 @@ def test_symbol_search_and_snapshot_digest(workspace_case):
 - Consumes: `load_workspace_snapshot`、`WorkspaceFilter`及Task1响应类型。
 - Produces: `get_workspace_canvas(storage, course_id, *, filters: WorkspaceFilter, focus: str|None=None, limit=100, group_limit=20, group_offset=0) -> WorkspaceCanvas`；`get_workspace_detail(storage, course_id, concept_id, *, limit=50, offset=0) -> WorkspaceDetail`。
 
-- [ ] **Step 1: 写有界行为失败用例。**
+- [x] **Step 1: 写有界行为失败用例。**
 
 ```python
 def test_focus_outside_first_page_is_kept(large_workspace):
@@ -127,10 +127,10 @@ def test_focus_outside_first_page_is_kept(large_workspace):
 
 另写`test_groups_are_not_semantic_nodes`、`test_cross_group_summary_requires_valid_evidence`、`test_relation_filter_retains_isolated_nodes`、`test_zero_relation_selection_hides_edges_only`、`test_group_canvas_pages_twenty_at_a_time`、`test_merged_original_id_resolves_representative`、`test_focus_outside_filter_returns_conflict`、`test_no_source_relations_are_suppressed`、`test_detail_refs_are_paged`。明确默认groups模式、300边上限、system组和10000节点分页访问，不把只看第一页当全图。
 
-- [ ] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_workspace_canvas.py -q`，新查询缺失失败。
-- [ ] **Step 3: 实现签名。** 用代表成员索引和有效证据批量构造邻接、章节计数和group_edges；去重边前先核验两端支持及关系引文。所有超限返回node_has_more/edge_has_more，不无声截断；source_id与chapter_id取交集，focus过滤冲突409 focus_outside_filter。detail不因搜索／画布分页丢掉原ID，返回50引用和total_refs；不读取旧作答／画像。
-- [ ] **Step 4: 跑GREEN。** `uv run pytest filemate/tests/course_graph/test_workspace_query.py filemate/tests/course_graph/test_workspace_canvas.py filemate/tests/course_graph/test_fusion.py -q`，无失败；大夹具证明预算内返回且余下节点列表可达。
-- [ ] **Step 5: 提交。** `feat(graph): 接通有界章节画布与跨页概念邻域`。
+- [x] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_workspace_canvas.py -q`，新查询缺失失败。
+- [x] **Step 3: 实现签名。** 用代表成员索引和有效证据批量构造邻接、章节计数和group_edges；去重边前先核验两端支持及关系引文。所有超限返回node_has_more/edge_has_more，不无声截断；source_id与chapter_id取交集，focus过滤冲突409 focus_outside_filter。detail不因搜索／画布分页丢掉原ID，返回50引用和total_refs；不读取旧作答／画像。
+- [x] **Step 4: 跑GREEN。** `uv run pytest filemate/tests/course_graph/test_workspace_query.py filemate/tests/course_graph/test_workspace_canvas.py filemate/tests/course_graph/test_fusion.py -q`，无失败；大夹具证明预算内返回且余下节点列表可达。
+- [x] **Step 5: 提交。** `feat(graph): 接通有界章节画布与跨页概念邻域`。
 
 ## Task 3: 原文定位、HTTP权限与共享合同
 
