@@ -10,7 +10,7 @@
 
 **Spec:** [已确认C级设计](../specs/2026-10-22-knowledge-workspace-c-design.md)。读取本计划前先读设计；[B级交付](../../KNOWLEDGE_GRAPH_2_0_B_DELIVERY.md)与[现役API](../../../filemate/docs/API_SPEC.md)是兼容基线。
 
-状态：用户在设计交付后回复“继续”，据此记录设计确认。本计划待用户审阅；不据此开始C业务实现或部署。沿用B的当前会话逐卡实施、完成后一次独立审阅方式，不重复询问执行方法。工作区为`C:/Users/胡希/.codex/worktrees/release-alpha3/FileMate-Project`，分支`codex/knowledge-graph-2-audit`，计划前HEAD `6997788`。
+状态：用户在设计交付后回复“继续”，据此记录设计确认。用户已确认本计划并授权从任务1开始；按八卡连续实施，不部署。沿用B的当前会话逐卡实施、完成后一次独立审阅方式，不重复询问执行方法。工作区为`C:/Users/胡希/.codex/worktrees/release-alpha3/FileMate-Project`，分支`codex/knowledge-graph-2-audit`，计划前HEAD `6997788`。
 
 ## Global Constraints
 
@@ -82,7 +82,7 @@ Focus始终占一个位置，只取该点及一跳邻居（按ID稳定排序）�
 - Consumes: `SQLiteStorage.read_snapshot()`、`get_source_revision()`、B的`require_course`；批量读取schema31表，不对每个节点再开snapshot。
 - Produces: `load_workspace_snapshot(storage: SQLiteStorage, course_id: str) -> CourseWorkspaceSnapshot`（对象保留只读规范化行／指纹，不持有退出后的连接）；`get_workspace(storage, course_id, *, parent_id=None, group_limit=200, group_offset=0, source_limit=50, source_offset=0) -> WorkspaceNavigation`；`get_chapter_path(storage, course_id, chapter_id) -> dict`（course_id/graph_digest/items: WorkspaceGroup[]）；`list_workspace_concepts(storage, course_id, *, filters: WorkspaceFilter, q='', limit=50, offset=0) -> WorkspaceConceptPage`。
 
-- [ ] **Step 1: 写查询失败用例。** 复用course_context与B的draft/publish测试工具，确认两份资料后融合，并把来源分别放父章／子章；测试名与断言如下，fixture准备不直接伪造已审核质量结论。
+- [x] **Step 1: 写查询失败用例。** 复用course_context与B的draft/publish测试工具，确认两份资料后融合，并把来源分别放父章／子章；测试名与断言如下，fixture准备不直接伪造已审核质量结论。
 
 ```python
 def test_groups_follow_current_sources_not_label(workspace_case):
@@ -100,10 +100,10 @@ def test_symbol_search_and_snapshot_digest(workspace_case):
 
 另写`test_parent_count_deduplicates_merged_members`、`test_alias_and_member_name_search_survives_merge`、`test_no_source_and_unassigned_are_distinct`、`test_navigation_paging_and_chapter_path`、`test_invalid_chapter_cycle_is_bounded`、`test_digest_changes_on_review_merge_undo_even_without_course_revision`，断言去重、分页稳定、树异常409、course.revision不变时digest仍变。
 
-- [ ] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_workspace_query.py -q`；应因新接口不存在失败，不能是环境／fixture错误。
-- [ ] **Step 3: 实现上述签名与TypedDict。** 批量读概念／关系／证据与章节归属，代表解析在同课程内；来源指纹同次请求缓存；digest按排序后的原始状态＋指纹计算，含引文位置／内容／别名修订，不含筛选或当前时间。q按现役大小写不敏感字面子串匹配，不剥离+/#/-；搜索C可含C#，不宣称精确搜索，测试exact_matches对匹配词精确核对。对大表不调用B的N+1节点投影。
-- [ ] **Step 4: 跑GREEN。** 同Step2并加入`test_storage.py test_final_regressions.py`；新查询与B存储／身份回归无失败，FK=0，无写入副作用。
-- [ ] **Step 5: 提交。** 仅暂存本卡文件，`feat(graph): 增加课程工作台一致快照与章节检索`。
+- [x] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_workspace_query.py -q`；应因新接口不存在失败，不能是环境／fixture错误。
+- [x] **Step 3: 实现上述签名与TypedDict。** 批量读概念／关系／证据与章节归属，代表解析在同课程内；来源指纹同次请求缓存；digest按排序后的原始状态＋指纹计算，含引文位置／内容／别名修订，不含筛选或当前时间。q按现役大小写不敏感字面子串匹配，不剥离+/#/-；搜索C可含C#，不宣称精确搜索，测试exact_matches对匹配词精确核对。对大表不调用B的N+1节点投影。
+- [x] **Step 4: 跑GREEN。** 同Step2并加入`test_storage.py test_final_regressions.py`；新查询与B存储／身份回归无失败，FK=0，无写入副作用。
+- [x] **Step 5: 提交。** 仅暂存本卡文件，`feat(graph): 增加课程工作台一致快照与章节检索`。
 
 ## Task 2: 有界章节画布、跨页邻域与一致详情
 
