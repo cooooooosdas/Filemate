@@ -1,6 +1,6 @@
 # FileMate
 
-2026-10-22 用户已明确“B级通过”：知识图谱2.0的[A级审计](docs/superpowers/specs/2026-10-21-knowledge-graph-2-design.md)与[九项B级计划](docs/superpowers/plans/2026-10-22-course-knowledge-graph-foundation.md)均已验收。[B级交付](docs/KNOWLEDGE_GRAPH_2_0_B_DELIVERY.md)接通课程/章节、多来源草稿、逐项审核、同课融合、撤销、来源与备份恢复，业务schema31；不自动迁移旧图谱或改写学习历史。B级最终本地门禁后端1389/前端149通过，独立审阅的重要问题已修复。新模块默认关闭（FILEMATE_ENABLE_COURSE_GRAPH=0 / VITE_ENABLE_COURSE_GRAPH=false），未推送或部署。C级三项交互已确认，[工作台设计](docs/superpowers/specs/2026-10-22-knowledge-workspace-c-design.md)待用户确认，尚未开始实现；完整2.0、生产发布及真实学习效果未验收，详见[分级记录](docs/KNOWLEDGE_GRAPH_2_0_EXECUTION.md)。
+2026-10-22 用户已明确“B级通过”：知识图谱2.0的[A级审计](docs/superpowers/specs/2026-10-21-knowledge-graph-2-design.md)与[九项B级计划](docs/superpowers/plans/2026-10-22-course-knowledge-graph-foundation.md)均已验收。[B级交付](docs/KNOWLEDGE_GRAPH_2_0_B_DELIVERY.md)接通课程/章节、多来源草稿、逐项审核、同课融合、撤销、来源与备份恢复，业务schema31；不自动迁移旧图谱或改写学习历史。B级最终本地门禁后端1389/前端149通过，独立审阅的重要问题已修复。新模块默认关闭（FILEMATE_ENABLE_COURSE_GRAPH=0 / VITE_ENABLE_COURSE_GRAPH=false），未推送或部署。C级三项交互及[工作台设计](docs/superpowers/specs/2026-10-22-knowledge-workspace-c-design.md)已确认，[八项实现计划](docs/superpowers/plans/2026-10-22-knowledge-workspace-c.md)待审阅，尚未开始实现；完整2.0、生产发布及真实学习效果未验收，详见[分级记录](docs/KNOWLEDGE_GRAPH_2_0_EXECUTION.md)。
 
 2026-10-21 已上线：[模拟面试2.0发布回执](docs/INTERVIEW_2_0_RELEASE_2026-10-21.md)。Web 3bac02e8、API 878124b5，配置／连续实战／六维证据报告已启用，业务schema30；Linux1330后端、140前端及最终公网11组通过，324库正式备份恢复与323业务库升级通过。额外修复状态未读取完时的无响应点击；新独立录音录像仍关闭，实体设备、评分校准和真实学生研究待验收，总体CONDITIONAL PASS。下方本地交付记录保留当时状态。
 
