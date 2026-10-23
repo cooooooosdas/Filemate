@@ -3917,7 +3917,7 @@ def today_review():
                 "tasks": day.get("tasks") or [],
                 "plan_id": saved["plan_id"],
                 "day_index": day_index,
-                "route": "/study-plan",
+                "route": f"/study-plan?plan={saved['plan_id']}",
             }
         )
 

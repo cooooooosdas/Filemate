@@ -92,11 +92,11 @@
 - Consumes: Task2 `learning_snapshot`、有效确认关系、既有goals/StudyPlan/Artifact/admit_plan。
 - Produces: `suggest_path(storage,cid,goal,*,concept_ids,chapter_id,goal_id,daily_minutes,days,now)->dict`，task含稳定concept_id/day_index、kind、依据IDs、duration_minutes；`preview_path(storage,cid,options)->dict`、`confirm_path(storage,cid,options,confirmation_token,request_key,confirmed)->dict`。 options同suggest参数，days1–7/daily5–180、最多7项；receipt=`operation_id,plan_id,artifact_id,affected`。
 
-- [ ] **Step 1: 写RED。** `test_dependency_direction_and_cycle_refusal`；`test_due_wrong_goal_priority_has_record_ids`；`test_budget_and_seven_task_ceiling`；`test_inactive_or_cross_course_support_not_prerequisite`；`test_confirm_stale_evidence_refused`；`test_existing_manual_plan_unchanged_and_duplicate_single_new_plan`；`test_undo_restore_keeps_completed_days_and_detects_user_edit`；`test_today_links_plan_and_completion_is_separate_evidence`。
-- [ ] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_learning_paths.py -q`。Expected: missing planner。
-- [ ] **Step 3: 实现有界拓扑与透明优先。** 使用已确认有效依赖和真实状态，不按AI分数；目标范围与日期／时间预算进入预览摘要，日计划沿现役格式；加入任务受`admit_plan`约束；计划新增、关联、token回执同事务。逆操作只归档本计划，完成天不擦除；用户编辑内容后冲突而非覆盖。
-- [ ] **Step 4: 跑GREEN。** Task1/2/4+现役daily-coach／study-plan子集；真实今日队列能定位新plan，完成回读不增加答对次数。Expected:0失败。
-- [ ] **Step 5: 提交。** `feat(graph): 生成有依据且可撤销的课程学习计划`。
+- [x] **Step 1: 写RED。** `test_dependency_direction_and_cycle_refusal`；`test_due_wrong_goal_priority_has_record_ids`；`test_budget_and_seven_task_ceiling`；`test_inactive_or_cross_course_support_not_prerequisite`；`test_confirm_stale_evidence_refused`；`test_existing_manual_plan_unchanged_and_duplicate_single_new_plan`；`test_undo_restore_keeps_completed_days_and_detects_user_edit`；`test_today_links_plan_and_completion_is_separate_evidence`。
+- [x] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_learning_paths.py -q`。Expected: missing planner。
+- [x] **Step 3: 实现有界拓扑与透明优先。** 使用已确认有效依赖和真实状态，不按AI分数；目标范围与日期／时间预算进入预览摘要，日计划沿现役格式；加入任务受`admit_plan`约束；计划新增、关联、token回执同事务。逆操作只归档本计划，完成天不擦除；用户编辑内容后冲突而非覆盖。
+- [x] **Step 4: 跑GREEN。** Task1/2/4+现役daily-coach／study-plan子集；真实今日队列能定位新plan，完成回读不增加答对次数。Expected:0失败。
+- [x] **Step 5: 提交。** `feat(graph): 生成有依据且可撤销的课程学习计划`。
 
 ### Task 5: 人工跨课联系与严格学习API
 

@@ -17,6 +17,16 @@ def target_states(conn, targets: list[dict[str, Any]]) -> list[dict[str, Any]]:
     result = []
     for target in targets:
         table = target['table']
+        if table == 'study_plans':
+            row = conn.execute('''SELECT p.*,a.title AS artifact_title,a.content AS artifact_content,
+                a.metadata AS artifact_metadata FROM study_plans p JOIN artifacts a USING(artifact_id)
+                WHERE plan_id=?''', (target['id'],)).fetchone()
+            if row:
+                body = {k: v for k, v in dict(row).items() if k not in {'completed_days', 'updated_at', 'status'}}
+                result.append({'plan_id': target['id'], 'active': row['status'] != 'archived', 'content_digest': digest(body)})
+            else:
+                result.append({'plan_id': target['id'], 'missing': True})
+            continue
         if table not in LINK_TABLES:
             raise CourseGraphError('unsupported_learning_operation')
         row = conn.execute(f'SELECT link_id,active,revision FROM {table} WHERE link_id=?',
@@ -77,14 +87,25 @@ def transition_learning_operation(storage, cid: str, operation_id: str, action: 
         if row['status'] != desired:
             value = 'before' if action == 'undo' else 'after'
             for target in metadata['targets']:
-                conn.execute(f"UPDATE {target['table']} SET active=?,revision=revision+1,updated_at=? WHERE link_id=?",
-                             (target[value], now_iso(), target['id']))
+                if target['table'] == 'study_plans':
+                    plan = conn.execute('SELECT * FROM study_plans WHERE plan_id=?', (target['id'],)).fetchone()
+                    completed, content = json.loads(plan['completed_days']), json.loads(plan['plan_data'])
+                    status = ('completed' if content.get('daily_plan') and
+                              len(completed) == len(content['daily_plan']) else 'active') if target[value] else 'archived'
+                    conn.execute('UPDATE study_plans SET status=?,updated_at=? WHERE plan_id=?',
+                                 (status, now_iso(), target['id']))
+                else:
+                    conn.execute(f"UPDATE {target['table']} SET active=?,revision=revision+1,updated_at=? WHERE link_id=?",
+                                 (target[value], now_iso(), target['id']))
             metadata['expected'] = digest(target_states(conn, metadata['targets']))
             conn.execute('UPDATE kg_changes SET status=?,metadata=?,updated_at=? WHERE operation_id=?',
                          (desired, json.dumps(metadata, ensure_ascii=False), now_iso(), operation_id))
         oid = str(uuid4())
         receipt = {'operation_id': oid, 'target_operation_id': operation_id, 'status': desired,
-                   'affected': {'learning_links': len(metadata['targets']) if row['status'] != desired else 0}}
+                   'affected': {name: sum(target['table'] in tables for target in metadata['targets'])
+                                if row['status'] != desired else 0
+                                for name, tables in (('learning_links', LINK_TABLES),
+                                                     ('learning_plans', {'study_plans'}))}}
         record_change(conn, cid, request_key, kind, hashed, {'receipt': receipt}, oid)
         data_actions.finish(conn, 'course_graph_learning_transition', resource, confirmation_token, receipt)
         return receipt

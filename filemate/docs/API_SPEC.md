@@ -1115,3 +1115,7 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 工作状态running/ready/failed/cancelled/interrupted/confirmed；GET不发模型、不续租、不写数据库，返回stale和固定安全error_code。取消轮换epoch并清payload；备份恢复、输入版本变化或租约过期阻止晚到结果变成ready。每题必须accept/reject，接受项可修改但重新校验题型、非空答案、连续引文及引用ID；全部拒绝不生成正式题集。预览后确认原子创建一个现役questions Artifact、显式映射和回执，不创建作答或错题；撤销只解除此次映射，保留正式题集及学习历史。
 
 补充迁移33的kg_learning_artifact_sources：正式题集及后续计划绑定全部上下文来源。删除任一依赖来源同时删除派生Artifact及下游，题目修订时历史快照继承依赖；删除预览显示course_learning_derived_artifacts（可能与普通Artifact计数重叠，不应相加当独立数量）。升级32→33只追加表、索引、触发器；回退不能直接删除迁移。HTTP仍待Task5接线。
+
+路径领域合同：goal为1–500字，concept_ids可选1–30个稳定ID，chapter_id作为硬范围，goal_id可选现役reverse_goal_plan（无来源的全局目标可由用户明确选中，有来源的目标须属于本课程）；每天5–180分钟、1–7日，每天一项、最多7项。只使用有有效来源的已确认同课prerequisite／depends_on；前者a→b为a先、后者a→b为b先。范围内补前置并给scope_expanded_count；环409 dependency_cycle、无有效概念422 path_no_supported_concepts；omitted_count说明日数不足，unsupported_count说明所选范围中无有效来源。排序为到期复习、近7天错答、所选范围、章节与稳定ID；前置约束优先于此排序。任务展示实际wrong_id／attempt_id／relation_id及规则版本，不生成能力评分。
+
+`preview_path/confirm_path`绑定规范options、上海起始日、目标版本、图谱／证据摘要及具体任务；只新增现役StudyPlan＋Artifact＋概念日映射及完整来源依赖，沿用资源准入，不改原计划。同token与相同options回执幂等，换body拒绝；期间作答／目标更新须重做预览。撤销／恢复只归档／恢复本计划，保留completed_days；任务进度变化可撤销，正文／标题被用户改写后409 operation_conflict。`/review/today`的plan_day.route现在携带`/study-plan?plan=<真实ID>`；旧页面已支持此参数。题目与计划HTTP新增入口仍待Task5接线。
