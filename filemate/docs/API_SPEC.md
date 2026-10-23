@@ -1034,6 +1034,12 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 
 ## 2026-10-23 课程学习 HTTP（D Task5，本地候选）
 
+E助手额外默认关闭：`FILEMATE_ENABLE_GRAPH_ASSISTANT=1`才允许新建`POST R/assistant/answer`或`POST R/assistant/plan/preview`；关闭仍可经`GET R/learning/work/{wid}`读取旧工作，课程总开关仍生效。answer严格接受question(1..2000)、concept_ids可选1..30且唯一、chapter_id/goal_id可选、mode=rule/llm、request_key、allow_external_model。llm须授权；规则检索模式明确标记，不冒充模型。只开放完整answer POST接收浏览器临时密钥，plan预览／GET／类似后缀不允许。
+
+answer返回现役工作结构，payload含explanation、textbook_evidence（连续原文＋来源ID）、personal_facts（服务端真实训练摘要／fact_id）、confirmed_relations、suggestions、citation_ids、personal_fact_ids、coverage、as_of、rule_version、prompt_version=course-assistant-v1、limitations。上下文最多30概念、12引文／12000字、60关系；若目标本身有来源，为其预留一份来源依赖。未知引用／事实ID、额外工具／评分字段、格式错误均失败；引用格式验证不等于语义正确。目标版本、图谱、训练证据或租约变化均阻止迟到成功。失败仅返回安全码，不自动改为规则成功；规则和模型均受共享课程30次／24h、1并发、单次20秒及1次调用限制。
+
+plan/preview接受上表Path字段，返回标准路径预览、coverage、tool_steps和limitations。固定四阶段为课程范围、训练事实、连续引文、规则路径预览，无任意工具／SQL／文件／代码／画像／删除能力。只保存确认令牌，不创建计划；人工确认继续使用`R/learning/path/confirm`。全部依赖来源绑定工作；删除任一来源清除其工作正文，备份恢复中断运行工作并作废旧预览。Provider经现有LLMClient工厂和服务端环境配置替换；浏览器自带密钥仍固定现役可信DeepSeek地址，不随共享服务端base_url外发。自定义Provider需使用服务端凭据或单独设计受信端点，未执行真实外部模型质量评估。
+
 Task6前端接线：课程知识点详情的“开始学习与练习”打开同一协调抽屉，按需读取以上接口；题目逐题提交现役`POST /quiz/attempts`并传原始expected_question，不由前端生成评分。模型、本地练习均须用户主动点击，题目逐项接受／拒绝、预览再保存；网络不确定的确认沿用request_key。学习路径只新增，保存后精确跳到plan_id；任务完成与答对分别展示。关联／解除、跨课联系、逆操作均先预览。读响应按学习空间／课程／节点版本隔离，身份变化及恢复备份擦除本页私有状态。已有题目候选为分页，可搜索／翻页选择；不按词自动关联。2026-10-23实机浏览器因Work设置禁用未验，工程测试与构建不能代替交互验收。
 
 以下路径以 `R=/api/knowledge-graph/courses/{cid}` 为前缀，继承课程开关、当前用户存储、受信 Origin；全部成功及领域错误返回 `Cache-Control:no-store`。GET 拒绝未知、重复参数，不续租、不触发模型或写入。分页统一 `limit=50(1..200),offset=0(0..1000000)`；数据库异常仅返回固定 `storage_unavailable`，不暴露路径／SQL。

@@ -28,6 +28,11 @@ class LearningWorkService:
 
     def _current(self, read, row):
         projection = read_learning_projection(read, row['course_id'], now=self.clock())
+        binding = json.loads(row['payload']).get('goal_binding')
+        if binding:
+            artifact = read.get_artifact(binding['artifact_id'])
+            if artifact is None or digest(artifact) != binding['digest']:
+                return False
         return (row['graph_digest'] == projection['graph_digest']
                 and row['evidence_digest'] == projection['evidence_digest'])
 
@@ -62,7 +67,7 @@ class LearningWorkService:
                 raise CourseGraphError('request_key_conflict')
             return self._view(read, dict(row))
 
-    def claim(self, cid, kind, inputs, request_key, sources, graph_digest, evidence_digest):
+    def claim(self, cid, kind, inputs, request_key, sources, graph_digest, evidence_digest, *, goal_binding=None):
         """Claim one course slot and a nonrefundable daily request before external work."""
         request_key_valid(request_key)
         if kind not in {'practice', 'answer'} or not isinstance(sources, list) or not 1 <= len(set(sources)) <= 12:
@@ -86,6 +91,10 @@ class LearningWorkService:
                 raise CourseGraphError('input_changed')
             if any(not projection['_snapshot'].fingerprints.get(sid) for sid in sources):
                 raise CourseGraphError('source_not_in_course', 404)
+            if goal_binding:
+                artifact = self.storage.get_artifact(goal_binding['artifact_id'])
+                if artifact is None or digest(artifact) != goal_binding['digest']:
+                    raise CourseGraphError('input_changed')
             conn.execute('''UPDATE kg_learning_work SET status='interrupted',epoch=epoch+1,lease_until=NULL,
                 error_code='lease_expired',updated_at=? WHERE course_id=? AND status='running'
                 AND (lease_until IS NULL OR lease_until<=?)''', (now.isoformat(), cid, now.isoformat()))
@@ -100,7 +109,8 @@ class LearningWorkService:
                 graph_digest,evidence_digest,status,epoch,lease_until,payload,created_at,updated_at)
                 VALUES(?,?,?,?,?,?,?,'running',?,?,?,?,?)''',
                 (wid, cid, kind, request_key, hashed, graph_digest, evidence_digest, epoch,
-                 (now + timedelta(seconds=30)).isoformat(), '{}', now.isoformat(), now.isoformat()))
+                 (now + timedelta(seconds=30)).isoformat(), json.dumps({'goal_binding': goal_binding}) if goal_binding else '{}',
+                 now.isoformat(), now.isoformat()))
             conn.executemany('INSERT INTO kg_learning_work_sources VALUES(?,?)', [(wid, sid) for sid in sorted(set(sources))])
             record_change(conn, cid, request_key, 'learning_work_claim', hashed, {'work_id': wid, 'kind': kind})
             conn.execute('UPDATE kg_changes SET created_at=? WHERE course_id=? AND request_key=?',

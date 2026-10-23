@@ -139,11 +139,11 @@ Task6工程60项测试、类型／构建／预算通过；Step4真实浏览器�
 - Produces: `GraphAssistant(storage,provider_factory,clock)`的`context(cid,question,concept_ids,chapter_id,goal_id)->dict`、`answer(...,mode,request_key,allow_external_model)->dict`、`propose_plan(cid,options)->dict`。context=`textbook_evidence,personal_facts,confirmed_relations,goal,coverage`；answer=`work_id,status,mode,textbook_evidence,personal_facts,suggestions,citation_ids,limitations,stale`，事实来自服务端而非模型数字。
 - HTTP: `POST /{cid}/assistant/answer`（明确模型授权或rule模式）、`POST /{cid}/assistant/plan/preview`（至多4工具步骤）、读取Task3work；确认计划继续Task4合同。`FILEMATE_ENABLE_GRAPH_ASSISTANT=1`才新建助手请求，关闭仍可读旧work。
 
-- [ ] **Step 1: 写RED。** `test_textbook_personal_facts_and_suggestions_separate`、`test_unknown_quote_or_personal_fact_id_rejected`、`test_injection_is_data_not_action`、`test_context_is_bounded_and_shows_coverage`、`test_provider_swappable_and_one_bounded_call`、`test_failure_or_no_model_not_fake_success`、`test_agent_max_four_read_steps_seven_tasks_no_write_before_confirm`、`test_deleted_second_source_removes_answer_and_preview`、`test_restore_or_evidence_change_marks_work_stale`、`test_flag_off_no_new_ai_work_but_read_results`。
-- [ ] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_graph_assistant.py -q`。Expected:missing assistant。
-- [ ] **Step 3: 实现有限工具与严格结构输出。** provider_factory允许替换；文本/引用ID白名单Pydantic，prompt明确不执行资料指令、无证据不下结论。只允许引用原始事实对象，模型建议独立；保存来源依赖、运行版本、输入覆盖。规则检索清晰标模式，模型失败不伪装。Agent没有任意工具执行器／SQL／画像／删除；只返回Task4预览，不返回可由模型调用的确认能力。
-- [ ] **Step 4: 跑GREEN。** Task1–5/7+work取消隐私回归；实际外部服务无凭据时明确未测，适配器契约测试不冒充真实模型质量。
-- [ ] **Step 5: 提交。** `feat(graph): 增加证据问答与有限学习助手`。
+- [x] **Step 1: 写RED。** `test_textbook_personal_facts_and_suggestions_separate`、`test_unknown_quote_or_personal_fact_id_rejected`、`test_injection_is_data_not_action`、`test_context_is_bounded_and_shows_coverage`、`test_provider_swappable_and_one_bounded_call`、`test_failure_or_no_model_not_fake_success`、`test_agent_max_four_read_steps_seven_tasks_no_write_before_confirm`、`test_deleted_second_source_removes_answer_and_preview`、`test_restore_or_evidence_change_marks_work_stale`、`test_flag_off_no_new_ai_work_but_read_results`。
+- [x] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_graph_assistant.py -q`。Expected:missing assistant。
+- [x] **Step 3: 实现有限工具与严格结构输出。** provider_factory允许替换；文本/引用ID白名单Pydantic，prompt明确不执行资料指令、无证据不下结论。只允许引用原始事实对象，模型建议独立；保存来源依赖、运行版本、输入覆盖。规则检索清晰标模式，模型失败不伪装。Agent没有任意工具执行器／SQL／画像／删除；只返回Task4预览，不返回可由模型调用的确认能力。
+- [x] **Step 4: 跑GREEN。** Task1–5/7+work取消隐私回归；实际外部服务无凭据时明确未测，适配器契约测试不冒充真实模型质量。
+- [x] **Step 5: 提交。** `feat(graph): 增加证据问答与有限学习助手`。
 
 ### Task 8: 助手交互与可解释计划预览
 

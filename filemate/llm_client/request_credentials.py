@@ -13,6 +13,7 @@ MODEL_PATHS = (
     r"/knowledge/sources/[^/]+/artifacts", r"/api/knowledge-graph/drafts",
     r"/api/knowledge-graph/courses/[^/]+/drafts/[^/]+/sources/[^/]+/extract",
     r"/api/knowledge-graph/courses/[^/]+/concepts/[^/]+/practice-drafts",
+    r"/api/knowledge-graph/courses/[^/]+/assistant/answer",
     r"/interviews", r"/interviews/[^/]+/answers",
     r"/interviews/[^/]+/turns/[^/]+/analyze",
     r"/api/programming/submissions/[^/]+/review",

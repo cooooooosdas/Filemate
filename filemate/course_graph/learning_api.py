@@ -104,6 +104,21 @@ class TransitionConfirm(Transition, Confirm):
     pass
 
 
+class AssistantRequest(Command):
+    question: str = Field(min_length=1, max_length=2000)
+    concept_ids: list[Identity] | None = Field(default=None, min_length=1, max_length=30)
+    chapter_id: Identity | None = None
+    goal_id: Identity | None = None
+    mode: Literal['rule', 'llm'] = 'rule'
+    allow_external_model: bool = False
+
+    @model_validator(mode='after')
+    def consent(self):
+        if self.mode == 'llm' and not self.allow_external_model:
+            raise ValueError('external_model_consent_required')
+        return self
+
+
 def register_learning_routes(router: APIRouter, storage_provider: Callable[[], SQLiteStorage]) -> None:
     """Keep model work explicit and all GETs free of side effects."""
     Store = Annotated[SQLiteStorage, Depends(storage_provider)]
@@ -111,6 +126,18 @@ def register_learning_routes(router: APIRouter, storage_provider: Callable[[], S
 
     def practice(store):
         return PracticeService(store, lambda: LLMClient(LLMConfig.from_env()), lambda: datetime.now(timezone.utc))
+
+    def assistant(store):
+        from filemate.course_graph.assistant import GraphAssistant
+        return GraphAssistant(store, lambda: LLMClient(LLMConfig.from_env()), lambda: datetime.now(timezone.utc))
+
+    @router.post('/{cid}/assistant/answer')
+    def answer(cid: str, body: AssistantRequest, store: Store):
+        return _result(assistant(store).answer(cid, **body.model_dump()))
+
+    @router.post('/{cid}/assistant/plan/preview')
+    def assistant_path(cid: str, body: Path, store: Store):
+        return _result(assistant(store).propose_plan(cid, body.model_dump()))
 
     @router.get('/{cid}/learning/nodes', dependencies=guard)
     def nodes(cid: str, store: Store, params: Annotated[NodesQuery, Query()]):
