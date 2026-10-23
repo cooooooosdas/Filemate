@@ -135,7 +135,7 @@ class GraphAssistant:
                 values = getattr(output, name)
                 if len(values) != len(set(values)) or not set(values) <= allowed:
                     raise ValueError('unknown_evidence_identity')
-            payload = {**public, **output.model_dump(), 'mode': mode, 'prompt_version': 'course-assistant-v1',
+            payload = {**public, **output.model_dump(), 'question': question, 'mode': mode, 'prompt_version': 'course-assistant-v1',
                        'limitations': ['上下文为有界抽样，并非整门课的全部知识。',
                                        '引用格式核验不能替代对解释语义的人工核对。',
                                        '训练状态仅代表近期记录，不能推断真实掌握率或学习效果。']}

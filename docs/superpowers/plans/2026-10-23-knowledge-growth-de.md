@@ -153,11 +153,14 @@ Task6工程60项测试、类型／构建／预算通过；Step4真实浏览器�
 - Consumes: Task7 HTTP与Task6计划／结果状态机；`VITE_ENABLE_GRAPH_ASSISTANT=true`且课程开启才呈现助手新建入口。
 - Produces: `createGraphAssistantController(api,observe)`绑定身份／课程／范围，send与cancel、读取持久化历史、显示过期结果、预览路径但确认沿D合同；不把外发授权保存在偏好。
 
-- [ ] **Step 1: 写RED。** `consent_is_per_request_not_restored`、`late_answer_never_crosses_scope`、`network_unknown_does_not_duplicate_model_call`、`facts_are_read_only_and_failed_model_has_no_fake_answer`、`agent_preview_never_autoconfirms`、`history_reopen_is_read_only`。
-- [ ] **Step 2: 跑RED。** `node --test filemate/web/tests/course-assistant-state.test.mjs`。Expected:missing module。
-- [ ] **Step 3: 实现侧栏按需助手。** 教材／个人事实／建议分区、引用定位和覆盖说明可读；工作步骤与最多7任务可核对，一次主动作；取消、失败、重试、已保存与过期状态就地显示。手机单面板，无重复导航；默认读文字，无自动语音／摄像头。
+- [x] **Step 1: 写RED。** `consent_is_per_request_not_restored`、`late_answer_never_crosses_scope`、`network_unknown_does_not_duplicate_model_call`、`facts_are_read_only_and_failed_model_has_no_fake_answer`、`agent_preview_never_autoconfirms`、`history_reopen_is_read_only`。
+- [x] **Step 2: 跑RED。** `node --test filemate/web/tests/course-assistant-state.test.mjs`。Expected:missing module。
+- [x] **Step 3: 实现侧栏按需助手。** 教材／个人事实／建议分区、引用定位和覆盖说明可读；工作步骤与最多7任务可核对，一次主动作；取消、失败、重试、已保存与过期状态就地显示。手机单面板，无重复导航；默认读文字，无自动语音／摄像头。
 - [ ] **Step 4: 跑GREEN并浏览器。** D+C全前端tests/build，rule问答真实接口、模型失败与取消、切课和身份、刷新历史、计划预览/确认不重复；五尺寸与键盘焦点。Expected:0失败／无横向溢出；外部模型未调不称已调通。
-- [ ] **Step 5: 提交。** `feat(graph): 呈现可核对的课程助手与任务建议`。
+- [x] **Step 5: 提交。** `feat(graph): 呈现可核对的课程助手与任务建议`。
+
+
+Task8工程67前端／32接口测试、默认关闭及显式开启构建、预算通过；Step4浏览器五尺寸／焦点仍受Work设置禁用阻塞，沿Task6决定转Task10，不标实机通过。
 
 ### Task 9: 质量计算器与待确认研究协议
 

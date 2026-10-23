@@ -4,6 +4,7 @@ import axios from 'axios'
 import type { CourseActionPreview, CourseChapter, CourseConcept, CourseDecision, CourseDraft, CourseGraphPage, CourseMergePreview, CourseOperation, CourseReviewPreview, GraphConfirmation, GraphCourse, GraphMode, GraphPage } from '../types/courseGraph'
 import type { WorkspaceCanvas, WorkspaceChapterPath, WorkspaceCitation, WorkspaceConceptOptions, WorkspaceConceptPage, WorkspaceDetail, WorkspaceFilter, WorkspaceNavigation, WorkspaceNavigationOptions } from '../types/courseWorkspace'
 import type { LearningEvidence, LearningPreview, LearningReceipt, LearningWork, PathOptions, PathPreview, PracticeDecision, PracticeOptions, QuestionCandidate, QuestionRef, RelatedCourse, RelatedInput } from '../types/courseLearning'
+import type { AssistantInput, AssistantWork } from '../course-graph/assistant-state'
 import type { AccountState, AccountUser, RegisterAccount } from '../types/account'
 import { HITOKOTO_URL } from '../home/encouragement'
 import { browserVaultAvailable, getBrowserApiKey, hasBrowserApiKey, requiresModelCredential, removeBrowserApiKey, saveBrowserApiKey, validateApiKey } from './llm-vault'
@@ -100,6 +101,8 @@ export const previewCourseRelated = (cid: string, nid: string, body: RelatedInpu
 export const confirmCourseRelated = (cid: string, nid: string, body: RelatedInput & GraphConfirmation) => learningPost<LearningReceipt>(`${learningConcept(cid, nid)}/related-courses/confirm`, body)
 export const previewLearningOperation = (cid: string, oid: string, action: 'undo' | 'restore') => learningPost<LearningPreview>(`${coursePath(cid)}/learning/operations/${encodeURIComponent(oid)}/preview`, { action })
 export const changeLearningOperation = (cid: string, oid: string, action: 'undo' | 'restore', body: GraphConfirmation) => learningPost<LearningReceipt>(`${coursePath(cid)}/learning/operations/${encodeURIComponent(oid)}/confirm`, { action, ...body })
+export const answerGraphCourse = (cid: string, body: AssistantInput) => learningPost<AssistantWork>(`${coursePath(cid)}/assistant/answer`, body)
+export const previewGraphAssistantPlan = (cid: string, body: PathOptions) => learningPost<PathPreview & { tool_steps: { name: string; writes_learning_data: boolean }[] }>(`${coursePath(cid)}/assistant/plan/preview`, body)
 export const listGraphCourses = async (q = '', offset = 0) => (await api.get<unknown, ApiResponse<GraphPage<GraphCourse>>>(courseRoot, { params: { q, offset } })).data!
 export const createGraphCourse = async (name: string, request_key: string) => (await api.post<unknown, ApiResponse<GraphCourse>>(courseRoot, { name, request_key })).data!
 export const getGraphCourse = async (id: string) => (await api.get<unknown, ApiResponse<GraphCourse>>(coursePath(id))).data!

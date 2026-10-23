@@ -1034,6 +1034,8 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 
 ## 2026-10-23 课程学习 HTTP（D Task5，本地候选）
 
+Task8前端助手入口另需构建`VITE_ENABLE_GRAPH_ASSISTANT=true`（默认关闭），仅出现在课程学习抽屉内；无新顶栏导航。只读历史经现有operations分页，学习认领项增加work_id/work_kind/request_key（均为当前用户工作标识，不含正文）；选中历史仅GET工作，不再次调用模型。回答payload另存原问题，取消不删除历史回执。模型授权逐请求且不写偏好；网络不确定时沿原request_key读取，取消通过已认领work_id中止，并拒绝旧响应覆盖取消结果。计划预览与确认仍分开；引用定位复用C原文面板。新增UI的实机五尺寸／焦点验收因本地浏览器设置禁用待验。
+
 E助手额外默认关闭：`FILEMATE_ENABLE_GRAPH_ASSISTANT=1`才允许新建`POST R/assistant/answer`或`POST R/assistant/plan/preview`；关闭仍可经`GET R/learning/work/{wid}`读取旧工作，课程总开关仍生效。answer严格接受question(1..2000)、concept_ids可选1..30且唯一、chapter_id/goal_id可选、mode=rule/llm、request_key、allow_external_model。llm须授权；规则检索模式明确标记，不冒充模型。只开放完整answer POST接收浏览器临时密钥，plan预览／GET／类似后缀不允许。
 
 answer返回现役工作结构，payload含explanation、textbook_evidence（连续原文＋来源ID）、personal_facts（服务端真实训练摘要／fact_id）、confirmed_relations、suggestions、citation_ids、personal_fact_ids、coverage、as_of、rule_version、prompt_version=course-assistant-v1、limitations。上下文最多30概念、12引文／12000字、60关系；若目标本身有来源，为其预留一份来源依赖。未知引用／事实ID、额外工具／评分字段、格式错误均失败；引用格式验证不等于语义正确。目标版本、图谱、训练证据或租约变化均阻止迟到成功。失败仅返回安全码，不自动改为规则成功；规则和模型均受共享课程30次／24h、1并发、单次20秒及1次调用限制。

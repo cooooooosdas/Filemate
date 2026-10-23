@@ -29,7 +29,7 @@
     <el-drawer @keydown.tab.capture="trapPanelFocus" v-model="detailOpen" @opened="focusCitationTrigger" title="知识点与来源" size="min(500px, 100vw)" class="cw-dialog" :append-to-body="true"><CourseEvidence :detail="state.detail" can-open @open-citation="openCitation" @page="controller.pageReferences" @open-learning="openLearning" /></el-drawer>
     <el-drawer @keydown.tab.capture="trapPanelFocus" :model-value="panels.state.active === 'source'" title="核对原文" size="min(720px, 100vw)" class="cw-dialog" append-to-body :before-close="() => closeCitation()"><CourseSourcePanel :citation="state.citation" :loading="state.citationLoading" :error="state.error || state.notice" @retry="openCitation(citationId)" @closed="closeCitation" /></el-drawer>
     <el-drawer @keydown.tab.capture="trapPanelFocus" :model-value="panels.state.active === 'manager'" title="整理课程与资料" size="min(1280px, 100vw)" class="cw-dialog" append-to-body :before-close="closeManager" :destroy-on-close="false"><CourseManager v-if="panels.state.managerMounted" :key="panels.state.managerEpoch" ref="manager" :course-id="state.browse.courseId" :sources="sources" @changed="changed" /></el-drawer>
-    <el-drawer @keydown.tab.capture="trapPanelFocus" :model-value="panels.state.active === 'learning'" title="知识点学习与练习" size="min(800px, 100vw)" class="cw-dialog" append-to-body :before-close="closeLearning"><CourseLearning v-if="state.detail && state.identity" ref="learning" :scope="state.identity" :course-id="state.browse.courseId" :node-id="state.detail.resolved_id" :label="state.detail.node.label" /></el-drawer>
+    <el-drawer @keydown.tab.capture="trapPanelFocus" :model-value="panels.state.active === 'learning'" title="知识点学习与练习" size="min(800px, 100vw)" class="cw-dialog" append-to-body :before-close="closeLearning"><CourseLearning v-if="state.detail && state.identity" ref="learning" :scope="state.identity" :course-id="state.browse.courseId" :node-id="state.detail.resolved_id" :label="state.detail.node.label" @citation="openCitation" /></el-drawer>
   </section>
 </template>
 <script setup lang="ts">
@@ -67,10 +67,10 @@ function trapPanelFocus(event: KeyboardEvent) {
   const index = nextPanelFocus(controls.indexOf(document.activeElement as HTMLElement), controls.length, event.shiftKey)
   if (index >= 0) { event.preventDefault(); event.stopPropagation(); controls[index]!.focus() }
 }
-let citationId = '', citationTrigger = '', sourceFromDetail = false
+let citationId = '', citationTrigger = '', sourceFromDetail = false, sourceFromLearning = false
 function focusCitationTrigger() { if (citationTrigger) document.getElementById(citationTrigger)?.focus() }
-async function openCitation(id: string, trigger = '') { citationId = id; if (trigger) { citationTrigger = trigger; sourceFromDetail = panels.state.active === 'detail' }; await panels.open('source', citationTrigger); await controller.openCitation(id) }
-async function closeCitation() { controller.closeCitation(); if (await panels.close('source') && sourceFromDetail) { sourceFromDetail = false; detailOpen.value = true } }
+async function openCitation(id: string, trigger = '') { citationId = id; sourceFromLearning = panels.state.active === 'learning'; if (trigger) { citationTrigger = trigger; sourceFromDetail = panels.state.active === 'detail' }; await panels.open('source', citationTrigger); await controller.openCitation(id) }
+async function closeCitation() { controller.closeCitation(); if (await panels.close('source')) { if (sourceFromLearning) { sourceFromLearning = false; await panels.open('learning') } else if (sourceFromDetail) { sourceFromDetail = false; detailOpen.value = true } } }
 async function closeManager(done: () => void) { if (await panels.close('manager')) done() }
 async function changed(cid: string) {
   if (cid === state.browse.courseId) await controller.invalidateAfterMutation()

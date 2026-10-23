@@ -220,6 +220,9 @@ def create_router(storage_provider: Callable[[], SQLiteStorage]) -> APIRouter:
             meta = json.loads(row["metadata"])
             items.append({"operation_id": row["operation_id"], "kind": row["kind"], "status": row["status"],
                           "created_at": row["created_at"], "draft_id": meta.get("draft_id"),
+                          "work_id": meta.get('work_id') if row['kind'] == 'learning_work_claim' else None,
+                          "work_kind": meta.get('kind') if row['kind'] == 'learning_work_claim' else None,
+                          "request_key": row['request_key'] if row['kind'] == 'learning_work_claim' else None,
                           "learning": row["kind"].startswith('learning_'),
                           "reversible": (bool(meta.get('targets')) if row["kind"].startswith('learning_') else
                               "ids" in meta and row["kind"] in {"review", "merge", "remove_source"})})

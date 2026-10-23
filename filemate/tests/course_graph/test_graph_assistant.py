@@ -170,6 +170,11 @@ def test_flag_off_no_new_ai_work_but_read_results(api_server, monkeypatch):
         body = {'question': '解释栈', 'concept_ids': [nid], 'mode': 'rule', 'request_key': uuid4().hex}
         work = client.post(route, json=body)
         assert work.status_code == 200, work.text
+        history = client.get(f'{ROOT}/{cid}/operations').json()['data']['items']
+        claim = next(item for item in history if item['kind'] == 'learning_work_claim')
+        assert claim['work_id'] == work.json()['data']['work_id'] and claim['request_key'] == body['request_key']
+        assert claim['work_kind'] == 'answer'
+        assert work.json()['data']['payload']['question'] == body['question']
         monkeypatch.setenv('FILEMATE_ENABLE_GRAPH_ASSISTANT', '0')
         assert client.post(route, json=body | {'request_key': uuid4().hex}).status_code == 503
         assert client.get(f'{ROOT}/{cid}/learning/work/{work.json()["data"]["work_id"]}').status_code == 200

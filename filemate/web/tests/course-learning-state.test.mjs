@@ -53,6 +53,8 @@ test('no_auto_model_after_read_or_reopen', async () => {
   assert.equal(requiresModelCredential('POST', path, { mode: 'local' }), false)
   assert.equal(requiresModelCredential('POST', path, { mode: 'llm' }), true)
   assert.equal(isModelRequest('POST', path + '/confirm'), false)
+  assert.equal(isModelRequest('POST', '/api/knowledge-graph/courses/c/assistant/answer'), true)
+  assert.equal(isModelRequest('POST', '/api/knowledge-graph/courses/c/assistant/plan/preview'), false)
 })
 test('cancel_and_navigation_preserve_or_explicitly_discard', async () => {
   const c = createCourseLearningController(api()); await c.open('s', 'c', 'n'); c.chooseQuestion(question); c.setAnswer('未提交')
