@@ -1107,3 +1107,5 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 关联与解除均记录learning_links操作，撤销／恢复各自先预览，检查实际行revision后变更active。只保存ID和逆操作状态，不把题干／引文复制进kg_changes。后续修改同一关联会使旧逆操作冲突，保留作答／错题历史。HTTP接线在本计划Task5交付；目前这些是领域合同，不能把尚无路由当作可调用API。
 
 其余新表：kg_cross_links（人工跨课导航，不参与前置或证据累计）、kg_course_plan_links（现役计划日与概念关联）、kg_learning_work及kg_learning_work_sources（有限运行与多来源依赖）。来源彻底删除的预览数量／摘要包含新关联、计划关联与工作结果；删除任一依赖来源在同事务清除含其正文的工作结果。移出课程继续保留学习历史。个人备份自动包含新表，恢复轮换work epoch、将running改为interrupted、清租约与旧课程确认凭据，不重放模型。
+
+学习证据领域合同：`learning_snapshot`返回graph_digest／evidence_digest、服务端as_of、`course-training-v1`和节点摘要；`node_learning_evidence`返回四类独立分页（question_refs／attempts／wrongs／plans，默认50最大200），不含整段回答正文。`list_learning_nodes`可按no_evidence／practiced／needs_reinforcement／recently_stable筛选。7天错答或未掌握错题到期优先巩固；30天至少3道不同正确题、跨2个上海日期且7天无错、无到期复习才近期稳定。所有窗口包含下界、截至as_of，异常／未来时间及修订前记录排除并计数；恢复相同文字也不能继承历史题集的作答。融合按attempt_id去重，原成员关联不改写；计划完成单列。来源移出仍展示学习历史，但active_support=false时不供路径推荐。每类原因最多返回50个ID并给出truncated，总计数不截断；这些是训练事实规则，不是掌握率或真实效果评估。HTTP同待Task5。

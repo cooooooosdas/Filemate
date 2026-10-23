@@ -63,11 +63,11 @@
 - Consumes: Task1显式映射、现役quiz_attempts/wrong_questions/题目修订cutoff、C课程快照。
 - Produces: `learning_snapshot(storage,cid,*,now:datetime)->dict`含`course_id,graph_digest,evidence_digest,rule_version,nodes`（ID→真实摘要）；`node_learning_evidence(storage,cid,nid,*,now,offset=0,limit=50)->dict`含状态、窗口、计数、question_refs、分页attempts/wrongs/plans、excluded_count；`list_learning_nodes(...,status=None,offset=0,limit=50)`分页摘要。
 
-- [ ] **Step 1: 写RED。** `test_empty_once_and_stable_windows`断言空暂无、1次已有、3题跨2日才稳定；`test_recent_wrong_and_due_override_stable`断言7天边界包含且到期优先；`test_future_invalid_and_revised_attempts_excluded`断言未来/坏时间/修订前均计排除；`test_shanghai_midnight_is_distinct_day`；`test_merged_members_deduplicate_attempt_and_undo_split`按attempt_id真实去重；`test_removed_source_retains_history_but_not_active_support`；`test_plan_completion_never_creates_correct_attempt`；`test_query_count_does_not_grow_per_concept`比较100/1000节点SQL计数有界、只映射题集被读取。
-- [ ] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_learning_evidence.py -q`。Expected: missing module。
-- [ ] **Step 3: 实现一次SQLite读快照批量聚合。** 规则纯函数注入时钟，Asia/Shanghai日期；只用有效映射、当前题摘要、真实作答、匹配错题快照；合并聚合不改原ID。7/30天窗口、统计与记录可核对；错题未掌握且due<=now为到期，坏时间不当到期。unknown不补0分，不返回mastery_rate。
-- [ ] **Step 4: 跑GREEN。** Task1+2与旧`test_graph_storage.py/test_knowledge_graph.py`。Expected: 新旧0失败，输出含规则与真实依据；同步状态合同。
-- [ ] **Step 5: 提交。** `feat(graph): 按真实学习证据计算课程训练状态`。
+- [x] **Step 1: 写RED。** `test_empty_once_and_stable_windows`断言空暂无、1次已有、3题跨2日才稳定；`test_recent_wrong_and_due_override_stable`断言7天边界包含且到期优先；`test_future_invalid_and_revised_attempts_excluded`断言未来/坏时间/修订前均计排除；`test_shanghai_midnight_is_distinct_day`；`test_merged_members_deduplicate_attempt_and_undo_split`按attempt_id真实去重；`test_removed_source_retains_history_but_not_active_support`；`test_plan_completion_never_creates_correct_attempt`；`test_query_count_does_not_grow_per_concept`比较100/1000节点SQL计数有界、只映射题集被读取。
+- [x] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_learning_evidence.py -q`。Expected: missing module。
+- [x] **Step 3: 实现一次SQLite读快照批量聚合。** 规则纯函数注入时钟，Asia/Shanghai日期；只用有效映射、当前题摘要、真实作答、匹配错题快照；合并聚合不改原ID。7/30天窗口、统计与记录可核对；错题未掌握且due<=now为到期，坏时间不当到期。unknown不补0分，不返回mastery_rate。
+- [x] **Step 4: 跑GREEN。** Task1+2与旧`test_graph_storage.py/test_knowledge_graph.py`。Expected: 新旧0失败，输出含规则与真实依据；同步状态合同。
+- [x] **Step 5: 提交。** `feat(graph): 按真实学习证据计算课程训练状态`。
 
 ### Task 3: 有界练习草稿、人工审核与正式题集
 
