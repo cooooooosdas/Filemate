@@ -4,7 +4,7 @@
     <p v-if="layoutError" class="cw-status" role="status">{{ layoutError }}</p>
     <p v-if="data.total_concepts === 0" class="cw-status" role="status">当前范围还没有已确认知识点。可在“整理课程”中选择资料并完成审核，或清除范围筛选。</p>
     <div ref="element" class="cw-chart" role="img" aria-label="可缩放的知识关系画布。也可使用下方键盘列表或切换大纲。" />
-    <div class="cw-canvas-controls"><button aria-label="放大图谱" @click="zoom(1.25)"><IconPlus :size="22" aria-hidden="true" /></button><button aria-label="缩小图谱" @click="zoom(.8)"><IconMinus :size="22" aria-hidden="true" /></button><button @click="render(true)">重置视图</button><button @click="$emit('openList')">查看大纲</button></div>
+    <div class="cw-canvas-controls"><button aria-label="放大图谱" @click="zoom(1.25)"><IconPlus :size="22" aria-hidden="true" /></button><button aria-label="缩小图谱" @click="zoom(.8)"><IconMinus :size="22" aria-hidden="true" /></button><button @click="render(true)">重置视图</button><button @click="$emit('openList')">查看大纲</button><button v-if="selectedId" @click="$emit('expand', selectedId)">展开所选邻域</button></div>
     <p class="cw-caption">{{ data.mode === 'groups' ? '点击章节进入；章节连线汇总当前有效关系。' : '箭头保留关系原义；点击概念查看来源，双击展开一跳邻域。' }}</p>
     <p v-if="data.truncated" class="cw-status">当前为有界视图。其余知识点可通过搜索、大纲与章节分页查看。</p>
     <nav v-if="data.mode === 'groups' && data.group_total > data.group_limit" class="cw-pagination" aria-label="画布章节分页"><button :disabled="data.group_offset === 0" @click="$emit('groupPage', Math.max(0, data.group_offset-data.group_limit))">前页章节</button><span>{{ data.group_offset+1 }}–{{ Math.min(data.group_total, data.group_offset+data.group_limit) }} / {{ data.group_total }}</span><button :disabled="data.group_offset+data.group_limit >= data.group_total" @click="$emit('groupPage', data.group_offset+data.group_limit)">后页章节</button></nav>
@@ -19,6 +19,7 @@ import { TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { IconFocusCentered, IconMinus, IconPlus } from '@tabler/icons-vue'
 import { layoutWorkspaceCanvas, relationLabels, workspaceGraphViewport } from '../../course-graph/workspace-layout'
+import { applyWorkspaceSelection, createWorkspaceClickActions } from '../../course-graph/workspace-chart'
 import type { WorkspaceCanvas } from '../../types/courseWorkspace'
 
 use([GraphChart, TooltipComponent, CanvasRenderer])
@@ -28,6 +29,7 @@ const element = ref<HTMLDivElement | null>(null)
 const layout = computed(() => layoutWorkspaceCanvas(props.data)), layoutError = computed(() => layout.value.error)
 let metrics: PerformanceObserver | undefined, frame = 0
 let chart: EChartsType | undefined, resize: ResizeObserver | undefined, theme: MutationObserver | undefined
+const clicks = createWorkspaceClickActions(id => emit('select', id), id => emit('expand', id))
 const short = (s: string) => [...s].length > 12 ? [...s].slice(0, 12).join('') + '…' : s
 function render(reset = false) {
   if (!chart || !element.value) return
@@ -39,22 +41,36 @@ function render(reset = false) {
     x: 120 + index % 4 * 250, y: 80 + Math.floor(index / 4) * 130, symbol: 'roundRect', symbolSize: [132, 66],
     label: { show: true, formatter: `${short(g.title)}\n${g.concept_count} 个概念`, color: ink, fontSize: 16, lineHeight: 24 },
     itemStyle: { color: color('--accent-soft'), borderColor: accent, borderWidth: 1.5 } })) : layout.value.nodes.map(n => ({
-      ...n, name: n.label, kind: 'concept', symbolSize: n.id === props.selectedId ? 64 : props.data.nodes.length > 30 ? 23 : 48,
-      label: { show: props.data.nodes.length <= 30 || n.id === props.selectedId, formatter: short(n.label), color: ink, fontSize: 16, position: 'bottom' },
-      itemStyle: { color: n.id === props.selectedId ? color('--accent-soft') : surface, borderColor: n.id === props.selectedId ? accent : secondary, borderWidth: n.id === props.selectedId ? 3 : 1.5 },
+      ...n, name: n.label, kind: 'concept', symbolSize: props.data.nodes.length > 30 ? 23 : 48,
+      label: { show: props.data.nodes.length <= 30, formatter: short(n.label), color: ink, fontSize: 16, position: 'bottom' },
+      itemStyle: { color: surface, borderColor: secondary, borderWidth: 1.5 },
     }))
   const links = groups ? props.data.group_edges.map(e => ({ source: e.from_group, target: e.to_group,
     label: { show: true, formatter: `${e.relation_count} 条关系`, fontSize: 15, color: secondary } })) : layout.value.edges.map(e => ({
       source: e.from, target: e.to, name: relationLabels[e.relation], label: { show: props.data.nodes.length < 25, formatter: relationLabels[e.relation], color: secondary, fontSize: 15 },
     }))
   chart.setOption({ animation: !props.reducedMotion, animationDurationUpdate: 160, tooltip: { renderMode: 'richText', formatter: (p: unknown) => (p as { name?: string }).name || '' },
-    series: [{ type: 'graph', ...workspaceGraphViewport, layout: 'none', roam: true, draggable: true, zoom: reset ? 1 : previous.series?.[0]?.zoom || 1,
+    series: [{ type: 'graph', ...workspaceGraphViewport, layout: 'none', roam: true, draggable: true, selectedMode: 'single', zoom: reset ? 1 : previous.series?.[0]?.zoom || 1,
       scaleLimit: { min: .3, max: 3 }, data: nodes, links, edgeSymbol: ['none', 'arrow'], edgeSymbolSize: [0, 8],
-      lineStyle: { color: secondary, width: 1.5, opacity: .8, curveness: .06 }, emphasis: { focus: 'adjacency', lineStyle: { width: 3 } } }],
+      lineStyle: { color: secondary, width: 1.5, opacity: .8, curveness: .06 },
+      select: { label: { show: true, color: ink }, itemStyle: { color: color('--accent-soft'), borderColor: accent, borderWidth: 3 } },
+      emphasis: { focus: 'adjacency', label: { show: true }, lineStyle: { width: 3 } } }],
   }, { notMerge: true })
   if (import.meta.env.DEV) element.value.dataset.animationEnabled = String(chart.getOption().animation)
+  select(); recordViewport()
 }
-function zoom(factor: number) { const current = chart?.getOption() as { series?: { zoom?: number }[] } | undefined; chart?.setOption({ series: [{ zoom: Math.min(3, Math.max(.3, (current?.series?.[0]?.zoom || 1) * factor)) }] }) }
+function recordViewport() {
+  if (import.meta.env.DEV && element.value && chart) {
+    element.value.dataset.viewportZoom = String((chart.getOption() as { series?: { zoom?: number }[] }).series?.[0]?.zoom)
+    element.value.dataset.nodeCount = String(props.data.nodes.length)
+  }
+}
+function zoom(factor: number) { const current = chart?.getOption() as { series?: { zoom?: number }[] } | undefined; chart?.setOption({ series: [{ zoom: Math.min(3, Math.max(.3, (current?.series?.[0]?.zoom || 1) * factor)) }] }); recordViewport() }
+function select() {
+  if (!chart || !element.value || props.data.mode !== 'concepts') return
+  applyWorkspaceSelection(chart, props.data.nodes.map(n => n.id), props.selectedId)
+  recordViewport()
+}
 onMounted(() => {
   if (!element.value) return
   chart = init(element.value)
@@ -67,8 +83,8 @@ onMounted(() => {
     const e = event as { dataType: string; data: { id: string; kind: string } }
     if (e.dataType !== 'node') return
     if (e.data.kind === 'group') emit('openGroup', e.data.id)
-    else if (expand) emit('expand', e.data.id)
-    else emit('select', e.data.id)
+    else if (expand) clicks.doubleClick(e.data.id)
+    else clicks.click(e.data.id)
   }
   chart.on('click', e => choose(e)); chart.on('dblclick', e => choose(e, true))
   resize = new ResizeObserver(() => chart?.resize()); resize.observe(element.value)
@@ -77,6 +93,7 @@ onMounted(() => {
   if (import.meta.env.DEV) frame = requestAnimationFrame(() => { chart?.getZr().flush(); if (element.value) element.value.dataset.firstInteractiveMs = String(performance.now()) })
 })
 watch(() => props.data, () => render(true))
-watch(() => [props.selectedId, props.reducedMotion], () => render())
-onUnmounted(() => { resize?.disconnect(); theme?.disconnect(); metrics?.disconnect(); cancelAnimationFrame(frame); chart?.dispose(); chart = undefined })
+watch(() => props.selectedId, select)
+watch(() => props.reducedMotion, () => render())
+onUnmounted(() => { clicks.dispose(); resize?.disconnect(); theme?.disconnect(); metrics?.disconnect(); cancelAnimationFrame(frame); chart?.dispose(); chart = undefined })
 </script>

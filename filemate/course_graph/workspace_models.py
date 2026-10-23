@@ -90,6 +90,8 @@ class WorkspaceConceptPage(TypedDict):
     total: int
     limit: int
     offset: int
+    chapter_groups: list[WorkspaceGroup]
+    chapter_groups_truncated: bool
 
 
 class WorkspaceGroupEdge(TypedDict):

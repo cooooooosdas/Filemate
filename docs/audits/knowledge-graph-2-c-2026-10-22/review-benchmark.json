@@ -1,0 +1,481 @@
+{
+  "synthetic": true,
+  "fixture_kind": "constructed performance shape; not extraction quality",
+  "measurement_note": "first sample is first invocation, not an OS cold-cache claim; five hot samples have no P95 claim",
+  "machine": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "cpus": 28,
+    "python": "3.12.13",
+    "sqlite": "3.53.1",
+    "fastapi": "0.141.1"
+  },
+  "flags": {
+    "FILEMATE_ENABLE_COURSE_GRAPH": true,
+    "identity_mode": "local, isolated per case"
+  },
+  "cases": [
+    {
+      "total_nodes": 100,
+      "course_id": "678d44e5-faab-4e01-b93a-c4c1781737f3",
+      "database": "synthetic/100/filemate.db",
+      "source_id": "1f61bb13cf5a41bcb4040c609e01d395",
+      "focus_id": "n00099",
+      "foreign_key_errors": 0,
+      "browser": {
+        "measurement_status": "not_measured",
+        "first_interactive_ms": null,
+        "max_long_task_ms": null,
+        "heap_bytes": null
+      },
+      "service": {
+        "workspace": {
+          "first_ms": 5.748,
+          "hot_ms": [
+            4.476,
+            4.322,
+            4.254,
+            4.016,
+            4.047
+          ],
+          "max_hot_ms": 4.476,
+          "serialized_payload_bytes": [
+            667,
+            667,
+            667,
+            667,
+            667,
+            667
+          ],
+          "returned_nodes": 0,
+          "returned_edges": 0,
+          "total_concepts": 100
+        },
+        "search": {
+          "first_ms": 4.532,
+          "hot_ms": [
+            4.722,
+            4.517,
+            4.647,
+            4.374,
+            5.911
+          ],
+          "max_hot_ms": 5.911,
+          "serialized_payload_bytes": [
+            519,
+            519,
+            519,
+            519,
+            519,
+            519
+          ],
+          "returned_nodes": 0,
+          "returned_edges": 0,
+          "total_concepts": 1
+        },
+        "focus": {
+          "first_ms": 4.627,
+          "hot_ms": [
+            4.735,
+            4.744,
+            4.635,
+            4.605,
+            4.687
+          ],
+          "max_hot_ms": 4.744,
+          "serialized_payload_bytes": [
+            25877,
+            25877,
+            25877,
+            25877,
+            25877,
+            25877
+          ],
+          "returned_nodes": 100,
+          "returned_edges": 99,
+          "total_concepts": 100
+        }
+      },
+      "http": {
+        "workspace": {
+          "first_ms": 45.959,
+          "hot_ms": [
+            6.28,
+            6.561,
+            6.67,
+            6.358,
+            6.244
+          ],
+          "max_hot_ms": 6.67,
+          "serialized_payload_bytes": [
+            667,
+            667,
+            667,
+            667,
+            667,
+            667
+          ],
+          "returned_nodes": 0,
+          "returned_edges": 0,
+          "total_concepts": 100
+        },
+        "search": {
+          "first_ms": 8.198,
+          "hot_ms": [
+            6.541,
+            6.287,
+            6.767,
+            6.671,
+            6.408
+          ],
+          "max_hot_ms": 6.767,
+          "serialized_payload_bytes": [
+            519,
+            519,
+            519,
+            519,
+            519,
+            519
+          ],
+          "returned_nodes": 0,
+          "returned_edges": 0,
+          "total_concepts": 1
+        },
+        "focus": {
+          "first_ms": 8.812,
+          "hot_ms": [
+            6.871,
+            7.244,
+            6.564,
+            7.012,
+            6.653
+          ],
+          "max_hot_ms": 7.244,
+          "serialized_payload_bytes": [
+            25877,
+            25877,
+            25877,
+            25877,
+            25877,
+            25877
+          ],
+          "returned_nodes": 100,
+          "returned_edges": 99,
+          "total_concepts": 100
+        }
+      },
+      "http_hot_gate_passed": true,
+      "database_bytes": 1040384,
+      "wal_bytes": 1236032,
+      "database_and_wal_bytes": 2276416
+    },
+    {
+      "total_nodes": 1000,
+      "course_id": "7cecbbd9-1f6b-4a23-bde4-b3cfa15f882e",
+      "database": "synthetic/1000/filemate.db",
+      "source_id": "77cfcfee3a9f4c9ca995ed934f810a1c",
+      "focus_id": "n00999",
+      "foreign_key_errors": 0,
+      "browser": {
+        "measurement_status": "not_measured",
+        "first_interactive_ms": null,
+        "max_long_task_ms": null,
+        "heap_bytes": null
+      },
+      "service": {
+        "workspace": {
+          "first_ms": 18.756,
+          "hot_ms": [
+            15.877,
+            17.683,
+            16.384,
+            15.522,
+            15.595
+          ],
+          "max_hot_ms": 17.683,
+          "serialized_payload_bytes": [
+            670,
+            670,
+            670,
+            670,
+            670,
+            670
+          ],
+          "returned_nodes": 0,
+          "returned_edges": 0,
+          "total_concepts": 1000
+        },
+        "search": {
+          "first_ms": 17.379,
+          "hot_ms": [
+            25.613,
+            15.711,
+            16.812,
+            17.445,
+            16.243
+          ],
+          "max_hot_ms": 25.613,
+          "serialized_payload_bytes": [
+            522,
+            522,
+            522,
+            522,
+            522,
+            522
+          ],
+          "returned_nodes": 0,
+          "returned_edges": 0,
+          "total_concepts": 1
+        },
+        "focus": {
+          "first_ms": 17.008,
+          "hot_ms": [
+            15.764,
+            15.914,
+            16.714,
+            16.963,
+            15.832
+          ],
+          "max_hot_ms": 16.963,
+          "serialized_payload_bytes": [
+            25878,
+            25878,
+            25878,
+            25878,
+            25878,
+            25878
+          ],
+          "returned_nodes": 100,
+          "returned_edges": 99,
+          "total_concepts": 1000
+        }
+      },
+      "http": {
+        "workspace": {
+          "first_ms": 64.047,
+          "hot_ms": [
+            19.44,
+            43.083,
+            20.407,
+            19.475,
+            19.536
+          ],
+          "max_hot_ms": 43.083,
+          "serialized_payload_bytes": [
+            670,
+            670,
+            670,
+            670,
+            670,
+            670
+          ],
+          "returned_nodes": 0,
+          "returned_edges": 0,
+          "total_concepts": 1000
+        },
+        "search": {
+          "first_ms": 22.698,
+          "hot_ms": [
+            20.7,
+            21.757,
+            21.266,
+            19.671,
+            19.986
+          ],
+          "max_hot_ms": 21.757,
+          "serialized_payload_bytes": [
+            522,
+            522,
+            522,
+            522,
+            522,
+            522
+          ],
+          "returned_nodes": 0,
+          "returned_edges": 0,
+          "total_concepts": 1
+        },
+        "focus": {
+          "first_ms": 20.953,
+          "hot_ms": [
+            19.209,
+            20.172,
+            20.084,
+            42.427,
+            18.527
+          ],
+          "max_hot_ms": 42.427,
+          "serialized_payload_bytes": [
+            25878,
+            25878,
+            25878,
+            25878,
+            25878,
+            25878
+          ],
+          "returned_nodes": 100,
+          "returned_edges": 99,
+          "total_concepts": 1000
+        }
+      },
+      "http_hot_gate_passed": true,
+      "database_bytes": 1900544,
+      "wal_bytes": 1236032,
+      "database_and_wal_bytes": 3136576
+    },
+    {
+      "total_nodes": 10000,
+      "course_id": "fecf3afa-2935-4865-b095-e55e9030aae9",
+      "database": "synthetic/10000/filemate.db",
+      "source_id": "6441a90dfb574016bb1aceb79c1182be",
+      "focus_id": "n09999",
+      "foreign_key_errors": 0,
+      "browser": {
+        "measurement_status": "not_measured",
+        "first_interactive_ms": null,
+        "max_long_task_ms": null,
+        "heap_bytes": null
+      },
+      "service": {
+        "workspace": {
+          "first_ms": 152.52,
+          "hot_ms": [
+            147.61,
+            151.81,
+            136.34,
+            143.961,
+            147.536
+          ],
+          "max_hot_ms": 151.81,
+          "serialized_payload_bytes": [
+            673,
+            673,
+            673,
+            673,
+            673,
+            673
+          ],
+          "returned_nodes": 0,
+          "returned_edges": 0,
+          "total_concepts": 10000
+        },
+        "search": {
+          "first_ms": 157.11,
+          "hot_ms": [
+            143.825,
+            148.449,
+            147.641,
+            149.905,
+            139.113
+          ],
+          "max_hot_ms": 149.905,
+          "serialized_payload_bytes": [
+            525,
+            525,
+            525,
+            525,
+            525,
+            525
+          ],
+          "returned_nodes": 0,
+          "returned_edges": 0,
+          "total_concepts": 1
+        },
+        "focus": {
+          "first_ms": 138.915,
+          "hot_ms": [
+            141.272,
+            142.705,
+            128.142,
+            142.26,
+            140.162
+          ],
+          "max_hot_ms": 142.705,
+          "serialized_payload_bytes": [
+            25880,
+            25880,
+            25880,
+            25880,
+            25880,
+            25880
+          ],
+          "returned_nodes": 100,
+          "returned_edges": 99,
+          "total_concepts": 10000
+        }
+      },
+      "http": {
+        "workspace": {
+          "first_ms": 208.812,
+          "hot_ms": [
+            162.011,
+            164.056,
+            137.738,
+            153.261,
+            165.04
+          ],
+          "max_hot_ms": 165.04,
+          "serialized_payload_bytes": [
+            673,
+            673,
+            673,
+            673,
+            673,
+            673
+          ],
+          "returned_nodes": 0,
+          "returned_edges": 0,
+          "total_concepts": 10000
+        },
+        "search": {
+          "first_ms": 177.236,
+          "hot_ms": [
+            142.972,
+            171.503,
+            181.421,
+            173.782,
+            145.573
+          ],
+          "max_hot_ms": 181.421,
+          "serialized_payload_bytes": [
+            525,
+            525,
+            525,
+            525,
+            525,
+            525
+          ],
+          "returned_nodes": 0,
+          "returned_edges": 0,
+          "total_concepts": 1
+        },
+        "focus": {
+          "first_ms": 173.756,
+          "hot_ms": [
+            173.142,
+            166.044,
+            137.77,
+            154.964,
+            163.629
+          ],
+          "max_hot_ms": 173.142,
+          "serialized_payload_bytes": [
+            25880,
+            25880,
+            25880,
+            25880,
+            25880,
+            25880
+          ],
+          "returned_nodes": 100,
+          "returned_edges": 99,
+          "total_concepts": 10000
+        }
+      },
+      "http_hot_gate_passed": true,
+      "database_bytes": 10027008,
+      "wal_bytes": 1236032,
+      "database_and_wal_bytes": 11263040
+    }
+  ]
+}

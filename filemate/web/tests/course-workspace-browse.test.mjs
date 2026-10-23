@@ -86,3 +86,12 @@ test('preferences_are_bounded_and_reject_untrusted_persisted_fields', () => {
   assert.deepEqual(restored.get('good', false), { desktop: 'outline' })
   assert.equal(restored.get('bad', false), null)
 })
+
+
+test('initial_course_requires_an_explicit_url_or_a_saved_recent_course', async () => {
+  const { initialCourseId } = await import('../src/course-graph/browse-state.ts')
+  assert.equal(initialCourseId(undefined, null), '')
+  assert.equal(initialCourseId(undefined, 'recent'), 'recent')
+  assert.equal(initialCourseId('explicit', 'recent'), 'explicit')
+  assert.equal(initialCourseId(['untrusted'], null), '')
+})

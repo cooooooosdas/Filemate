@@ -6,6 +6,10 @@ const views: WorkspaceView[] = ['graph', 'outline', 'evidence']
 const validId = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 120
 const validView = (v: unknown): v is WorkspaceView => views.includes(v as WorkspaceView)
 
+export function initialCourseId(explicit: unknown, recent: string | null): string {
+  return validId(explicit) ? explicit : validId(recent) ? recent : ''
+}
+
 export function resolveGraphScope(query: Record<string, unknown>, enabled: boolean): 'source' | 'course' {
   if (!enabled) return 'source'
   if ('graph_scope' in query) return query.graph_scope === 'course' ? 'course' : 'source'

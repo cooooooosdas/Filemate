@@ -139,3 +139,100 @@ test('late_citation_or_new_digest_is_never_attached_to_old_detail', async () => 
   assert.equal(controller.state.citation, null)
   assert.ok(controller.state.notice)
 })
+
+
+test('search_pagination_reaches_the_51st_identical_label_and_drops_late_pages', async () => {
+  const defaults = workspaceApi(), requests = [], late = deferred()
+  const controller = createCourseWorkspaceController(workspaceApi({ getCourseConceptPage: async (cid, options) => {
+    if (!options.q) return defaults.getCourseConceptPage(cid, options)
+    requests.push([options.q, options.offset || 0])
+    if (options.q === 'late' && options.offset === 50) return late.promise
+    const offset = options.offset || 0
+    return { course_id: cid, graph_digest: 'a'.repeat(64), total: 51, limit: 50, offset,
+      items: Array.from({ length: Math.min(50, 51-offset) }, (_, i) => ({ ...node(`n${offset+i}`), label: '相同概念' })) }
+  } }))
+  await controller.open(browse()); await controller.search('相同', true); await controller.pageSearch(50)
+  assert.equal(controller.state.searchPage.items[0].id, 'n50')
+  await controller.selectSearchResult(controller.state.searchPage.items[0])
+  assert.equal(controller.state.detail.resolved_id, 'n50')
+  await controller.search('late', true)
+  const pending = controller.pageSearch(50)
+  await controller.search('new', true)
+  late.resolve({ course_id: 'c', graph_digest: 'a'.repeat(64), items: [node('stale')], offset: 50, total: 51, limit: 50 }); await pending
+  assert.equal(controller.state.searchPage.offset, 0)
+  assert.notEqual(controller.state.searchPage.items[0]?.id, 'stale')
+  assert.ok(requests.some(([q, offset]) => q === '相同' && offset === 50))
+})
+
+test('refresh_invalidates_search_from_a_different_digest', async () => {
+  const api = workspaceApi(), controller = createCourseWorkspaceController(api)
+  await controller.open(browse()); await controller.search('n', true)
+  for (const method of ['getCourseWorkspace', 'getCourseCanvas', 'getCourseConceptPage']) {
+    const previous = api[method]
+    api[method] = async (...args) => ({ ...await previous(...args), graph_digest: 'b'.repeat(64) })
+  }
+  await controller.refresh()
+  assert.equal(controller.state.stale, false)
+  assert.equal(controller.state.navigation.graph_digest, 'b'.repeat(64))
+  assert.ok(controller.state.searchPage === null || controller.state.searchPage.graph_digest === 'b'.repeat(64))
+})
+
+test('url_filter_changes_reset_offsets_and_refresh_clamps_a_shrunken_page', async () => {
+  const defaults = workspaceApi(); let total = 75
+  const controller = createCourseWorkspaceController(workspaceApi({ getCourseConceptPage: async (cid, options) => {
+    const result = await defaults.getCourseConceptPage(cid, options)
+    const count = options.chapter_id ? 2 : total, offset = options.offset || 0
+    return { ...result, total: count, items: offset >= count ? [] : [node(`n${offset}`)] }
+  } }))
+  await controller.open(browse()); await controller.page(50)
+  assert.equal(controller.state.listPage.offset, 50)
+  await controller.open(browse('c', { chapterId: 'small' }))
+  assert.equal(controller.state.listPage.offset, 0)
+  assert.ok(controller.state.listPage.items.length)
+  await controller.open(browse()); await controller.page(50); total = 2
+  await controller.refresh()
+  assert.equal(controller.state.listPage.offset, 0)
+  assert.ok(controller.state.listPage.items.length)
+})
+
+test('chapter_directory_reads_children_and_a_consistent_ancestor_path', async () => {
+  const defaults = workspaceApi(), parents = []
+  const controller = createCourseWorkspaceController(workspaceApi({ getCourseWorkspace: async (cid, options) => {
+    parents.push(options.parent_id); return defaults.getCourseWorkspace(cid, options)
+  } }))
+  await controller.open(browse()); await controller.open(browse('c', { chapterId: 'child' }))
+  assert.deepEqual(parents, ['@root', 'child'])
+  assert.deepEqual(controller.state.chapterPath.items.map(g => g.id), ['parent', 'child'])
+})
+
+test('selection_keeps_canvas_identity_and_expansion_alone_loads_neighbors', async () => {
+  const defaults = workspaceApi(), calls = []
+  const controller = createCourseWorkspaceController(workspaceApi({ getCourseCanvas: async (...args) => {
+    calls.push(args[2]); const result = await defaults.getCourseCanvas(...args)
+    return { ...result, nodes: args[2] ? [node(args[2]), node('external-neighbor')] : [node('n'), node('unrelated')] }
+  } }))
+  await controller.open(browse())
+  const original = controller.state.canvas
+  await controller.selectNode('n')
+  assert.equal(controller.state.canvas, original)
+  assert.deepEqual(calls, [undefined])
+  assert.equal(controller.state.detail.resolved_id, 'n')
+  await controller.expandNode('n')
+  assert.deepEqual(controller.state.canvas.nodes.map(n => n.id), ['n', 'external-neighbor'])
+  await controller.selectNode('external-neighbor'); await controller.refresh()
+  assert.equal(calls.at(-1), 'n') // refresh keeps the explicit canvas focus
+})
+
+test('late_selection_and_new_digest_never_attach_detail_to_old_canvas', async () => {
+  const api = workspaceApi(), controller = createCourseWorkspaceController(api), late = deferred()
+  await controller.open(browse())
+  api.getCourseWorkspaceDetail = () => late.promise
+  const pending = controller.selectNode('old')
+  await controller.open(browse('new'))
+  late.resolve({ course_id: 'c', graph_digest: 'a'.repeat(64), node: node('old'), resolved_id: 'old' }); await pending
+  assert.equal(controller.state.detail, null)
+  api.getCourseWorkspaceDetail = async () => ({ course_id: 'new', graph_digest: 'b'.repeat(64), node: node('changed'), resolved_id: 'changed' })
+  await controller.selectNode('changed')
+  assert.equal(controller.state.detail, null)
+  assert.equal(controller.state.stale, true)
+})

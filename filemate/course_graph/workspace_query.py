@@ -59,5 +59,14 @@ def list_workspace_concepts(storage: SQLiteStorage, course_id: str, *, filters: 
         matched = next((label for label in labels if needle in label.casefold()), None)
         if matched is not None:
             results.append({**node, "matched_label": matched})
+    items = results[offset:offset + limit]
+    chapter_ids = set()
+    for node in items:
+        for chapter_id in node["chapter_ids"]:
+            chapter_ids.update(snapshot.ancestors.get(chapter_id, (chapter_id,)))
+    chapter_groups = sorted((snapshot.groups[cid] for cid in chapter_ids),
+                            key=lambda g: tuple((snapshot.groups[cid]["sort_order"], cid)
+                                                for cid in snapshot.ancestors.get(g["id"], (g["id"],))))
     return {"course_id": course_id, "graph_digest": snapshot.graph_digest,
-            "items": results[offset:offset + limit], "total": len(results), "limit": limit, "offset": offset}
+            "items": items, "total": len(results), "limit": limit, "offset": offset,
+            "chapter_groups": chapter_groups[:200], "chapter_groups_truncated": len(chapter_groups) > 200}

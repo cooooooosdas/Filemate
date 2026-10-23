@@ -1,0 +1,47 @@
+{
+  "synthetic": true,
+  "development_build": true,
+  "method": "navigation to chart flush and next frame; warm modules; repeated 10k sample retained",
+  "heap_measurement": "unavailable",
+  "samples": [
+    {
+      "nodes": 100,
+      "width": 1366,
+      "height": 768,
+      "first_interactive_ms": 712,
+      "long_tasks": [],
+      "heap_bytes": null
+    },
+    {
+      "nodes": 1000,
+      "width": 1366,
+      "height": 768,
+      "first_interactive_ms": 648.1,
+      "long_tasks": [],
+      "heap_bytes": null
+    },
+    {
+      "nodes": 10000,
+      "width": 1366,
+      "height": 768,
+      "first_interactive_ms": 3007.3,
+      "long_tasks": [],
+      "heap_bytes": null
+    },
+    {
+      "nodes": 10000,
+      "width": 1366,
+      "height": 768,
+      "first_interactive_ms": 2848.7,
+      "long_tasks": [],
+      "heap_bytes": null,
+      "repeat": 2
+    }
+  ],
+  "selection": {
+    "nodes": 100,
+    "zoom": 1.25,
+    "preserved": true
+  },
+  "note": "10k first sample 3007.3ms exceeds 3000ms local target by 7.3ms; repeat 2848.7ms; no claim all samples pass"
+}

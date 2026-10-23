@@ -26,6 +26,7 @@ export interface WorkspaceNavigation extends WorkspaceIdentity {
 }
 export interface WorkspaceConceptPage extends WorkspaceIdentity {
   items: (WorkspaceNode & { matched_label: string })[]; total: number; limit: number; offset: number
+  chapter_groups: WorkspaceGroup[]; chapter_groups_truncated: boolean
 }
 export interface WorkspaceCanvas extends WorkspaceIdentity {
   mode: 'groups' | 'concepts'; nodes: WorkspaceNode[]; edges: WorkspaceRelation[]; groups: WorkspaceGroup[]

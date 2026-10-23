@@ -1091,7 +1091,7 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 |---|---|---|
 | R/{cid}/workspace | parent_id可选（@root为根、缺省全部）、group_limit=200/group_offset=0、source_limit=50/source_offset=0 | name/groups/sources/分页计数/total_concepts |
 | R/{cid}/workspace/chapter-path/{id} | 无 | items真实祖先路径；异常树409 chapter_structure_invalid |
-| R/{cid}/concepts-page | chapter_id/source_id/relation/hide_relations、q、limit=50/offset=0 | items含matched_label、total/limit/offset |
+| R/{cid}/concepts-page | chapter_id/source_id/relation/hide_relations、q、limit=50/offset=0 | items含matched_label、total/limit/offset、chapter_groups（本页真实归属及祖先，最多200项）、chapter_groups_truncated |
 | R/{cid}/canvas | 同筛选、focus、limit=100、group_limit=20/group_offset=0 | mode=groups或concepts，nodes/edges/groups/group_edges，total_concepts/total_edges及truncated/node_has_more/edge_has_more |
 | R/{cid}/workspace/concepts/{nid} | limit=50/offset=0 | requested_id/resolved_id/node/source_refs/total_refs/分页；无merge_candidates |
 | R/{cid}/concepts/{nid}/source-evidence/{eid} | 无 | 当前原文before/quote/after，各侧最多2000个Unicode字符，原文件名/页码/chunk |

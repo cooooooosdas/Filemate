@@ -180,3 +180,38 @@ def test_reads_are_isolated_bounded_and_do_not_write(workspace_case, tmp_path, m
             query().get_workspace(other, cid)
     finally:
         other.close()
+
+
+
+def test_outline_page_carries_bounded_real_chapter_paths(workspace_case):
+    _, repo, cid, _ = workspace_case["context"]
+    grandchild = str(uuid4())
+    repo.put_chapter(cid, grandchild, "深入", workspace_case["child"], 0, 0)
+    repo.attach_sources(cid, [workspace_case["sid2"]], grandchild, repo.get_course(cid)["revision"])
+    result = page(workspace_case)
+    groups = {g["id"]: g for g in result["chapter_groups"]}
+    assert groups[grandchild]["parent_id"] == workspace_case["child"]
+    assert groups[workspace_case["child"]]["parent_id"] == workspace_case["parent"]
+    stack = next(n for n in result["items"] if n["label"] == "栈")
+    assert set(stack["chapter_ids"]) == {workspace_case["parent"], grandchild}
+    assert result["chapter_groups_truncated"] is False
+    assert len(result["chapter_groups"]) <= 200
+    assert {g["id"] for g in page(workspace_case, limit=1)["chapter_groups"]} <= set(groups)
+
+
+def test_outline_chapter_metadata_cap_is_explicit(workspace_case, monkeypatch):
+    from dataclasses import replace
+
+    from filemate.course_graph.workspace_snapshot import load_workspace_snapshot
+
+    store, _, cid, _ = workspace_case["context"]
+    snapshot = load_workspace_snapshot(store, cid)
+    groups = {f"g{i}": {"id": f"g{i}", "parent_id": None, "title": str(i),
+                       "sort_order": i, "concept_count": 1, "child_count": 0} for i in range(201)}
+    node = {**next(iter(snapshot.nodes.values())), "chapter_ids": list(groups)}
+    wide = replace(snapshot, nodes={node["id"]: node}, groups=groups, ancestors={})
+    monkeypatch.setattr(query(), "load_workspace_snapshot", lambda *_: wide)
+    result = page(workspace_case)
+    assert len(result["chapter_groups"]) == 200
+    assert result["chapter_groups_truncated"] is True
+    assert result["items"][0]["chapter_ids"] == list(groups)
