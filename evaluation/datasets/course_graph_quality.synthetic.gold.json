@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "authorized": true,
+  "authorization_id": "original-fixture",
+  "human_gold": true,
+  "annotator_ids": [
+    "synthetic-a",
+    "synthetic-b"
+  ],
+  "gold_version": "fixture-v1",
+  "dataset_id": "calculator-only",
+  "nodes": [
+    "a",
+    "b",
+    "c"
+  ],
+  "relations": [
+    {
+      "from_id": "a",
+      "to_id": "b",
+      "relation": "prerequisite"
+    }
+  ],
+  "citation_support": [
+    {
+      "item_id": "c1",
+      "value": true
+    },
+    {
+      "item_id": "c2",
+      "value": false
+    }
+  ],
+  "merge_correctness": [
+    {
+      "item_id": "m1",
+      "value": true
+    }
+  ],
+  "relation_invalidity": [
+    {
+      "item_id": "r1",
+      "value": true
+    },
+    {
+      "item_id": "r2",
+      "value": true
+    }
+  ]
+}

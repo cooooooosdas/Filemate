@@ -169,11 +169,11 @@ Task8工程67前端／32接口测试、默认关闭及显式开启构建、预�
 **Interfaces:**
 - Produces: CLI `uv run python -m evaluation.course_graph_quality --gold <authorized human gold.json> --prediction <candidate.json> --output <new report.json>`；`evaluate_quality(gold,prediction)->dict`。gold包含授权／人工标注声明、概念ID集合、类型方向关系集合、逐候选引用/融合/错误关系人工判定，缺失则指标null并解释，不从AI自评推断真值；拒绝覆盖输出。
 
-- [ ] **Step 1: 写RED。** 已知集合TP/FP/FN断言1/2、1/3、0.4等精确分数；零分母null；方向反转为错误；无授权/无人工gold不出质量成绩；缺判定不填0或1；CLI既有输出拒绝；synthetic=true贯穿。
-- [ ] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_graph_quality.py -q`。Expected:missing calculator。
-- [ ] **Step 3: 实现计算器并写协议。** 固定指标定义／分母／覆盖率，JSON schema版本与模型／prompt版本可追溯；协议按设计给三组、初步90人、分层随机、等量时间、盲评分、7天延迟、基线调整、预设两比较与Holm、缺失/退出、同意/删除、批准页。未批准不采集，不编结果。
-- [ ] **Step 4: 跑GREEN。** 本卡+现有evaluation测试；只运行原创合成算例验证工具，报告明确“计算器回归，非系统质量成绩”。Expected:0失败且真实研究状态pending_approval。
-- [ ] **Step 5: 提交。** `feat(evaluation): 增加图谱质量计算器与研究协议`。
+- [x] **Step 1: 写RED。** 已知集合TP/FP/FN断言1/2、1/3、0.4等精确分数；零分母null；方向反转为错误；无授权/无人工gold不出质量成绩；缺判定不填0或1；CLI既有输出拒绝；synthetic=true贯穿。
+- [x] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_graph_quality.py -q`。Expected:missing calculator。
+- [x] **Step 3: 实现计算器并写协议。** 固定指标定义／分母／覆盖率，JSON schema版本与模型／prompt版本可追溯；协议按设计给三组、初步90人、分层随机、等量时间、盲评分、7天延迟、基线调整、预设两比较与Holm、缺失/退出、同意/删除、批准页。未批准不采集，不编结果。
+- [x] **Step 4: 跑GREEN。** 本卡+现有evaluation测试；只运行原创合成算例验证工具，报告明确“计算器回归，非系统质量成绩”。Expected:0失败且真实研究状态pending_approval。
+- [x] **Step 5: 提交。** `feat(evaluation): 增加图谱质量计算器与研究协议`。
 
 ### Task 10: 全账户链、工程规模与最终交付
 
