@@ -631,6 +631,7 @@ _MIGRATIONS = (
     (30, "interview_six_assessments", interview_assessment_schema.SCHEMA),
     (31, "course_knowledge_graph", course_graph_schema.SCHEMA),
     (32, "course_learning_evidence", learning_schema.SCHEMA),
+    (33, "course_learning_derived_sources", learning_schema.DERIVED_SOURCES_SCHEMA),
 )
 
 
@@ -1626,6 +1627,10 @@ class SQLiteStorage:
                                  f"[历史题集] {artifact['title']}", self._dump_json(artifact["content"]),
                                  self._dump_json(snapshot_metadata), artifact["created_at"], artifact["updated_at"]),
                             )
+                            if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kg_learning_artifact_sources'").fetchone():
+                                connection.execute('''INSERT INTO kg_learning_artifact_sources(artifact_id,source_id)
+                                    SELECT ?,source_id FROM kg_learning_artifact_sources WHERE artifact_id=?''',
+                                    (snapshot_id, artifact_id))
                             for table in ("quiz_attempts", "wrong_questions"):
                                 connection.execute(
                                     f"UPDATE {table} SET artifact_id=? WHERE artifact_id=?",

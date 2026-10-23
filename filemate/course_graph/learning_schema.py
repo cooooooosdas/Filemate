@@ -64,3 +64,17 @@ BEGIN
         (SELECT work_id FROM kg_learning_work_sources WHERE source_id=OLD.source_id);
 END;
 """
+
+DERIVED_SOURCES_SCHEMA = """
+CREATE TABLE kg_learning_artifact_sources (
+    artifact_id TEXT NOT NULL REFERENCES artifacts(artifact_id) ON DELETE CASCADE,
+    source_id TEXT NOT NULL REFERENCES sources(source_id) ON DELETE CASCADE,
+    PRIMARY KEY(artifact_id,source_id)
+);
+CREATE INDEX kg_learning_artifact_sources_source ON kg_learning_artifact_sources(source_id,artifact_id);
+CREATE TRIGGER kg_learning_artifact_source_purge BEFORE DELETE ON sources
+BEGIN
+    DELETE FROM artifacts WHERE artifact_id IN
+        (SELECT artifact_id FROM kg_learning_artifact_sources WHERE source_id=OLD.source_id);
+END;
+"""

@@ -1109,3 +1109,9 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 其余新表：kg_cross_links（人工跨课导航，不参与前置或证据累计）、kg_course_plan_links（现役计划日与概念关联）、kg_learning_work及kg_learning_work_sources（有限运行与多来源依赖）。来源彻底删除的预览数量／摘要包含新关联、计划关联与工作结果；删除任一依赖来源在同事务清除含其正文的工作结果。移出课程继续保留学习历史。个人备份自动包含新表，恢复轮换work epoch、将running改为interrupted、清租约与旧课程确认凭据，不重放模型。
 
 学习证据领域合同：`learning_snapshot`返回graph_digest／evidence_digest、服务端as_of、`course-training-v1`和节点摘要；`node_learning_evidence`返回四类独立分页（question_refs／attempts／wrongs／plans，默认50最大200），不含整段回答正文。`list_learning_nodes`可按no_evidence／practiced／needs_reinforcement／recently_stable筛选。7天错答或未掌握错题到期优先巩固；30天至少3道不同正确题、跨2个上海日期且7天无错、无到期复习才近期稳定。所有窗口包含下界、截至as_of，异常／未来时间及修订前记录排除并计数；恢复相同文字也不能继承历史题集的作答。融合按attempt_id去重，原成员关联不改写；计划完成单列。来源移出仍展示学习历史，但active_support=false时不供路径推荐。每类原因最多返回50个ID并给出truncated，总计数不截断；这些是训练事实规则，不是掌握率或真实效果评估。HTTP同待Task5。
+
+练习领域合同：`PracticeService.generate`接受concept_id、difficulty=simple/standard/advanced、count=1–5、mode=local/llm、request_key；llm须allow_external_model=true。本地模式仅把连续原文中概念术语遮空，不能兑现难度等级；模型经可替换LLMClient，单次20秒、retry=1（总共一次调用、无自动重试）。工作先持久化，模型在写事务外运行；每课程最多一个running、滚动24小时30次，取消／失败不退还，来源删除保留无正文的请求墓碑。重复键只读原结果；已删除结果返回410 learning_work_unavailable，禁止重发。
+
+工作状态running/ready/failed/cancelled/interrupted/confirmed；GET不发模型、不续租、不写数据库，返回stale和固定安全error_code。取消轮换epoch并清payload；备份恢复、输入版本变化或租约过期阻止晚到结果变成ready。每题必须accept/reject，接受项可修改但重新校验题型、非空答案、连续引文及引用ID；全部拒绝不生成正式题集。预览后确认原子创建一个现役questions Artifact、显式映射和回执，不创建作答或错题；撤销只解除此次映射，保留正式题集及学习历史。
+
+补充迁移33的kg_learning_artifact_sources：正式题集及后续计划绑定全部上下文来源。删除任一依赖来源同时删除派生Artifact及下游，题目修订时历史快照继承依赖；删除预览显示course_learning_derived_artifacts（可能与普通Artifact计数重叠，不应相加当独立数量）。升级32→33只追加表、索引、触发器；回退不能直接删除迁移。HTTP仍待Task5接线。

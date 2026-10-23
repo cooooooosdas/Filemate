@@ -35,7 +35,7 @@ def test_30_upgrade_preserves_legacy_ids_and_history(tmp_path, monkeypatch):
     before = {t: [dict(r) for r in store._conn().execute(f"SELECT * FROM {t}")] for t in tables}
     monkeypatch.setattr(storage_module, "_MIGRATIONS", migrations)
     store.init_schema()
-    assert store.get_schema_version() == 32
+    assert store.get_schema_version() == 33
     assert {t: [dict(r) for r in store._conn().execute(f"SELECT * FROM {t}")] for t in tables} == before
     assert repository(store).list_courses()["total"] == 0
     assert store._conn().execute("PRAGMA foreign_key_check").fetchall() == []

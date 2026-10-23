@@ -20,6 +20,10 @@ def _has_learning_tables(conn) -> bool:
     return conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kg_learning_work'").fetchone() is not None
 
 
+def _has_derived_tables(conn) -> bool:
+    return conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kg_learning_artifact_sources'").fetchone() is not None
+
+
 def source_impact(storage, source_id: str, course_id: str | None = None) -> dict[str, Any]:
     """Count graph rows and current support lost without this source."""
     conn = storage._conn()
@@ -41,6 +45,11 @@ def source_impact(storage, source_id: str, course_id: str | None = None) -> dict
         counts['course_learning_plan_links'] = conn.execute(
             f'''SELECT COUNT(*) FROM kg_course_plan_links l JOIN study_plans p USING(plan_id)
                 WHERE p.source_id=?{' AND l.course_id=?' if course_id else ''}''', args).fetchone()[0]
+    if _has_derived_tables(conn):
+        counts['course_learning_derived_artifacts'] = conn.execute(
+            f'''SELECT COUNT(*) FROM kg_learning_artifact_sources d JOIN artifacts a USING(artifact_id)
+                WHERE d.source_id=?{" AND json_extract(a.metadata,'$.course_id')=?" if course_id else ''}''',
+            args).fetchone()[0]
     roots, relations = set(), set()
     for row in conn.execute(f"SELECT course_id,concept_id,relation_id FROM kg_evidence WHERE {clause}", args):
         candidates = [row["concept_id"]] if row["concept_id"] else []
@@ -88,6 +97,10 @@ def source_revision_fragment(storage, source_id: str) -> dict[str, Any]:
         result['learning_plan_links'] = [digest(dict(row)) for row in conn.execute(
             '''SELECT l.* FROM kg_course_plan_links l JOIN study_plans p USING(plan_id)
                WHERE p.source_id=? ORDER BY l.plan_id,l.concept_id,l.day_index''', (source_id,))]
+    if _has_derived_tables(conn):
+        result['learning_derived_artifacts'] = [digest(dict(row)) for row in conn.execute(
+            '''SELECT a.* FROM artifacts a JOIN kg_learning_artifact_sources d USING(artifact_id)
+               WHERE d.source_id=? ORDER BY a.artifact_id''', (source_id,))]
     impact = source_impact(storage, source_id)
     supporting_sources = set()
     result["concepts"], result["relations"], result["support"] = [], [], []

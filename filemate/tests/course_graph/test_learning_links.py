@@ -53,7 +53,7 @@ def test_schema_31_upgrade_preserves_old_rows(tmp_path, monkeypatch):
     before = store.get_source(sid), store.get_artifact(aid)
     monkeypatch.setattr(storage_module, '_MIGRATIONS', migrations)
     store.init_schema()
-    assert store.get_schema_version() == 32
+    assert store.get_schema_version() == 33
     assert (store.get_source(sid), store.get_artifact(aid)) == before
     tables = {r[0] for r in store._conn().execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert {'kg_question_links', 'kg_cross_links', 'kg_course_plan_links',

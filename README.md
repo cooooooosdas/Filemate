@@ -1,6 +1,6 @@
 # FileMate
 
-2026-10-23 知识图谱 D/E 本地开发中：追加业务 schema32，显式关联课程概念与题目版本，学习操作先预览确认、可撤销；新增工作结果与来源依赖，删除任一引用来源会清除相关工作正文，恢复备份会中断旧运行并使确认令牌失效。旧 Source／Artifact 与学习记录保持兼容，功能仍由课程图谱开关控制，尚未完成 D/E 整体验收或部署。见[D/E 实施计划](docs/superpowers/plans/2026-10-23-knowledge-growth-de.md)。
+2026-10-23 知识图谱 D/E 本地开发中：追加业务 schema32／33，显式关联课程概念与题目版本，学习操作先预览确认、可撤销；新增工作结果与来源依赖，删除任一引用来源会清除相关工作正文，恢复备份会中断旧运行并使确认令牌失效。旧 Source／Artifact 与学习记录保持兼容，功能仍由课程图谱开关控制，尚未完成 D/E 整体验收或部署。见[D/E 实施计划](docs/superpowers/plans/2026-10-23-knowledge-growth-de.md)。
 
 2026-10-22 用户已明确“B级通过”：知识图谱2.0的[A级审计](docs/superpowers/specs/2026-10-21-knowledge-graph-2-design.md)与[九项B级计划](docs/superpowers/plans/2026-10-22-course-knowledge-graph-foundation.md)均已验收。[B级交付](docs/KNOWLEDGE_GRAPH_2_0_B_DELIVERY.md)接通课程/章节、多来源草稿、逐项审核、同课融合、撤销、来源与备份恢复，业务schema31；不自动迁移旧图谱或改写学习历史。B级最终本地门禁后端1389/前端149通过，独立审阅的重要问题已修复。新模块默认关闭（FILEMATE_ENABLE_COURSE_GRAPH=0 / VITE_ENABLE_COURSE_GRAPH=false），未推送或部署。C级三项交互及[工作台设计](docs/superpowers/specs/2026-10-22-knowledge-workspace-c-design.md)已确认，[八项实现计划](docs/superpowers/plans/2026-10-22-knowledge-workspace-c.md)已确认，正按卡实施；只读快照、画布与原文接口已本地接通，完整C界面和规模验收待完成；完整2.0、生产发布及真实学习效果未验收，详见[分级记录](docs/KNOWLEDGE_GRAPH_2_0_EXECUTION.md)。
 

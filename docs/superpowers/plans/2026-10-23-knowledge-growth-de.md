@@ -4,7 +4,7 @@
 
 **Goal:** 把课程图谱与真实题目、作答、错题、复习、目标和今日任务连接，交付有界、可解释、须确认写入的图谱助手及科研工具。
 
-**Architecture:** 保留现役Source/Artifact/QuizAttempt/WrongQuestion/StudyPlan，migration32只追加课程映射与工作结果。领域模块负责快照、版本、预览事务；模型调用在事务外且有界；Vue侧栏按需承接训练与助手，保持C浏览协议。
+**Architecture:** 保留现役Source/Artifact/QuizAttempt/WrongQuestion/StudyPlan，migration32追加课程映射与工作结果，33补派生Artifact的完整来源依赖。领域模块负责快照、版本、预览事务；模型调用在事务外且有界；Vue侧栏按需承接训练与助手，保持C浏览协议。
 
 **Tech Stack:** Vue3、TypeScript、FastAPI、Pydantic、SQLite、Python；无新运行时依赖。
 
@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - 工作区沿用`codex/knowledge-graph-2-audit`；保留24份用户改动测试，不暂存；不推送／部署。
-- 追加migration32，不改v1–31。旧source图谱和旧数据可读；D继承课程开关，E助手默认关闭。
+- 追加migration32／33，不改v1–31及已提交32。旧source图谱和旧数据可读；D继承课程开关，E助手默认关闭。Task3来源隐私补充见设计与执行记录。
 - 不按词出现自动建立练习映射；不重建作答／错题／计划主表；不跨课累计证据。
 - 状态`course-training-v1`：7天错答或复习到期优先巩固；30天3不同题跨2日、7天无错且无到期才近期稳定；否则已有练习／暂无证据。
 - 所有写入先预览确认、版本绑定、幂等、审计、可撤销；只新增计划，不覆盖手工计划，完成计划不等于答对。
@@ -78,11 +78,11 @@
 - Produces: `LearningWorkService(storage,clock)`的`claim(cid,kind,input,request_key,sources,graph_digest,evidence_digest)`, `finish(work_id,epoch,result)`, `fail(...)`, `cancel(...)`, `get(...)`。kind=`practice/answer`；epoch+状态+输入版本核对，重复键仅返回已持久化结果，不重发模型。
 - Produces: `PracticeService(storage,provider_factory,clock)`的`generate(cid,nid,difficulty,count,mode,request_key,allow_external_model=False)->dict`、`get(cid,work_id)->dict`、`preview(cid,work_id,decisions)->dict`、`confirm(...,decisions,confirmation_token,request_key,confirmed)->dict`。decision包含题序、accept/reject及可选修订question；不信客户端validation标志。
 
-- [ ] **Step 1: 写RED。** `test_local_cloze_is_supported_not_llm`；`test_model_requires_consent_and_runs_once_outside_write_lock`用可控provider检查其他连接可写；`test_malformed_answer_or_unknown_quote_cannot_confirm`；`test_human_review_required_before_artifact`；`test_confirmed_selection_creates_one_real_artifact_and_links`；`test_cancel_restore_source_change_blocks_late_finish`；`test_timeout_and_provider_error_are_persisted_failure_without_secret`；`test_rate_and_running_budget`断言第31次/并发第二次拒绝、20秒/1次调用参数真实传入；`test_same_key_does_not_resend_after_uncertain_response`。
-- [ ] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_course_practice.py -q`。Expected: missing service。
-- [ ] **Step 3: 实现规则／模型草稿与审核事务。** count1–5、difficulty三值；资料12000字、有效引用白名单、格式答案引用校验；模型失败不伪装fallback成功。领取work短事务，provider调用在锁外，完成核对epoch及版本；前述限额，错误只存安全码。确认先校验人工决策与当前work摘要，原子写现役Artifact＋映射＋回执，未答题不创建attempt/wrong。
-- [ ] **Step 4: 跑GREEN。** Task1–3+`test_quiz_api.py`（若实际路径不同以rg定位并ledger）及`test_privacy.py`。Expected: 同题集走现役quiz真实评分／错题，取消晚到不落成功。
-- [ ] **Step 5: 提交。** `feat(graph): 增加可审核的节点练习草稿`。
+- [x] **Step 1: 写RED。** `test_local_cloze_is_supported_not_llm`；`test_model_requires_consent_and_runs_once_outside_write_lock`用可控provider检查其他连接可写；`test_malformed_answer_or_unknown_quote_cannot_confirm`；`test_human_review_required_before_artifact`；`test_confirmed_selection_creates_one_real_artifact_and_links`；`test_cancel_restore_source_change_blocks_late_finish`；`test_timeout_and_provider_error_are_persisted_failure_without_secret`；`test_rate_and_running_budget`断言第31次/并发第二次拒绝、20秒/1次调用参数真实传入；`test_same_key_does_not_resend_after_uncertain_response`。
+- [x] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_course_practice.py -q`。Expected: missing service。
+- [x] **Step 3: 实现规则／模型草稿与审核事务。** count1–5、difficulty三值；资料12000字、有效引用白名单、格式答案引用校验；模型失败不伪装fallback成功。领取work短事务，provider调用在锁外，完成核对epoch及版本；前述限额，错误只存安全码。确认先校验人工决策与当前work摘要，原子写现役Artifact＋映射＋回执，未答题不创建attempt/wrong。
+- [x] **Step 4: 跑GREEN。** Task1–3+`test_quiz_api.py`（若实际路径不同以rg定位并ledger）及`test_privacy.py`。Expected: 同题集走现役quiz真实评分／错题，取消晚到不落成功。
+- [x] **Step 5: 提交。** `feat(graph): 增加可审核的节点练习草稿`。
 
 ### Task 4: 可解释路径、目标范围与新增计划
 
