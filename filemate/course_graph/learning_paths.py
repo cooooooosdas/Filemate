@@ -98,6 +98,8 @@ def _build(read, cid, options, now):
         if sid is not None and not snapshot.fingerprints.get(sid):
             raise CourseGraphError('goal_not_in_course', 404)
         goal_digest = digest(goal_artifact)
+    all_eligible = {nid for nid, node in nodes.items() if node['active_support']}
+    all_predecessors, _, all_relations = _dependencies(snapshot, all_eligible)
     predecessors, successors, relations = _dependencies(snapshot, eligible)
     closure, pending = set(selected), list(selected)
     while pending:
@@ -105,6 +107,17 @@ def _build(read, cid, options, now):
             if parent not in closure:
                 closure.add(parent)
                 pending.append(parent)
+
+    outside, seen, pending = set(), set(closure), list(closure)
+    while pending:
+        for parent in all_predecessors.get(pending.pop(), ()):
+            if parent not in seen:
+                seen.add(parent)
+                pending.append(parent)
+                if parent not in eligible:
+                    outside.add(parent)
+    outside_items = [{'concept_id': nid, 'label': nodes[nid]['label'],
+                      'relation_ids': sorted(all_relations.get(nid, ()))[:12]} for nid in sorted(outside)[:30]]
 
     def rank(nid):
         count = nodes[nid]['counts']
@@ -146,6 +159,7 @@ def _build(read, cid, options, now):
               'rule_version': projection['rule_version'], 'start_date': start.isoformat(), 'tasks': tasks,
               'omitted_count': len(closure) - len(tasks), 'unsupported_count': requested_count - len(selected),
               'scope_expanded_count': len(closure - selected), 'goal_id': options['goal_id'],
+              'outside_scope_prerequisite_count': len(outside), 'outside_scope_prerequisites': outside_items,
               'goal_title': (goal_artifact.get('content') or {}).get('title') if goal_artifact else None,
               '_source_ids': sorted(sources), '_goal_digest': goal_digest}
     result['_revision'] = digest(result)

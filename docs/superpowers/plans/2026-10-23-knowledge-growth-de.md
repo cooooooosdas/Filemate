@@ -183,11 +183,11 @@ Task8工程67前端／32接口测试、默认关闭及显式开启构建、预�
 - Consumes: Task1–9真实API及B/C；CLI新绝对输出目录、100/1000/10000规模和额外证据密集负载，不用真实用户库。
 - Produces: 注册测试账户D完整流程、E规则／失败／取消／计划链JSON和截图；性能按原始全部样本记录，进程资源与浏览器分开，未测null；协议／技术报告均链接实际结果和限制。
 
-- [ ] **Step 1: 写RED。** lifecycle注册→登录→两数据结构＋第二课程→审核→人工题目映射→错答→复习→状态→路径预览/确认/重复/撤销/恢复→今日完成→规则问答→Agent预览→导出/删除第二来源/恢复→旧token拒绝/旧数据可读；benchmark新目录安全、精确规模／作答数、并发读与一次写、无N+1、迁移31→32、旧schema31备份、FK与失败恢复测试。
+- [ ] **Step 1: 写RED。** lifecycle注册→登录→两数据结构＋第二课程→审核→人工题目映射→错答→复习→状态→路径预览/确认/重复/撤销/恢复→今日完成→规则问答→Agent预览→导出/删除第二来源/恢复→旧token拒绝/旧数据可读；benchmark新目录安全、精确规模／作答数、并发读与一次写、无N+1、迁移31→33、旧schema31备份、FK与失败恢复测试。
 - [ ] **Step 2: 跑RED→实现夹具／基准→GREEN。** `uv run pytest filemate/tests/course_graph/test_growth_lifecycle.py filemate/tests/course_graph/test_growth_benchmark.py -q`。Expected: 全链真实数据库记录一致，合成标记不遗漏。
 - [ ] **Step 3: 测工程与定位C慢样本。** 100/1000/10000各首1热5实际HTTP；证据密集至少10000attempts、并发4读＋重复确认、内存/DB/WAL记录；浏览器初始画布、选择/缩放/练习/搜索与故障。初始3秒目标、HTTP热最大2秒、交互无>200ms样本；不满足则保留失败、分析实际瓶颈并用行为／性能回归固定修复，不以抽样删失通过。
 - [ ] **Step 4: 全量门禁。** `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend`；Expected: exit0，后端／前端／类型／构建／预算；24用户测试SHA逐一不变，diff check干净。已有warning/skip具体报告，真实模型与真人未验如实列出。
-- [ ] **Step 5: 汇总文档并提交。** D/E逐要求矩阵、工程状态与科研依赖分别表述；交付架构、数据模型、有限Agent、规则方法、解释、实际结果和局限；迁移32回退须恢复备份与兼容代码，不伪称down migration。`test(graph): 记录知识成长全链与规模验收`。
+- [ ] **Step 5: 汇总文档并提交。** D/E逐要求矩阵、工程状态与科研依赖分别表述；交付架构、数据模型、有限Agent、规则方法、解释、实际结果和局限；业务32／33及治理3回退须恢复备份与兼容代码，不伪称down migration。`test(graph): 记录知识成长全链与规模验收`。
 - [ ] **Step 6: 一次独立整项审阅与修复。** 执行executing-plans全分支review-package、Review Focus及所有Ruling交给fresh reviewer；Critical/Important一轮RED→GREEN修复并全量门禁；Minor按规则记账，不反复派审。最终保留分支与工作区，不自动推送／部署，真实研究等待单独批准。
 
 ## 自审与执行授权记录

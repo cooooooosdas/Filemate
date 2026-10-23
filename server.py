@@ -2756,6 +2756,7 @@ class QuizAttemptRequest(BaseModel):
     question_index: int
     user_answer: str
     expected_question: dict[str, Any] | None = None
+    request_key: str | None = Field(default=None, pattern=r'^[A-Za-z0-9_-]{16,80}$')
 
 
 class InterviewStartRequest(BaseModel):
@@ -3355,6 +3356,7 @@ def submit_quiz_attempt(request: QuizAttemptRequest):
             score=score,
             feedback="回答正确" if is_correct else "已加入错题本，请结合解析复习",
             expected_question=raw_question,
+            request_key=request.request_key,
         )
     except QuestionRevisionConflict as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

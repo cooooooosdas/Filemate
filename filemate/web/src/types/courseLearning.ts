@@ -18,7 +18,7 @@ export interface PracticeDecision { index: number; verdict: 'accept' | 'reject';
 export interface PathOptions { goal: string; concept_ids?: string[]; chapter_id?: string | null; goal_id?: string | null; daily_minutes: number; days: number }
 export interface LearningPreview { confirmation_token: string; accepted_count?: number; changed_count?: number; affected_count?: number; affected?: Record<string, number> }
 export interface LearningReceipt { operation_id: string; plan_id?: string; artifact_id?: string; link_id?: string; route?: string }
-export interface PathPreview extends LearningPreview { tasks: { concept_id: string; label: string; day_index: number; kind: string; duration_minutes: number; reason: string; reasons: Record<string, unknown>; route: string }[]; omitted_count: number; unsupported_count: number; scope_expanded_count: number }
+export interface PathPreview extends LearningPreview { tasks: { concept_id: string; label: string; day_index: number; kind: string; duration_minutes: number; reason: string; reasons: Record<string, unknown>; route: string }[]; omitted_count: number; unsupported_count: number; scope_expanded_count: number; outside_scope_prerequisite_count: number; outside_scope_prerequisites: { concept_id: string; label: string; relation_ids: string[] }[] }
 export interface RelatedInput { other_course_id: string; other_concept_id: string; active: boolean; relation: 'related' }
 export interface RelatedCourse { link_id: string; course_id: string; concept_id: string; course_name: string; label: string; route: string; affects_learning: false }
 export interface AnswerReceipt { is_correct: boolean; feedback?: string; reference_answer?: string; attempt_id?: string }
@@ -26,7 +26,7 @@ export interface LearningApi {
   getCourseLearning(cid: string, nid: string, offset?: number, signal?: AbortSignal): Promise<LearningEvidence>
   getCourseQuestions(cid: string, nid: string, q?: string, offset?: number, signal?: AbortSignal): Promise<GraphPage<QuestionCandidate>>
   getCourseRelated(cid: string, nid: string, offset?: number, signal?: AbortSignal): Promise<GraphPage<RelatedCourse>>
-  submitQuizAttempt(aid: string, index: number, answer: string, question?: object): Promise<AnswerReceipt>
+  submitQuizAttempt(aid: string, index: number, answer: string, question?: object, key?: string): Promise<AnswerReceipt>
   generateCoursePractice(cid: string, nid: string, body: PracticeOptions & { request_key: string }): Promise<LearningWork>
   getCourseLearningWork(cid: string, wid: string): Promise<LearningWork>
   cancelCourseLearningWork(cid: string, wid: string, key: string): Promise<LearningWork>

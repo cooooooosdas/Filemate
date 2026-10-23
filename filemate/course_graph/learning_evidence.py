@@ -49,11 +49,13 @@ def read_learning_projection(read, cid: str, *, now: datetime) -> dict[str, Any]
     selector = '''EXISTS(SELECT 1 FROM kg_question_links l WHERE l.course_id=? AND l.active=1
                   AND (l.artifact_id=q.artifact_id OR l.artifact_id=json_extract(a.metadata,'$.question_revision_parent'))
                   AND l.question_index=q.question_index)'''
-    attempts = [dict(r) for r in conn.execute(f'''SELECT q.rowid AS evidence_sequence,q.*,
+    attempts = [dict(r) for r in conn.execute(f'''SELECT q.rowid AS evidence_sequence,
+        q.attempt_id,q.artifact_id,q.question_index,q.is_correct,q.score,q.created_at,
         json_extract(a.metadata,'$.question_revision_parent') AS revision_parent
         FROM quiz_attempts q JOIN artifacts a USING(artifact_id)
         WHERE {selector} ORDER BY q.created_at DESC,q.attempt_id''', (cid,))]
-    wrongs = [dict(r) for r in conn.execute(f'''SELECT q.*,
+    wrongs = [dict(r) for r in conn.execute(f'''SELECT q.wrong_id,q.artifact_id,q.question_index,q.question,
+        q.mastered,q.next_review_at,q.updated_at,
         json_extract(a.metadata,'$.question_revision_parent') AS revision_parent
         FROM wrong_questions q JOIN artifacts a USING(artifact_id)
         WHERE {selector} ORDER BY q.updated_at DESC,q.wrong_id''', (cid,))]
@@ -153,11 +155,12 @@ def read_learning_projection(read, cid: str, *, now: datetime) -> dict[str, Any]
             'counts': {'attempts': len(all_attempts), 'attempts_30d': len(recent),
                        'correct_questions_30d': len(correct_questions), 'correct_days_30d': len(correct_days),
                        'wrong_attempts_7d': len(recent_wrong), 'due_reviews': len(due),
-                       'linked_questions': len(item['question_refs']),
+                       'linked_questions': sum(q['link_valid'] and q['source_available'] for q in item['question_refs'].values()),
                        'completed_plan_days': sum(p['completed'] for p in item['plans'].values())},
             'reasons': {'recent_wrong_attempt_ids': recent_wrong[:50], 'due_wrong_ids': due[:50],
                         'truncated': len(recent_wrong) > 50 or len(due) > 50},
             'excluded_count': len(item['excluded']), 'rule_version': RULE_VERSION}
+    evidence_digest = digest({'records': evidence_digest, 'windowed_training': summaries})
     return {'course_id': cid, 'graph_digest': snapshot.graph_digest, 'evidence_digest': evidence_digest,
             'rule_version': RULE_VERSION, 'as_of': now.isoformat(), 'nodes': summaries,
             '_snapshot': snapshot, '_details': details}

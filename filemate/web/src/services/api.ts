@@ -773,11 +773,12 @@ export async function submitQuizAttempt(
   artifactId: string,
   questionIndex: number,
   userAnswer: string,
-  expectedQuestion?: object
+  expectedQuestion?: object,
+  requestKey?: string
 ): Promise<QuizAttemptResult> {
   const response = await api.post<any, ApiResponse<QuizAttemptResult>>(
     '/quiz/attempts',
-    { artifact_id: artifactId, question_index: questionIndex, user_answer: userAnswer, expected_question: expectedQuestion }
+    { artifact_id: artifactId, question_index: questionIndex, user_answer: userAnswer, expected_question: expectedQuestion, request_key: requestKey }
   )
   if (response.success && response.data) return response.data
   throw new Error(response.error || '提交答案失败')

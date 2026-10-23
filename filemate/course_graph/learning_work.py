@@ -8,6 +8,8 @@ from uuid import uuid4
 from filemate.course_graph.learning_evidence import parse_time, read_learning_projection
 from filemate.course_graph.models import CourseGraphError, digest, request_key_valid
 from filemate.course_graph.repository import get_request, record_change, require_course, transaction
+from filemate.runtime_governance import BudgetExceeded, GovernanceUnavailable
+from filemate.task_resources import admit_learning
 
 SAFE_ERRORS = frozenset({'provider_failed', 'model_timeout', 'invalid_output', 'budget_exceeded',
                          'governance_unavailable', 'input_changed', 'lease_expired'})
@@ -102,6 +104,18 @@ class LearningWorkService:
                 raise CourseGraphError('learning_busy', 409)
             spent = conn.execute("""SELECT COUNT(*) FROM kg_changes WHERE course_id=? AND kind='learning_work_claim'
                 AND created_at>=?""", (cid, (now - timedelta(hours=24)).isoformat())).fetchone()[0]
+            # 控制账本先提交；业务事务失败也不退款，防止备份恢复或故障重置额度。
+            try:
+                admitted = admit_learning(self.storage.db_path, cid, request_key, digest({'kind': kind, 'input': hashed}),
+                                          now=now.timestamp())
+            except BudgetExceeded as exc:
+                raise CourseGraphError('learning_budget_exceeded', 429) from exc
+            except GovernanceUnavailable as exc:
+                raise CourseGraphError('governance_unavailable', 503) from exc
+            except ValueError as exc:
+                raise CourseGraphError('request_key_conflict') from exc
+            if not admitted:
+                raise CourseGraphError('learning_work_unavailable', 410)
             if spent >= 30:
                 raise CourseGraphError('learning_budget_exceeded', 429)
             wid, epoch = str(uuid4()), secrets.randbits(60)

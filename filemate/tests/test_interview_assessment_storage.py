@@ -64,7 +64,7 @@ def test_migration_append_only_reports_idempotency_and_original_legacy_report(co
     assert first["report"]["input"]["turns"][0]["version"] == 1
     assert repo.context(sid)["history"][0]["assessment_id"] == second["assessment_id"]
     assert ReviewRepository(store).report(sid) == old
-    assert store.get_schema_version() == 31
+    assert store.get_schema_version() == 33
     store.init_schema()
     assert store._conn().execute("PRAGMA foreign_key_check").fetchall() == []
     assert (

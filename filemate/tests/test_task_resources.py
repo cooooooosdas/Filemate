@@ -89,8 +89,8 @@ def test_v1_migration_preserves_daily_model_budget_and_coverage(resources):
     with sqlite3.connect(store.path) as conn:
         assert conn.execute('SELECT * FROM resource_daily').fetchone() == ('synthetic-owner', '2026-10-11', 7, 321, 0, 0)
         assert conn.execute('SELECT applied_at FROM resource_schema_migrations WHERE version=1').fetchone() == (12345,)
-        assert resource_schema_version(conn) == 2
-    assert backup._database_facts(store.path)['schema_version'] == 2
+        assert resource_schema_version(conn) == 3
+    assert backup._database_facts(store.path)['schema_version'] == 3
 
 
 def test_broken_v1_migration_rolls_back_without_partial_columns(resources):
@@ -441,7 +441,7 @@ def test_career_training_and_plan_confirmations_count_once(resources):
         assert store.view(scope)['resources']['task_admissions'] == expected
 
 
-def test_deployment_facts_reads_both_control_versions_without_migrating(resources):
+def test_deployment_facts_reads_all_control_versions_without_migrating(resources):
     _, store = resources
     source = Path('scripts/deploy_existing.py').read_text(encoding='utf-8')
     tree = ast.parse(source)
@@ -455,5 +455,11 @@ def test_deployment_facts_reads_both_control_versions_without_migrating(resource
             conn.execute(statement)
         conn.execute('INSERT INTO resource_schema_migrations VALUES(1,12345)')
     assert namespace['database_facts'](store.path)['schema_version'] == 1
-    store.initialize()
+    from filemate.runtime_governance import _MIGRATION_2
+    with sqlite3.connect(store.path) as conn:
+        for statement in _MIGRATION_2:
+            conn.execute(statement)
+        conn.execute('INSERT INTO resource_schema_migrations VALUES(2,23456)')
     assert namespace['database_facts'](store.path)['schema_version'] == 2
+    store.initialize()
+    assert namespace['database_facts'](store.path)['schema_version'] == 3

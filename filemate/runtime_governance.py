@@ -25,9 +25,10 @@ from filemate.llm_client.exceptions import LLMAPIError
 from filemate.llm_client.models.response import safe_request_id, validated_usage
 
 logger = logging.getLogger(__name__)
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 SCHEMA_V1_TABLES = frozenset({'resource_schema_migrations', 'resource_daily', 'ai_attempts'})
-SCHEMA_TABLES = SCHEMA_V1_TABLES | {'resource_events'}
+SCHEMA_V2_TABLES = SCHEMA_V1_TABLES | {'resource_events'}
+SCHEMA_TABLES = SCHEMA_V2_TABLES | {'learning_admissions'}
 DAY_TIMEZONE = timezone(timedelta(hours=8))
 GLOBAL_OWNER = '__global__'
 OwnerKind = Literal['account', 'guest', 'local']
@@ -69,6 +70,15 @@ _MIGRATION_2 = (
 )
 
 
+_MIGRATION_3 = (
+    '''CREATE TABLE learning_admissions(
+        owner_hash TEXT NOT NULL, course_hash TEXT NOT NULL, request_hash TEXT NOT NULL,
+        input_digest TEXT NOT NULL, started_at REAL NOT NULL,
+        PRIMARY KEY(owner_hash,course_hash,request_hash))''',
+    'CREATE INDEX learning_admissions_window ON learning_admissions(owner_hash,course_hash,started_at)',
+)
+
+
 def resource_schema_version(connection: sqlite3.Connection) -> int:
     """只读识别原版和追加迁移后的控制账本，备份验证不触发升级。"""
     tables = {row[0] for row in connection.execute(
@@ -78,8 +88,10 @@ def resource_schema_version(connection: sqlite3.Connection) -> int:
     versions = [row[0] for row in connection.execute('SELECT version FROM resource_schema_migrations ORDER BY version')]
     if versions == [1] and tables == SCHEMA_V1_TABLES:
         return 1
-    if versions == [1, 2] and tables == SCHEMA_TABLES:
+    if versions == [1, 2] and tables == SCHEMA_V2_TABLES:
         return 2
+    if versions == [1, 2, 3] and tables == SCHEMA_TABLES:
+        return 3
     raise GovernanceUnavailable('资源治理账本版本不兼容，请联系维护者')
 
 
@@ -283,6 +295,10 @@ class BudgetStore:
                     for statement in _MIGRATION_2:
                         connection.execute(statement)
                     connection.execute('INSERT INTO resource_schema_migrations VALUES (?,?)', (2, time.time()))
+                if version <= 2:
+                    for statement in _MIGRATION_3:
+                        connection.execute(statement)
+                    connection.execute('INSERT INTO resource_schema_migrations VALUES (?,?)', (3, time.time()))
             self.path.chmod(0o600)
 
     @staticmethod
@@ -345,6 +361,31 @@ class BudgetStore:
                                 _label(provider, secret), _label(model, secret), now, budget_units, pid, born))
         return Attempt(self, identifier, scope.owner_hash, secret)
 
+    def admit_learning(self, scope: Scope, course: str, key: str, input_digest: str, *, now: float) -> bool:
+        """Consume a course's rolling quota outside restorable personal data, without content."""
+        if scope.store is not self:
+            raise ValueError('学习准入空间无效')
+        course_hash = hashlib.sha256(course.encode('utf-8')).hexdigest()
+        request_hash = hashlib.sha256(key.encode('utf-8')).hexdigest()
+        with self._connection() as connection:
+            connection.execute('BEGIN IMMEDIATE')
+            connection.execute('DELETE FROM learning_admissions WHERE started_at<?', (now - 30 * 86400,))
+            old = connection.execute('''SELECT input_digest FROM learning_admissions
+                WHERE owner_hash=? AND course_hash=? AND request_hash=?''',
+                (scope.owner_hash, course_hash, request_hash)).fetchone()
+            if old:
+                if old['input_digest'] != input_digest:
+                    raise ValueError('学习请求标识冲突')
+                return False
+            spent = connection.execute('''SELECT COUNT(*) FROM learning_admissions
+                WHERE owner_hash=? AND course_hash=? AND started_at>=?''',
+                (scope.owner_hash, course_hash, now - 86400)).fetchone()[0]
+            if spent >= 30:
+                raise BudgetExceeded('课程24小时请求额度已用完')
+            connection.execute('INSERT INTO learning_admissions VALUES(?,?,?,?,?)',
+                (scope.owner_hash, course_hash, request_hash, input_digest, now))
+        return True
+
     def _settle(self, identifier: str, payload: dict[str, Any]) -> None:
         if payload.get('resource'):
             with self._connection() as connection:
@@ -402,6 +443,7 @@ class BudgetStore:
             connection.execute('DELETE FROM ai_attempts WHERE owner_hash=?', (digest,))
             connection.execute('DELETE FROM resource_events WHERE owner_hash=?', (digest,))
             connection.execute('DELETE FROM resource_daily WHERE owner_hash=?', (digest,))
+            connection.execute('DELETE FROM learning_admissions WHERE owner_hash=?', (digest,))
             for identifier, payload in list(self._pending.items()):
                 if payload['owner_hash'] == digest:
                     self._pending.pop(identifier, None)
@@ -409,7 +451,7 @@ class BudgetStore:
     def owner_hashes(self) -> list[str]:
         with self._connection() as connection:
             return [row[0] for row in connection.execute(
-                'SELECT owner_hash FROM ai_attempts UNION SELECT owner_hash FROM resource_events UNION SELECT owner_hash FROM resource_daily WHERE owner_hash!=?',
+                'SELECT owner_hash FROM ai_attempts UNION SELECT owner_hash FROM resource_events UNION SELECT owner_hash FROM learning_admissions UNION SELECT owner_hash FROM resource_daily WHERE owner_hash!=?',
                 (GLOBAL_OWNER,))]
 
     def view(self, scope: Scope, limit: int = 50, offset: int = 0) -> dict[str, Any]:
@@ -480,6 +522,16 @@ class BudgetStore:
                 if size > 32 * 1024 * 1024:
                     raise GovernanceUnavailable('资源审计导出超过32MB，请联系维护者')
                 summary['resource_events'].append(record)
+        with self._connection() as connection:
+            summary['learning_admissions'] = []
+            for row in connection.execute(
+                'SELECT course_hash,request_hash,input_digest,started_at FROM learning_admissions WHERE owner_hash=? ORDER BY started_at',
+                (scope.owner_hash,)):
+                record = dict(row)
+                size += len(json.dumps(record).encode('utf-8'))
+                if size > 32 * 1024 * 1024:
+                    raise GovernanceUnavailable('资源审计导出超过32MB，请联系维护者')
+                summary['learning_admissions'].append(record)
         return summary
 
     def admit_resource(self, scope: Scope, kind: Literal['tasks', 'execution'], amount: int = 1) -> ResourceLease:

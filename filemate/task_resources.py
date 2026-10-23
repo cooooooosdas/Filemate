@@ -66,6 +66,12 @@ def admit_plan(db_path: Path, artifact_type: str, content: Any, previous: Any = 
         admit_tasks(db_path, sum((task_inventory(content) - task_inventory(previous)).values()))
 
 
+def admit_learning(db_path: Path, course: str, key: str, input_digest: str, *, now: float) -> bool:
+    """Keep learning admissions outside personal backup restore, with trusted workspace binding."""
+    scope = _bound_scope(db_path)
+    return scope.store.admit_learning(scope, course, key, input_digest, now=now)
+
+
 @contextmanager
 def execution_budget(db_path: Path | None = None) -> Iterator[None]:
     scope = _bound_scope(db_path)

@@ -1,5 +1,7 @@
 # FileMate 多 Agent 执行开发文档
 
+2026-10-23最新范围：用户已授权知识图谱2.0 C修复后连续推进D／E全部工程，并确认训练状态、跨课导航、最多七任务的有限Agent与科研边界。实现与最终证据以[D／E交付](KNOWLEDGE_GRAPH_2_0_DE_DELIVERY.md)、[十项计划](superpowers/plans/2026-10-23-knowledge-growth-de.md)为准。当前业务33／治理3；新界面浏览器实测、真人研究与生产发布不能记为通过，下方旧阶段状态不覆盖本条。
+
 2026-10-22最新边界：[模拟面试2.0发布回执](INTERVIEW_2_0_RELEASE_2026-10-21.md)已取代下方旧“本地未推送”状态，历史记录保留其当时范围。知识图谱2.0严格按[分级执行记录](KNOWLEDGE_GRAPH_2_0_EXECUTION.md)推进；A级已通过，用户已同意[B级九项计划](superpowers/plans/2026-10-22-course-knowledge-graph-foundation.md)，正在实施课程存储与候选提取。业务迁移追加31，尚未生产迁移或发布，C—E未开始。旧功能/科研缺项不因此关闭。
 
 2026-10-20：Interview 2.0第三阶段连续计时、知识／电商规则实战、事件与草稿恢复已完成本地工程验收，见[阶段交付](INTERVIEW_2_0_PHASE3_DELIVERY_2026-10-20.md)。真实墙钟611.496秒、后端1253／前端95、构建与资源门禁通过；一次独立审阅的三项Important已修复，两项Minor明示保留。分支`codex/interview-v2-runtime`未推送部署；须本阶段确认后进入阶段4语音，不将六维评分、设备兼容性或真实学习效果标为完成。

@@ -46,3 +46,11 @@ test('cancellation_wins_over_late_answer', async () => {
   c.open('s', 'c', 'n'); c.setQuestion('问题'); const request = c.send(); await c.cancel()
   pending.resolve(saved()); await request; assert.equal(c.state.work.status, 'cancelled'); assert.equal(c.state.busy, '')
 })
+test('editing_after_an_answer_is_unsent_and_keeps_the_previous_result', async () => {
+  const c = createGraphAssistantController(api())
+  c.open('s', 'c', 'n'); c.setQuestion('第一个问题'); await c.send()
+  assert.equal(c.dirty(), false)
+  c.setQuestion('新的问题'); assert.equal(c.dirty(), true)
+  assert.equal(c.state.work.work_id, 'w')
+  await c.send(); assert.equal(c.dirty(), false)
+})

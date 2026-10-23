@@ -66,3 +66,11 @@ test('plan_completion_does_not_upgrade_training', async () => {
   const c = createCourseLearningController(api({ getCourseLearning: async () => ({ status: 'no_evidence', counts: { attempts: 0 }, plans: page([{ completed: true }]) }) }))
   await c.open('s', 'c', 'n'); assert.equal(c.state.evidence.status, 'no_evidence'); assert.equal(c.state.evidence.counts.attempts, 0)
 })
+test('quiz_unknown_response_reuses_key', async () => {
+  const keys = []; let first = true
+  const c = createCourseLearningController(api({ submitQuizAttempt: async (_a, _i, _v, _q, key) => {
+    keys.push(key); if (first) { first = false; throw Error('network') }; return { is_correct: false }
+  } }))
+  await c.open('s', 'c', 'n'); c.chooseQuestion({ artifact_id: 'a', question_index: 0, question: { answer: 'x' } }); c.setAnswer('wrong')
+  await c.submitAnswer(); await c.submitAnswer(); assert.ok(keys[0]); assert.equal(keys[0], keys[1])
+})

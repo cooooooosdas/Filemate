@@ -5,9 +5,11 @@ Schema 与《项目总纲 v1.0》§3.6 对齐。
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import math
+import re
 import sqlite3
 import threading
 import uuid
@@ -1896,6 +1898,7 @@ class SQLiteStorage:
         score: float,
         feedback: str,
         expected_question: dict[str, Any] | None = None,
+        request_key: str | None = None,
     ) -> dict[str, Any]:
         """记录一次作答，并同步更新错题掌握状态。"""
         with self._write_lock:
@@ -1906,6 +1909,7 @@ class SQLiteStorage:
                     artifact_id=artifact_id, question_index=question_index,
                     user_answer=user_answer, is_correct=is_correct, score=score,
                     feedback=feedback, expected_question=expected_question,
+                    request_key=request_key,
                 )
                 connection.commit()
                 return result
@@ -1917,6 +1921,7 @@ class SQLiteStorage:
         self, *, artifact_id: str, question_index: int, user_answer: str,
         is_correct: bool, score: float, feedback: str,
         expected_question: dict[str, Any] | None,
+        request_key: str | None = None,
     ) -> dict[str, Any]:
         """在写事务内核对题目快照并保存作答与错题。"""
         artifact = self.get_artifact(artifact_id)
@@ -1932,7 +1937,16 @@ class SQLiteStorage:
         question = questions[question_index]
         if expected_question is not None and question != expected_question:
             raise QuestionRevisionConflict("题目已更新，请刷新题集后重新作答")
-        attempt_id = uuid.uuid4().hex
+        if request_key is not None and (not isinstance(request_key, str) or not re.fullmatch(r'[A-Za-z0-9_-]{16,80}', request_key)):
+            raise ValueError('作答请求标识无效')
+        attempt_id = 'request-' + hashlib.sha256(request_key.encode('utf-8')).hexdigest() if request_key else uuid.uuid4().hex
+        previous = self._conn().execute('SELECT * FROM quiz_attempts WHERE attempt_id=?', (attempt_id,)).fetchone()
+        if previous:
+            if (previous['artifact_id'], previous['question_index'], previous['user_answer']) != (artifact_id, question_index, user_answer):
+                raise QuestionRevisionConflict('作答请求标识已使用，请刷新后重新作答')
+            return {'attempt_id': attempt_id, 'is_correct': bool(previous['is_correct']),
+                    'score': previous['score'], 'feedback': previous['feedback'],
+                    'reference_answer': question.get('answer', '') if isinstance(question, dict) else ''}
         now = _now_iso()
         question_dict = question if isinstance(question, dict) else {}
         knowledge_key, knowledge_label = _knowledge_identity(

@@ -29,8 +29,8 @@ export function createGraphAssistantController(api: AssistantApi, observe: (s: A
     busy: '', error: '', uncertain: false, work: null, history: { items: [], total: 0, limit: 50, offset: 0 },
     planOptions: { goal: '巩固当前知识点', daily_minutes: 20, days: 3 }, planPreview: null, receipt: null })
   const state = observe(initial())
-  let epoch = 0, serial = 0, disposed = false, pending: AssistantInput | null = null, confirmKey = ''
-  function resetIdentity() { ++epoch; ++serial; pending = null; confirmKey = ''; Object.assign(state, initial()) }
+  let epoch = 0, serial = 0, disposed = false, pending: AssistantInput | null = null, confirmKey = '', answeredQuestion = ''
+  function resetIdentity() { ++epoch; ++serial; pending = null; confirmKey = ''; answeredQuestion = ''; Object.assign(state, initial()) }
   function open(scope: string, cid: string, nid: string) { if (scope !== state.scope || cid !== state.cid || nid !== state.nid) { resetIdentity(); Object.assign(state, { scope, cid, nid }) } }
   const current = (e: number, s: number) => !disposed && e === epoch && s === serial
   async function run<T>(kind: string, execute: () => Promise<T>, apply: (r: T) => void) {
@@ -48,7 +48,7 @@ export function createGraphAssistantController(api: AssistantApi, observe: (s: A
     if (!pending && state.mode === 'llm' && !state.consent) { state.error = '请授权本次将所选课程原文与训练摘要发送给模型。'; return false }
     pending ??= { question: state.question, concept_ids: [state.nid], mode: state.mode, allow_external_model: state.consent, request_key: crypto.randomUUID() }
     const body = pending, e = epoch; state.consent = false
-    const ok = await run('answer', () => api.answerGraphCourse(state.cid, body), r => { state.work = r; state.uncertain = false; pending = null })
+    const ok = await run('answer', () => api.answerGraphCourse(state.cid, body), r => { state.work = r; answeredQuestion = body.question; state.uncertain = false; pending = null })
     if (!ok && e === epoch && pending === body) state.uncertain = true
     return ok
   }
@@ -73,6 +73,6 @@ export function createGraphAssistantController(api: AssistantApi, observe: (s: A
       return api.cancelCourseLearningWork(cid, wid, crypto.randomUUID())
     }, r => { state.work = r; pending = null; state.uncertain = false; state.consent = false })
   }
-  const dirty = () => !!state.busy || state.uncertain || !!state.planPreview || !!(state.question.trim() && !state.work)
+  const dirty = () => !!state.busy || state.uncertain || !!state.planPreview || !!(state.question.trim() && state.question !== answeredQuestion)
   return { state, open, setQuestion, setMode, setConsent, send, loadHistory, reopen, setPlanOptions, previewPlan, confirmPlan, cancel, dirty, resetIdentity, dispose() { resetIdentity(); disposed = true } }
 }

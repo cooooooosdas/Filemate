@@ -57,7 +57,8 @@ export function createCourseLearningController(api: LearningApi, observe: (s: Le
     const selected = state.selected
     if (!selected || !state.answer.trim() || state.answerReceipt) return false
     const { cid, nid } = state
-    const ok = await run('answer', () => api.submitQuizAttempt(selected.artifact_id, selected.question_index, state.answer, selected.question), r => { state.answerReceipt = r })
+    const body = [selected.artifact_id, selected.question_index, state.answer, selected.question]
+    const ok = await run('answer', () => command('answer', body, key => api.submitQuizAttempt(selected.artifact_id, selected.question_index, state.answer, selected.question, key)), r => { state.answerReceipt = r })
     if (ok && cid === state.cid && nid === state.nid) await loadEvidence()
     return ok
   }
