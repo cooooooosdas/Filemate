@@ -1083,7 +1083,7 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 客户端已明确落盘的502单来源失败可继续同组其他来源；429/503治理故障停止后续，网络结果未知时先读快照，不能确认终态则保留原请求键，不新建重放。已完成来源不再调用模型。
 
 
-## 2026-10-23 C级工作台只读接口（schema31，本地候选，待C验收）
+## 2026-10-23 C级工作台只读接口（C未增加schema，沿用31，本地候选）
 
 沿用B的R前缀、当前身份SQLite、功能开关和错误包装；不接收浏览器模型密钥，不调用AI，不创建业务表。所有响应带course_id与64hex graph_digest，并返回Cache-Control: no-store。digest绑定章节、归属、概念、关系、证据和有效来源指纹，不代表能力分数。
 
@@ -1099,3 +1099,11 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 分页limit最大200（canvas概念100、group20），offset最大1000000，q最大160字符，ID筛选最大120字符。chapter_id包含子章，可为@unassigned或@no-source；source_id与章节取交集。relation只允许B六类型，可重复参数但不可重复同值；缺省全部，hide_relations=true隐藏所有连线且保留概念，不能同时指定relation。多余或重复标量参数422；未知课程/章节/来源/已撤销概念404。focus解析原ID到代表，过滤冲突409 focus_outside_filter；失效来源不提供关系依据。无过滤时多章或超过100概念先展示组概览，组是导航汇总，不是知识断言。完整课程通过分页列表可达，画布不后台拼接全量。
 
 引用先验证课程、已确认代表/成员和证据归属，再在同一只读事务核对active来源、指纹、保存的raw_text范围与原句相等；来源变化或移出返回409 citation_unavailable，不模糊重定位。删除或他人证据404，数据库异常503 storage_unavailable，不泄露数据库路径。前端读请求15秒、可取消；浏览空间只读取公开状态的opaque scope，不访问密钥库。B原graph/concepts与所有写入协议保持原义。本段为已接线的本地候选合同；100／1000／10000合成HTTP与五尺寸浏览器证据见[本地C级交付](../../docs/KNOWLEDGE_GRAPH_2_0_C_DELIVERY.md)。浏览器内存未测，尚未生产部署，等待C级验收。
+
+## D/E 开发中：学习数据迁移32
+
+追加course_learning_evidence迁移32，不修改v1–31。kg_question_links把人工确认的课程原概念ID与现役题集Artifact／题号／规范化题目摘要关联；正文出现或标签相同都不会自动关联。候选只来自本课程active来源的有效非历史只读题集，分页不改变数据库。确认最多20题、必须先预览、confirmed=true、16–80位request_key及900秒确认凭据；改题或课程变化须重新预览。同一确认重复返回原回执，不能以更换body重用旧token。
+
+关联与解除均记录learning_links操作，撤销／恢复各自先预览，检查实际行revision后变更active。只保存ID和逆操作状态，不把题干／引文复制进kg_changes。后续修改同一关联会使旧逆操作冲突，保留作答／错题历史。HTTP接线在本计划Task5交付；目前这些是领域合同，不能把尚无路由当作可调用API。
+
+其余新表：kg_cross_links（人工跨课导航，不参与前置或证据累计）、kg_course_plan_links（现役计划日与概念关联）、kg_learning_work及kg_learning_work_sources（有限运行与多来源依赖）。来源彻底删除的预览数量／摘要包含新关联、计划关联与工作结果；删除任一依赖来源在同事务清除含其正文的工作结果。移出课程继续保留学习历史。个人备份自动包含新表，恢复轮换work epoch、将running改为interrupted、清租约与旧课程确认凭据，不重放模型。

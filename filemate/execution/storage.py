@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from filemate import interview_config
+from filemate.course_graph import learning_schema
 from filemate.execution import (
     course_graph_schema,
     data_actions,
@@ -629,6 +630,7 @@ _MIGRATIONS = (
     (29, "interview_runtime", interview_runtime_schema.SCHEMA),
     (30, "interview_six_assessments", interview_assessment_schema.SCHEMA),
     (31, "course_knowledge_graph", course_graph_schema.SCHEMA),
+    (32, "course_learning_evidence", learning_schema.SCHEMA),
 )
 
 

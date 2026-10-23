@@ -16,6 +16,10 @@ def _has_tables(conn) -> bool:
     return conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kg_courses'").fetchone() is not None
 
 
+def _has_learning_tables(conn) -> bool:
+    return conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kg_learning_work'").fetchone() is not None
+
+
 def source_impact(storage, source_id: str, course_id: str | None = None) -> dict[str, Any]:
     """Count graph rows and current support lost without this source."""
     conn = storage._conn()
@@ -27,6 +31,16 @@ def source_impact(storage, source_id: str, course_id: str | None = None) -> dict
     counts = {name: conn.execute(f"SELECT COUNT(*) FROM {table} WHERE {clause}", args).fetchone()[0]
               for name, table in (("course_graph_memberships", "kg_course_sources"),
                                   ("course_graph_extractions", "kg_extractions"), ("course_graph_evidence", "kg_evidence"))}
+    if _has_learning_tables(conn):
+        counts['course_learning_question_links'] = conn.execute(
+            f'SELECT COUNT(*) FROM kg_question_links WHERE {clause}', args).fetchone()[0]
+        work_clause = 's.source_id=?' + (' AND w.course_id=?' if course_id else '')
+        counts['course_learning_work'] = conn.execute(
+            f'''SELECT COUNT(*) FROM kg_learning_work w JOIN kg_learning_work_sources s USING(work_id)
+                WHERE {work_clause}''', args).fetchone()[0]
+        counts['course_learning_plan_links'] = conn.execute(
+            f'''SELECT COUNT(*) FROM kg_course_plan_links l JOIN study_plans p USING(plan_id)
+                WHERE p.source_id=?{' AND l.course_id=?' if course_id else ''}''', args).fetchone()[0]
     roots, relations = set(), set()
     for row in conn.execute(f"SELECT course_id,concept_id,relation_id FROM kg_evidence WHERE {clause}", args):
         candidates = [row["concept_id"]] if row["concept_id"] else []
@@ -65,6 +79,15 @@ def source_revision_fragment(storage, source_id: str) -> dict[str, Any]:
     for table in ("kg_course_sources", "kg_extractions", "kg_evidence"):
         result[table] = [digest(dict(row)) for row in conn.execute(
             f"SELECT * FROM {table} WHERE source_id=? ORDER BY rowid", (source_id,))]
+    if _has_learning_tables(conn):
+        result['learning_links'] = [digest(dict(row)) for row in conn.execute(
+            'SELECT * FROM kg_question_links WHERE source_id=? ORDER BY link_id', (source_id,))]
+        result['learning_work'] = [digest(dict(row)) for row in conn.execute(
+            '''SELECT w.* FROM kg_learning_work w JOIN kg_learning_work_sources s USING(work_id)
+               WHERE s.source_id=? ORDER BY w.work_id''', (source_id,))]
+        result['learning_plan_links'] = [digest(dict(row)) for row in conn.execute(
+            '''SELECT l.* FROM kg_course_plan_links l JOIN study_plans p USING(plan_id)
+               WHERE p.source_id=? ORDER BY l.plan_id,l.concept_id,l.day_index''', (source_id,))]
     impact = source_impact(storage, source_id)
     supporting_sources = set()
     result["concepts"], result["relations"], result["support"] = [], [], []
@@ -146,3 +169,9 @@ def normalize_restored_course_graph(conn) -> None:
                         error_code=CASE WHEN ? THEN 'backup_restored' ELSE error_code END WHERE extraction_id=?""",
                      (secrets.randbits(60), interrupted, row["extraction_id"]))
     conn.execute("DELETE FROM data_action_previews WHERE action LIKE 'course_graph_%'")
+    if _has_learning_tables(conn):
+        for row in conn.execute('SELECT work_id,status FROM kg_learning_work').fetchall():
+            conn.execute('''UPDATE kg_learning_work SET epoch=?,lease_until=NULL,
+                status=CASE WHEN status='running' THEN 'interrupted' ELSE status END,
+                error_code=CASE WHEN status='running' THEN 'backup_restored' ELSE error_code END
+                WHERE work_id=?''', (secrets.randbits(60), row['work_id']))

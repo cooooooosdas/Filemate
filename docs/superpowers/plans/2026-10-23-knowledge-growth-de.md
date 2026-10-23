@@ -1,6 +1,6 @@
 # Knowledge Graph 2.0 D/E Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 用户已选当前会话连续实施，全部完成后一次独立审阅；不逐卡重新询问。
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking. 用户已选当前会话连续实施，全部完成后一次独立审阅；不逐卡重新询问。
 
 **Goal:** 把课程图谱与真实题目、作答、错题、复习、目标和今日任务连接，交付有界、可解释、须确认写入的图谱助手及科研工具。
 
@@ -49,11 +49,11 @@
 - Produces: `question_candidates(storage,cid,nid,*,q='',offset=0,limit=50)->dict`；`preview_question_links(storage,cid,nid,items:list[dict],active=True)->dict`；`confirm_question_links(storage,cid,nid,items,active,confirmation_token,request_key,confirmed)->dict`。items唯一`artifact_id/question_index/question_digest`，最多20，题目本身不作为客户端可信内容。
 - Produces: `transition_learning_operation(storage,cid,operation_id,action,confirmation_token,request_key,confirmed)->dict`与`preview_learning_transition(...)`；使用`kg_changes`的`learning_*`kind，逆操作对当前状态摘要检查，不修改其他操作。
 
-- [ ] **Step 1: 写RED。** `test_schema_31_upgrade_preserves_old_rows`断言schema32、旧Source／Artifact不变、新FK／索引；`test_candidates_do_not_link_by_matching_word`断言0映射；`test_link_requires_preview_and_current_question`断言未确认422、改题后409；`test_duplicate_confirmation_is_single_receipt`断言两次同token仅1映射/1实际操作；`test_foreign_course_and_artifact_refused`、`test_unlink_undo_preserves_attempts`；删除任一work依赖来源同时删除work、预览计数/指纹改变；备份恢复使运行interrupted且epoch不同。
-- [ ] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_learning_links.py -q`。Expected: missing learning schema/module/behavior，不是测试夹具错误。
-- [ ] **Step 3: 实现migration32和显式映射。** SQL表／字段按设计，UUID/题号/摘要唯一与双端FK，工作来源删除触发器；候选只来自当前课程所属Source的有效非只读题集，已移出来源仍有历史但不可新关联。复用现役validate_question并计算摘要；确认在短事务再读，记录前后state与ID，复用token回执。恢复中断旧work，清`course_graph_learning_%`预览；来源删除影响包含新增对象，日志不复制题目／引文。
-- [ ] **Step 4: 跑GREEN。** 本卡及`test_storage.py test_privacy.py test_final_regressions.py`。Expected: 0失败，PRAGMA FK空，旧31数据可读；同步新表／删除／恢复API合同。
-- [ ] **Step 5: 提交。** `feat(graph): 增加课程学习映射与迁移恢复边界`。
+- [x] **Step 1: 写RED。** `test_schema_31_upgrade_preserves_old_rows`断言schema32、旧Source／Artifact不变、新FK／索引；`test_candidates_do_not_link_by_matching_word`断言0映射；`test_link_requires_preview_and_current_question`断言未确认422、改题后409；`test_duplicate_confirmation_is_single_receipt`断言两次同token仅1映射/1实际操作；`test_foreign_course_and_artifact_refused`、`test_unlink_undo_preserves_attempts`；删除任一work依赖来源同时删除work、预览计数/指纹改变；备份恢复使运行interrupted且epoch不同。
+- [x] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_learning_links.py -q`。Expected: missing learning schema/module/behavior，不是测试夹具错误。
+- [x] **Step 3: 实现migration32和显式映射。** SQL表／字段按设计，UUID/题号/摘要唯一与双端FK，工作来源删除触发器；候选只来自当前课程所属Source的有效非只读题集，已移出来源仍有历史但不可新关联。复用现役validate_question并计算摘要；确认在短事务再读，记录前后state与ID，复用token回执。恢复中断旧work，清`course_graph_learning_%`预览；来源删除影响包含新增对象，日志不复制题目／引文。
+- [x] **Step 4: 跑GREEN。** 本卡及`test_storage.py test_privacy.py test_final_regressions.py`。Expected: 0失败，PRAGMA FK空，旧31数据可读；同步新表／删除／恢复API合同。
+- [x] **Step 5: 提交。** `feat(graph): 增加课程学习映射与迁移恢复边界`。
 
 ### Task 2: 真实训练状态、薄弱点与时间线
 
