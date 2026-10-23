@@ -1,9 +1,13 @@
 import { saveDownload } from './downloads'
 import type { CoachSnapshot, CoachMutationResult, CoachAnswer, CoachAnalysis, CoachAdvance, CoachConsent, CoachAttempts, CoachFocus } from '../types/interviewCoach'
 import axios from 'axios'
+import type { CourseActionPreview, CourseChapter, CourseConcept, CourseDecision, CourseDraft, CourseGraphPage, CourseMergePreview, CourseOperation, CourseReviewPreview, GraphConfirmation, GraphCourse, GraphMode, GraphPage } from '../types/courseGraph'
+import type { WorkspaceCanvas, WorkspaceChapterPath, WorkspaceCitation, WorkspaceConceptOptions, WorkspaceConceptPage, WorkspaceDetail, WorkspaceFilter, WorkspaceNavigation, WorkspaceNavigationOptions } from '../types/courseWorkspace'
+import type { LearningEvidence, LearningPreview, LearningReceipt, LearningWork, PathOptions, PathPreview, PracticeDecision, PracticeOptions, QuestionCandidate, QuestionRef, RelatedCourse, RelatedInput } from '../types/courseLearning'
+import type { AssistantInput, AssistantWork } from '../course-graph/assistant-state'
 import type { AccountState, AccountUser, RegisterAccount } from '../types/account'
 import { HITOKOTO_URL } from '../home/encouragement'
-import { browserVaultAvailable, getBrowserApiKey, hasBrowserApiKey, isModelRequest, removeBrowserApiKey, saveBrowserApiKey, validateApiKey } from './llm-vault'
+import { browserVaultAvailable, getBrowserApiKey, hasBrowserApiKey, requiresModelCredential, removeBrowserApiKey, saveBrowserApiKey, validateApiKey } from './llm-vault'
 
 export async function getEncouragementQuote(): Promise<unknown> {
   const response = await fetch(HITOKOTO_URL, {
@@ -72,6 +76,90 @@ const api = axios.create({
   }
 })
 
+const courseRoot = '/api/knowledge-graph/courses'
+const coursePath = (id: string) => `${courseRoot}/${encodeURIComponent(id)}`
+const draftPath = (cid: string, did: string) => `${coursePath(cid)}/drafts/${encodeURIComponent(did)}`
+const learningConcept = (cid: string, nid: string) => `${coursePath(cid)}/concepts/${encodeURIComponent(nid)}`
+async function learningPost<T>(path: string, body: unknown): Promise<T> {
+  const response = await api.post<unknown, ApiResponse<T>>(path, body, { timeout: 30000 })
+  if (!response.success || response.data == null) throw new Error(response.error || '学习操作未完成')
+  return response.data
+}
+export const getCourseLearning = (cid: string, nid: string, offset = 0, signal?: AbortSignal) => workspaceRead<LearningEvidence>(`${learningConcept(cid, nid)}/learning`, new URLSearchParams({ offset: String(offset) }), signal)
+export const getCourseQuestions = (cid: string, nid: string, q = '', offset = 0, signal?: AbortSignal) => workspaceRead<GraphPage<QuestionCandidate>>(`${learningConcept(cid, nid)}/question-candidates`, new URLSearchParams({ q, offset: String(offset) }), signal)
+export const getCourseRelated = (cid: string, nid: string, offset = 0, signal?: AbortSignal) => workspaceRead<GraphPage<RelatedCourse>>(`${learningConcept(cid, nid)}/related-courses`, new URLSearchParams({ offset: String(offset) }), signal)
+export const generateCoursePractice = (cid: string, nid: string, body: PracticeOptions & { request_key: string }) => learningPost<LearningWork>(`${learningConcept(cid, nid)}/practice-drafts`, body)
+export const getCourseLearningWork = (cid: string, wid: string) => workspaceRead<LearningWork>(`${coursePath(cid)}/learning/work/${encodeURIComponent(wid)}`, new URLSearchParams())
+export const cancelCourseLearningWork = (cid: string, wid: string, request_key: string) => learningPost<LearningWork>(`${coursePath(cid)}/learning/work/${encodeURIComponent(wid)}/cancel`, { request_key })
+export const previewCoursePractice = (cid: string, wid: string, decisions: PracticeDecision[]) => learningPost<LearningPreview>(`${coursePath(cid)}/learning/work/${encodeURIComponent(wid)}/review/preview`, { decisions })
+export const confirmCoursePractice = (cid: string, wid: string, decisions: PracticeDecision[], body: GraphConfirmation) => learningPost<LearningReceipt>(`${coursePath(cid)}/learning/work/${encodeURIComponent(wid)}/review/confirm`, { decisions, ...body })
+export const previewCourseLinks = (cid: string, nid: string, items: QuestionRef[], active: boolean) => learningPost<LearningPreview>(`${learningConcept(cid, nid)}/question-links/preview`, { items, active })
+export const confirmCourseLinks = (cid: string, nid: string, items: QuestionRef[], active: boolean, body: GraphConfirmation) => learningPost<LearningReceipt>(`${learningConcept(cid, nid)}/question-links/confirm`, { items, active, ...body })
+export const previewCoursePath = (cid: string, body: PathOptions) => learningPost<PathPreview>(`${coursePath(cid)}/learning/path/preview`, body)
+export const confirmCoursePath = (cid: string, body: PathOptions & GraphConfirmation) => learningPost<LearningReceipt>(`${coursePath(cid)}/learning/path/confirm`, body)
+export const previewCourseRelated = (cid: string, nid: string, body: RelatedInput) => learningPost<LearningPreview>(`${learningConcept(cid, nid)}/related-courses/preview`, body)
+export const confirmCourseRelated = (cid: string, nid: string, body: RelatedInput & GraphConfirmation) => learningPost<LearningReceipt>(`${learningConcept(cid, nid)}/related-courses/confirm`, body)
+export const previewLearningOperation = (cid: string, oid: string, action: 'undo' | 'restore') => learningPost<LearningPreview>(`${coursePath(cid)}/learning/operations/${encodeURIComponent(oid)}/preview`, { action })
+export const changeLearningOperation = (cid: string, oid: string, action: 'undo' | 'restore', body: GraphConfirmation) => learningPost<LearningReceipt>(`${coursePath(cid)}/learning/operations/${encodeURIComponent(oid)}/confirm`, { action, ...body })
+export const answerGraphCourse = (cid: string, body: AssistantInput) => learningPost<AssistantWork>(`${coursePath(cid)}/assistant/answer`, body)
+export const previewGraphAssistantPlan = (cid: string, body: PathOptions) => learningPost<PathPreview & { tool_steps: { name: string; writes_learning_data: boolean }[] }>(`${coursePath(cid)}/assistant/plan/preview`, body)
+export const listGraphCourses = async (q = '', offset = 0) => (await api.get<unknown, ApiResponse<GraphPage<GraphCourse>>>(courseRoot, { params: { q, offset } })).data!
+export const createGraphCourse = async (name: string, request_key: string) => (await api.post<unknown, ApiResponse<GraphCourse>>(courseRoot, { name, request_key })).data!
+export const getGraphCourse = async (id: string) => (await api.get<unknown, ApiResponse<GraphCourse>>(coursePath(id))).data!
+export const putGraphChapter = async (cid: string, id: string, body: { title: string; parent_id: string | null; sort_order: number; expected_revision: number }) => (await api.put<unknown, ApiResponse<CourseChapter>>(`${coursePath(cid)}/chapters/${encodeURIComponent(id)}`, body)).data!
+export const attachGraphSources = async (cid: string, source_ids: string[], chapter_id: string | null, expected_revision: number) => (await api.post<unknown, ApiResponse<GraphCourse>>(`${coursePath(cid)}/sources`, { source_ids, chapter_id, expected_revision })).data!
+export const createCourseDraft = async (cid: string, source_ids: string[], mode: GraphMode, request_key: string) => (await api.post<unknown, ApiResponse<CourseDraft>>(`${coursePath(cid)}/drafts`, { source_ids, mode, request_key })).data!
+export const getCourseDraft = async (cid: string, did: string) => (await api.get<unknown, ApiResponse<CourseDraft>>(draftPath(cid, did))).data!
+export const extractCourseSource = async (cid: string, did: string, sid: string, mode: GraphMode, allow_external_model: boolean, request_key: string) => (await api.post<unknown, ApiResponse<CourseDraft>>(`${draftPath(cid, did)}/sources/${encodeURIComponent(sid)}/extract`, { mode, allow_external_model, request_key }, { timeout: 65000 })).data!
+export const cancelCourseDraft = async (cid: string, did: string, request_key: string) => (await api.post<unknown, ApiResponse<CourseDraft>>(`${draftPath(cid, did)}/cancel`, { request_key })).data!
+export const saveCourseDecisions = async (cid: string, did: string, expected_digest: string, decisions: CourseDecision[]) => (await api.post<unknown, ApiResponse<CourseDraft>>(`${draftPath(cid, did)}/decisions`, { expected_digest, decisions })).data!
+export const previewCourseReview = async (cid: string, did: string) => (await api.post<unknown, ApiResponse<CourseReviewPreview>>(`${draftPath(cid, did)}/review-preview`)).data!
+export const confirmCourseReview = async (cid: string, did: string, body: GraphConfirmation) => (await api.post<unknown, ApiResponse<{ operation_id: string }>>(`${draftPath(cid, did)}/confirm`, body)).data!
+export const getCourseGraph = async (cid: string, q = '', offset = 0) => (await api.get<unknown, ApiResponse<CourseGraphPage>>(`${coursePath(cid)}/graph`, { params: { q, offset } })).data!
+export const getCourseConcept = async (cid: string, nid: string) => (await api.get<unknown, ApiResponse<CourseConcept>>(`${coursePath(cid)}/concepts/${encodeURIComponent(nid)}`)).data!
+export const previewCourseMerge = async (cid: string, concept_ids: string[], target_id: string) => (await api.post<unknown, ApiResponse<CourseMergePreview>>(`${coursePath(cid)}/merges/preview`, { concept_ids, target_id })).data!
+export const confirmCourseMerge = async (cid: string, concept_ids: string[], target_id: string, body: GraphConfirmation) => (await api.post<unknown, ApiResponse<{ operation_id: string }>>(`${coursePath(cid)}/merges/confirm`, { concept_ids, target_id, ...body })).data!
+export const getCourseOperations = async (cid: string, offset = 0) => (await api.get<unknown, ApiResponse<GraphPage<CourseOperation>>>(`${coursePath(cid)}/operations`, { params: { offset } })).data!
+export const previewCourseOperation = async (cid: string, oid: string, action: 'undo' | 'restore') => (await api.post<unknown, ApiResponse<CourseActionPreview>>(`${coursePath(cid)}/operations/${encodeURIComponent(oid)}/preview`, { action })).data!
+export const changeCourseOperation = async (cid: string, oid: string, action: 'undo' | 'restore', body: GraphConfirmation) => (await api.post<unknown, ApiResponse<{ operation_id: string }>>(`${coursePath(cid)}/operations/${encodeURIComponent(oid)}/${action}`, body)).data!
+export const previewCourseSourceRemoval = async (cid: string, sid: string) => (await api.get<unknown, ApiResponse<CourseActionPreview>>(`${coursePath(cid)}/sources/${encodeURIComponent(sid)}/remove-preview`)).data!
+export const removeCourseSource = async (cid: string, sid: string, body: GraphConfirmation) => (await api.post<unknown, ApiResponse<{ operation_id: string }>>(`${coursePath(cid)}/sources/${encodeURIComponent(sid)}/remove`, body)).data!
+
+function workspaceParams(options: WorkspaceConceptOptions | WorkspaceNavigationOptions): URLSearchParams {
+  const params = new URLSearchParams()
+  for (const [name, value] of Object.entries(options)) {
+    if (name === 'relations') {
+      if (Array.isArray(value) && value.length === 0) params.set('hide_relations', 'true')
+      else if (Array.isArray(value)) for (const relation of value) params.append('relation', relation)
+    } else if (value !== undefined && value !== null) params.set(name, String(value))
+  }
+  return params
+}
+async function workspaceRead<T>(path: string, params: URLSearchParams, signal?: AbortSignal): Promise<T> {
+  const response = await api.get<unknown, ApiResponse<T>>(path, { params, signal, timeout: 15000 })
+  if (!response.success || response.data == null) throw new Error(response.error || '课程内容读取失败')
+  return response.data
+}
+export const getCourseWorkspace = (cid: string, options: WorkspaceNavigationOptions = {}, signal?: AbortSignal) =>
+  workspaceRead<WorkspaceNavigation>(`${coursePath(cid)}/workspace`, workspaceParams(options), signal)
+export const getCourseCanvas = (cid: string, filters: WorkspaceFilter, focus?: string, groupOffset = 0, signal?: AbortSignal) => {
+  const params = workspaceParams(filters)
+  if (focus) params.set('focus', focus)
+  params.set('group_offset', String(groupOffset))
+  return workspaceRead<WorkspaceCanvas>(`${coursePath(cid)}/canvas`, params, signal)
+}
+export const getCourseChapterPath = (cid: string, chapterId: string, signal?: AbortSignal) =>
+  workspaceRead<WorkspaceChapterPath>(`${coursePath(cid)}/workspace/chapter-path/${encodeURIComponent(chapterId)}`, new URLSearchParams(), signal)
+export const getCourseConceptPage = (cid: string, options: WorkspaceConceptOptions, signal?: AbortSignal) =>
+  workspaceRead<WorkspaceConceptPage>(`${coursePath(cid)}/concepts-page`, workspaceParams(options), signal)
+export const getCourseWorkspaceDetail = (cid: string, nid: string, offset = 0, signal?: AbortSignal) =>
+  workspaceRead<WorkspaceDetail>(`${coursePath(cid)}/workspace/concepts/${encodeURIComponent(nid)}`, new URLSearchParams({ offset: String(offset) }), signal)
+export const getCourseCitation = (cid: string, nid: string, eid: string, signal?: AbortSignal) =>
+  workspaceRead<WorkspaceCitation>(`${coursePath(cid)}/concepts/${encodeURIComponent(nid)}/source-evidence/${encodeURIComponent(eid)}`, new URLSearchParams(), signal)
+export async function getCourseBrowserScope(): Promise<string | null> {
+  try { return (await publicLLMStatus()).credential_scope ?? null } catch { return null }
+}
+
 export const getResumeProfile = async () => (await api.get<unknown, ApiResponse<import('../types/portfolio').ResumeProfile | null>>('/api/resume/profile')).data ?? null
 export const saveResumeProfile = async (profile: import('../types/portfolio').ResumeProfile) => (await api.put<unknown, ApiResponse<import('../types/portfolio').ResumeProfile>>('/api/resume/profile', profile)).data!
 export const generateResume = async (revision: number, mode: 'local' | 'llm', consent: boolean) => (await api.post<unknown, ApiResponse<import('../types/portfolio').ResumeDocument>>('/api/resume/generate', { profile_revision: revision, mode, allow_external_model: consent }, { timeout: 65000 })).data!
@@ -90,7 +178,11 @@ export const exportGrowthReport = async (id: string, format: 'markdown' | 'json'
 export interface PersonalRestorePreview { backup_id: string; confirmation_token: string; backup_created_at: string; restored_counts: Record<string, number>; current_counts: Record<string, number>; file_count: number; current_file_count: number; notice: string }
 export const exportPersonalData = async (format: 'backup' | 'json') => api.get('/api/privacy/export', { params: { format }, responseType: 'blob', timeout: 120000 })
 export const previewPersonalRestore = async (file: File) => { const body = new FormData(); body.append('file', file); return (await api.post<unknown, ApiResponse<PersonalRestorePreview>>('/api/privacy/restore-preview', body, { timeout: 120000, headers: { 'Content-Type': 'multipart/form-data' } })).data! }
-export const restorePersonalData = async (preview: PersonalRestorePreview) => (await api.post<unknown, ApiResponse<{ restored: boolean; cleanup_pending?: boolean }>>('/api/privacy/restore', { backup_id: preview.backup_id, confirmation_token: preview.confirmation_token, confirmed: true }, { timeout: 120000 })).data!
+export const restorePersonalData = async (preview: PersonalRestorePreview) => {
+  const result = (await api.post<unknown, ApiResponse<{ restored: boolean; cleanup_pending?: boolean }>>('/api/privacy/restore', { backup_id: preview.backup_id, confirmation_token: preview.confirmation_token, confirmed: true }, { timeout: 120000 })).data!
+  if (result.restored) window.dispatchEvent(new Event('filemate:data-restored'))
+  return result
+}
 export const cancelPersonalRestore = async (preview: PersonalRestorePreview) => (await api.delete<unknown, ApiResponse<{ cancelled: boolean; cleanup_pending: boolean }>>('/api/privacy/restore-preview', { data: { backup_id: preview.backup_id, confirmation_token: preview.confirmation_token } })).data!
 
 export async function getSkillTree(): Promise<import('../types/skills').SkillTree> {
@@ -153,8 +245,7 @@ export async function checkHealth(): Promise<boolean> {
 // 请求拦截器
 api.interceptors.request.use(
   async config => {
-    if (usesBrowserLLMVault() && isModelRequest(config.method, config.url)
-      && (config.url !== '/api/resume/generate' || config.data?.mode === 'llm')) {
+    if (usesBrowserLLMVault() && requiresModelCredential(config.method, config.url, config.data)) {
       const destination = new URL(config.url!, new URL(config.baseURL || '/', window.location.origin))
       if (destination.origin !== window.location.origin) throw new Error('浏览器密钥只能用于当前 FileMate 网站')
       if (!config.headers.has('X-FileMate-LLM-Key') && browserVaultAvailable()) {
@@ -682,11 +773,12 @@ export async function submitQuizAttempt(
   artifactId: string,
   questionIndex: number,
   userAnswer: string,
-  expectedQuestion?: object
+  expectedQuestion?: object,
+  requestKey?: string
 ): Promise<QuizAttemptResult> {
   const response = await api.post<any, ApiResponse<QuizAttemptResult>>(
     '/quiz/attempts',
-    { artifact_id: artifactId, question_index: questionIndex, user_answer: userAnswer, expected_question: expectedQuestion }
+    { artifact_id: artifactId, question_index: questionIndex, user_answer: userAnswer, expected_question: expectedQuestion, request_key: requestKey }
   )
   if (response.success && response.data) return response.data
   throw new Error(response.error || '提交答案失败')

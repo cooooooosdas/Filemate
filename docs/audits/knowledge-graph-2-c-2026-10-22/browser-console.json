@@ -1,0 +1,132 @@
+{
+  "synthetic": true,
+  "logs": [
+    {
+      "level": "error",
+      "message": "[API Error] canceled",
+      "timestamp": "2026-10-22T17:18:11.670Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] canceled",
+      "timestamp": "2026-10-22T17:18:11.670Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] canceled",
+      "timestamp": "2026-10-22T17:18:11.670Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] canceled",
+      "timestamp": "2026-10-22T17:18:43.597Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] canceled",
+      "timestamp": "2026-10-22T17:18:43.597Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] canceled",
+      "timestamp": "2026-10-22T17:18:43.597Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] canceled",
+      "timestamp": "2026-10-22T17:18:43.597Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "warn",
+      "message": "[ECharts] Instance ec_1792689234016 has been disposed",
+      "timestamp": "2026-10-22T17:19:31.219Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] canceled",
+      "timestamp": "2026-10-22T17:22:22.993Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] canceled",
+      "timestamp": "2026-10-22T17:22:22.993Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] canceled",
+      "timestamp": "2026-10-22T17:22:22.994Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] canceled",
+      "timestamp": "2026-10-22T17:26:40.986Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] canceled",
+      "timestamp": "2026-10-22T17:26:40.986Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] canceled",
+      "timestamp": "2026-10-22T17:26:40.986Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] canceled",
+      "timestamp": "2026-10-22T17:26:40.986Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] citation_unavailable",
+      "timestamp": "2026-10-22T17:31:48.884Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] Network Error",
+      "timestamp": "2026-10-22T17:47:11.507Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] Network Error",
+      "timestamp": "2026-10-22T17:47:11.508Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] Network Error",
+      "timestamp": "2026-10-22T17:47:11.508Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] Network Error",
+      "timestamp": "2026-10-22T17:47:11.508Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    },
+    {
+      "level": "error",
+      "message": "[API Error] course_not_found",
+      "timestamp": "2026-10-22T17:53:03.120Z",
+      "url": "http://127.0.0.1:5198/@vite/client"
+    }
+  ],
+  "note": "Session contains earlier RED cases (route remount canceled requests and disposed chart); later failures include intentional citation/network and unavailable saved course after database switch. This is not a zero-error claim."
+}

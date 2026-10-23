@@ -1,0 +1,34 @@
+{
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "scope": "third real call, B2 symbol regression on original synthetic document",
+  "http_status": 200,
+  "elapsed_ms": 1765,
+  "labels": [
+    "A-B",
+    "AB",
+    "C",
+    "C#",
+    "C++"
+  ],
+  "distinct_concepts": 5,
+  "valid_quotes": 5,
+  "affected": {
+    "concepts": 5,
+    "relations": 0,
+    "evidence": 5
+  },
+  "ambiguous_legacy_hints": [
+    "A-B",
+    "AB"
+  ],
+  "usage": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "status": "success",
+    "duration_ms": 1548,
+    "prompt_tokens": 303,
+    "completion_tokens": 147,
+    "total_tokens": 450
+  }
+}

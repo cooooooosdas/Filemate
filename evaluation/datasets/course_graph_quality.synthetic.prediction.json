@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "dataset_id": "calculator-only",
+  "model_version": "synthetic-fixture",
+  "prompt_version": "fixture-v1",
+  "nodes": [
+    "a",
+    "d"
+  ],
+  "relations": [
+    {
+      "from_id": "b",
+      "to_id": "a",
+      "relation": "prerequisite"
+    }
+  ],
+  "citation_ids": [
+    "c1",
+    "c2",
+    "c3"
+  ],
+  "merge_ids": [
+    "m1",
+    "m2"
+  ],
+  "relation_candidate_ids": [
+    "r1",
+    "r2",
+    "r3"
+  ],
+  "rejected_relation_ids": [
+    "r1"
+  ]
+}

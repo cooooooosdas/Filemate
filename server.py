@@ -562,6 +562,15 @@ async def isolate_model_credentials(request: Request, call_next):
         return JSONResponse(status_code=422, content={
             "success": False, "data": None, "error": str(exc),
         })
+    if request.url.path.startswith('/api/knowledge-graph/courses/'):
+        try:
+            body = await request.json()
+        except ValueError:
+            body = None
+        if not isinstance(body, dict) or body.get('mode') != 'llm':
+            return JSONResponse(status_code=403, content={
+                'success': False, 'data': None, 'error': '本地提取不接收模型密钥',
+            })
     with model_request_key(value):
         return await call_next(request)
 
@@ -1716,6 +1725,16 @@ class GraphPlanRequest(BaseModel):
     evidence_revision: str = Field(min_length=64, max_length=64)
 
 
+def _course_graph_storage() -> SQLiteStorage:
+    context = _tenant_context.get()
+    return _tenant_storage(context[0]) if context else _local_storage
+
+
+from filemate.course_graph.api import create_router as _course_graph_router
+
+app.include_router(_course_graph_router(_course_graph_storage))
+
+
 def _require_graph_enabled() -> None:
     if os.getenv("FILEMATE_ENABLE_KNOWLEDGE_GRAPH", "1") == "0":
         raise HTTPException(status_code=503, detail="知识图谱暂未启用，原有学习功能仍可使用")
@@ -2737,6 +2756,7 @@ class QuizAttemptRequest(BaseModel):
     question_index: int
     user_answer: str
     expected_question: dict[str, Any] | None = None
+    request_key: str | None = Field(default=None, pattern=r'^[A-Za-z0-9_-]{16,80}$')
 
 
 class InterviewStartRequest(BaseModel):
@@ -3336,6 +3356,7 @@ def submit_quiz_attempt(request: QuizAttemptRequest):
             score=score,
             feedback="回答正确" if is_correct else "已加入错题本，请结合解析复习",
             expected_question=raw_question,
+            request_key=request.request_key,
         )
     except QuestionRevisionConflict as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -3898,7 +3919,7 @@ def today_review():
                 "tasks": day.get("tasks") or [],
                 "plan_id": saved["plan_id"],
                 "day_index": day_index,
-                "route": "/study-plan",
+                "route": f"/study-plan?plan={saved['plan_id']}",
             }
         )
 

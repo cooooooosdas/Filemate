@@ -1,0 +1,102 @@
+{
+  "files": 24,
+  "all_unchanged": true,
+  "checks": [
+    {
+      "path": "filemate/tests/test_ai_tools.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_archiver.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_batch_processor.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_calendar.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_classifier.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_classifier_e2e.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_competition_trials.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_confirmation_executor.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_e2e.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_entity_extractor.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_entity_extractor_e2e.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_evaluation_feedback.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_file_ops.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_graph_api.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_interview_ai.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_main.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_milestone_detector.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_milestone_e2e.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_namer.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_namer_e2e.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_perception.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_pipeline_e2e.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_retrieval.py",
+      "unchanged": true
+    },
+    {
+      "path": "filemate/tests/test_security_boundaries.py",
+      "unchanged": true
+    }
+  ]
+}

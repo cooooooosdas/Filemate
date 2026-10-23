@@ -389,6 +389,9 @@ class PersonalBackup:
                 from filemate.interview_assessment.repository import normalize_restored_assessments
 
                 normalize_restored_assessments(conn)
+                from filemate.course_graph.privacy import normalize_restored_course_graph
+
+                normalize_restored_course_graph(conn)
                 conn.execute("UPDATE sessions SET status='failed',error='备份恢复的历史会话；文件操作不重放'")
                 conn.execute("UPDATE execution_records SET status='failed',error='备份恢复后禁止重放文件操作'")
                 conn.execute("DELETE FROM data_action_previews WHERE action!='personal_restore'")

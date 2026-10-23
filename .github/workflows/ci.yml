@@ -39,6 +39,7 @@ jobs:
           filemate/tests/test_llm_observability.py
           filemate/runtime_governance.py filemate/task_resources.py filemate/tests/conftest.py filemate/tests/test_runtime_governance.py filemate/tests/test_task_resources.py
           filemate/execution
+          filemate/course_graph filemate/tests/course_graph
           filemate/accounts.py
           filemate/tests/test_accounts.py
           filemate/tests/test_storage.py

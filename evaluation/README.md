@@ -1,5 +1,19 @@
 # FileMate 离线评测
 
+## 课程图谱质量计算器（2026-10-23）
+
+```powershell
+uv run python -m evaluation.course_graph_quality --gold evaluation/datasets/course_graph_quality.synthetic.gold.json --prediction evaluation/datasets/course_graph_quality.synthetic.prediction.json --output _working/course-graph-calculator-new.json
+```
+
+只能写新文件，已有输出拒绝覆盖。示例是原创合成算术回归，输出`synthetic=true,result_kind=calculator_regression_only`，不是FileMate提取质量或学生学习效果。真实质量评测须提供授权记录标识、两名不同人工标注者与裁决后gold；声明本身不能代替原始授权及标注审阅。
+
+schema_version=1；gold包含synthetic、authorized=true、authorization_id、human_gold=true、annotator_ids、gold_version、dataset_id、nodes（规范概念ID）、relations（from_id/relation/to_id），及citation_support/merge_correctness/relation_invalidity（各item_id/value=true/false/null）。prediction包含相同synthetic/dataset_id、model_version、prompt_version、nodes、relations、citation_ids、merge_ids、relation_candidate_ids、rejected_relation_ids；拒绝重复ID、重复有向关系和非候选拒绝ID。概念别名须在人工gold中先映射到规范ID，计算器不靠字符串相似度自动匹配。关系方向和类型均逐项精确匹配，方向相反算FP和FN；两集合独立评价，不因端点未被提取而把错误关系静默丢弃。
+
+概念／关系precision=TP/(TP+FP)、recall=TP/(TP+FN)、F1=2TP/(2TP+FP+FN)，对应分母0返回null。引用支持率、融合正确率仅以实际有人工作出true/false判定的候选为分母，另报judged/unjudged/coverage；未知不记错、不记对。错误关系拒绝率以人工确定为错误的候选数为分母，分子为其中被拒绝者，并另报已知正确关系被误拒数与标注覆盖率。没有人工判断时null，不自动从模型解释推断质量。输入指纹与模型／prompt／gold版本随结果保存。
+
+真人三组对照、7天延迟测验和数据删除安排见[待批准研究协议](../docs/research/KNOWLEDGE_GRAPH_2_STUDY_PROTOCOL.md)；当前未采集真实数据，不提供提升比例。
+
 该目录提供可提交、可复现、无需外部模型密钥的基础评测证据。
 
 ```powershell

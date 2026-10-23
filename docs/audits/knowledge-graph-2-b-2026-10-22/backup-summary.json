@@ -1,0 +1,15 @@
+{
+  "unlink_history_identical": true,
+  "backup_restore_semantic_records_identical": true,
+  "personal_backup_restore_http": 200,
+  "restored_source_count": 2,
+  "fk_violations": 0,
+  "synthetic_history_tables": {
+    "sources": 3,
+    "artifacts": 2,
+    "quiz_attempts": 1,
+    "wrong_questions": 1,
+    "study_plans": 1
+  },
+  "note": "restore serializes JSON with spaces; parsed JSON and learning records match"
+}

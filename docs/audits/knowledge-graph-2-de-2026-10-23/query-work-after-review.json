@@ -1,0 +1,21 @@
+{
+  "kind": "synthetic_query_work_regression",
+  "current_code": "post_review_fix",
+  "mapped_rows": 1001,
+  "includes_stale_question_mappings": true,
+  "unrelated_attempts": 10000,
+  "relevant_attempts": 10000,
+  "sqlite_progress_interval_vm_steps": 1000,
+  "progress_callback_counts": [
+    143,
+    143,
+    491
+  ],
+  "total_vm_steps_approx": [
+    143000,
+    143000,
+    491000
+  ],
+  "clock_timing_claim": false,
+  "pytest_exit_code": 0
+}

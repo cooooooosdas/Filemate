@@ -1,0 +1,82 @@
+{
+  "stage": "A: audit and design only; awaiting explicit user acceptance",
+  "recorded_local": "2026-10-22T00:13:18.175435+08:00",
+  "branch": "codex/knowledge-graph-2-audit",
+  "parent_commit": "8565d507498ee270f6594872554ac904a77d0f30",
+  "product_source_changes": 0,
+  "migration_changes": 0,
+  "production_changes": 0,
+  "full_gate": {
+    "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend",
+    "exit_code": 0,
+    "ruff": "pass",
+    "backend": {
+      "passed": 1312,
+      "failed": 0,
+      "skipped": 22,
+      "deselected": 5,
+      "warnings": 3,
+      "seconds": 281.93
+    },
+    "frontend": {
+      "passed": 140,
+      "failed": 0
+    },
+    "types_build_bundle": "pass",
+    "log": "D:\\FileMate-Project\\_working\\knowledge-graph-2-audit-20261021\\verify.log"
+  },
+  "graph_subset": {
+    "command": "uv run pytest filemate/tests/test_knowledge_graph.py filemate/tests/test_graph_storage.py filemate/tests/test_graph_api.py filemate/tests/test_p1_graph.py -q -m \"not e2e\"",
+    "passed": 39,
+    "failed": 0,
+    "warnings": 1,
+    "seconds": 86.79,
+    "note": "A rerun of tests already included in the full gate; do not add to 1312.",
+    "log": "D:\\FileMate-Project\\_working\\knowledge-graph-2-audit-20261021\\graph-tests.log"
+  },
+  "browser": {
+    "checks_passed": 7,
+    "checks_failed": 0,
+    "pageerrors": 0,
+    "synthetic": true,
+    "results": "browser-results.json"
+  },
+  "performance": {
+    "synthetic": true,
+    "nodes": [
+      100,
+      1000,
+      10000
+    ],
+    "results": "performance.json",
+    "scope": "SQLite snapshot + full graph aggregation + projection; no HTTP, JSON encoding or browser layout"
+  },
+  "semantic_probe": {
+    "results": "semantic-boundary.json",
+    "finding": "Current validator accepts a prerequisite edge with a co-occurrence quote; this is an unresolved product gap."
+  },
+  "independent_review": {
+    "completed": true,
+    "scope": "Local report, API, graph/storage/server, tests and JSON evidence",
+    "clarifications": [
+      "Cross-course association stage and semantics remain question 5.",
+      "Source update invalidates stale evidence; revision is not a full historical text archive."
+    ],
+    "first_attempt": "Interrupted by revoked tool network permission; local-only retry completed."
+  },
+  "preserved_files": {
+    "baseline": "D:\\FileMate-Project\\_working\\frontend-depth-20261018\\preserved-tests.json",
+    "checked": 24,
+    "unchanged": 24
+  },
+  "unverified": [
+    "real LLM quality, cost and latency",
+    "production migration/restore",
+    "real students and learning outcomes",
+    "10000-node browser layout",
+    "evidence-dense load and public concurrency",
+    "physical camera/microphone",
+    "desktop installer"
+  ],
+  "raw_evidence_directory": "D:\\FileMate-Project\\_working\\knowledge-graph-2-audit-20261021"
+}

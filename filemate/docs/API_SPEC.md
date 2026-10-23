@@ -1031,3 +1031,168 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 重复request_key仅返回原记录，改body为409；晚到结果核对输入摘要、同意/复盘修订、随机执行epoch、65秒租约和当前开关。取消/清空后保持cancelling互斥直到调用返回或租约到期。旧逐题分析与六维模型调用互斥。每场模型最多6次申请，各预留2次调用；最多100份报告记录；关闭只阻止新写入。真实模型供应商仍经现役适配层与全局用量治理。新表纳入个人及管理员备份；恢复running/cancelling为interrupted，轮换epoch，撤销原有外发同意，不重放设备或AI。清空擦除六维报告/证据快照，保留去重墓碑与额度；删除整场预览包含assessments计数并级联删除所有版本及Artifact。
 
 第六阶段收尾合同：比较条件另存 `input.comparison_conditions`（version=1、实际难度、时长、source_id、原始题目及任务prompt摘要）；这些条件缺失的旧报告仍可读，但明确不可比。读取/导出/比较均先对原 claim 的输入摘要、标准摘要、归属、模型来源及逐项引用/模态/服务端加权结果进行核验，损坏返回有限的 `assessment_evidence_unavailable` 错误，不按当前回答改写历史。Markdown 对所有动态文本转义，原样内容以 JSON 保留；PDF 解码文本后仍在 Paragraph 前转义。实战运行期间发起的分析还检查服务器截止时刻，过期后旧结果不发布；context会结算到期状态，结束后可重新单次授权重算。浏览器取消后有界等待终态，不重发模型请求；确认清空先同步擦除本页报告、比较及待重试命令，再刷新。聚合长回答暂无单次输入大小/成本预检，供应商上下文及学习空间字节预算仍可能拒绝请求，旧成果保留。
+
+## 2026-10-23 课程学习 HTTP（D Task5，本地候选）
+
+Task8前端助手入口另需构建`VITE_ENABLE_GRAPH_ASSISTANT=true`（默认关闭），仅出现在课程学习抽屉内；无新顶栏导航。只读历史经现有operations分页，学习认领项增加work_id/work_kind/request_key（均为当前用户工作标识，不含正文）；选中历史仅GET工作，不再次调用模型。回答payload另存原问题，取消不删除历史回执。模型授权逐请求且不写偏好；网络不确定时沿原request_key读取，取消通过已认领work_id中止，并拒绝旧响应覆盖取消结果。计划预览与确认仍分开；引用定位复用C原文面板。新增UI的实机五尺寸／焦点验收因本地浏览器设置禁用待验。
+
+E助手额外默认关闭：`FILEMATE_ENABLE_GRAPH_ASSISTANT=1`才允许新建`POST R/assistant/answer`或`POST R/assistant/plan/preview`；关闭仍可经`GET R/learning/work/{wid}`读取旧工作，课程总开关仍生效。answer严格接受question(1..2000)、concept_ids可选1..30且唯一、chapter_id/goal_id可选、mode=rule/llm、request_key、allow_external_model。llm须授权；规则检索模式明确标记，不冒充模型。只开放完整answer POST接收浏览器临时密钥，plan预览／GET／类似后缀不允许。
+
+answer返回现役工作结构，payload含explanation、textbook_evidence（连续原文＋来源ID）、personal_facts（服务端真实训练摘要／fact_id）、confirmed_relations、suggestions、citation_ids、personal_fact_ids、coverage、as_of、rule_version、prompt_version=course-assistant-v1、limitations。上下文最多30概念、12引文／12000字、60关系；若目标本身有来源，为其预留一份来源依赖。未知引用／事实ID、额外工具／评分字段、格式错误均失败；引用格式验证不等于语义正确。目标版本、图谱、训练证据或租约变化均阻止迟到成功。失败仅返回安全码，不自动改为规则成功；规则和模型均受共享课程30次／24h、1并发、单次20秒及1次调用限制。
+
+plan/preview接受上表Path字段，返回标准路径预览、coverage、tool_steps和limitations。固定四阶段为课程范围、训练事实、连续引文、规则路径预览，无任意工具／SQL／文件／代码／画像／删除能力。只保存确认令牌，不创建计划；人工确认继续使用`R/learning/path/confirm`。全部依赖来源绑定工作；删除任一来源清除其工作正文，备份恢复中断运行工作并作废旧预览。Provider经现有LLMClient工厂和服务端环境配置替换；浏览器自带密钥仍固定现役可信DeepSeek地址，不随共享服务端base_url外发。自定义Provider需使用服务端凭据或单独设计受信端点，未执行真实外部模型质量评估。
+
+Task6前端接线：课程知识点详情的“开始学习与练习”打开同一协调抽屉，按需读取以上接口；题目逐题提交现役`POST /quiz/attempts`并传原始expected_question，不由前端生成评分。模型、本地练习均须用户主动点击，题目逐项接受／拒绝、预览再保存；网络不确定的确认沿用request_key。学习路径只新增，保存后精确跳到plan_id；任务完成与答对分别展示。关联／解除、跨课联系、逆操作均先预览。读响应按学习空间／课程／节点版本隔离，身份变化及恢复备份擦除本页私有状态。已有题目候选为分页，可搜索／翻页选择；不按词自动关联。2026-10-23实机浏览器因Work设置禁用未验，工程测试与构建不能代替交互验收。
+
+以下路径以 `R=/api/knowledge-graph/courses/{cid}` 为前缀，继承课程开关、当前用户存储、受信 Origin；全部成功及领域错误返回 `Cache-Control:no-store`。GET 拒绝未知、重复参数，不续租、不触发模型或写入。分页统一 `limit=50(1..200),offset=0(0..1000000)`；数据库异常仅返回固定 `storage_unavailable`，不暴露路径／SQL。
+
+| 方法／路径 | 请求 | 结果 |
+|---|---|---|
+| GET R/learning/nodes | 分页、status可选四种训练状态 | 真实状态摘要分页、规则／快照版本 |
+| GET R/concepts/{nid}/learning | 分页 | 计数、原因；question_refs/attempts/wrongs/plans分别分页 |
+| GET R/concepts/{nid}/question-candidates | 分页、q≤160 | 当前课程有效题目候选，不自动关联 |
+| POST R/concepts/{nid}/question-links/preview 或 confirm | items(1..20)的artifact_id/question_index/question_digest，active=true；confirm另需确认字段 | 版本绑定预览／显式映射回执 |
+| POST R/concepts/{nid}/practice-drafts | difficulty、count1..5、mode、request_key、allow_external_model | 持久化工作；llm须明确授权，否则422 |
+| GET R/learning/work/{wid} | 无 | 已存工作，含status/payload/stale；不发起模型 |
+| POST R/learning/work/{wid}/cancel | request_key | 取消工作，不退还调用次数 |
+| POST R/learning/work/{wid}/review/preview 或 confirm | decisions每题index/verdict，可选question；confirm另需确认字段 | 审核预览／正式题集回执 |
+| POST R/learning/path/preview 或 confirm | goal、concept_ids、chapter_id、goal_id、daily_minutes、days；confirm另需确认字段 | 路径预览／只新增计划回执 |
+| GET R/concepts/{nid}/related-courses | 分页 | 人工跨课双向导航，affects_learning=false |
+| POST R/concepts/{nid}/related-courses/preview 或 confirm | other_course_id、other_concept_id、active=true、relation仅related；confirm另需确认字段 | 两端本用户验证、规范唯一联系回执 |
+| POST R/learning/operations/{oid}/preview 或 confirm | action=undo/restore；confirm另需确认字段 | 学习操作逆操作回执 |
+
+确认字段为 `confirmed=true,confirmation_token,request_key`；严格 JSON 拒绝多余字段与隐式类型转换。跨课联系保留原概念身份，反向添加不会创建第二行；不计入前置依赖、训练状态或计划。`GET R/operations` 增加 `learning`，学习操作的 `reversible` 仅在存在有效目标时为true，逆操作使用上表学习路径。浏览器密钥新增仅允许完整POST `R/concepts/{nid}/practice-drafts` 且mode=llm，后缀／GET／计划确认一律拒收。密钥不进入工作、预览或操作记录。
+
+## 2026-10-22 知识图谱B级开发候选
+
+业务schema追加31（`course_knowledge_graph`），创建课程、章节、来源归属、逐来源提取、概念、关系、证据和操作记录8张表。旧图谱批次、ID和学习记录保持不变，不回填课程。本条为B任务1的历史记录；课程HTTP现已按下方B候选合同接入，本地B已获用户验收。线上状态仍以发布回执为准；本次不迁移生产库。
+
+
+## 2026-10-22 课程知识图谱 B 候选（schema31，默认关闭）
+
+后端 `FILEMATE_ENABLE_COURSE_GRAPH=1`、构建时 `VITE_ENABLE_COURSE_GRAPH=true` 分别开放新接口/面板。缺省0/false；关闭不删除数据，不影响旧 `/api/knowledge-graph`。仅本地候选，未部署。每次按当前匿名/账号身份获取真实 SQLiteStorage；跨空间资源404。沿用现役 Origin、模型额度和临时请求密钥上下文。以下 `R=/api/knowledge-graph/courses`，响应 `{success,data,error}`。
+
+请求严格拒绝多余字段/隐式类型转换。ID为字符串，request_key匹配`[a-zA-Z0-9_-]{16,80}`；同键异体409。分页`limit=50 (1..200),offset=0 (0..1000000),q='' (≤160)`；历史无q。变更均在短事务中，不跨模型请求持锁。
+
+| 方法／路径 | 请求JSON或参数 | data |
+|---|---|---|
+| GET R | 分页 | items课程摘要/total/limit/offset |
+| POST R | name(1..80),request_key | course_id/name/revision/日期 |
+| GET R/{cid} | 无 | 课程＋chapters/sources（含inactive） |
+| PUT R/{cid}/chapters/{id} | title(1..120),parent_id=null,sort_order=0(≤100000),expected_revision | 章节；新建id为前端UUID、revision=0 |
+| POST R/{cid}/sources | source_ids(1..10且唯一),chapter_id=null,expected_revision | 最新课程；已有Source挂接，不上传 |
+| GET R/{cid}/sources/{sid}/remove-preview | 无 | confirmation_token/support_impact/retains_learning_history |
+| POST .../remove | confirmed=true,confirmation_token,request_key | operation_id/affected；只取消课程归属，可撤销 |
+| POST R/{cid}/drafts | source_ids(1..10),mode(local/llm),request_key | draft_id/course_id/status/revision_digest/sources；只建组 |
+| GET R/{cid}/drafts/{did} | 无 | 同上；逐来源payload/status/error_code/source_current/coverage；刷新恢复 |
+| POST .../sources/{sid}/extract | mode（须与组一致）,allow_external_model=false,request_key | 同上；单份同步提取，失败持久化后返回固定码 |
+| POST .../cancel | request_key | 快照；保留ready/partial，禁止未完来源迟到写入 |
+| POST .../decisions | expected_digest,decisions(1..2000) | 新快照和revision_digest |
+| POST .../review-preview | 无 | token/revision_digest/nodes/relations/items（原引文＋决策） |
+| POST .../confirm | confirmed=true,confirmation_token,request_key | 原子发布回执/operation_id |
+| GET R/{cid}/graph | 分页 | nodes/edges/total/limit/offset/self_edge_count/omitted_edge_count；只返回本页关系，非全图计数 |
+| GET R/{cid}/concepts/{nid} | 无 | 代表概念、成员ID、当前有效source_refs、merge_candidates |
+| POST R/{cid}/merges/preview | concept_ids(2..20),target_id | concepts/ids/before/self_edge_count/revision_digest/token；同课程无环 |
+| POST .../confirm | 同上＋confirmed=true,confirmation_token,request_key | 融合回执，保留原ID与引用 |
+| GET R/{cid}/operations | limit/offset | items/total；日期/类型/状态/draft_id/reversible；无引文正文 |
+| POST .../{oid}/preview | action(undo/restore) | token/action/status/affected |
+| POST .../{oid}/{action} | confirmed=true,confirmation_token,request_key | 幂等撤销或恢复回执 |
+
+决策项：`item_id,verdict=accept/reject/revise,label?,aliases=[](≤20),relation?,from_label?,to_label?,semantic_checked=false`。relation仅prerequisite/depends_on/part_of/contains/application/related_to。invalid候选即使修改名称仍不可确认；needs_semantic_review必须人工勾选核对。只发布明确选中结果，无默认全选。没有来源或证据时显示待评测，B不重算旧掌握度。
+
+只有完整的POST `R/{cid}/drafts/{did}/sources/{sid}/extract`且body.mode=llm接收浏览器密钥；必须Origin受信、`X-FileMate-Action:model`，密钥只在当前请求context，不进入DB/日志/回执。创建组、GET、审核、取消、融合和相似后缀路径都不允许密钥。本地mode不发送密钥。LLM每来源最多20000字符、1次45秒调用、6000输出token；不自动fallback成成功或隐藏重试，明确同意allow_external_model后调用。客户端一次执行一来源。失败可用新request_key显式重试，仍受全局累计/并发限额。
+
+错误data.error_code为固定码，422参数/未授权/无有效选中项，404资源不存在，409版本/幂等键/确认过期/操作依赖冲突（可带blocking_operation_id），429 budget_exceeded，503治理/存储/开关不可用，502 extraction_failed。模型异常原文不回传，GET草稿仍可读失败状态。Token有效900秒，绑定原选择与版本；已有回执的同一确认幂等。来源正文/chunks变化、移出课程、删除会使引用失效；彻底删除预览含课程图谱影响，仍删除旧学习记录；移出课程保留旧记录。个人备份含新表，兼容schema30备份；恢复轮换全部执行epoch、取消运行租约、清除旧确认，不重放模型。课程图与旧图谱分别存储，B不静默迁移旧批次。
+
+
+### B级独立审阅修复（2026-10-22，extractor course-graph-b2）
+
+新B出现身份以course/source/revision/normalize_term(原术语)生成确定性evidence_id，保留+/#/-；不再单凭旧的有损knowledge key复用概念。legacy_node_id仍是原旧键提示，不塞入新格式；存在歧义时置空，候选/预览parsed.legacy_mapping_ambiguous=true，UI明确不自动关联旧题目。旧B1随机证据ID仅在不可变提取候选原术语可核对时复用，不依据人工显示名；不能核对返回409 legacy_mapping_unverified。旧图谱ID不改。B1未确认草稿因提取器版本变化需重新建组，已确认引用仍保留；不增加migration32。
+
+取消后的新建只复用真实且未取消的审核组，命令别名不作为新draft容器。撤销的候选不再被预览/确认重新选中，恢复必须走历史。稳定的融合成员原ID可读取代表详情；名称/已审核别名搜索覆盖完整成员集合。融合预览concepts现在包含source_count/source_status/member_ids/source_refs（含原文件名和当前有效原文），版本仍受确认凭据约束。删除来源后的extract固定404 source_not_found。
+
+客户端已明确落盘的502单来源失败可继续同组其他来源；429/503治理故障停止后续，网络结果未知时先读快照，不能确认终态则保留原请求键，不新建重放。已完成来源不再调用模型。
+
+
+## 2026-10-23 C级工作台只读接口（C未增加schema，沿用31，本地候选）
+
+沿用B的R前缀、当前身份SQLite、功能开关和错误包装；不接收浏览器模型密钥，不调用AI，不创建业务表。所有响应带course_id与64hex graph_digest，并返回Cache-Control: no-store。digest绑定章节、归属、概念、关系、证据和有效来源指纹，不代表能力分数。
+
+| GET路径 | 参数 | data |
+|---|---|---|
+| R/{cid}/workspace | parent_id可选（@root为根、缺省全部）、group_limit=200/group_offset=0、source_limit=50/source_offset=0 | name/groups/sources/分页计数/total_concepts |
+| R/{cid}/workspace/chapter-path/{id} | 无 | items真实祖先路径；异常树409 chapter_structure_invalid |
+| R/{cid}/concepts-page | chapter_id/source_id/relation/hide_relations、q、limit=50/offset=0 | items含matched_label、total/limit/offset、chapter_groups（本页真实归属及祖先，最多200项）、chapter_groups_truncated |
+| R/{cid}/canvas | 同筛选、focus、limit=100、group_limit=20/group_offset=0 | mode=groups或concepts，nodes/edges/groups/group_edges，total_concepts/total_edges及truncated/node_has_more/edge_has_more |
+| R/{cid}/workspace/concepts/{nid} | limit=50/offset=0 | requested_id/resolved_id/node/source_refs/total_refs/分页；无merge_candidates |
+| R/{cid}/concepts/{nid}/source-evidence/{eid} | 无 | 当前原文before/quote/after，各侧最多2000个Unicode字符，原文件名/页码/chunk |
+
+分页limit最大200（canvas概念100、group20），offset最大1000000，q最大160字符，ID筛选最大120字符。chapter_id包含子章，可为@unassigned或@no-source；source_id与章节取交集。relation只允许B六类型，可重复参数但不可重复同值；缺省全部，hide_relations=true隐藏所有连线且保留概念，不能同时指定relation。多余或重复标量参数422；未知课程/章节/来源/已撤销概念404。focus解析原ID到代表，过滤冲突409 focus_outside_filter；失效来源不提供关系依据。无过滤时多章或超过100概念先展示组概览，组是导航汇总，不是知识断言。完整课程通过分页列表可达，画布不后台拼接全量。
+
+引用先验证课程、已确认代表/成员和证据归属，再在同一只读事务核对active来源、指纹、保存的raw_text范围与原句相等；来源变化或移出返回409 citation_unavailable，不模糊重定位。删除或他人证据404，数据库异常503 storage_unavailable，不泄露数据库路径。前端读请求15秒、可取消；浏览空间只读取公开状态的opaque scope，不访问密钥库。B原graph/concepts与所有写入协议保持原义。本段为已接线的本地候选合同；100／1000／10000合成HTTP与五尺寸浏览器证据见[本地C级交付](../../docs/KNOWLEDGE_GRAPH_2_0_C_DELIVERY.md)。浏览器内存未测，尚未生产部署，等待C级验收。
+
+## D/E本地候选：学习数据迁移32／33／34（2026-10-23至24）
+
+追加course_learning_evidence迁移32，不修改v1–31。kg_question_links把人工确认的课程原概念ID与现役题集Artifact／题号／规范化题目摘要关联；正文出现或标签相同都不会自动关联。候选只来自本课程active来源的有效非历史只读题集，分页不改变数据库。确认最多20题、必须先预览、confirmed=true、16–80位request_key及900秒确认凭据；改题或课程变化须重新预览。同一确认重复返回原回执，不能以更换body重用旧token。
+
+关联与解除均记录learning_links操作，撤销／恢复各自先预览，检查实际行revision后变更active。只保存ID和逆操作状态，不把题干／引文复制进kg_changes。后续修改同一关联会使旧逆操作冲突，保留作答／错题历史。HTTP已接线，调用合同见下方D／E接口表。
+
+其余新表：kg_cross_links（人工跨课导航，不参与前置或证据累计）、kg_course_plan_links（现役计划日与概念关联）、kg_learning_work及kg_learning_work_sources（有限运行与多来源依赖）。来源彻底删除的预览数量／摘要包含新关联、计划关联与工作结果；删除任一依赖来源在同事务清除含其正文的工作结果。移出课程继续保留学习历史。个人备份自动包含新表，恢复轮换work epoch、将running改为interrupted、清租约与旧课程确认凭据，不重放模型。
+
+学习证据领域合同：`learning_snapshot`返回graph_digest／evidence_digest、服务端as_of、`course-training-v1`和节点摘要；`node_learning_evidence`返回四类独立分页（question_refs／attempts／wrongs／plans，默认50最大200），不含整段回答正文。`list_learning_nodes`可按no_evidence／practiced／needs_reinforcement／recently_stable筛选。7天错答或未掌握错题到期优先巩固；30天至少3道不同正确题、跨2个上海日期且7天无错、无到期复习才近期稳定。所有窗口包含下界、截至as_of，异常／未来时间及修订前记录排除并计数；恢复相同文字也不能继承历史题集的作答。融合按attempt_id去重，原成员关联不改写；计划完成单列。来源移出仍展示学习历史，但active_support=false时不供路径推荐。每类原因最多返回50个ID并给出truncated，总计数不截断；这些是训练事实规则，不是掌握率或真实效果评估。HTTP已接线，见下表。
+
+练习领域合同：`PracticeService.generate`接受concept_id、difficulty=simple/standard/advanced、count=1–5、mode=local/llm、request_key；llm须allow_external_model=true。本地模式仅把连续原文中概念术语遮空，不能兑现难度等级；模型经可替换LLMClient，单次20秒、retry=1（总共一次调用、无自动重试）。工作先持久化，模型在写事务外运行；每课程最多一个running、滚动24小时30次，取消／失败不退还，来源删除保留无正文的请求墓碑。重复键只读原结果；已删除结果返回410 learning_work_unavailable，禁止重发。
+
+工作状态running/ready/failed/cancelled/interrupted/confirmed；GET不发模型、不续租、不写数据库，返回stale和固定安全error_code。取消轮换epoch并清payload；备份恢复、输入版本变化或租约过期阻止晚到结果变成ready。每题必须accept/reject，接受项可修改但重新校验题型、非空答案、连续引文及引用ID；全部拒绝不生成正式题集。预览后确认原子创建一个现役questions Artifact、显式映射和回执，不创建作答或错题；撤销只解除此次映射，保留正式题集及学习历史。
+
+补充迁移33的kg_learning_artifact_sources：正式题集及后续计划绑定全部上下文来源。删除任一依赖来源同时删除派生Artifact及下游，题目修订时历史快照继承依赖；删除预览显示course_learning_derived_artifacts（可能与普通Artifact计数重叠，不应相加当独立数量）。升级32→33只追加表、索引、触发器；回退不能直接删除迁移。HTTP已接线，见下表。
+
+迁移34 `course_answer_source_backfill`补齐已保存问答的课程来源删除依赖；个人备份恢复也执行同样补齐。问答含未被引文采样的标签、关系和历史训练摘要，因此绑定本课程全部来源（含移出但未彻底删除的来源），不以12条引文代替完整删除溯源。删除任何课程来源可能保守清除该课程历史问答，需要重新生成；题集仍沿用其实际上下文来源依赖。32／33已发布定义不改，回退使用兼容34的代码或升级前完整备份。
+
+独立审阅修复后的交互合同：5xx、408及网络结果未知时，同一作答／练习生成沿用原请求键和输入；不能以502证明服务端未提交。同ID工作由running／interrupted恢复为ready时首次载入审核题目，普通重读不覆盖人工修订。跨课联系列表新增`available:boolean`、`unavailable_reason:string|null`，`route`为`string|null`；撤销概念／归档课程显示失效且无导航。已有联系解除仍核验同租户资源存在性，允许目标失效，不允许借此新增到不可用目标。
+
+路径主要聚合与排序在只读快照完成，短写事务在发令牌／写计划前用同一连接`data_version`及`total_changes`拒绝期间写入，冲突409 `input_changed`。因此无关数据库写入也可能要求重试；已确认原键或同token别名重试先恢复原回执，不重新生成路径。
+
+助手`course-assistant-v2`的个人计数与状态仅由服务端事实栏生成。模型解释与建议禁止个人统计／能力结论；在ID白名单之外，规范化正文并保守拒绝相关语词，固定`invalid_output`且不持久化错误正文。此检查可误拒合法措辞，不能证明任意语言的语义正确；教材解释、隐晦幻觉仍需人工gold及使用者核对，不输出“已验证学习效果”。
+
+路径领域合同：goal为1–500字，concept_ids可选1–30个稳定ID，chapter_id作为硬范围，goal_id可选现役reverse_goal_plan（无来源的全局目标可由用户明确选中，有来源的目标须属于本课程）；每天5–180分钟、1–7日，每天一项、最多7项。只使用有有效来源的已确认同课prerequisite／depends_on；前者a→b为a先、后者a→b为b先。范围内补前置并给scope_expanded_count；环409 dependency_cycle、无有效概念422 path_no_supported_concepts；omitted_count说明日数不足，unsupported_count说明所选范围中无有效来源。排序为到期复习、近7天错答、所选范围、章节与稳定ID；前置约束优先于此排序。任务展示实际wrong_id／attempt_id／relation_id及规则版本，不生成能力评分。
+
+`preview_path/confirm_path`绑定规范options、上海起始日、目标版本、图谱／证据摘要及具体任务；只新增现役StudyPlan＋Artifact＋概念日映射及完整来源依赖，沿用资源准入，不改原计划。同token与相同options回执幂等，换body拒绝；期间作答／目标更新须重做预览。撤销／恢复只归档／恢复本计划，保留completed_days；任务进度变化可撤销，正文／标题被用户改写后409 operation_conflict。`/review/today`的plan_day.route现在携带`/study-plan?plan=<真实ID>`；旧页面已支持此参数。题目与计划HTTP新增入口已接线，见下表。
+
+### D／E HTTP与错误合同
+
+以下路径以 `R=/api/knowledge-graph/courses` 为前缀，沿用课程身份解析、404租户隔离和默认关闭总开关。JSON严格类型、拒绝额外字段；GET拒绝多余及重复查询参数，响应Cache-Control:no-store。确认命令为`confirmed=true,confirmation_token,request_key`；键16–80字符，重试原键与原body，不在读接口重放写操作。
+
+| 方法／路径 | 额外输入 | data |
+|---|---|---|
+| GET R/{cid}/learning/nodes | limit=50/offset=0，status可选四种训练状态 | 分页摘要、rule_version/as_of、图谱与证据摘要 |
+| GET R/{cid}/concepts/{nid}/learning | limit=50/offset=0，最大200 | counts/status、时间窗、question_refs/attempts/wrongs/plans四组独立分页 |
+| GET R/{cid}/concepts/{nid}/question-candidates | q≤160，limit/offset | 现役题目快照、摘要、linked状态；不自动关联 |
+| POST .../question-links/preview | items(1..20：artifact_id/question_index/question_digest)，active默认true | changed_count及确认凭据 |
+| POST .../question-links/confirm | 同上＋确认命令 | 幂等关联回执 |
+| POST R/{cid}/concepts/{nid}/practice-drafts | difficulty、count1..5、mode、allow_external_model、request_key | 持久work及状态／草稿；不生成作答 |
+| GET R/{cid}/learning/work/{wid} | 不接收查询参数 | 已保存payload/status/stale/error_code，不续租、不调模型 |
+| POST .../work/{wid}/cancel | request_key | 取消work，晚到结果不能复活 |
+| POST .../work/{wid}/review/preview | decisions(每题index/verdict，可带修订question) | 接受数量和确认凭据 |
+| POST .../work/{wid}/review/confirm | 同上＋确认命令 | 正式questions Artifact／关联回执 |
+| POST R/{cid}/learning/path/preview | goal、concept_ids、chapter_id、goal_id、daily_minutes、days | tasks／omitted_count／unsupported_count／scope_expanded_count及确认凭据 |
+| POST .../learning/path/confirm | 同上＋确认命令 | plan_id/artifact_id/operation_id等回执 |
+| GET R/{cid}/concepts/{nid}/related-courses | limit/offset | 人工联系、目标课程／知识点／route、affects_learning=false |
+| POST .../related-courses/preview | other_course_id、other_concept_id、active、relation只能related | 规范端点与确认凭据 |
+| POST .../related-courses/confirm | 同上＋确认命令 | 唯一联系回执，双端当前权限再次验证 |
+| POST R/{cid}/learning/operations/{oid}/preview | action=undo/restore | 本次学习操作逆转影响和确认凭据 |
+| POST .../learning/operations/{oid}/confirm | action＋确认命令 | 只逆转原操作目标，版本冲突不覆盖 |
+| POST R/{cid}/assistant/answer | question1..2000、concept_ids最多30、chapter_id、goal_id、mode=rule/llm、allow_external_model、request_key | work；原文／个人事实／建议分开持久化 |
+| POST R/{cid}/assistant/plan/preview | 与path/preview一致 | D路径预览＋固定4个tool_steps、coverage、limitations；不执行确认 |
+
+分页offset≤1000000。原概念ID通过当前融合代表解释，跨课程related不参与训练累计或拓扑。路径新增`outside_scope_prerequisite_count`与最多30项`outside_scope_prerequisites`（concept_id/label/relation_ids）；所选章节之外的有效前置明确提示，未自动排入计划。失效题目映射仍在question_refs展示，但linked_questions只计当前有效且来源可用题目。
+
+`evidence_digest`绑定记录及7／30天窗口内实际摘要；记录不变但窗口越界、到期复习状态变化时，旧问答也会stale。历史工作有as_of，不能视为实时掌握率。E助手需额外`FILEMATE_ENABLE_GRAPH_ASSISTANT=1`，前端需`VITE_ENABLE_GRAPH_ASSISTANT=true`；缺省关闭，新问答／Agent预览503，已有work读取仍可用。
+
+仅精确POST practice-drafts和assistant/answer且mode=llm接收本次浏览器密钥；必须显式allow_external_model=true、受信Origin与X-FileMate-Action:model。GET、规则模式、确认／历史及相似后缀不接收密钥。请求授权不保存为偏好；沿用可信DeepSeek浏览器端点，服务端凭据／适配器可替换Provider。上下文最多30概念、12段原文／12000字符、60关系，不包含完整音视频或整个学习库。未知引用／事实ID或JSON不合格保存failed，不伪装规则fallback为模型成功。
+
+新增错误：410 learning_work_unavailable（结果已清除，禁止重发原模型请求）；409 learning_busy/input_changed/operation_conflict/dependency_cycle；429 learning_budget_exceeded；503 governance_unavailable/storage_unavailable/助手未启用。work失败码为固定安全枚举，供应商异常原文不进入响应。模型20秒、一次调用；工作租约30秒，过期不允许保存成功。
+
+独立治理迁移3持久化每课程滚动24小时30次准入，个人恢复、失败、取消不退款；控制先提交而业务失败可能消耗一次额度，采取失败关闭。哈希准入墓碑保留30天、可导出，账户删除清除其归属记录；管理员备份／部署只读校验兼容治理1、2、3。业务schema33和治理3均须备份与匹配代码恢复，不能删除迁移实现回退。
+
+现役 `POST /quiz/attempts` 新增可选 `request_key`（`[A-Za-z0-9_-]{16,80}`）；同空间同键同题／同回答只创建一次attempt及错题更新，冲突409。仍要求expected_question版本一致；不传键的旧调用方保持原义。D前端网络未知时保留同键，用户编辑则是新请求；不引入第二套判题表。

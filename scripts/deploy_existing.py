@@ -215,7 +215,9 @@ def database_facts(path: Path) -> dict[str, Any]:
         if 'schema_migrations' not in tables:
             versions = connection.execute('SELECT version FROM resource_schema_migrations ORDER BY version').fetchall()
             original = {'resource_schema_migrations', 'resource_daily', 'ai_attempts'}
-            assert (versions == [(1,)] and tables == original) or (versions == [(1,), (2,)] and tables == original | {'resource_events'})
+            assert ((versions == [(1,)] and tables == original)
+                    or (versions == [(1,), (2,)] and tables == original | {'resource_events'})
+                    or (versions == [(1,), (2,), (3,)] and tables == original | {'resource_events', 'learning_admissions'}))
             return {'database_kind': 'resource_governance', 'schema_version': versions[-1][0], 'integrity': 'ok'}
         version = connection.execute('SELECT MAX(version) FROM schema_migrations').fetchone()[0]
         return {'schema_version': version, 'integrity': 'ok'}

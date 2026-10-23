@@ -1,0 +1,117 @@
+{
+  "synthetic": true,
+  "checks": [
+    {
+      "name": "Actual graph, source-scoped duplicate concepts, honest evidence",
+      "pass": true,
+      "detail": {
+        "nodes": 15,
+        "edges": 9,
+        "queue_samples": 2,
+        "synthetic": true
+      }
+    },
+    {
+      "name": "Selected concept shows literal source and real authored quiz",
+      "pass": true
+    },
+    {
+      "name": "Preview, confirm, undo and restore a study plan",
+      "pass": true,
+      "detail": {
+        "plans": 1
+      }
+    },
+    {
+      "name": "Search and page reload retain confirmed graph",
+      "pass": true
+    },
+    {
+      "name": "Source and quiz actions link to existing workspace",
+      "pass": true
+    },
+    {
+      "name": "Four required desktop/tablet sizes plus narrow screen",
+      "pass": true,
+      "detail": [
+        {
+          "width": 1920,
+          "height": 1080,
+          "scrollWidth": 1920,
+          "mapTop": 1015,
+          "canvasHeight": 470
+        },
+        {
+          "width": 1366,
+          "height": 768,
+          "scrollWidth": 1366,
+          "mapTop": 1015,
+          "canvasHeight": 470
+        },
+        {
+          "width": 1024,
+          "height": 768,
+          "scrollWidth": 1024,
+          "mapTop": 1097,
+          "canvasHeight": 420
+        },
+        {
+          "width": 1180,
+          "height": 820,
+          "scrollWidth": 1180,
+          "mapTop": 1015,
+          "canvasHeight": 470
+        },
+        {
+          "width": 390,
+          "height": 844,
+          "scrollWidth": 390,
+          "mapTop": 1331,
+          "canvasHeight": 360
+        }
+      ]
+    },
+    {
+      "name": "Network failure is visible and page remains recoverable",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "layouts": [
+    {
+      "width": 1920,
+      "height": 1080,
+      "scrollWidth": 1920,
+      "mapTop": 1015,
+      "canvasHeight": 470
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "scrollWidth": 1366,
+      "mapTop": 1015,
+      "canvasHeight": 470
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "scrollWidth": 1024,
+      "mapTop": 1097,
+      "canvasHeight": 420
+    },
+    {
+      "width": 1180,
+      "height": 820,
+      "scrollWidth": 1180,
+      "mapTop": 1015,
+      "canvasHeight": 470
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "mapTop": 1331,
+      "canvasHeight": 360
+    }
+  ]
+}

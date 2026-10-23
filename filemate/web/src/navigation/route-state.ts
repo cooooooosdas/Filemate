@@ -1,5 +1,6 @@
 export function routeViewKey(path: string, fullPath: string, revision: number): string {
-  const stableQuery = ['/ai-tools', '/import', '/interview'].includes(path)
+  const courseWorkspace = path === '/knowledge-graph' && new URLSearchParams(fullPath.split('?')[1]?.split('#')[0] || '').get('graph_scope') === 'course'
+  const stableQuery = courseWorkspace || ['/ai-tools', '/import', '/interview'].includes(path)
   return `${stableQuery ? path : fullPath}-${revision}`
 }
 

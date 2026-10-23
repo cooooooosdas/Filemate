@@ -1,0 +1,6 @@
+{
+  "synthetic": true,
+  "quote": "栈和队列都是线性结构。",
+  "unsupported_prerequisite_accepted_by_current_validator": true,
+  "meaning": "A valid literal quotation is insufficient to establish a prerequisite relationship. This is an audit observation, not a desired behavior."
+}

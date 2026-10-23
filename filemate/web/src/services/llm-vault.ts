@@ -81,5 +81,10 @@ export async function removeBrowserApiKey(scope: string): Promise<void> {
 }
 
 export function isModelRequest(method: string | undefined, path: string | undefined): boolean {
-  return method?.toUpperCase() === 'POST' && /^(?:\/api\/llm\/test|\/api\/resume\/generate|\/process|\/ai\/(?:summarize|knowledge-cards|questions|notes|study-plan|chat)|\/knowledge\/sources\/[^/]+\/artifacts|\/api\/knowledge-graph\/drafts|\/interviews|\/interviews\/[^/]+\/answers|\/interviews\/[^/]+\/turns\/[^/]+\/analyze|\/api\/programming\/submissions\/[^/]+\/review)$/.test(path || '')
+  return method?.toUpperCase() === 'POST' && /^(?:\/api\/llm\/test|\/api\/resume\/generate|\/process|\/ai\/(?:summarize|knowledge-cards|questions|notes|study-plan|chat)|\/knowledge\/sources\/[^/]+\/artifacts|\/api\/knowledge-graph\/drafts|\/api\/knowledge-graph\/courses\/[^/]+\/drafts\/[^/]+\/sources\/[^/]+\/extract|\/api\/knowledge-graph\/courses\/[^/]+\/concepts\/[^/]+\/practice-drafts|\/api\/knowledge-graph\/courses\/[^/]+\/assistant\/answer|\/interviews|\/interviews\/[^/]+\/answers|\/interviews\/[^/]+\/turns\/[^/]+\/analyze|\/api\/programming\/submissions\/[^/]+\/review)$/.test(path || '')
+}
+
+export function requiresModelCredential(method: string | undefined, path: string | undefined, data?: { mode?: string }): boolean {
+  if (!isModelRequest(method, path)) return false
+  return !(path === '/api/resume/generate' || path?.startsWith('/api/knowledge-graph/courses/')) || data?.mode === 'llm'
 }

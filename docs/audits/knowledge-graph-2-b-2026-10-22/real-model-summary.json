@@ -1,0 +1,68 @@
+{
+  "type": "two original synthetic documents, real external provider",
+  "model": "deepseek-v4-flash",
+  "provider": "deepseek",
+  "course_id": "eb1934d1-dec7-4df4-b2a6-7022dea6239c",
+  "sources": [
+    {
+      "source_id": "0154fb0553a7526f92c107e3c064eb97",
+      "http_status": 200,
+      "status": "ready",
+      "elapsed_ms": 1733,
+      "nodes": 4,
+      "edges": 1,
+      "validation_counts": {
+        "valid": 5,
+        "needs_semantic_review": 0,
+        "invalid": 0
+      },
+      "quotes": [
+        "栈：后进先出的线性表。",
+        "队列：先进先出的线性表。",
+        "树：分层的结点结构。",
+        "栈是DFS的前置知识。",
+        "栈是DFS的前置知识。"
+      ]
+    },
+    {
+      "source_id": "c228728bee8c54f0a1d5b96539c845e1",
+      "http_status": 200,
+      "status": "ready",
+      "elapsed_ms": 1597,
+      "nodes": 4,
+      "edges": 1,
+      "validation_counts": {
+        "valid": 5,
+        "needs_semantic_review": 0,
+        "invalid": 0
+      },
+      "quotes": [
+        "栈：在表尾执行插入和删除的线性表。",
+        "DFS：深度优先搜索。",
+        "树包含二叉树。",
+        "树包含二叉树。",
+        "树包含二叉树。"
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "status": "success",
+      "duration_ms": 1619,
+      "prompt_tokens": 287,
+      "completion_tokens": 123,
+      "total_tokens": 410
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "status": "success",
+      "duration_ms": 1568,
+      "prompt_tokens": 300,
+      "completion_tokens": 109,
+      "total_tokens": 409
+    }
+  ]
+}

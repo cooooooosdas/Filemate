@@ -1,0 +1,96 @@
+{
+  "synthetic": true,
+  "zoomNote": "User browser zoom changes CSS viewport: requested and actual both recorded. Stable after AX observation.",
+  "samples": [
+    {
+      "requested": {
+        "width": 1920,
+        "height": 1080
+      },
+      "dialogs": [
+        {
+          "clientWidth": 800,
+          "left": 945.4544677734376,
+          "right": 1745.4544067382812,
+          "scrollWidth": 800,
+          "width": 799.9999389648438
+        }
+      ],
+      "documentWidth": 1745,
+      "height": 982,
+      "width": 1745
+    },
+    {
+      "requested": {
+        "width": 1366,
+        "height": 900
+      },
+      "dialogs": [
+        {
+          "clientWidth": 800,
+          "left": 441.8181457519531,
+          "right": 1241.8180847167969,
+          "scrollWidth": 800,
+          "width": 799.9999389648438
+        }
+      ],
+      "documentWidth": 1242,
+      "height": 818,
+      "width": 1242
+    },
+    {
+      "requested": {
+        "width": 1024,
+        "height": 768
+      },
+      "dialogs": [
+        {
+          "clientWidth": 800,
+          "left": 130.90908813476562,
+          "right": 930.9090270996094,
+          "scrollWidth": 800,
+          "width": 799.9999389648438
+        }
+      ],
+      "documentWidth": 931,
+      "height": 698,
+      "width": 931
+    },
+    {
+      "requested": {
+        "width": 768,
+        "height": 1024
+      },
+      "dialogs": [
+        {
+          "clientWidth": 698,
+          "left": 0,
+          "right": 698.1817626953125,
+          "scrollWidth": 698,
+          "width": 698.1817626953125
+        }
+      ],
+      "documentWidth": 698,
+      "height": 931,
+      "width": 698
+    },
+    {
+      "requested": {
+        "width": 390,
+        "height": 844
+      },
+      "dialogs": [
+        {
+          "clientWidth": 355,
+          "left": 0,
+          "right": 354.5454406738281,
+          "scrollWidth": 355,
+          "width": 354.5454406738281
+        }
+      ],
+      "documentWidth": 354,
+      "height": 767,
+      "width": 354
+    }
+  ]
+}

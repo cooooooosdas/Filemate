@@ -24,3 +24,8 @@ test('today links open the selected plan and preserve other task destinations', 
   assert.equal(todayItemTarget({ kind: 'wrong_question', route: '/wrongbook?focus=one' }), '/wrongbook?focus=one')
   assert.equal(todayItemTarget({ kind: 'plan_day', route: '/study-plan' }), '/study-plan')
 })
+
+test('course_graph_browsing_preserves_the_live_workspace_but_legacy_links_remount', () => {
+  assert.equal(routeViewKey('/knowledge-graph', '/knowledge-graph?graph_scope=course&course=c', 0), routeViewKey('/knowledge-graph', '/knowledge-graph?graph_scope=course&course=c&node=n&view=outline', 0))
+  assert.notEqual(routeViewKey('/knowledge-graph', '/knowledge-graph?source=a', 0), routeViewKey('/knowledge-graph', '/knowledge-graph?source=b', 0))
+})

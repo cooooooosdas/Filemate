@@ -5,9 +5,11 @@ Schema 与《项目总纲 v1.0》§3.6 对齐。
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import math
+import re
 import sqlite3
 import threading
 import uuid
@@ -18,7 +20,9 @@ from pathlib import Path
 from typing import Any
 
 from filemate import interview_config
+from filemate.course_graph import learning_schema
 from filemate.execution import (
+    course_graph_schema,
     data_actions,
     interview_configuration_schema,
     interview_runtime_schema,
@@ -627,6 +631,10 @@ _MIGRATIONS = (
     (28, "interview_configuration", interview_configuration_schema.SCHEMA),
     (29, "interview_runtime", interview_runtime_schema.SCHEMA),
     (30, "interview_six_assessments", interview_assessment_schema.SCHEMA),
+    (31, "course_knowledge_graph", course_graph_schema.SCHEMA),
+    (32, "course_learning_evidence", learning_schema.SCHEMA),
+    (33, "course_learning_derived_sources", learning_schema.DERIVED_SOURCES_SCHEMA),
+    (34, "course_answer_source_backfill", learning_schema.ANSWER_SOURCE_BACKFILL_SCHEMA),
 )
 
 
@@ -1398,6 +1406,9 @@ class SQLiteStorage:
                 "SELECT COUNT(*) FROM knowledge_graph_events WHERE source_id=?", (source_id,),
             ).fetchone()[0],
         }
+        from filemate.course_graph.privacy import source_impact
+
+        counts.update(source_impact(self, source_id)["counts"])
         return {
             "source_id": source_id,
             "original_name": source.get("original_name"),
@@ -1442,6 +1453,9 @@ class SQLiteStorage:
             rows = conn.execute(f"SELECT * FROM {table} WHERE source_id=? ORDER BY rowid",
                                 (source_id,)).fetchall()
             snapshot[table] = [dict(row) for row in rows]
+        from filemate.course_graph.privacy import source_revision_fragment
+
+        snapshot["course_graph"] = source_revision_fragment(self, source_id)
         return data_actions.digest(snapshot)
 
     def source_deletion_preview(self, source_id: str) -> dict[str, Any] | None:
@@ -1616,6 +1630,10 @@ class SQLiteStorage:
                                  f"[历史题集] {artifact['title']}", self._dump_json(artifact["content"]),
                                  self._dump_json(snapshot_metadata), artifact["created_at"], artifact["updated_at"]),
                             )
+                            if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kg_learning_artifact_sources'").fetchone():
+                                connection.execute('''INSERT INTO kg_learning_artifact_sources(artifact_id,source_id)
+                                    SELECT ?,source_id FROM kg_learning_artifact_sources WHERE artifact_id=?''',
+                                    (snapshot_id, artifact_id))
                             for table in ("quiz_attempts", "wrong_questions"):
                                 connection.execute(
                                     f"UPDATE {table} SET artifact_id=? WHERE artifact_id=?",
@@ -1881,6 +1899,7 @@ class SQLiteStorage:
         score: float,
         feedback: str,
         expected_question: dict[str, Any] | None = None,
+        request_key: str | None = None,
     ) -> dict[str, Any]:
         """记录一次作答，并同步更新错题掌握状态。"""
         with self._write_lock:
@@ -1891,6 +1910,7 @@ class SQLiteStorage:
                     artifact_id=artifact_id, question_index=question_index,
                     user_answer=user_answer, is_correct=is_correct, score=score,
                     feedback=feedback, expected_question=expected_question,
+                    request_key=request_key,
                 )
                 connection.commit()
                 return result
@@ -1902,6 +1922,7 @@ class SQLiteStorage:
         self, *, artifact_id: str, question_index: int, user_answer: str,
         is_correct: bool, score: float, feedback: str,
         expected_question: dict[str, Any] | None,
+        request_key: str | None = None,
     ) -> dict[str, Any]:
         """在写事务内核对题目快照并保存作答与错题。"""
         artifact = self.get_artifact(artifact_id)
@@ -1917,7 +1938,16 @@ class SQLiteStorage:
         question = questions[question_index]
         if expected_question is not None and question != expected_question:
             raise QuestionRevisionConflict("题目已更新，请刷新题集后重新作答")
-        attempt_id = uuid.uuid4().hex
+        if request_key is not None and (not isinstance(request_key, str) or not re.fullmatch(r'[A-Za-z0-9_-]{16,80}', request_key)):
+            raise ValueError('作答请求标识无效')
+        attempt_id = 'request-' + hashlib.sha256(request_key.encode('utf-8')).hexdigest() if request_key else uuid.uuid4().hex
+        previous = self._conn().execute('SELECT * FROM quiz_attempts WHERE attempt_id=?', (attempt_id,)).fetchone()
+        if previous:
+            if (previous['artifact_id'], previous['question_index'], previous['user_answer']) != (artifact_id, question_index, user_answer):
+                raise QuestionRevisionConflict('作答请求标识已使用，请刷新后重新作答')
+            return {'attempt_id': attempt_id, 'is_correct': bool(previous['is_correct']),
+                    'score': previous['score'], 'feedback': previous['feedback'],
+                    'reference_answer': question.get('answer', '') if isinstance(question, dict) else ''}
         now = _now_iso()
         question_dict = question if isinstance(question, dict) else {}
         knowledge_key, knowledge_label = _knowledge_identity(

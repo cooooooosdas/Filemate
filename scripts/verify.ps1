@@ -47,6 +47,7 @@ try {
         filemate/tests/test_retrieval.py `
         filemate/tests/test_study.py `
         filemate/study `
+        filemate/course_graph filemate/tests/course_graph `
         filemate/portfolio `
         filemate/tests/test_p1_resume.py `
         filemate/tests/test_p1_growth_report.py `
@@ -75,7 +76,7 @@ try {
         scripts/acceptance/gateway_preflight.py `
         scripts/deploy_existing.py `
         scripts/ops/resource_recorder.py filemate/tests/test_resource_recorder.py filemate/perception/bounded_parse.py filemate/perception/parse_worker.py filemate/tests/test_bounded_parse.py `
-        scripts/acceptance/workspace_model_fixture.py scripts/acceptance/interview_coach_fixture.py `
+        scripts/acceptance/workspace_model_fixture.py scripts/acceptance/interview_coach_fixture.py scripts/acceptance/course_graph_fixture.py `
         evaluation/analyze_feedback.py
     Assert-LastExitCode "Ruff"
     uv run pytest filemate/tests -q -m "not e2e"
