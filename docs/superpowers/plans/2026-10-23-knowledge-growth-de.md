@@ -107,11 +107,11 @@
 - Produces: `preview_cross_link`, `confirm_cross_link`, `list_cross_links`，两端课程／概念作为唯一规范端点；只有`related`可写，逆操作复用learning_commands。
 - HTTP: `GET /{cid}/learning/nodes`、`GET /{cid}/concepts/{nid}/learning`、`GET .../question-candidates`；`POST .../question-links/preview|confirm`；`POST .../practice-drafts`、`GET /{cid}/learning/work/{wid}`、`POST .../{wid}/cancel`、`POST .../{wid}/review/preview|confirm`；`POST /{cid}/learning/path/preview|confirm`；跨课`GET /{cid}/concepts/{nid}/related-courses`与`POST .../preview|confirm`；`POST /{cid}/learning/operations/{oid}/preview|confirm`。新GET参数严格禁止多余／重复项；新POST继承StrictBody，返回no-store。
 
-- [ ] **Step 1: 写RED。** 真ASGI `test_learning_routes_tenant_flags_validation_and_redacted_storage_failure`、`test_no_read_triggers_model_or_mutation`；`test_cross_link_navigation_only_cannot_change_evidence_or_plan`；`test_cross_link_endpoints_belong_to_current_tenant`；`test_reversed_pair_idempotent_and_revoke_undo`；`test_failed_confirm_does_not_partial_write`。
-- [ ] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_learning_api.py -q`。Expected:404 missing routes。
-- [ ] **Step 3: 实现严格边界并同步调用合同。** 允许HTTP自带密钥仅现有受信POST模型路径，GET/非模型参数拒收；不更改全局身份／凭据流程。跨课关系不加入C依赖／D学习聚合，显示真实目标课程链接与失效说明。隐私删除、默认关闭读退回兼容旧图谱。
-- [ ] **Step 4: 跑GREEN。** Task1–5+`test_api.py/test_workspace_api.py`。Expected:新老接口0失败。
-- [ ] **Step 5: 提交。** `feat(graph): 接入课程学习接口与人工跨课联系`。
+- [x] **Step 1: 写RED。** 真ASGI `test_learning_routes_tenant_flags_validation_and_redacted_storage_failure`、`test_no_read_triggers_model_or_mutation`；`test_cross_link_navigation_only_cannot_change_evidence_or_plan`；`test_cross_link_endpoints_belong_to_current_tenant`；`test_reversed_pair_idempotent_and_revoke_undo`；`test_failed_confirm_does_not_partial_write`。
+- [x] **Step 2: 跑RED。** `uv run pytest filemate/tests/course_graph/test_learning_api.py -q`。Expected:404 missing routes。
+- [x] **Step 3: 实现严格边界并同步调用合同。** 允许HTTP自带密钥仅现有受信POST模型路径，GET/非模型参数拒收；不更改全局身份／凭据流程。跨课关系不加入C依赖／D学习聚合，显示真实目标课程链接与失效说明。隐私删除、默认关闭读退回兼容旧图谱。
+- [x] **Step 4: 跑GREEN。** Task1–5+`test_api.py/test_workspace_api.py`。Expected:新老接口0失败。
+- [x] **Step 5: 提交。** `feat(graph): 接入课程学习接口与人工跨课联系`。
 
 ### Task 6: D工作台学习闭环与失败恢复
 

@@ -220,7 +220,9 @@ def create_router(storage_provider: Callable[[], SQLiteStorage]) -> APIRouter:
             meta = json.loads(row["metadata"])
             items.append({"operation_id": row["operation_id"], "kind": row["kind"], "status": row["status"],
                           "created_at": row["created_at"], "draft_id": meta.get("draft_id"),
-                          "reversible": "ids" in meta and row["kind"] in {"review", "merge", "remove_source"}})
+                          "learning": row["kind"].startswith('learning_'),
+                          "reversible": (bool(meta.get('targets')) if row["kind"].startswith('learning_') else
+                              "ids" in meta and row["kind"] in {"review", "merge", "remove_source"})})
         return _result({"items": items, "total": total, "limit": limit, "offset": offset})
 
     @router.post("/{cid}/operations/{oid}/preview")
@@ -234,4 +236,7 @@ def create_router(storage_provider: Callable[[], SQLiteStorage]) -> APIRouter:
     from filemate.course_graph.workspace_api import register_workspace_routes
 
     register_workspace_routes(router, storage_provider)
+    from filemate.course_graph.learning_api import register_learning_routes
+
+    register_learning_routes(router, storage_provider)
     return router

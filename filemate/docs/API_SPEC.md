@@ -1032,6 +1032,27 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 
 第六阶段收尾合同：比较条件另存 `input.comparison_conditions`（version=1、实际难度、时长、source_id、原始题目及任务prompt摘要）；这些条件缺失的旧报告仍可读，但明确不可比。读取/导出/比较均先对原 claim 的输入摘要、标准摘要、归属、模型来源及逐项引用/模态/服务端加权结果进行核验，损坏返回有限的 `assessment_evidence_unavailable` 错误，不按当前回答改写历史。Markdown 对所有动态文本转义，原样内容以 JSON 保留；PDF 解码文本后仍在 Paragraph 前转义。实战运行期间发起的分析还检查服务器截止时刻，过期后旧结果不发布；context会结算到期状态，结束后可重新单次授权重算。浏览器取消后有界等待终态，不重发模型请求；确认清空先同步擦除本页报告、比较及待重试命令，再刷新。聚合长回答暂无单次输入大小/成本预检，供应商上下文及学习空间字节预算仍可能拒绝请求，旧成果保留。
 
+## 2026-10-23 课程学习 HTTP（D Task5，本地候选）
+
+以下路径以 `R=/api/knowledge-graph/courses/{cid}` 为前缀，继承课程开关、当前用户存储、受信 Origin；全部成功及领域错误返回 `Cache-Control:no-store`。GET 拒绝未知、重复参数，不续租、不触发模型或写入。分页统一 `limit=50(1..200),offset=0(0..1000000)`；数据库异常仅返回固定 `storage_unavailable`，不暴露路径／SQL。
+
+| 方法／路径 | 请求 | 结果 |
+|---|---|---|
+| GET R/learning/nodes | 分页、status可选四种训练状态 | 真实状态摘要分页、规则／快照版本 |
+| GET R/concepts/{nid}/learning | 分页 | 计数、原因；question_refs/attempts/wrongs/plans分别分页 |
+| GET R/concepts/{nid}/question-candidates | 分页、q≤160 | 当前课程有效题目候选，不自动关联 |
+| POST R/concepts/{nid}/question-links/preview 或 confirm | items(1..20)的artifact_id/question_index/question_digest，active=true；confirm另需确认字段 | 版本绑定预览／显式映射回执 |
+| POST R/concepts/{nid}/practice-drafts | difficulty、count1..5、mode、request_key、allow_external_model | 持久化工作；llm须明确授权，否则422 |
+| GET R/learning/work/{wid} | 无 | 已存工作，含status/payload/stale；不发起模型 |
+| POST R/learning/work/{wid}/cancel | request_key | 取消工作，不退还调用次数 |
+| POST R/learning/work/{wid}/review/preview 或 confirm | decisions每题index/verdict，可选question；confirm另需确认字段 | 审核预览／正式题集回执 |
+| POST R/learning/path/preview 或 confirm | goal、concept_ids、chapter_id、goal_id、daily_minutes、days；confirm另需确认字段 | 路径预览／只新增计划回执 |
+| GET R/concepts/{nid}/related-courses | 分页 | 人工跨课双向导航，affects_learning=false |
+| POST R/concepts/{nid}/related-courses/preview 或 confirm | other_course_id、other_concept_id、active=true、relation仅related；confirm另需确认字段 | 两端本用户验证、规范唯一联系回执 |
+| POST R/learning/operations/{oid}/preview 或 confirm | action=undo/restore；confirm另需确认字段 | 学习操作逆操作回执 |
+
+确认字段为 `confirmed=true,confirmation_token,request_key`；严格 JSON 拒绝多余字段与隐式类型转换。跨课联系保留原概念身份，反向添加不会创建第二行；不计入前置依赖、训练状态或计划。`GET R/operations` 增加 `learning`，学习操作的 `reversible` 仅在存在有效目标时为true，逆操作使用上表学习路径。浏览器密钥新增仅允许完整POST `R/concepts/{nid}/practice-drafts` 且mode=llm，后缀／GET／计划确认一律拒收。密钥不进入工作、预览或操作记录。
+
 ## 2026-10-22 知识图谱B级开发候选
 
 业务schema追加31（`course_knowledge_graph`），创建课程、章节、来源归属、逐来源提取、概念、关系、证据和操作记录8张表。旧图谱批次、ID和学习记录保持不变，不回填课程。本条为B任务1的历史记录；课程HTTP现已按下方B候选合同接入，本地B已获用户验收。线上状态仍以发布回执为准；本次不迁移生产库。
