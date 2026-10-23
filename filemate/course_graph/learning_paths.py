@@ -182,10 +182,30 @@ def suggest_path(storage, cid, goal, *, concept_ids=None, chapter_id=None, goal_
 def preview_path(storage, cid, options, *, now=None):
     """Bind goal, graph, training evidence and time budget to a confirmation token."""
     options, now = _options(options), now or datetime.now(timezone.utc)
+    version, result = _prepare(storage, cid, options, now)
     with transaction(storage) as conn:
-        result = _build(storage, cid, options, now)
+        _check_version(conn, version)
         token = data_actions.issue(conn, 'course_graph_learning_path', cid, result['_revision'])
         return {**_public(result), 'confirmation_token': token}
+
+
+def _version(conn):
+    """Bind both other-connection commits and same-connection writes to one read."""
+    return conn.execute('PRAGMA data_version').fetchone()[0], conn.total_changes
+
+
+def _prepare(storage, cid, options, now):
+    """Build outside the write lock and reject any intervening database commit."""
+    version = _version(storage._conn())
+    with storage.read_snapshot() as read:
+        path = _build(read, cid, options, now)
+    return version, path
+
+
+def _check_version(conn, version):
+    """Conservatively invalidate on unrelated writes rather than accept a stale path."""
+    if _version(conn) != version:
+        raise CourseGraphError('input_changed')
 
 
 def _plan(path):
@@ -211,6 +231,16 @@ def confirm_path(storage, cid, options, confirmation_token, request_key, confirm
     options, now = _options(options), now or datetime.now(timezone.utc)
     selection = digest(options)
     hashed = digest({'options': selection, 'token': confirmation_token})
+    # 已完成回执先读取；重试不依赖当前课程仍可重新生成相同路径。
+    with storage.read_snapshot() as read:
+        require_course(read._conn(), cid)
+        previous = get_request(read._conn(), cid, request_key, 'learning_path', hashed)
+        if previous:
+            return previous['metadata']['receipt']
+        used = _used_receipt(read._conn(), 'course_graph_learning_path', cid, confirmation_token)
+        if used and used['options_digest'] != selection:
+            raise CourseGraphError('request_key_conflict')
+    version, path = (None, None) if used else _prepare(storage, cid, options, now)
     with transaction(storage) as conn:
         require_course(conn, cid)
         previous = get_request(conn, cid, request_key, 'learning_path', hashed)
@@ -223,7 +253,9 @@ def confirm_path(storage, cid, options, confirmation_token, request_key, confirm
             record_change(conn, cid, request_key, 'learning_path', hashed,
                           {'receipt': used, 'alias_of': used['operation_id']})
             return used
-        path = _build(storage, cid, options, now)
+        if path is None:
+            raise CourseGraphError('input_changed')
+        _check_version(conn, version)
         _check_preview(conn, 'course_graph_learning_path', cid, confirmation_token, path['_revision'])
         plan = _plan(path)
         pid, aid, oid = uuid4().hex, uuid4().hex, str(uuid4())

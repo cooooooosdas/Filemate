@@ -1131,7 +1131,7 @@ Task6前端接线：课程知识点详情的“开始学习与练习”打开同
 
 引用先验证课程、已确认代表/成员和证据归属，再在同一只读事务核对active来源、指纹、保存的raw_text范围与原句相等；来源变化或移出返回409 citation_unavailable，不模糊重定位。删除或他人证据404，数据库异常503 storage_unavailable，不泄露数据库路径。前端读请求15秒、可取消；浏览空间只读取公开状态的opaque scope，不访问密钥库。B原graph/concepts与所有写入协议保持原义。本段为已接线的本地候选合同；100／1000／10000合成HTTP与五尺寸浏览器证据见[本地C级交付](../../docs/KNOWLEDGE_GRAPH_2_0_C_DELIVERY.md)。浏览器内存未测，尚未生产部署，等待C级验收。
 
-## D/E本地候选：学习数据迁移32／33（2026-10-23）
+## D/E本地候选：学习数据迁移32／33／34（2026-10-23至24）
 
 追加course_learning_evidence迁移32，不修改v1–31。kg_question_links把人工确认的课程原概念ID与现役题集Artifact／题号／规范化题目摘要关联；正文出现或标签相同都不会自动关联。候选只来自本课程active来源的有效非历史只读题集，分页不改变数据库。确认最多20题、必须先预览、confirmed=true、16–80位request_key及900秒确认凭据；改题或课程变化须重新预览。同一确认重复返回原回执，不能以更换body重用旧token。
 
@@ -1146,6 +1146,14 @@ Task6前端接线：课程知识点详情的“开始学习与练习”打开同
 工作状态running/ready/failed/cancelled/interrupted/confirmed；GET不发模型、不续租、不写数据库，返回stale和固定安全error_code。取消轮换epoch并清payload；备份恢复、输入版本变化或租约过期阻止晚到结果变成ready。每题必须accept/reject，接受项可修改但重新校验题型、非空答案、连续引文及引用ID；全部拒绝不生成正式题集。预览后确认原子创建一个现役questions Artifact、显式映射和回执，不创建作答或错题；撤销只解除此次映射，保留正式题集及学习历史。
 
 补充迁移33的kg_learning_artifact_sources：正式题集及后续计划绑定全部上下文来源。删除任一依赖来源同时删除派生Artifact及下游，题目修订时历史快照继承依赖；删除预览显示course_learning_derived_artifacts（可能与普通Artifact计数重叠，不应相加当独立数量）。升级32→33只追加表、索引、触发器；回退不能直接删除迁移。HTTP已接线，见下表。
+
+迁移34 `course_answer_source_backfill`补齐已保存问答的课程来源删除依赖；个人备份恢复也执行同样补齐。问答含未被引文采样的标签、关系和历史训练摘要，因此绑定本课程全部来源（含移出但未彻底删除的来源），不以12条引文代替完整删除溯源。删除任何课程来源可能保守清除该课程历史问答，需要重新生成；题集仍沿用其实际上下文来源依赖。32／33已发布定义不改，回退使用兼容34的代码或升级前完整备份。
+
+独立审阅修复后的交互合同：5xx、408及网络结果未知时，同一作答／练习生成沿用原请求键和输入；不能以502证明服务端未提交。同ID工作由running／interrupted恢复为ready时首次载入审核题目，普通重读不覆盖人工修订。跨课联系列表新增`available:boolean`、`unavailable_reason:string|null`，`route`为`string|null`；撤销概念／归档课程显示失效且无导航。已有联系解除仍核验同租户资源存在性，允许目标失效，不允许借此新增到不可用目标。
+
+路径主要聚合与排序在只读快照完成，短写事务在发令牌／写计划前用同一连接`data_version`及`total_changes`拒绝期间写入，冲突409 `input_changed`。因此无关数据库写入也可能要求重试；已确认原键或同token别名重试先恢复原回执，不重新生成路径。
+
+助手`course-assistant-v2`的个人计数与状态仅由服务端事实栏生成。模型解释与建议禁止个人统计／能力结论；在ID白名单之外，规范化正文并保守拒绝相关语词，固定`invalid_output`且不持久化错误正文。此检查可误拒合法措辞，不能证明任意语言的语义正确；教材解释、隐晦幻觉仍需人工gold及使用者核对，不输出“已验证学习效果”。
 
 路径领域合同：goal为1–500字，concept_ids可选1–30个稳定ID，chapter_id作为硬范围，goal_id可选现役reverse_goal_plan（无来源的全局目标可由用户明确选中，有来源的目标须属于本课程）；每天5–180分钟、1–7日，每天一项、最多7项。只使用有有效来源的已确认同课prerequisite／depends_on；前者a→b为a先、后者a→b为b先。范围内补前置并给scope_expanded_count；环409 dependency_cycle、无有效概念422 path_no_supported_concepts；omitted_count说明日数不足，unsupported_count说明所选范围中无有效来源。排序为到期复习、近7天错答、所选范围、章节与稳定ID；前置约束优先于此排序。任务展示实际wrong_id／attempt_id／relation_id及规则版本，不生成能力评分。
 

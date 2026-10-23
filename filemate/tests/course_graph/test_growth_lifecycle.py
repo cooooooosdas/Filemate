@@ -93,7 +93,7 @@ def test_registered_student_learning_assistant_and_recovery(api_server, monkeypa
         assert store.get_source(sources[1]) is not None
         assert client.post(base + '/learning/path/confirm', json=options | confirmation(agent)).status_code == 409
         assert data(client.get(base + f"/learning/work/{answer['work_id']}"))['status'] == 'ready'
-        assert store.get_schema_version() == 33
+        assert store.get_schema_version() == 34
         assert store._conn().execute('PRAGMA foreign_key_check').fetchall() == []
 
 

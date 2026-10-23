@@ -46,19 +46,30 @@ def read_learning_projection(read, cid: str, *, now: datetime) -> dict[str, Any]
     artifacts = {r['artifact_id']: read._decode_row(r, ('content', 'metadata')) for r in conn.execute('''
         SELECT * FROM artifacts WHERE artifact_id IN
         (SELECT artifact_id FROM kg_question_links WHERE course_id=? AND active=1) ORDER BY artifact_id''', (cid,))}
-    selector = '''EXISTS(SELECT 1 FROM kg_question_links l WHERE l.course_id=? AND l.active=1
-                  AND (l.artifact_id=q.artifact_id OR l.artifact_id=json_extract(a.metadata,'$.question_revision_parent'))
-                  AND l.question_index=q.question_index)'''
-    attempts = [dict(r) for r in conn.execute(f'''SELECT q.rowid AS evidence_sequence,
+    # 先限定题目身份，再使用现有artifact索引；无关课程的作答不能驱动内层映射扫描。
+    selector = '''WITH mapped AS MATERIALIZED (
+        SELECT DISTINCT artifact_id,question_index FROM kg_question_links WHERE course_id=? AND active=1
+    ), versions AS MATERIALIZED (
+        SELECT a.artifact_id,m.question_index,json_extract(a.metadata,'$.question_revision_parent') AS revision_parent
+        FROM mapped m JOIN artifacts a USING(artifact_id)
+        UNION
+        SELECT a.artifact_id,m.question_index,json_extract(a.metadata,'$.question_revision_parent') AS revision_parent
+        FROM artifacts a JOIN mapped m ON m.artifact_id=json_extract(a.metadata,'$.question_revision_parent')
+    ), scoped_artifacts AS MATERIALIZED (
+        SELECT DISTINCT artifact_id FROM versions
+    )'''
+    attempts = [dict(r) for r in conn.execute(f'''{selector} SELECT q.rowid AS evidence_sequence,
         q.attempt_id,q.artifact_id,q.question_index,q.is_correct,q.score,q.created_at,
-        json_extract(a.metadata,'$.question_revision_parent') AS revision_parent
-        FROM quiz_attempts q JOIN artifacts a USING(artifact_id)
-        WHERE {selector} ORDER BY q.created_at DESC,q.attempt_id''', (cid,))]
-    wrongs = [dict(r) for r in conn.execute(f'''SELECT q.wrong_id,q.artifact_id,q.question_index,q.question,
+        v.revision_parent FROM scoped_artifacts s CROSS JOIN quiz_attempts q
+        ON q.artifact_id=s.artifact_id CROSS JOIN versions v
+        ON v.artifact_id=q.artifact_id AND v.question_index=q.question_index
+        ORDER BY q.created_at DESC,q.attempt_id''', (cid,))]
+    wrongs = [dict(r) for r in conn.execute(f'''{selector} SELECT q.wrong_id,q.artifact_id,q.question_index,q.question,
         q.mastered,q.next_review_at,q.updated_at,
-        json_extract(a.metadata,'$.question_revision_parent') AS revision_parent
-        FROM wrong_questions q JOIN artifacts a USING(artifact_id)
-        WHERE {selector} ORDER BY q.updated_at DESC,q.wrong_id''', (cid,))]
+        v.revision_parent FROM scoped_artifacts s CROSS JOIN wrong_questions q
+        ON q.artifact_id=s.artifact_id CROSS JOIN versions v
+        ON v.artifact_id=q.artifact_id AND v.question_index=q.question_index
+        ORDER BY q.updated_at DESC,q.wrong_id''', (cid,))]
     plans = [dict(r) for r in conn.execute('''SELECT l.*,p.status,p.title,p.completed_days,p.updated_at
         FROM kg_course_plan_links l JOIN study_plans p USING(plan_id)
         WHERE l.course_id=? ORDER BY p.updated_at DESC,l.plan_id,l.day_index,l.concept_id''', (cid,))]

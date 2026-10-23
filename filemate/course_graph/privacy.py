@@ -183,6 +183,9 @@ def normalize_restored_course_graph(conn) -> None:
                      (secrets.randbits(60), interrupted, row["extraction_id"]))
     conn.execute("DELETE FROM data_action_previews WHERE action LIKE 'course_graph_%'")
     if _has_learning_tables(conn):
+        from filemate.course_graph.learning_schema import ANSWER_SOURCE_BACKFILL_SCHEMA
+        # 旧备份可能缺少未引用来源；恢复时补齐删除依赖，不能只迁移当前空表。
+        conn.execute(ANSWER_SOURCE_BACKFILL_SCHEMA.strip().removesuffix(';'))
         for row in conn.execute('SELECT work_id,status FROM kg_learning_work').fetchall():
             conn.execute('''UPDATE kg_learning_work SET epoch=?,lease_until=NULL,
                 status=CASE WHEN status='running' THEN 'interrupted' ELSE status END,

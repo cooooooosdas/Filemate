@@ -16,14 +16,24 @@ def _context(storage, conn, cid, nid, other_course_id, other_concept_id, active,
     if type(active) is not bool or relation != 'related' or cid == other_course_id:
         raise CourseGraphError('invalid_cross_course_link', 422)
     first = read_workspace_snapshot(storage, cid)
-    second = read_workspace_snapshot(storage, other_course_id)
     _concept(first, nid)
-    _concept(second, other_concept_id)
     pair = sorted([(cid, nid), (other_course_id, other_concept_id)])
     lid = uuid5(NAMESPACE_URL, 'course-related:' + digest(pair)).hex
     row = conn.execute('SELECT * FROM kg_cross_links WHERE link_id=?', (lid,)).fetchone()
+    if active:
+        second = read_workspace_snapshot(storage, other_course_id)
+        _concept(second, other_concept_id)
+        target_revision = second.graph_digest
+    else:
+        # 历史联系的解除仍须属于同一租户，但不要求已撤销的目标继续可导航。
+        course = conn.execute('SELECT * FROM kg_courses WHERE course_id=?', (other_course_id,)).fetchone()
+        node = conn.execute('SELECT * FROM kg_concepts WHERE course_id=? AND concept_id=?',
+                            (other_course_id, other_concept_id)).fetchone()
+        if course is None or node is None or row is None:
+            raise CourseGraphError('cross_link_not_found', 404)
+        target_revision = digest({'course': dict(course), 'concept': dict(node)})
     selection = digest({'pair': pair, 'active': active, 'relation': relation})
-    revision = digest({'selection': selection, 'graphs': sorted([first.graph_digest, second.graph_digest]),
+    revision = digest({'selection': selection, 'graphs': sorted([first.graph_digest, target_revision]),
                        'row': dict(row) if row else None})
     return lid, pair, row, selection, revision
 
@@ -97,12 +107,14 @@ def list_cross_links(storage, cid: str, nid: str, *, offset: int = 0, limit: int
         for row in selected[offset:offset + limit]:
             side = 'to' if row['from_course_id'] == cid else 'from'
             target_cid, target_nid = row[side + '_course_id'], row[side + '_concept_id']
-            target = read._conn().execute('''SELECT c.name,n.label FROM kg_courses c
+            target = read._conn().execute('''SELECT c.name,c.archived,n.label,n.status FROM kg_courses c
                 JOIN kg_concepts n ON n.course_id=c.course_id WHERE c.course_id=? AND n.concept_id=?''',
                                          (target_cid, target_nid)).fetchone()
+            available = bool(target and not target['archived'] and target['status'] == 'confirmed')
+            reason = None if available else '目标课程已归档' if target and target['archived'] else '目标知识点已撤销或不可用'
             items.append({'link_id': row['link_id'], 'course_id': target_cid, 'concept_id': target_nid,
                           'course_name': target['name'], 'label': target['label'], 'relation': 'related',
-                          'affects_learning': False,
-                          'route': f'/knowledge-graph?graph_scope=course&course={target_cid}&node={target_nid}'})
+                          'affects_learning': False, 'available': available, 'unavailable_reason': reason,
+                          'route': f'/knowledge-graph?graph_scope=course&course={target_cid}&node={target_nid}' if available else None})
         return {'course_id': cid, 'concept_id': root, 'items': items, 'total': len(selected),
                 'limit': limit, 'offset': offset}

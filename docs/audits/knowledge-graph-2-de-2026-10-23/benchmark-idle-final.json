@@ -1,0 +1,619 @@
+{
+  "synthetic": true,
+  "fixture_kind": "constructed graph plus actual-schema dense quiz records; not model quality",
+  "measurement_note": "first sample is first invocation, not an OS cold-cache claim; five hot samples have no P95 claim",
+  "machine": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "cpus": 28,
+    "python": "3.12.13",
+    "sqlite": "3.53.1",
+    "fastapi": "0.141.1"
+  },
+  "flags": {
+    "FILEMATE_ENABLE_COURSE_GRAPH": true,
+    "identity_mode": "local, isolated per case",
+    "FILEMATE_ENABLE_GRAPH_ASSISTANT": true
+  },
+  "cases": [
+    {
+      "total_nodes": 100,
+      "course_id": "4d31f3f3-b24b-4665-8dac-dfbb3a797ec3",
+      "database": "<synthetic-root>/100/filemate.db",
+      "source_id": "92800852460e4f789301c2f0a2a86095",
+      "focus_id": "n00099",
+      "foreign_key_errors": 0,
+      "browser": {
+        "measurement_status": "not_measured",
+        "first_interactive_ms": null,
+        "max_long_task_ms": null,
+        "heap_bytes": null
+      },
+      "total_attempts": 10000,
+      "schema_version": 33,
+      "projection_sql_statements": 14,
+      "focus_attempt_count": 10000,
+      "http": {
+        "learning_nodes": {
+          "first": {
+            "ok": true,
+            "ms": 186.976,
+            "payload_bytes": 21848
+          },
+          "hot": [
+            {
+              "ok": true,
+              "ms": 92.121,
+              "payload_bytes": 21848
+            },
+            {
+              "ok": true,
+              "ms": 87.049,
+              "payload_bytes": 21848
+            },
+            {
+              "ok": true,
+              "ms": 85.877,
+              "payload_bytes": 21848
+            },
+            {
+              "ok": true,
+              "ms": 88.344,
+              "payload_bytes": 21848
+            },
+            {
+              "ok": true,
+              "ms": 86.177,
+              "payload_bytes": 21848
+            }
+          ],
+          "hot_gate_passed": true
+        },
+        "learning_detail": {
+          "first": {
+            "ok": true,
+            "ms": 90.84,
+            "payload_bytes": 11367
+          },
+          "hot": [
+            {
+              "ok": true,
+              "ms": 90.158,
+              "payload_bytes": 11367
+            },
+            {
+              "ok": true,
+              "ms": 88.354,
+              "payload_bytes": 11367
+            },
+            {
+              "ok": true,
+              "ms": 84.787,
+              "payload_bytes": 11367
+            },
+            {
+              "ok": true,
+              "ms": 85.149,
+              "payload_bytes": 11367
+            },
+            {
+              "ok": true,
+              "ms": 83.345,
+              "payload_bytes": 11367
+            }
+          ],
+          "hot_gate_passed": true
+        },
+        "path_preview": {
+          "first": {
+            "ok": true,
+            "ms": 100.845,
+            "payload_bytes": 1209
+          },
+          "hot": [
+            {
+              "ok": true,
+              "ms": 83.146,
+              "payload_bytes": 1209
+            },
+            {
+              "ok": true,
+              "ms": 85.275,
+              "payload_bytes": 1209
+            },
+            {
+              "ok": true,
+              "ms": 82.998,
+              "payload_bytes": 1209
+            },
+            {
+              "ok": true,
+              "ms": 85.933,
+              "payload_bytes": 1209
+            },
+            {
+              "ok": true,
+              "ms": 97.467,
+              "payload_bytes": 1209
+            }
+          ],
+          "hot_gate_passed": true
+        },
+        "workspace": {
+          "first": {
+            "ok": true,
+            "ms": 21.169,
+            "payload_bytes": 720
+          },
+          "hot": [
+            {
+              "ok": true,
+              "ms": 8.05,
+              "payload_bytes": 720
+            },
+            {
+              "ok": true,
+              "ms": 8.708,
+              "payload_bytes": 720
+            },
+            {
+              "ok": true,
+              "ms": 8.499,
+              "payload_bytes": 720
+            },
+            {
+              "ok": true,
+              "ms": 18.328,
+              "payload_bytes": 720
+            },
+            {
+              "ok": true,
+              "ms": 8.67,
+              "payload_bytes": 720
+            }
+          ],
+          "hot_gate_passed": true
+        }
+      },
+      "concurrent": [
+        {
+          "ok": true,
+          "ms": 1548.68,
+          "payload_bytes": 11367
+        },
+        {
+          "ok": true,
+          "ms": 1509.676,
+          "payload_bytes": 11367
+        },
+        {
+          "ok": true,
+          "ms": 934.364,
+          "payload_bytes": 11367
+        },
+        {
+          "ok": true,
+          "ms": 1363.959,
+          "payload_bytes": 11367
+        },
+        {
+          "ok": true,
+          "ms": 1571.25,
+          "payload_bytes": 340
+        },
+        {
+          "ok": true,
+          "ms": 1557.007,
+          "payload_bytes": 340
+        }
+      ],
+      "plan_count_after_duplicate_confirm": 1,
+      "http_hot_gate_passed": true,
+      "concurrency_passed": true,
+      "process_rss_sampled_max_bytes": 156467200,
+      "rss_note": "50ms samples of owned process tree summed RSS include startup; shared pages may be double counted; may miss short peaks; not browser heap",
+      "database_bytes": 4014080,
+      "wal_bytes_after_server_exit": 1409072
+    },
+    {
+      "total_nodes": 1000,
+      "course_id": "8dfe4d8b-60d4-492d-bdac-e43de580fb99",
+      "database": "<synthetic-root>/1000/filemate.db",
+      "source_id": "5daa8a2be24c4625bfd0796d7e976999",
+      "focus_id": "n00999",
+      "foreign_key_errors": 0,
+      "browser": {
+        "measurement_status": "not_measured",
+        "first_interactive_ms": null,
+        "max_long_task_ms": null,
+        "heap_bytes": null
+      },
+      "total_attempts": 10000,
+      "schema_version": 33,
+      "projection_sql_statements": 14,
+      "focus_attempt_count": 10000,
+      "http": {
+        "learning_nodes": {
+          "first": {
+            "ok": true,
+            "ms": 200.216,
+            "payload_bytes": 21849
+          },
+          "hot": [
+            {
+              "ok": true,
+              "ms": 104.601,
+              "payload_bytes": 21849
+            },
+            {
+              "ok": true,
+              "ms": 102.562,
+              "payload_bytes": 21849
+            },
+            {
+              "ok": true,
+              "ms": 145.744,
+              "payload_bytes": 21849
+            },
+            {
+              "ok": true,
+              "ms": 109.159,
+              "payload_bytes": 21849
+            },
+            {
+              "ok": true,
+              "ms": 102.424,
+              "payload_bytes": 21849
+            }
+          ],
+          "hot_gate_passed": true
+        },
+        "learning_detail": {
+          "first": {
+            "ok": true,
+            "ms": 103.434,
+            "payload_bytes": 11368
+          },
+          "hot": [
+            {
+              "ok": true,
+              "ms": 138.616,
+              "payload_bytes": 11368
+            },
+            {
+              "ok": true,
+              "ms": 104.327,
+              "payload_bytes": 11368
+            },
+            {
+              "ok": true,
+              "ms": 104.895,
+              "payload_bytes": 11368
+            },
+            {
+              "ok": true,
+              "ms": 106.21,
+              "payload_bytes": 11368
+            },
+            {
+              "ok": true,
+              "ms": 141.864,
+              "payload_bytes": 11368
+            }
+          ],
+          "hot_gate_passed": true
+        },
+        "path_preview": {
+          "first": {
+            "ok": true,
+            "ms": 107.936,
+            "payload_bytes": 1211
+          },
+          "hot": [
+            {
+              "ok": true,
+              "ms": 116.453,
+              "payload_bytes": 1211
+            },
+            {
+              "ok": true,
+              "ms": 107.162,
+              "payload_bytes": 1211
+            },
+            {
+              "ok": true,
+              "ms": 144.531,
+              "payload_bytes": 1211
+            },
+            {
+              "ok": true,
+              "ms": 106.273,
+              "payload_bytes": 1211
+            },
+            {
+              "ok": true,
+              "ms": 102.786,
+              "payload_bytes": 1211
+            }
+          ],
+          "hot_gate_passed": true
+        },
+        "workspace": {
+          "first": {
+            "ok": true,
+            "ms": 34.026,
+            "payload_bytes": 723
+          },
+          "hot": [
+            {
+              "ok": true,
+              "ms": 56.922,
+              "payload_bytes": 723
+            },
+            {
+              "ok": true,
+              "ms": 23.355,
+              "payload_bytes": 723
+            },
+            {
+              "ok": true,
+              "ms": 21.41,
+              "payload_bytes": 723
+            },
+            {
+              "ok": true,
+              "ms": 22.956,
+              "payload_bytes": 723
+            },
+            {
+              "ok": true,
+              "ms": 32.183,
+              "payload_bytes": 723
+            }
+          ],
+          "hot_gate_passed": true
+        }
+      },
+      "concurrent": [
+        {
+          "ok": true,
+          "ms": 1774.262,
+          "payload_bytes": 11368
+        },
+        {
+          "ok": true,
+          "ms": 2014.221,
+          "payload_bytes": 11368
+        },
+        {
+          "ok": true,
+          "ms": 2019.633,
+          "payload_bytes": 11368
+        },
+        {
+          "ok": true,
+          "ms": 2013.649,
+          "payload_bytes": 11368
+        },
+        {
+          "ok": true,
+          "ms": 1516.193,
+          "payload_bytes": 340
+        },
+        {
+          "ok": true,
+          "ms": 1491.225,
+          "payload_bytes": 340
+        }
+      ],
+      "plan_count_after_duplicate_confirm": 1,
+      "http_hot_gate_passed": true,
+      "concurrency_passed": true,
+      "process_rss_sampled_max_bytes": 166346752,
+      "rss_note": "50ms samples of owned process tree summed RSS include startup; shared pages may be double counted; may miss short peaks; not browser heap",
+      "database_bytes": 4874240,
+      "wal_bytes_after_server_exit": 1409072
+    },
+    {
+      "total_nodes": 10000,
+      "course_id": "ba0eda08-8385-48aa-a4e1-3bd3ca7fa99b",
+      "database": "<synthetic-root>/10000/filemate.db",
+      "source_id": "6e9466565dbb440c80e983e3b83b62ec",
+      "focus_id": "n09999",
+      "foreign_key_errors": 0,
+      "browser": {
+        "measurement_status": "not_measured",
+        "first_interactive_ms": null,
+        "max_long_task_ms": null,
+        "heap_bytes": null
+      },
+      "total_attempts": 10000,
+      "schema_version": 33,
+      "projection_sql_statements": 14,
+      "focus_attempt_count": 10000,
+      "http": {
+        "learning_nodes": {
+          "first": {
+            "ok": true,
+            "ms": 499.008,
+            "payload_bytes": 21850
+          },
+          "hot": [
+            {
+              "ok": true,
+              "ms": 403.779,
+              "payload_bytes": 21850
+            },
+            {
+              "ok": true,
+              "ms": 411.927,
+              "payload_bytes": 21850
+            },
+            {
+              "ok": true,
+              "ms": 378.113,
+              "payload_bytes": 21850
+            },
+            {
+              "ok": true,
+              "ms": 394.188,
+              "payload_bytes": 21850
+            },
+            {
+              "ok": true,
+              "ms": 393.18,
+              "payload_bytes": 21850
+            }
+          ],
+          "hot_gate_passed": true
+        },
+        "learning_detail": {
+          "first": {
+            "ok": true,
+            "ms": 370.339,
+            "payload_bytes": 11369
+          },
+          "hot": [
+            {
+              "ok": true,
+              "ms": 373.599,
+              "payload_bytes": 11369
+            },
+            {
+              "ok": true,
+              "ms": 368.481,
+              "payload_bytes": 11369
+            },
+            {
+              "ok": true,
+              "ms": 361.458,
+              "payload_bytes": 11369
+            },
+            {
+              "ok": true,
+              "ms": 373.212,
+              "payload_bytes": 11369
+            },
+            {
+              "ok": true,
+              "ms": 389.299,
+              "payload_bytes": 11369
+            }
+          ],
+          "hot_gate_passed": true
+        },
+        "path_preview": {
+          "first": {
+            "ok": true,
+            "ms": 413.309,
+            "payload_bytes": 1213
+          },
+          "hot": [
+            {
+              "ok": true,
+              "ms": 409.993,
+              "payload_bytes": 1213
+            },
+            {
+              "ok": true,
+              "ms": 382.037,
+              "payload_bytes": 1213
+            },
+            {
+              "ok": true,
+              "ms": 387.803,
+              "payload_bytes": 1213
+            },
+            {
+              "ok": true,
+              "ms": 375.208,
+              "payload_bytes": 1213
+            },
+            {
+              "ok": true,
+              "ms": 389.272,
+              "payload_bytes": 1213
+            }
+          ],
+          "hot_gate_passed": true
+        },
+        "workspace": {
+          "first": {
+            "ok": true,
+            "ms": 163.807,
+            "payload_bytes": 726
+          },
+          "hot": [
+            {
+              "ok": true,
+              "ms": 189.499,
+              "payload_bytes": 726
+            },
+            {
+              "ok": true,
+              "ms": 181.329,
+              "payload_bytes": 726
+            },
+            {
+              "ok": true,
+              "ms": 189.501,
+              "payload_bytes": 726
+            },
+            {
+              "ok": true,
+              "ms": 209.177,
+              "payload_bytes": 726
+            },
+            {
+              "ok": true,
+              "ms": 163.508,
+              "payload_bytes": 726
+            }
+          ],
+          "hot_gate_passed": true
+        }
+      },
+      "concurrent": [
+        {
+          "ok": true,
+          "ms": 6615.499,
+          "payload_bytes": 11369
+        },
+        {
+          "ok": true,
+          "ms": 6420.079,
+          "payload_bytes": 11369
+        },
+        {
+          "ok": true,
+          "ms": 5800.12,
+          "payload_bytes": 11369
+        },
+        {
+          "ok": true,
+          "ms": 6419.408,
+          "payload_bytes": 11369
+        },
+        {
+          "ok": true,
+          "ms": 6397.266,
+          "payload_bytes": 340
+        },
+        {
+          "ok": true,
+          "ms": 6122.493,
+          "payload_bytes": 340
+        }
+      ],
+      "plan_count_after_duplicate_confirm": 1,
+      "http_hot_gate_passed": true,
+      "concurrency_passed": true,
+      "process_rss_sampled_max_bytes": 295362560,
+      "rss_note": "50ms samples of owned process tree summed RSS include startup; shared pages may be double counted; may miss short peaks; not browser heap",
+      "database_bytes": 13000704,
+      "wal_bytes_after_server_exit": 1409072
+    }
+  ],
+  "dense_attempts": 10000,
+  "environment_note": "After full verify and frontend build ended; no overlapping heavy test suite. Final code includes narrow SELECT without private answer bodies. Prior contended failures retained separately; this is not a production SLA."
+}

@@ -1,0 +1,73 @@
+{
+  "as_of": "2026-10-24",
+  "scope": "final frozen-source Windows engineering gate; production release recorded separately",
+  "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend",
+  "exit_code": 0,
+  "backend": {
+    "passed": 1543,
+    "skipped": 22,
+    "deselected": 5,
+    "warnings": 3,
+    "collection_note": "All 15 closeout regressions and the earlier private-answer projection regression included in this full collection."
+  },
+  "frontend": {
+    "passed": 213,
+    "typecheck": true,
+    "build": true,
+    "bundle_gate": true,
+    "initial_gzip_bytes": 143100,
+    "budget_gzip_bytes": 143360
+  },
+  "source_log_sha256": "f6415658dcdb48ddafa0f6bc39d96a8de37ea7b8db0c9145199ae172fade1997",
+  "skip_reasons": [
+    "SKIPPED [1] filemate\\tests\\test_deploy_existing.py:15: 既有服务器部署工具仅在Linux使用",
+    "SKIPPED [1] filemate\\tests\\test_bounded_parse.py:113: Linux worker address-space limit",
+    "SKIPPED [1] filemate\\tests\\test_linux_judge.py:114: 仅验证 Linux 平台分支",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:191: 没有可用的 .docx 测试文件",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:203: 没有可用的 .docx 测试文件",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:216: 没有可用的 .docx 测试文件",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:236: 没有可用的 .pdf 测试文件",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:248: 没有可用的 .pdf 测试文件",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:279: 没有大 PDF 文件",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:321: 没有可用的 .pptx 测试文件",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:333: 没有可用的 .pptx 测试文件",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:480: PaddleOCR 未安装（可选依赖）",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:491: 需下载 PaddleOCR 模型（~80MB），CI 环境跳过",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:610: 测试文件不存在",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:627: 测试文件不存在",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:640: 测试文件不存在",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:655: 测试文件不存在",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:821: 测试文件不存在",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:831: 没有可用的 PDF 测试文件",
+    "SKIPPED [1] filemate\\tests\\test_perception.py:842: 没有可用的 PPT 测试文件",
+    "SKIPPED [1] filemate\\tests\\test_resource_recorder.py:64: 实际 /proc 仅适用于 Linux",
+    "SKIPPED [1] filemate\\tests\\test_server_persistence.py:1993: 需要符号链接创建权限"
+  ],
+  "warnings": [
+    "Starlette httpx testclient deprecated",
+    "PyPDF2 deprecated",
+    "httpx per-request cookies deprecated"
+  ],
+  "retained_failed_runs": [
+    {
+      "run": "first",
+      "failed": 12,
+      "passed": 1513,
+      "reason": "old expected business/control schema assertions and deployment compatibility; fixed"
+    },
+    {
+      "run": "second",
+      "failed": 2,
+      "passed": 1525,
+      "reason": "pytest collected stale schema expectation tests before correction; focused74thenwholepassed"
+    }
+  ],
+  "source_log": "_working/kg-de-20261023/verify-final-gate.log",
+  "independent_review": "Critical0 / Important6 / Minor0; one TDD fix pass; no second independent review",
+  "preserved_user_tests": "24/24 original SHA256 unchanged; excluded from commit",
+  "retained_interrupted_gates": [
+    "verify-after-review.log",
+    "verify-after-review-final.log",
+    "verify-closeout.log; stale final schema assertions corrected; focused74pass"
+  ]
+}

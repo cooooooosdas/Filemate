@@ -78,3 +78,9 @@ BEGIN
         (SELECT artifact_id FROM kg_learning_artifact_sources WHERE source_id=OLD.source_id);
 END;
 """
+
+ANSWER_SOURCE_BACKFILL_SCHEMA = """
+INSERT OR IGNORE INTO kg_learning_work_sources(work_id,source_id)
+SELECT w.work_id,m.source_id FROM kg_learning_work w
+JOIN kg_course_sources m ON m.course_id=w.course_id WHERE w.kind='answer';
+"""

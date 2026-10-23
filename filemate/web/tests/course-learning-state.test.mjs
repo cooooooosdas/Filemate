@@ -74,3 +74,16 @@ test('quiz_unknown_response_reuses_key', async () => {
   await c.open('s', 'c', 'n'); c.chooseQuestion({ artifact_id: 'a', question_index: 0, question: { answer: 'x' } }); c.setAnswer('wrong')
   await c.submitAnswer(); await c.submitAnswer(); assert.ok(keys[0]); assert.equal(keys[0], keys[1])
 })
+for (const status of [500, 502, 504, 408]) {
+  test(`ambiguous_${status}_preserves_quiz_and_generation_keys`, async () => {
+    for (const kind of ['answer', 'generate']) {
+      const keys = []; let first = true
+      const invoke = async key => { keys.push(key); if (first) { first = false; throw Object.assign(Error('response lost'), { status }) }; return kind === 'answer' ? { is_correct: false } : { work_id: 'w', status: 'ready', payload: { questions: [] } } }
+      const c = createCourseLearningController(api({ submitQuizAttempt: async (_a, _i, _v, _q, key) => invoke(key), generateCoursePractice: async (_c, _n, body) => invoke(body.request_key) }))
+      await c.open('s', 'c', 'n')
+      if (kind === 'answer') { c.chooseQuestion(question); c.setAnswer('wrong'); await c.submitAnswer(); await c.submitAnswer() }
+      else { const options = { mode: 'llm', count: 1, difficulty: 'simple', allow_external_model: true }; await c.generatePractice(options); await c.generatePractice(options) }
+      assert.equal(keys.length, 2); assert.equal(keys[0], keys[1])
+    }
+  })
+}

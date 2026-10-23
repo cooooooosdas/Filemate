@@ -72,7 +72,9 @@ class LearningWorkService:
     def claim(self, cid, kind, inputs, request_key, sources, graph_digest, evidence_digest, *, goal_binding=None):
         """Claim one course slot and a nonrefundable daily request before external work."""
         request_key_valid(request_key)
-        if kind not in {'practice', 'answer'} or not isinstance(sources, list) or not 1 <= len(set(sources)) <= 12:
+        if (kind not in {'practice', 'answer'} or not isinstance(sources, list) or not sources
+                or any(not isinstance(s, str) for s in sources)
+                or (kind == 'practice' and len(set(sources)) > 12)):
             raise CourseGraphError('invalid_learning_work', 422)
         hashed, now = digest(inputs), self.clock()
         with transaction(self.storage) as conn:
@@ -91,7 +93,9 @@ class LearningWorkService:
             projection = read_learning_projection(self.storage, cid, now=now)
             if graph_digest != projection['graph_digest'] or evidence_digest != projection['evidence_digest']:
                 raise CourseGraphError('input_changed')
-            if any(not projection['_snapshot'].fingerprints.get(sid) for sid in sources):
+            snapshot = projection['_snapshot']
+            if any(sid not in snapshot.sources or (kind == 'practice' and not snapshot.fingerprints.get(sid))
+                   for sid in sources):
                 raise CourseGraphError('source_not_in_course', 404)
             if goal_binding:
                 artifact = self.storage.get_artifact(goal_binding['artifact_id'])

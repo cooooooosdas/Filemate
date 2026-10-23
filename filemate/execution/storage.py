@@ -634,6 +634,7 @@ _MIGRATIONS = (
     (31, "course_knowledge_graph", course_graph_schema.SCHEMA),
     (32, "course_learning_evidence", learning_schema.SCHEMA),
     (33, "course_learning_derived_sources", learning_schema.DERIVED_SOURCES_SCHEMA),
+    (34, "course_answer_source_backfill", learning_schema.ANSWER_SOURCE_BACKFILL_SCHEMA),
 )
 
 

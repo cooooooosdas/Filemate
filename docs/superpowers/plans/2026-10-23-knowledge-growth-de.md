@@ -183,15 +183,19 @@ Task8工程67前端／32接口测试、默认关闭及显式开启构建、预�
 - Consumes: Task1–9真实API及B/C；CLI新绝对输出目录、100/1000/10000规模和额外证据密集负载，不用真实用户库。
 - Produces: 注册测试账户D完整流程、E规则／失败／取消／计划链JSON和截图；性能按原始全部样本记录，进程资源与浏览器分开，未测null；协议／技术报告均链接实际结果和限制。
 
-- [ ] **Step 1: 写RED。** lifecycle注册→登录→两数据结构＋第二课程→审核→人工题目映射→错答→复习→状态→路径预览/确认/重复/撤销/恢复→今日完成→规则问答→Agent预览→导出/删除第二来源/恢复→旧token拒绝/旧数据可读；benchmark新目录安全、精确规模／作答数、并发读与一次写、无N+1、迁移31→33、旧schema31备份、FK与失败恢复测试。
-- [ ] **Step 2: 跑RED→实现夹具／基准→GREEN。** `uv run pytest filemate/tests/course_graph/test_growth_lifecycle.py filemate/tests/course_graph/test_growth_benchmark.py -q`。Expected: 全链真实数据库记录一致，合成标记不遗漏。
+- [x] **Step 1: 写RED。** lifecycle注册→登录→两数据结构＋第二课程→审核→人工题目映射→错答→复习→状态→路径预览/确认/重复/撤销/恢复→今日完成→规则问答→Agent预览→导出/删除第二来源/恢复→旧token拒绝/旧数据可读；benchmark新目录安全、精确规模／作答数、并发读与一次写、无N+1、迁移31→33、旧schema31备份、FK与失败恢复测试。
+- [x] **Step 2: 跑RED→实现夹具／基准→GREEN。** `uv run pytest filemate/tests/course_graph/test_growth_lifecycle.py filemate/tests/course_graph/test_growth_benchmark.py -q`。Expected: 全链真实数据库记录一致，合成标记不遗漏。
 - [ ] **Step 3: 测工程与定位C慢样本。** 100/1000/10000各首1热5实际HTTP；证据密集至少10000attempts、并发4读＋重复确认、内存/DB/WAL记录；浏览器初始画布、选择/缩放/练习/搜索与故障。初始3秒目标、HTTP热最大2秒、交互无>200ms样本；不满足则保留失败、分析实际瓶颈并用行为／性能回归固定修复，不以抽样删失通过。
-- [ ] **Step 4: 全量门禁。** `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend`；Expected: exit0，后端／前端／类型／构建／预算；24用户测试SHA逐一不变，diff check干净。已有warning/skip具体报告，真实模型与真人未验如实列出。
+- [x] **Step 4: 全量门禁。** `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend`；Expected: exit0，后端／前端／类型／构建／预算；24用户测试SHA逐一不变，diff check干净。已有warning/skip具体报告，真实模型与真人未验如实列出。
 - [ ] **Step 5: 汇总文档并提交。** D/E逐要求矩阵、工程状态与科研依赖分别表述；交付架构、数据模型、有限Agent、规则方法、解释、实际结果和局限；业务32／33及治理3回退须恢复备份与兼容代码，不伪称down migration。`test(graph): 记录知识成长全链与规模验收`。
 - [ ] **Step 6: 一次独立整项审阅与修复。** 执行executing-plans全分支review-package、Review Focus及所有Ruling交给fresh reviewer；Critical/Important一轮RED→GREEN修复并全量门禁；Minor按规则记账，不反复派审。最终保留分支与工作区，不自动推送／部署，真实研究等待单独批准。
 
 ## 自审与执行授权记录
 
+2026-10-24最终审阅补充：六项Important统一进入单轮TDD修复。追加迁移34回填旧问答来源依赖并同步恢复流程；路径聚合移到读快照、短写事务保守检查数据库版本；跨课失效返回nullable route与明确状态。全部决策、代价及审阅未判定项记录在执行ledger和最终审阅附件。旧32／33迁移不改，最终回退边界为业务34／治理3。受浏览器禁用影响，Task10浏览器规模／完整键盘门禁保持待验，不因自动化通过而划掉。
+
 原需求D1–D6→Tasks1/2/3/4/5/6，D验收→10；E1/E2/E3→4/7/8，E4质量／协议→9、工程→10，E5→10。跨课人工联系→5；来源移出／彻底删除区别→1/2/7/10。所有写入共用预览／版本／回执，模型仅锁外运行，UI不发第二次不确定请求。已检查接口、限额、范围、失败恢复与用户既定技术栈一致。
 
 用户已明示审阅全部后连续实施，故保存自审与builder check结果后执行，不再把常规实现细节变成审批问题；真人实验／生产发布仍不在这份工程授权内。
+
+2026-10-24收尾：最终全量1543后端／213前端及类型、构建、预算exit0；修复后规模HTTP热门禁／并发一致性通过，万节点浏览器和完整键盘仍保留未验，所以Step3不勾选。唯一有效独立审阅的六项Important已一轮RED→GREEN修复，无Minor，不二次派审。随后用户明确追加主站发布授权，覆盖原Step6“不自动部署”限制；按现役alpha有条件更新，生产门禁和回执独立记录，不把Task10的全部UI指标写为通过。

@@ -27,14 +27,20 @@
   </section>
 </template>
 <script setup lang="ts">
-import { ref, shallowRef, watch } from 'vue'
+import { ref, shallowRef, toRaw, watch } from 'vue'
 import type { LearningPreview, LearningQuestion, LearningReceipt, LearningWork, PracticeDecision, PracticeOptions } from '../../types/courseLearning'
 const props = defineProps<{ work: LearningWork | null; preview: LearningPreview | null; receipt: LearningReceipt | null; busy: boolean }>()
 const emit = defineEmits<{ generate: [options: PracticeOptions]; decisions: [items: PracticeDecision[]]; review: []; confirm: []; cancel: []; recover: [id: string] }>()
 const mode = ref<'local' | 'llm'>('local'), consent = ref(false), count = ref(1), difficulty = ref<PracticeOptions['difficulty']>('simple')
 const edited = shallowRef<LearningQuestion[]>([]), accepted = shallowRef(new Set<number>())
 const labels: Record<string, string> = { running: '正在生成', ready: '等待人工审核', failed: '生成失败，没有保存为正式题目', cancelled: '已取消', interrupted: '工作已中断', confirmed: '已保存题集' }
-watch(() => props.work?.work_id, () => { edited.value = structuredClone(props.work?.payload.questions || []); accepted.value = new Set(); consent.value = false }, { immediate: true })
+let initializedWork = ''
+watch(() => [props.work?.work_id, props.work?.status], ([id]) => {
+  if (id !== initializedWork) { edited.value = []; accepted.value = new Set(); consent.value = false; initializedWork = '' }
+  if (id && props.work?.status === 'ready' && initializedWork !== id) {
+    edited.value = structuredClone(toRaw(props.work.payload.questions || [])); accepted.value = new Set(); initializedWork = id
+  }
+}, { immediate: true })
 function publish() { emit('decisions', edited.value.map((q, index) => ({ index, verdict: accepted.value.has(index) ? 'accept' : 'reject', ...(accepted.value.has(index) ? { question: q } : {}) }))) }
 function toggle(index: number) { const next = new Set(accepted.value); if (next.has(index)) next.delete(index); else next.add(index); accepted.value = next; publish() }
 function edit(index: number, key: 'stem' | 'answer', value: string) { edited.value = edited.value.map((q, i) => i === index ? { ...q, [key]: value } : q); publish() }

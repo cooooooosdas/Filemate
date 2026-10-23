@@ -20,7 +20,7 @@ export interface LearningPreview { confirmation_token: string; accepted_count?: 
 export interface LearningReceipt { operation_id: string; plan_id?: string; artifact_id?: string; link_id?: string; route?: string }
 export interface PathPreview extends LearningPreview { tasks: { concept_id: string; label: string; day_index: number; kind: string; duration_minutes: number; reason: string; reasons: Record<string, unknown>; route: string }[]; omitted_count: number; unsupported_count: number; scope_expanded_count: number; outside_scope_prerequisite_count: number; outside_scope_prerequisites: { concept_id: string; label: string; relation_ids: string[] }[] }
 export interface RelatedInput { other_course_id: string; other_concept_id: string; active: boolean; relation: 'related' }
-export interface RelatedCourse { link_id: string; course_id: string; concept_id: string; course_name: string; label: string; route: string; affects_learning: false }
+export interface RelatedCourse { link_id: string; course_id: string; concept_id: string; course_name: string; label: string; route: string | null; available: boolean; unavailable_reason: string | null; affects_learning: false }
 export interface AnswerReceipt { is_correct: boolean; feedback?: string; reference_answer?: string; attempt_id?: string }
 export interface LearningApi {
   getCourseLearning(cid: string, nid: string, offset?: number, signal?: AbortSignal): Promise<LearningEvidence>

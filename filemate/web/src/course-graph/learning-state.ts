@@ -34,7 +34,12 @@ export function createCourseLearningController(api: LearningApi, observe: (s: Le
     if (pending.get(kind)?.signature !== signature) pending.set(kind, { signature, key: crypto.randomUUID() })
     const item = pending.get(kind)!
     try { const r = await execute(item.key); if (fresh(e) && pending.get(kind) === item) pending.delete(kind); return r }
-    catch (cause) { if (fresh(e) && (cause as { status?: number }).status && pending.get(kind) === item) pending.delete(kind); throw cause }
+    catch (cause) {
+      const status = (cause as { status?: number }).status
+      // A gateway error can follow a committed write; retry its original identity.
+      if (fresh(e) && status && status >= 400 && status < 500 && status !== 408 && pending.get(kind) === item) pending.delete(kind)
+      throw cause
+    }
   }
   const confirmation = (token: string, key: string): GraphConfirmation => ({ confirmed: true, confirmation_token: token, request_key: key })
   function resetIdentity() { ++epoch; abort.abort(); abort = new AbortController(); pending.clear(); links = null; related = null; Object.assign(state, initial()) }

@@ -44,7 +44,7 @@ def test_schema31_personal_backup_is_readable_after_upgrade(tmp_path, monkeypatc
         store.init_schema()
         preview = backup.preview(raw)
         backup.restore(preview['backup_id'], preview['confirmation_token'])
-        assert store.get_schema_version() == 33
+        assert store.get_schema_version() == 34
         assert store.get_artifact(aid)['content'] == {'text': '原有学习笔记'}
         assert store._conn().execute('PRAGMA foreign_key_check').fetchall() == []
     finally:
