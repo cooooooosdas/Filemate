@@ -12,7 +12,7 @@
       </article>
       <p v-if="!detail.source_refs.length" class="cw-caption">当前没有可核对的引用。可在整理课程中更新资料。</p>
       <nav v-if="detail.total_refs > detail.limit" class="cw-pagination" aria-label="原文引用分页"><button :disabled="detail.offset === 0" @click="$emit('page', Math.max(0, detail.offset-detail.limit))">前一页</button><span>{{ detail.offset+1 }}–{{ Math.min(detail.total_refs, detail.offset+detail.limit) }} / {{ detail.total_refs }}</span><button :disabled="detail.offset+detail.limit >= detail.total_refs" @click="$emit('page', detail.offset+detail.limit)">后一页</button></nav>
-      <div class="cw-learning-empty"><h3>个人学习记录</h3><p>尚未建立学习记录关联。</p><p class="cw-caption">资料引用说明知识来自哪里；练习与复习记录需另行明确关联。</p></div>
+      <div class="cw-learning-empty"><h3>把知识用起来</h3><p>查看真实练习与复习记录，安排下一步。</p><button class="cw-primary" @click="$emit('openLearning')">开始学习与练习<IconArrowUpRight :size="21" aria-hidden="true" /></button></div>
     </template>
     <div v-else class="cw-empty"><IconBookmark :size="38" aria-hidden="true" /><h3>先选一个知识点</h3><p>在图谱或大纲中点选，核对它的来源与原句。</p></div>
   </section>
@@ -23,5 +23,5 @@ import { IconArrowUpRight, IconBookmark, IconFileText } from '@tabler/icons-vue'
 import type { WorkspaceDetail } from '../../types/courseWorkspace'
 const anchor = `citation-${useId()}`
 withDefaults(defineProps<{ detail: WorkspaceDetail | null; canOpen?: boolean }>(), { canOpen: false })
-defineEmits<{ openCitation: [id: string, trigger: string]; openManager: []; page: [offset: number] }>()
+defineEmits<{ openCitation: [id: string, trigger: string]; openManager: []; openLearning: []; page: [offset: number] }>()
 </script>

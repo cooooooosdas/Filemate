@@ -3,6 +3,7 @@ import type { CoachSnapshot, CoachMutationResult, CoachAnswer, CoachAnalysis, Co
 import axios from 'axios'
 import type { CourseActionPreview, CourseChapter, CourseConcept, CourseDecision, CourseDraft, CourseGraphPage, CourseMergePreview, CourseOperation, CourseReviewPreview, GraphConfirmation, GraphCourse, GraphMode, GraphPage } from '../types/courseGraph'
 import type { WorkspaceCanvas, WorkspaceChapterPath, WorkspaceCitation, WorkspaceConceptOptions, WorkspaceConceptPage, WorkspaceDetail, WorkspaceFilter, WorkspaceNavigation, WorkspaceNavigationOptions } from '../types/courseWorkspace'
+import type { LearningEvidence, LearningPreview, LearningReceipt, LearningWork, PathOptions, PathPreview, PracticeDecision, PracticeOptions, QuestionCandidate, QuestionRef, RelatedCourse, RelatedInput } from '../types/courseLearning'
 import type { AccountState, AccountUser, RegisterAccount } from '../types/account'
 import { HITOKOTO_URL } from '../home/encouragement'
 import { browserVaultAvailable, getBrowserApiKey, hasBrowserApiKey, requiresModelCredential, removeBrowserApiKey, saveBrowserApiKey, validateApiKey } from './llm-vault'
@@ -77,6 +78,28 @@ const api = axios.create({
 const courseRoot = '/api/knowledge-graph/courses'
 const coursePath = (id: string) => `${courseRoot}/${encodeURIComponent(id)}`
 const draftPath = (cid: string, did: string) => `${coursePath(cid)}/drafts/${encodeURIComponent(did)}`
+const learningConcept = (cid: string, nid: string) => `${coursePath(cid)}/concepts/${encodeURIComponent(nid)}`
+async function learningPost<T>(path: string, body: unknown): Promise<T> {
+  const response = await api.post<unknown, ApiResponse<T>>(path, body, { timeout: 30000 })
+  if (!response.success || response.data == null) throw new Error(response.error || '学习操作未完成')
+  return response.data
+}
+export const getCourseLearning = (cid: string, nid: string, offset = 0, signal?: AbortSignal) => workspaceRead<LearningEvidence>(`${learningConcept(cid, nid)}/learning`, new URLSearchParams({ offset: String(offset) }), signal)
+export const getCourseQuestions = (cid: string, nid: string, q = '', offset = 0, signal?: AbortSignal) => workspaceRead<GraphPage<QuestionCandidate>>(`${learningConcept(cid, nid)}/question-candidates`, new URLSearchParams({ q, offset: String(offset) }), signal)
+export const getCourseRelated = (cid: string, nid: string, offset = 0, signal?: AbortSignal) => workspaceRead<GraphPage<RelatedCourse>>(`${learningConcept(cid, nid)}/related-courses`, new URLSearchParams({ offset: String(offset) }), signal)
+export const generateCoursePractice = (cid: string, nid: string, body: PracticeOptions & { request_key: string }) => learningPost<LearningWork>(`${learningConcept(cid, nid)}/practice-drafts`, body)
+export const getCourseLearningWork = (cid: string, wid: string) => workspaceRead<LearningWork>(`${coursePath(cid)}/learning/work/${encodeURIComponent(wid)}`, new URLSearchParams())
+export const cancelCourseLearningWork = (cid: string, wid: string, request_key: string) => learningPost<LearningWork>(`${coursePath(cid)}/learning/work/${encodeURIComponent(wid)}/cancel`, { request_key })
+export const previewCoursePractice = (cid: string, wid: string, decisions: PracticeDecision[]) => learningPost<LearningPreview>(`${coursePath(cid)}/learning/work/${encodeURIComponent(wid)}/review/preview`, { decisions })
+export const confirmCoursePractice = (cid: string, wid: string, decisions: PracticeDecision[], body: GraphConfirmation) => learningPost<LearningReceipt>(`${coursePath(cid)}/learning/work/${encodeURIComponent(wid)}/review/confirm`, { decisions, ...body })
+export const previewCourseLinks = (cid: string, nid: string, items: QuestionRef[], active: boolean) => learningPost<LearningPreview>(`${learningConcept(cid, nid)}/question-links/preview`, { items, active })
+export const confirmCourseLinks = (cid: string, nid: string, items: QuestionRef[], active: boolean, body: GraphConfirmation) => learningPost<LearningReceipt>(`${learningConcept(cid, nid)}/question-links/confirm`, { items, active, ...body })
+export const previewCoursePath = (cid: string, body: PathOptions) => learningPost<PathPreview>(`${coursePath(cid)}/learning/path/preview`, body)
+export const confirmCoursePath = (cid: string, body: PathOptions & GraphConfirmation) => learningPost<LearningReceipt>(`${coursePath(cid)}/learning/path/confirm`, body)
+export const previewCourseRelated = (cid: string, nid: string, body: RelatedInput) => learningPost<LearningPreview>(`${learningConcept(cid, nid)}/related-courses/preview`, body)
+export const confirmCourseRelated = (cid: string, nid: string, body: RelatedInput & GraphConfirmation) => learningPost<LearningReceipt>(`${learningConcept(cid, nid)}/related-courses/confirm`, body)
+export const previewLearningOperation = (cid: string, oid: string, action: 'undo' | 'restore') => learningPost<LearningPreview>(`${coursePath(cid)}/learning/operations/${encodeURIComponent(oid)}/preview`, { action })
+export const changeLearningOperation = (cid: string, oid: string, action: 'undo' | 'restore', body: GraphConfirmation) => learningPost<LearningReceipt>(`${coursePath(cid)}/learning/operations/${encodeURIComponent(oid)}/confirm`, { action, ...body })
 export const listGraphCourses = async (q = '', offset = 0) => (await api.get<unknown, ApiResponse<GraphPage<GraphCourse>>>(courseRoot, { params: { q, offset } })).data!
 export const createGraphCourse = async (name: string, request_key: string) => (await api.post<unknown, ApiResponse<GraphCourse>>(courseRoot, { name, request_key })).data!
 export const getGraphCourse = async (id: string) => (await api.get<unknown, ApiResponse<GraphCourse>>(coursePath(id))).data!

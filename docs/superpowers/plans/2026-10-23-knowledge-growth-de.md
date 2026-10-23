@@ -121,11 +121,14 @@
 - Consumes: Task5真实API；现役`submitQuizAttempt`、学习计划日更新和错题复习接口；C面板协调／canLeave。
 - Produces: `createCourseLearningController(api,observe)`拥有`open(scope,cid,nid)`, `loadEvidence`, `chooseQuestion`, `submitAnswer`, `previewLinks/confirmLinks`, `generatePractice/reviewPractice/confirmPractice`, `previewPath/confirmPath`, `cancel`, `resetIdentity`, `dispose`；每个异步响应绑定scope/course/node/generation，预览令牌与请求键只在对应流程保留。
 
-- [ ] **Step 1: 写RED。** node:test `late_read_cannot_cross_node_or_identity`、`answer_failure_retains_draft_and_retry_uses_same_version`、`confirm_receipt_dedupes_refresh_not_write`、`changed_options_invalidate_preview`、`no_auto_model_after_read_or_reopen`、`cancel_and_navigation_preserve_or_explicitly_discard`、`plan_completion_does_not_upgrade_training`。
-- [ ] **Step 2: 跑RED。** `node --test filemate/web/tests/course-learning-state.test.mjs`。Expected:missing controller。
-- [ ] **Step 3: 实现状态机与API类型。** 使用现有api受信凭据／AbortSignal；界面逐题大字、提交后解析／真实错题，草稿先审核后练习；没有数据给“关联题目／创建基础练习”具体入口，不生成样本。计划大按钮预览，显示目标／时间／每项原因；确认后可到今日学习／撤销。关联、跨课、历史按需面板，复用单弹层焦点／离开保护，保留C画布选择。
+- [x] **Step 1: 写RED。** node:test `late_read_cannot_cross_node_or_identity`、`answer_failure_retains_draft_and_retry_uses_same_version`、`confirm_receipt_dedupes_refresh_not_write`、`changed_options_invalidate_preview`、`no_auto_model_after_read_or_reopen`、`cancel_and_navigation_preserve_or_explicitly_discard`、`plan_completion_does_not_upgrade_training`。
+- [x] **Step 2: 跑RED。** `node --test filemate/web/tests/course-learning-state.test.mjs`。Expected:missing controller。
+- [x] **Step 3: 实现状态机与API类型。** 使用现有api受信凭据／AbortSignal；界面逐题大字、提交后解析／真实错题，草稿先审核后练习；没有数据给“关联题目／创建基础练习”具体入口，不生成样本。计划大按钮预览，显示目标／时间／每项原因；确认后可到今日学习／撤销。关联、跨课、历史按需面板，复用单弹层焦点／离开保护，保留C画布选择。
 - [ ] **Step 4: 跑GREEN并真实浏览器。** node新旧course tests、`npm run build`；同合成账号节点→证据→错答→错题／复习→状态→计划→今日完成→图谱完成记录；390/768/1366宽、四主题、长题干／文件名、断网不丢答案，模型失败可重试。Expected:0失败／无横向溢出；记录实际屏幕与DB摘要。
-- [ ] **Step 5: 提交。** `feat(graph): 接通节点训练复习与今日计划工作台`。
+- [x] **Step 5: 提交。** `feat(graph): 接通节点训练复习与今日计划工作台`。
+
+
+Task6工程60项测试、类型／构建／预算通过；Step4真实浏览器未验：Work设置禁用本地浏览器。转Task10追踪，不将工程绿灯当成交互验收。
 
 ### Task 7: 有出处问答与只读有限Agent
 

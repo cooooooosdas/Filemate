@@ -1,11 +1,11 @@
-export type WorkspacePanel = 'none' | 'manager' | 'directory' | 'detail' | 'source'
+export type WorkspacePanel = 'none' | 'manager' | 'directory' | 'detail' | 'source' | 'learning'
 interface PanelState { active: WorkspacePanel; managerMounted: boolean; managerEpoch: number }
 export function createWorkspacePanels(canLeave: () => Promise<boolean>, focus: (id: string) => void = () => {}, observe: (s: PanelState) => PanelState = s => s) {
   const state = observe({ active: 'none', managerMounted: false, managerEpoch: 0 })
   let trigger = '', generation = 0
   async function open(panel: WorkspacePanel, opener = '') {
     const current = ++generation
-    if (state.active === 'manager' && panel !== 'manager' && !await canLeave()) return false
+    if ((state.active === 'manager' || state.active === 'learning') && panel !== state.active && !await canLeave()) return false
     if (current !== generation) return false
     trigger = opener; state.active = panel
     if (panel === 'manager') state.managerMounted = true
@@ -14,7 +14,7 @@ export function createWorkspacePanels(canLeave: () => Promise<boolean>, focus: (
   async function close(panel: WorkspacePanel) {
     if (state.active !== panel) return false
     const current = ++generation
-    if (panel === 'manager' && !await canLeave()) return false
+    if ((panel === 'manager' || panel === 'learning') && !await canLeave()) return false
     if (current !== generation) return false
     state.active = 'none'; focus(trigger); return true
   }

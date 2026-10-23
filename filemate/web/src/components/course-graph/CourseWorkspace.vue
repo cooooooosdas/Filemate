@@ -19,16 +19,17 @@
         <main class="cw-main">
           <CourseCanvas v-if="state.browse.view === 'graph' && state.canvas" :data="state.canvas" :selected-id="state.detail?.resolved_id || ''" :reduced-motion="reducedMotion" @select="selectNode" @expand="expandNode" @open-group="openGroup" @group-page="controller.pageGroups" @open-list="controller.setView('outline')" @overview="overview" />
           <CourseOutline v-else-if="state.browse.view === 'outline'" :page="state.listPage" :selected-id="state.detail?.resolved_id || ''" :loading="state.loading" @select="selectNode" @page="controller.page" @open-chapter="openGroup" />
-          <CourseEvidence v-else-if="state.browse.view === 'evidence'" :detail="state.detail" can-open @open-citation="openCitation" @page="controller.pageReferences" />
+          <CourseEvidence v-else-if="state.browse.view === 'evidence'" :detail="state.detail" can-open @open-citation="openCitation" @page="controller.pageReferences" @open-learning="openLearning" />
           <div v-else class="cw-empty"><h3>课程内容正在读取</h3><p>读取失败时可用上方按钮重试。</p></div>
         </main>
-        <aside v-if="state.browse.view !== 'evidence'" class="cw-detail"><CourseEvidence :detail="state.detail" can-open @open-citation="openCitation" @page="controller.pageReferences" /></aside>
+        <aside v-if="state.browse.view !== 'evidence'" class="cw-detail"><CourseEvidence :detail="state.detail" can-open @open-citation="openCitation" @page="controller.pageReferences" @open-learning="openLearning" /></aside>
       </div>
     </template>
     <el-drawer @keydown.tab.capture="trapPanelFocus" v-model="directoryOpen" title="课程目录" direction="ltr" size="min(360px, 100vw)" class="cw-dialog" :append-to-body="true"><CourseNavigation :courses="courses" :browse="state.browse" :navigation="state.navigation" :chapter-path="state.chapterPath" :loading="state.loading" @course="chooseCourse" @filter="setFilters" @course-page="coursePage" @navigation-page="controller.pageNavigation" /></el-drawer>
-    <el-drawer @keydown.tab.capture="trapPanelFocus" v-model="detailOpen" @opened="focusCitationTrigger" title="知识点与来源" size="min(500px, 100vw)" class="cw-dialog" :append-to-body="true"><CourseEvidence :detail="state.detail" can-open @open-citation="openCitation" @page="controller.pageReferences" /></el-drawer>
+    <el-drawer @keydown.tab.capture="trapPanelFocus" v-model="detailOpen" @opened="focusCitationTrigger" title="知识点与来源" size="min(500px, 100vw)" class="cw-dialog" :append-to-body="true"><CourseEvidence :detail="state.detail" can-open @open-citation="openCitation" @page="controller.pageReferences" @open-learning="openLearning" /></el-drawer>
     <el-drawer @keydown.tab.capture="trapPanelFocus" :model-value="panels.state.active === 'source'" title="核对原文" size="min(720px, 100vw)" class="cw-dialog" append-to-body :before-close="() => closeCitation()"><CourseSourcePanel :citation="state.citation" :loading="state.citationLoading" :error="state.error || state.notice" @retry="openCitation(citationId)" @closed="closeCitation" /></el-drawer>
     <el-drawer @keydown.tab.capture="trapPanelFocus" :model-value="panels.state.active === 'manager'" title="整理课程与资料" size="min(1280px, 100vw)" class="cw-dialog" append-to-body :before-close="closeManager" :destroy-on-close="false"><CourseManager v-if="panels.state.managerMounted" :key="panels.state.managerEpoch" ref="manager" :course-id="state.browse.courseId" :sources="sources" @changed="changed" /></el-drawer>
+    <el-drawer @keydown.tab.capture="trapPanelFocus" :model-value="panels.state.active === 'learning'" title="知识点学习与练习" size="min(800px, 100vw)" class="cw-dialog" append-to-body :before-close="closeLearning"><CourseLearning v-if="state.detail && state.identity" ref="learning" :scope="state.identity" :course-id="state.browse.courseId" :node-id="state.detail.resolved_id" :label="state.detail.node.label" /></el-drawer>
   </section>
 </template>
 <script setup lang="ts">
@@ -47,6 +48,7 @@ import CourseOutline from './CourseOutline.vue'
 import CourseEvidence from './CourseEvidence.vue'
 import CourseManager from './CourseManager.vue'
 import CourseSourcePanel from './CourseSourcePanel.vue'
+import CourseLearning from './CourseLearning.vue'
 import { createWorkspacePanels, nextPanelFocus } from '../../course-graph/workspace-panels'
 import '../../styles/course-workspace.css'
 
@@ -54,7 +56,8 @@ defineProps<{ sources: api.KnowledgeSource[] }>()
 const route = useRoute(), router = useRouter(), controller = createCourseWorkspaceController(api, shallowReactive), state = controller.state
 const root = ref<HTMLElement | null>(null), width = ref(1200)
 const manager = ref<{ canLeave(): Promise<boolean> } | null>(null)
-const panels = createWorkspacePanels(() => manager.value?.canLeave() ?? Promise.resolve(true), id => { void nextTick(() => document.getElementById(id)?.focus()) }, shallowReactive)
+const learning = ref<{ canLeave(): Promise<boolean>; invalidate(): void } | null>(null)
+const panels = createWorkspacePanels(() => panels.state.active === 'learning' ? learning.value?.canLeave() ?? Promise.resolve(true) : manager.value?.canLeave() ?? Promise.resolve(true), id => { void nextTick(() => document.getElementById(id)?.focus()) }, shallowReactive)
 const directoryOpen = computed({ get: () => panels.state.active === 'directory', set: value => { void (value ? panels.open('directory', 'course-directory-trigger') : panels.close('directory')) } })
 const detailOpen = computed({ get: () => panels.state.active === 'detail', set: value => { void (value ? panels.open('detail') : panels.close('detail')) } })
 function trapPanelFocus(event: KeyboardEvent) {
@@ -73,8 +76,10 @@ async function changed(cid: string) {
   if (cid === state.browse.courseId) await controller.invalidateAfterMutation()
   try { courses.value = await api.listGraphCourses() } catch { bootError.value = '内容已保存，课程列表暂未刷新，可重试读取。' }
 }
-function restored() { panels.invalidate(); controller.closeCitation(); void initialize() }
-async function canLeave() { return manager.value?.canLeave() ?? true }
+function restored() { learning.value?.invalidate(); panels.invalidate(); controller.closeCitation(); void initialize() }
+async function canLeave() { return await (manager.value?.canLeave() ?? true) && await (learning.value?.canLeave() ?? true) }
+async function openLearning() { await panels.open('learning') }
+async function closeLearning(done: () => void) { if (await panels.close('learning')) done() }
 const courses = shallowRef<GraphPage<GraphCourse>>({ items: [], total: 0, limit: 50, offset: 0 })
 const searchText = ref(''), booting = ref(true), bootError = ref(''), reducedMotion = ref(false)
 const views: { id: WorkspaceView; label: string; icon: typeof IconHierarchy }[] = [{ id: 'graph', label: '关系图', icon: IconHierarchy }, { id: 'outline', label: '大纲', icon: IconLayoutList }, { id: 'evidence', label: '证据', icon: IconQuote }]
@@ -113,6 +118,7 @@ function syncUrl() {
   if (state.browse.courseId) preferences?.set(state.browse.courseId, width.value < 640, state.browse.view)
 }
 async function chooseCourse(cid: string) {
+  if (cid !== state.browse.courseId && !await canLeave()) return
   directoryOpen.value = false; detailOpen.value = false; searchText.value = ''
   const next = readCourseBrowse({ graph_scope: 'course', course: cid }, preferences?.get(cid, width.value < 640) || null, width.value < 640)
   await router.push({ query: courseBrowseQuery(next) })
@@ -120,19 +126,19 @@ async function chooseCourse(cid: string) {
 async function coursePage(delta: number) { try { courses.value = await api.listGraphCourses('', courses.value.offset + delta*50) } catch { bootError.value = '课程列表读取失败，请重试。' } }
 async function setFilters(filters: WorkspaceFilter) { directoryOpen.value = false; await controller.setFilters(filters) }
 async function openGroup(id: string) { await setFilters({ chapter_id: id, relations: state.browse.relations }) }
-async function selectNode(id: string) { await controller.selectNode(id); if (width.value < 820 && state.detail) { directoryOpen.value = false; detailOpen.value = true } }
+async function selectNode(id: string) { if (id !== state.browse.nodeId && !await canLeave()) return; await controller.selectNode(id); if (width.value < 820 && state.detail) { directoryOpen.value = false; detailOpen.value = true } }
 async function expandNode(id: string) { await controller.expandNode(id) }
-async function chooseSearch(item: WorkspaceNode) { await controller.selectSearchResult(item); searchText.value = ''; if (width.value < 820 && state.detail) detailOpen.value = true }
+async function chooseSearch(item: WorkspaceNode) { if (item.id !== state.browse.nodeId && !await canLeave()) return; await controller.selectSearchResult(item); searchText.value = ''; if (width.value < 820 && state.detail) detailOpen.value = true }
 async function overview() { await controller.open({ ...state.browse, nodeId: '', chapterId: '', sourceId: '', notice: '' }) }
 async function refresh() { if (!ready) await initialize(); else await controller.refresh() }
 function toggleRelation(relation: RelationKind) { const chosen = new Set(state.browse.relations ?? workspaceRelations); if (chosen.has(relation)) chosen.delete(relation); else chosen.add(relation); void controller.setFilters({ chapter_id: state.browse.chapterId || undefined, source_id: state.browse.sourceId || undefined, relations: [...chosen] }) }
-function expired() { panels.invalidate(); ++bootstrap; ready = false; preferences?.clearMemory(); controller.resetIdentity(null); courses.value = { items: [], total: 0, limit: 50, offset: 0 }; bootError.value = '登录状态已变化，请重新登录后读取课程。' }
+function expired() { learning.value?.invalidate(); panels.invalidate(); ++bootstrap; ready = false; preferences?.clearMemory(); controller.resetIdentity(null); courses.value = { items: [], total: 0, limit: 50, offset: 0 }; bootError.value = '登录状态已变化，请重新登录后读取课程。' }
 function motion() { reducedMotion.value = !!media?.matches }
 watch(() => state.browse, syncUrl)
 watch(() => route.fullPath, async () => {
   if (!ready || route.query.graph_scope === 'source') return
   const next = readCourseBrowse(route.query, preferences?.get(String(route.query.course || ''), width.value < 640) || null, width.value < 640)
-  if (JSON.stringify(courseBrowseQuery(next)) !== JSON.stringify(courseBrowseQuery(state.browse))) { if (next.courseId !== state.browse.courseId) panels.invalidate(); searchText.value = ''; await controller.open(next) }
+  if (JSON.stringify(courseBrowseQuery(next)) !== JSON.stringify(courseBrowseQuery(state.browse))) { if ((next.courseId !== state.browse.courseId || next.nodeId !== state.browse.nodeId) && !await canLeave()) { await router.replace({ query: courseBrowseQuery(state.browse) }); return }; if (next.courseId !== state.browse.courseId) panels.invalidate(); searchText.value = ''; await controller.open(next) }
 })
 onMounted(() => {
   if (root.value) { width.value = root.value.clientWidth; resize = new ResizeObserver(entries => { width.value = entries[0]?.contentRect.width || width.value }); resize.observe(root.value) }

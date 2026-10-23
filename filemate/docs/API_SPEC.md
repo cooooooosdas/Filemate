@@ -1034,6 +1034,8 @@ Stage5 cancellation semantics: the UI stops waiting for microphone permission af
 
 ## 2026-10-23 课程学习 HTTP（D Task5，本地候选）
 
+Task6前端接线：课程知识点详情的“开始学习与练习”打开同一协调抽屉，按需读取以上接口；题目逐题提交现役`POST /quiz/attempts`并传原始expected_question，不由前端生成评分。模型、本地练习均须用户主动点击，题目逐项接受／拒绝、预览再保存；网络不确定的确认沿用request_key。学习路径只新增，保存后精确跳到plan_id；任务完成与答对分别展示。关联／解除、跨课联系、逆操作均先预览。读响应按学习空间／课程／节点版本隔离，身份变化及恢复备份擦除本页私有状态。已有题目候选为分页，可搜索／翻页选择；不按词自动关联。2026-10-23实机浏览器因Work设置禁用未验，工程测试与构建不能代替交互验收。
+
 以下路径以 `R=/api/knowledge-graph/courses/{cid}` 为前缀，继承课程开关、当前用户存储、受信 Origin；全部成功及领域错误返回 `Cache-Control:no-store`。GET 拒绝未知、重复参数，不续租、不触发模型或写入。分页统一 `limit=50(1..200),offset=0(0..1000000)`；数据库异常仅返回固定 `storage_unavailable`，不暴露路径／SQL。
 
 | 方法／路径 | 请求 | 结果 |
