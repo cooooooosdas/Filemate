@@ -1,0 +1,26 @@
+{
+  "as_of": "2026-10-25",
+  "exit_code": 0,
+  "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend",
+  "backend": {
+    "passed": 1544,
+    "skipped": 22,
+    "deselected": 5,
+    "warnings": 3
+  },
+  "frontend": {
+    "passed": 213,
+    "typecheck": true,
+    "build": true,
+    "bundle_gate": true
+  },
+  "source_log_sha256": "146af8f9839abc41f13600efc96acd510e0ffe49a4be86999724cca1f41c9877",
+  "preserved_user_tests": "24/24 original SHA256 unchanged; excluded from all release commits",
+  "runtime_specific": "production Python3.11.13/SQLite3.26.0 isolated regression11passed",
+  "retained_failures": [
+    "initial DNS failure",
+    "public learning/nodes503",
+    "runtime RED",
+    "initial new test Ruff F811; corrected"
+  ]
+}
