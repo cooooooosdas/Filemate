@@ -187,8 +187,8 @@ Task8工程67前端／32接口测试、默认关闭及显式开启构建、预�
 - [x] **Step 2: 跑RED→实现夹具／基准→GREEN。** `uv run pytest filemate/tests/course_graph/test_growth_lifecycle.py filemate/tests/course_graph/test_growth_benchmark.py -q`。Expected: 全链真实数据库记录一致，合成标记不遗漏。
 - [ ] **Step 3: 测工程与定位C慢样本。** 100/1000/10000各首1热5实际HTTP；证据密集至少10000attempts、并发4读＋重复确认、内存/DB/WAL记录；浏览器初始画布、选择/缩放/练习/搜索与故障。初始3秒目标、HTTP热最大2秒、交互无>200ms样本；不满足则保留失败、分析实际瓶颈并用行为／性能回归固定修复，不以抽样删失通过。
 - [x] **Step 4: 全量门禁。** `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend`；Expected: exit0，后端／前端／类型／构建／预算；24用户测试SHA逐一不变，diff check干净。已有warning/skip具体报告，真实模型与真人未验如实列出。
-- [ ] **Step 5: 汇总文档并提交。** D/E逐要求矩阵、工程状态与科研依赖分别表述；交付架构、数据模型、有限Agent、规则方法、解释、实际结果和局限；业务32／33及治理3回退须恢复备份与兼容代码，不伪称down migration。`test(graph): 记录知识成长全链与规模验收`。
-- [ ] **Step 6: 一次独立整项审阅与修复。** 执行executing-plans全分支review-package、Review Focus及所有Ruling交给fresh reviewer；Critical/Important一轮RED→GREEN修复并全量门禁；Minor按规则记账，不反复派审。最终保留分支与工作区，不自动推送／部署，真实研究等待单独批准。
+- [x] **Step 5: 汇总文档并提交。** D/E逐要求矩阵、工程状态与科研依赖分别表述；交付架构、数据模型、有限Agent、规则方法、解释、实际结果和局限；业务32／33及治理3回退须恢复备份与兼容代码，不伪称down migration。`test(graph): 记录知识成长全链与规模验收`。
+- [x] **Step 6: 一次独立整项审阅与修复。** 执行executing-plans全分支review-package、Review Focus及所有Ruling交给fresh reviewer；Critical/Important一轮RED→GREEN修复并全量门禁；Minor按规则记账，不反复派审。最终保留分支与工作区，不自动推送／部署，真实研究等待单独批准。
 
 ## 自审与执行授权记录
 
@@ -199,3 +199,5 @@ Task8工程67前端／32接口测试、默认关闭及显式开启构建、预�
 用户已明示审阅全部后连续实施，故保存自审与builder check结果后执行，不再把常规实现细节变成审批问题；真人实验／生产发布仍不在这份工程授权内。
 
 2026-10-24收尾：最终全量1543后端／213前端及类型、构建、预算exit0；修复后规模HTTP热门禁／并发一致性通过，万节点浏览器和完整键盘仍保留未验，所以Step3不勾选。唯一有效独立审阅的六项Important已一轮RED→GREEN修复，无Minor，不二次派审。随后用户明确追加主站发布授权，覆盖原Step6“不自动部署”限制；按现役alpha有条件更新，生产门禁和回执独立记录，不把Task10的全部UI指标写为通过。
+
+2026-10-25：工程文档、唯一有效独立审阅／单次修复及最终门禁已完成；用户追加部署授权后，PR65／66合入main，目标运行时兼容故障另按RED→GREEN修复。公网11组与390库／1022文件正式备份恢复通过。Step3与其他完整UI复合验收仍保留未勾选，研究未采集。以发布回执和归档执行ledger为准。

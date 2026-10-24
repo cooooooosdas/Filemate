@@ -1,17 +1,40 @@
 {
   "as_of": "2026-10-25",
   "synthetic": true,
-  "runtime": {"python": "3.11.13", "sqlite": "3.26.0"},
+  "runtime": {
+    "python": "3.11.13",
+    "sqlite": "3.26.0"
+  },
   "production_data_used": false,
   "production_venv_modified": false,
-  "red": {"failed": 1, "reason": "sqlite3.OperationalError: near MATERIALIZED: syntax error"},
+  "red": {
+    "failed": 1,
+    "reason": "sqlite3.OperationalError: near MATERIALIZED: syntax error"
+  },
   "green": {
     "passed": 11,
     "scope": "actual production interpreter with isolated fixed source copy and temporary synthetic databases",
-    "coverage": ["empty and populated learning reads", "learning evidence windows and revisions", "10000 unrelated and 10000 relevant attempts; 1001 mappings; bounded query work"]
+    "coverage": [
+      "empty and populated learning reads",
+      "learning evidence windows and revisions",
+      "10000 unrelated and 10000 relevant attempts; 1001 mappings; bounded query work"
+    ]
   },
-  "local_focused": {"passed": 34, "warnings": 1},
-  "retained_failures": ["initial local DNS failure", "public learning/nodes 503", "runtime regression RED", "QA helper missing httpx2 during collection; rerun limited to SQLite-focused tests", "initial Ruff F811 in new fixture import; corrected before final gate"],
-  "full_gate": "pending final compatibility run",
-  "source_logs": ["_working/kg-release-20261024/runtime-red.log", "_working/kg-release-20261024/runtime-green-retry.log", "_working/kg-release-20261024/sqlite-compat-local.log"]
+  "local_focused": {
+    "passed": 34,
+    "warnings": 1
+  },
+  "retained_failures": [
+    "initial local DNS failure",
+    "public learning/nodes 503",
+    "runtime regression RED",
+    "QA helper missing httpx2 during collection; rerun limited to SQLite-focused tests",
+    "initial Ruff F811 in new fixture import; corrected before final gate"
+  ],
+  "full_gate": "verification-sqlite-final.json: exit0; Windows1544/213; Linux1562/213",
+  "source_logs": [
+    "_working/kg-release-20261024/runtime-red.log",
+    "_working/kg-release-20261024/runtime-green-retry.log",
+    "_working/kg-release-20261024/sqlite-compat-local.log"
+  ]
 }

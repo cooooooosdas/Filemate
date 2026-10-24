@@ -1,0 +1,77 @@
+{
+  "synthetic": true,
+  "attempts": [
+    {
+      "passed": false,
+      "at": "2026-10-24T02:09:47.499869+00:00",
+      "checks": [
+        {
+          "name": "fixed release / readiness / assets / registration and login",
+          "passed": true,
+          "elapsed_ms": 19352.67,
+          "assets_checked": 20,
+          "account_login": true
+        },
+        {
+          "name": "existing feature routes and isolated judge readiness",
+          "passed": true,
+          "elapsed_ms": 9234.35,
+          "existing_routes": 14
+        },
+        {
+          "name": "course import / cited extraction / item review / fusion / isolated workspace",
+          "passed": false,
+          "error_type": "ConnectError",
+          "message": "[Errno 11001] getaddrinfo failed"
+        },
+        {
+          "name": "confirmed cleanup of this synthetic account only",
+          "passed": false,
+          "error_type": "ConnectError",
+          "message": "[Errno 11001] getaddrinfo failed"
+        }
+      ],
+      "commit": "4be657c6664313bc96515f9323c660777244b2c5",
+      "base": "https://filemate.asia",
+      "evidence_kind": "original synthetic account; actual public APIs/providers; no human learning-effect claim",
+      "browser_matrix": "pending; local browser control disabled"
+    },
+    {
+      "passed": false,
+      "at": "2026-10-24T16:42:26.874312+00:00",
+      "checks": [
+        {
+          "name": "fixed release / readiness / assets / registration and login",
+          "passed": true,
+          "elapsed_ms": 17642.39,
+          "assets_checked": 20,
+          "account_login": true
+        },
+        {
+          "name": "existing feature routes and isolated judge readiness",
+          "passed": true,
+          "elapsed_ms": 13344.58,
+          "existing_routes": 14
+        },
+        {
+          "name": "course import / cited extraction / item review / fusion / isolated workspace",
+          "passed": false,
+          "error_type": "AssertionError",
+          "message": "GET /api/knowledge-graph/courses/2be4e35d-268c-4869-8932-6dce2b950db0/learning/nodes: 503; {\"success\":false,\"error\":\"课程数据暂不可用，请稍后重试\",\"data\":{\"error_code\":\"storage_unavailable\"}}"
+        },
+        {
+          "name": "confirmed cleanup of this synthetic account only",
+          "passed": true,
+          "elapsed_ms": 1721.98,
+          "only_synthetic_account_deleted": true
+        }
+      ],
+      "commit": "4be657c6664313bc96515f9323c660777244b2c5",
+      "base": "https://filemate.asia",
+      "transport": "process-only verified host IP; TLS SNI and certificate verification retained; connect-only retries",
+      "evidence_kind": "original synthetic account; actual public APIs/providers; no human learning-effect claim",
+      "browser_matrix": "pending; local browser control disabled"
+    }
+  ],
+  "cleanup": "exact interrupted synthetic account removed; subsequent test accounts deleted with fresh authenticated preview"
+}
