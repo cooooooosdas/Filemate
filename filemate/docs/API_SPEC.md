@@ -373,6 +373,8 @@ storage.init_schema()
 
 **线程安全：** 每个线程持有独立 `sqlite3.Connection`，开启 WAL、`busy_timeout=10000` 和 `foreign_keys=ON`；写操作由进程内可重入锁串行保护。
 
+**运行时兼容：** 生产Python链接SQLite3.26.0，与较新CI运行时不同。课程学习投影使用该版本可执行的集合查询，不依赖3.35新增的`AS MATERIALIZED`提示；发布前须用目标解释器在隔离合成库复验空数据／实际作答和查询工作量，不能仅以迁移或健康接口通过代替。见[兼容修复](../../docs/SQLITE_RUNTIME_COMPAT_2026-10-25.md)。
+
 #### 常用方法
 
 | 方法 | 签名 | 说明 |
