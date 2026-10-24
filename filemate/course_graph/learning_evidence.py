@@ -47,15 +47,16 @@ def read_learning_projection(read, cid: str, *, now: datetime) -> dict[str, Any]
         SELECT * FROM artifacts WHERE artifact_id IN
         (SELECT artifact_id FROM kg_question_links WHERE course_id=? AND active=1) ORDER BY artifact_id''', (cid,))}
     # 先限定题目身份，再使用现有artifact索引；无关课程的作答不能驱动内层映射扫描。
-    selector = '''WITH mapped AS MATERIALIZED (
+    # DISTINCT／UNION保留集合边界；省略3.35才支持的提示以兼容生产SQLite3.26。
+    selector = '''WITH mapped AS (
         SELECT DISTINCT artifact_id,question_index FROM kg_question_links WHERE course_id=? AND active=1
-    ), versions AS MATERIALIZED (
+    ), versions AS (
         SELECT a.artifact_id,m.question_index,json_extract(a.metadata,'$.question_revision_parent') AS revision_parent
         FROM mapped m JOIN artifacts a USING(artifact_id)
         UNION
         SELECT a.artifact_id,m.question_index,json_extract(a.metadata,'$.question_revision_parent') AS revision_parent
         FROM artifacts a JOIN mapped m ON m.artifact_id=json_extract(a.metadata,'$.question_revision_parent')
-    ), scoped_artifacts AS MATERIALIZED (
+    ), scoped_artifacts AS (
         SELECT DISTINCT artifact_id FROM versions
     )'''
     attempts = [dict(r) for r in conn.execute(f'''{selector} SELECT q.rowid AS evidence_sequence,
