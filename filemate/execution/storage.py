@@ -30,6 +30,7 @@ from filemate.execution import (
 from filemate.interview_assessment import schema as interview_assessment_schema
 from filemate.interview_coach import schema as interview_coach_schema
 from filemate.task_resources import admit_plan, admit_tasks
+from filemate.wrongbook import schema as review_schema
 
 logger = logging.getLogger(__name__)
 
@@ -635,6 +636,7 @@ _MIGRATIONS = (
     (32, "course_learning_evidence", learning_schema.SCHEMA),
     (33, "course_learning_derived_sources", learning_schema.DERIVED_SOURCES_SCHEMA),
     (34, "course_answer_source_backfill", learning_schema.ANSWER_SOURCE_BACKFILL_SCHEMA),
+    (35, "wrongbook_review_evidence", review_schema.SCHEMA),
 )
 
 
