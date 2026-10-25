@@ -1,6 +1,7 @@
 """Review evidence migrations retain synthetic historical records and row order."""
 
 import sqlite3
+import json
 
 import pytest
 
@@ -19,12 +20,16 @@ def legacy_store(tmp_path, monkeypatch):
     artifact = store.save_artifact(source_id=source, artifact_type="questions", content=[
         {"type": "fill_blank", "stem": "栈的顺序", "answer": "后进先出"},
     ])
-    result = store.record_quiz_attempt(artifact_id=artifact, question_index=0,
-                                      user_answer="先进先出", is_correct=False,
-                                      score=0, feedback="原始错误")
-    store._conn().execute("UPDATE quiz_attempts SET rowid=57")
+    # 固定v34字段，避免新写入实现替代历史数据库样本。
+    store._conn().execute("""INSERT INTO quiz_attempts
+        (rowid,attempt_id,artifact_id,source_id,question_index,user_answer,is_correct,score,feedback)
+        VALUES (57,'legacy-attempt',?,?,0,'先进先出',0,0,'原始错误')""", (artifact, source))
+    store._conn().execute("""INSERT INTO wrong_questions
+        (wrong_id,artifact_id,source_id,question_index,question,latest_answer)
+        VALUES ('legacy-wrong',?,?,0,?,'先进先出')""",
+        (artifact, source, json.dumps({"question": "栈的顺序", "answer": "后进先出"})))
     store._conn().commit()
-    return store, source, artifact, result["attempt_id"]
+    return store, source, artifact, "legacy-attempt"
 
 
 def test_upgrade_keeps_legacy_evidence_identity_and_rowid(tmp_path, monkeypatch):

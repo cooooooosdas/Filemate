@@ -1636,7 +1636,7 @@ class SQLiteStorage:
                                 connection.execute('''INSERT INTO kg_learning_artifact_sources(artifact_id,source_id)
                                     SELECT ?,source_id FROM kg_learning_artifact_sources WHERE artifact_id=?''',
                                     (snapshot_id, artifact_id))
-                            for table in ("quiz_attempts", "wrong_questions"):
+                            for table in ("quiz_attempts", "wrong_questions", "review_events"):
                                 connection.execute(
                                     f"UPDATE {table} SET artifact_id=? WHERE artifact_id=?",
                                     (snapshot_id, artifact_id),
@@ -1938,6 +1938,12 @@ class SQLiteStorage:
                 raise QuestionRevisionConflict("题目已更新，请刷新题集后重新作答")
             raise ValueError("题目序号无效")
         question = questions[question_index]
+        active_review = self._conn().execute(
+            "SELECT scheduler_version FROM wrong_questions WHERE artifact_id=? AND question_index=?",
+            (artifact_id, question_index),
+        ).fetchone()
+        if active_review and active_review["scheduler_version"] != "legacy-v1":
+            raise QuestionRevisionConflict("此题已启用2.0规则，请使用新版复习入口；原记录保留")
         if expected_question is not None and question != expected_question:
             raise QuestionRevisionConflict("题目已更新，请刷新题集后重新作答")
         if request_key is not None and (not isinstance(request_key, str) or not re.fullmatch(r'[A-Za-z0-9_-]{16,80}', request_key)):
@@ -2196,6 +2202,8 @@ class SQLiteStorage:
         wrong = self.get_wrong_question(wrong_id)
         if wrong is None:
             raise ValueError("错题不存在")
+        if wrong.get("scheduler_version") != "legacy-v1":
+            raise QuestionRevisionConflict("此题已启用2.0规则，请使用带修订检查的错因入口")
         clean_note = note.strip()
         if len(clean_note) > 300:
             raise ValueError("错因备注不能超过 300 字")

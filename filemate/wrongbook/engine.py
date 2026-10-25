@@ -28,7 +28,7 @@ def transition(state: dict | None, *, correct: bool | None,
     now = now.astimezone(timezone.utc)
     legacy = bool(state and state.get("scheduler_version") != RULE_VERSION)
     result = {
-        "learning_status": "new", "schedule_status": "active",
+        "learning_status": "new", "schedule_status": "active", "paused_at": None,
         "scheduler_version": RULE_VERSION, "review_stage": 0,
         "eligible_count": 0, "first_verified_at": None, "last_verified_at": None,
         "correct_streak": 0, "mastered": 0, "interval_days": 0,
