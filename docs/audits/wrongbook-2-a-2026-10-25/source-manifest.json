@@ -1,0 +1,22 @@
+{
+  "baseline_commit": "9f06d1d79d777e50c113908481cbdaf57fb79705",
+  "files": {
+    "server.py": "3601241aa07c262832a7afa141336eb5fc7013dc0cebec9d101ba71e4b19e8ee",
+    "filemate/execution/storage.py": "eedc05df9839a7c163075d88560aed6cccc0d6283fdd649121eb3c505b6e1397",
+    "filemate/study/generator.py": "894e9eb6ad6e4df37a47076346090c6e8b373ad9f91de7d87cace3415981b167",
+    "filemate/study/scheduling.py": "5a88834cf0421ebeb9ce6abd3f6f4281e5ebd58d1dda3a74067682aebdd7a5aa",
+    "filemate/study/goal_planner.py": "16d370f1db1bd3db08acd24fd3f945cb01e7a2e05159487046da8a55e5aed97a",
+    "filemate/study/daily_coach.py": "b673bf9b4d27c3eee8fd8b5166c43e07040246b588c9107e62eeb6df23d44657",
+    "filemate/web/src/views/Wrongbook.vue": "949a34567c1f387d3bcb7aca272039cc17ac65975aea7ba1c8434adb1b05b366",
+    "filemate/web/src/views/Today.vue": "c6193065b4f623a9162d60a239ea8731a9464926f1d1b31c08336d45524094a0",
+    "filemate/web/src/components/LearningArtifact.vue": "19c19b5c6edc330a45ac7c3ba8455dfbd044a3458b720f6218ac4b1ae10d5759",
+    "filemate/course_graph/learning_evidence.py": "c771f9c3ac3e08f42bb8af4dda5a2dfdd3455718e69ecbe3cd852f1b02233397",
+    "filemate/course_graph/learning_api.py": "6d867bb462efff47611b8e71fc9ba0b0197e9673fbc971381870c88070cb9747",
+    "filemate/course_graph/question_links.py": "d54c362fa7cadd573dcf4878eb2d9605b644e499552e0fec8f270d5ec860b2bb",
+    "filemate/course_graph/learning_schema.py": "47cdffe5fc5dd1cd5518595b917cc4d2c49497187381937d6e739c49d0682506",
+    "filemate/course_graph/learning_context.py": "103457e3e2f8cd0ce80e4c42065d0f3ba85238601328cc3d5d7dab069c8abb7e",
+    "filemate/llm_client/client.py": "ff2c57b5a68d1be5bb9eddbc3a793b0ba765d348bbce3be3c0d34a7183d0d9cd",
+    "filemate/llm_client/config.py": "26df9d8b6e9d961dc9c59c62337013620bc0a672e550ce8c061db13736e3ba6c",
+    "filemate/operations/personal_backup.py": "0cc12cb0d13ef2cbfa27e91205150c9b9a39d9944b20358304b94b6b92af5145"
+  }
+}

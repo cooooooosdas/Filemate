@@ -1,0 +1,1232 @@
+{
+  "synthetic": true,
+  "product_code_changed": false,
+  "observations": {
+    "immediate_mastery": {
+      "attempts": [
+        {
+          "attempt_id": "a97fb5b4f48c4d4fb00cb8efa44c4a6e",
+          "is_correct": 0,
+          "user_answer": "先进先出",
+          "created_at": "2026-10-25T02:38:41"
+        },
+        {
+          "attempt_id": "f5211a0254194d8c86e8180f55519683",
+          "is_correct": 1,
+          "user_answer": "后进先出",
+          "created_at": "2026-10-25T02:38:41"
+        },
+        {
+          "attempt_id": "f7f8ce075f1e4b59bcb5c18e1f6c0d81",
+          "is_correct": 1,
+          "user_answer": "后进先出",
+          "created_at": "2026-10-25T02:38:41"
+        }
+      ],
+      "first_review_count": 1,
+      "last_review_count": 3,
+      "correct_streak": 2,
+      "mastered": 1,
+      "interval_days": 3,
+      "due_after_mastery": 0
+    },
+    "request_replay": {
+      "keyed_same_attempt": true,
+      "unkeyed_distinct_attempts": true,
+      "attempt_rows": 3,
+      "error_count": 3
+    },
+    "today_count": {
+      "real_due_total": 55,
+      "reported_pending_wrong_count": 50,
+      "selected_items": 6,
+      "deferred_count": 44,
+      "answer_in_question_snapshot": true,
+      "queue_item_has_options_outside_snapshot": false
+    },
+    "diagnosis": {
+      "cleared_cause": "unconfirmed",
+      "cleared_source": "user",
+      "cleared_confidence": 1.0,
+      "dedicated_event_tables": [
+        "wrong_questions",
+        "interview_review_state",
+        "interview_review_events",
+        "data_action_previews"
+      ]
+    },
+    "answer_validation": {
+      "empty_saved_as_wrong": true,
+      "answer_5000_chars_accepted": true,
+      "short_answer_with_extra_wrong_claim_accepted": true
+    }
+  },
+  "schema": {
+    "version": 34,
+    "quick_check": "ok",
+    "foreign_key_violations": 0,
+    "tables": {
+      "sources": {
+        "columns": [
+          {
+            "cid": 0,
+            "name": "source_id",
+            "type": "TEXT",
+            "notnull": 0,
+            "dflt_value": null,
+            "pk": 1
+          },
+          {
+            "cid": 1,
+            "name": "workspace_id",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "'local'",
+            "pk": 0
+          },
+          {
+            "cid": 2,
+            "name": "original_name",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 3,
+            "name": "source_path",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 4,
+            "name": "media_type",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "''",
+            "pk": 0
+          },
+          {
+            "cid": 5,
+            "name": "file_hash",
+            "type": "TEXT",
+            "notnull": 0,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 6,
+            "name": "raw_text",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "''",
+            "pk": 0
+          },
+          {
+            "cid": 7,
+            "name": "metadata",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "'{}'",
+            "pk": 0
+          },
+          {
+            "cid": 8,
+            "name": "created_at",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "strftime('%Y-%m-%dT%H:%M:%S','now')",
+            "pk": 0
+          },
+          {
+            "cid": 9,
+            "name": "updated_at",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "strftime('%Y-%m-%dT%H:%M:%S','now')",
+            "pk": 0
+          }
+        ],
+        "foreign_keys": [
+          {
+            "id": 0,
+            "seq": 0,
+            "table": "workspaces",
+            "from": "workspace_id",
+            "to": "workspace_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          }
+        ],
+        "indexes": [
+          {
+            "seq": 0,
+            "name": "idx_sources_hash",
+            "unique": 0,
+            "origin": "c",
+            "partial": 0
+          },
+          {
+            "seq": 1,
+            "name": "idx_sources_workspace",
+            "unique": 0,
+            "origin": "c",
+            "partial": 0
+          },
+          {
+            "seq": 2,
+            "name": "sqlite_autoindex_sources_1",
+            "unique": 1,
+            "origin": "pk",
+            "partial": 0
+          }
+        ]
+      },
+      "artifacts": {
+        "columns": [
+          {
+            "cid": 0,
+            "name": "artifact_id",
+            "type": "TEXT",
+            "notnull": 0,
+            "dflt_value": null,
+            "pk": 1
+          },
+          {
+            "cid": 1,
+            "name": "workspace_id",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "'local'",
+            "pk": 0
+          },
+          {
+            "cid": 2,
+            "name": "source_id",
+            "type": "TEXT",
+            "notnull": 0,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 3,
+            "name": "artifact_type",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 4,
+            "name": "title",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "''",
+            "pk": 0
+          },
+          {
+            "cid": 5,
+            "name": "content",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 6,
+            "name": "metadata",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "'{}'",
+            "pk": 0
+          },
+          {
+            "cid": 7,
+            "name": "created_at",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "strftime('%Y-%m-%dT%H:%M:%S','now')",
+            "pk": 0
+          },
+          {
+            "cid": 8,
+            "name": "updated_at",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "strftime('%Y-%m-%dT%H:%M:%S','now')",
+            "pk": 0
+          }
+        ],
+        "foreign_keys": [
+          {
+            "id": 0,
+            "seq": 0,
+            "table": "sources",
+            "from": "source_id",
+            "to": "source_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          },
+          {
+            "id": 1,
+            "seq": 0,
+            "table": "workspaces",
+            "from": "workspace_id",
+            "to": "workspace_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          }
+        ],
+        "indexes": [
+          {
+            "seq": 0,
+            "name": "idx_artifacts_type",
+            "unique": 0,
+            "origin": "c",
+            "partial": 0
+          },
+          {
+            "seq": 1,
+            "name": "idx_artifacts_source",
+            "unique": 0,
+            "origin": "c",
+            "partial": 0
+          },
+          {
+            "seq": 2,
+            "name": "sqlite_autoindex_artifacts_1",
+            "unique": 1,
+            "origin": "pk",
+            "partial": 0
+          }
+        ]
+      },
+      "quiz_attempts": {
+        "columns": [
+          {
+            "cid": 0,
+            "name": "attempt_id",
+            "type": "TEXT",
+            "notnull": 0,
+            "dflt_value": null,
+            "pk": 1
+          },
+          {
+            "cid": 1,
+            "name": "artifact_id",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 2,
+            "name": "source_id",
+            "type": "TEXT",
+            "notnull": 0,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 3,
+            "name": "question_index",
+            "type": "INTEGER",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 4,
+            "name": "user_answer",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 5,
+            "name": "is_correct",
+            "type": "INTEGER",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 6,
+            "name": "score",
+            "type": "REAL",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 7,
+            "name": "feedback",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "''",
+            "pk": 0
+          },
+          {
+            "cid": 8,
+            "name": "created_at",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "strftime('%Y-%m-%dT%H:%M:%S','now')",
+            "pk": 0
+          }
+        ],
+        "foreign_keys": [
+          {
+            "id": 0,
+            "seq": 0,
+            "table": "sources",
+            "from": "source_id",
+            "to": "source_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          },
+          {
+            "id": 1,
+            "seq": 0,
+            "table": "artifacts",
+            "from": "artifact_id",
+            "to": "artifact_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          }
+        ],
+        "indexes": [
+          {
+            "seq": 0,
+            "name": "idx_attempts_artifact",
+            "unique": 0,
+            "origin": "c",
+            "partial": 0
+          },
+          {
+            "seq": 1,
+            "name": "sqlite_autoindex_quiz_attempts_1",
+            "unique": 1,
+            "origin": "pk",
+            "partial": 0
+          }
+        ]
+      },
+      "wrong_questions": {
+        "columns": [
+          {
+            "cid": 0,
+            "name": "wrong_id",
+            "type": "TEXT",
+            "notnull": 0,
+            "dflt_value": null,
+            "pk": 1
+          },
+          {
+            "cid": 1,
+            "name": "artifact_id",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 2,
+            "name": "source_id",
+            "type": "TEXT",
+            "notnull": 0,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 3,
+            "name": "question_index",
+            "type": "INTEGER",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 4,
+            "name": "question",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 5,
+            "name": "latest_answer",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "''",
+            "pk": 0
+          },
+          {
+            "cid": 6,
+            "name": "error_count",
+            "type": "INTEGER",
+            "notnull": 1,
+            "dflt_value": "1",
+            "pk": 0
+          },
+          {
+            "cid": 7,
+            "name": "correct_streak",
+            "type": "INTEGER",
+            "notnull": 1,
+            "dflt_value": "0",
+            "pk": 0
+          },
+          {
+            "cid": 8,
+            "name": "mastered",
+            "type": "INTEGER",
+            "notnull": 1,
+            "dflt_value": "0",
+            "pk": 0
+          },
+          {
+            "cid": 9,
+            "name": "created_at",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "strftime('%Y-%m-%dT%H:%M:%S','now')",
+            "pk": 0
+          },
+          {
+            "cid": 10,
+            "name": "updated_at",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "strftime('%Y-%m-%dT%H:%M:%S','now')",
+            "pk": 0
+          },
+          {
+            "cid": 11,
+            "name": "next_review_at",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "'1970-01-01T00:00:00+00:00'",
+            "pk": 0
+          },
+          {
+            "cid": 12,
+            "name": "interval_days",
+            "type": "INTEGER",
+            "notnull": 1,
+            "dflt_value": "0",
+            "pk": 0
+          },
+          {
+            "cid": 13,
+            "name": "ease_factor",
+            "type": "REAL",
+            "notnull": 1,
+            "dflt_value": "2.5",
+            "pk": 0
+          },
+          {
+            "cid": 14,
+            "name": "review_count",
+            "type": "INTEGER",
+            "notnull": 1,
+            "dflt_value": "0",
+            "pk": 0
+          },
+          {
+            "cid": 15,
+            "name": "knowledge_key",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "''",
+            "pk": 0
+          },
+          {
+            "cid": 16,
+            "name": "knowledge_label",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "''",
+            "pk": 0
+          },
+          {
+            "cid": 17,
+            "name": "error_cause",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "'unconfirmed'",
+            "pk": 0
+          },
+          {
+            "cid": 18,
+            "name": "error_cause_source",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "'unconfirmed'",
+            "pk": 0
+          },
+          {
+            "cid": 19,
+            "name": "error_cause_confidence",
+            "type": "REAL",
+            "notnull": 1,
+            "dflt_value": "0",
+            "pk": 0
+          },
+          {
+            "cid": 20,
+            "name": "error_cause_note",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "''",
+            "pk": 0
+          },
+          {
+            "cid": 21,
+            "name": "diagnosed_at",
+            "type": "TEXT",
+            "notnull": 0,
+            "dflt_value": null,
+            "pk": 0
+          }
+        ],
+        "foreign_keys": [
+          {
+            "id": 0,
+            "seq": 0,
+            "table": "sources",
+            "from": "source_id",
+            "to": "source_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          },
+          {
+            "id": 1,
+            "seq": 0,
+            "table": "artifacts",
+            "from": "artifact_id",
+            "to": "artifact_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          }
+        ],
+        "indexes": [
+          {
+            "seq": 0,
+            "name": "idx_wrong_knowledge",
+            "unique": 0,
+            "origin": "c",
+            "partial": 0
+          },
+          {
+            "seq": 1,
+            "name": "idx_wrong_next_review",
+            "unique": 0,
+            "origin": "c",
+            "partial": 0
+          },
+          {
+            "seq": 2,
+            "name": "idx_wrong_mastered",
+            "unique": 0,
+            "origin": "c",
+            "partial": 0
+          },
+          {
+            "seq": 3,
+            "name": "sqlite_autoindex_wrong_questions_2",
+            "unique": 1,
+            "origin": "u",
+            "partial": 0
+          },
+          {
+            "seq": 4,
+            "name": "sqlite_autoindex_wrong_questions_1",
+            "unique": 1,
+            "origin": "pk",
+            "partial": 0
+          }
+        ]
+      },
+      "study_plans": {
+        "columns": [
+          {
+            "cid": 0,
+            "name": "plan_id",
+            "type": "TEXT",
+            "notnull": 0,
+            "dflt_value": null,
+            "pk": 1
+          },
+          {
+            "cid": 1,
+            "name": "artifact_id",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 2,
+            "name": "source_id",
+            "type": "TEXT",
+            "notnull": 0,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 3,
+            "name": "title",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 4,
+            "name": "exam_date",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 5,
+            "name": "daily_minutes",
+            "type": "INTEGER",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 6,
+            "name": "goal",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "''",
+            "pk": 0
+          },
+          {
+            "cid": 7,
+            "name": "plan_data",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 8,
+            "name": "completed_days",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "'[]'",
+            "pk": 0
+          },
+          {
+            "cid": 9,
+            "name": "status",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "'active'",
+            "pk": 0
+          },
+          {
+            "cid": 10,
+            "name": "created_at",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "strftime('%Y-%m-%dT%H:%M:%S','now')",
+            "pk": 0
+          },
+          {
+            "cid": 11,
+            "name": "updated_at",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "strftime('%Y-%m-%dT%H:%M:%S','now')",
+            "pk": 0
+          }
+        ],
+        "foreign_keys": [
+          {
+            "id": 0,
+            "seq": 0,
+            "table": "sources",
+            "from": "source_id",
+            "to": "source_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          },
+          {
+            "id": 1,
+            "seq": 0,
+            "table": "artifacts",
+            "from": "artifact_id",
+            "to": "artifact_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          }
+        ],
+        "indexes": [
+          {
+            "seq": 0,
+            "name": "idx_study_plans_status",
+            "unique": 0,
+            "origin": "c",
+            "partial": 0
+          },
+          {
+            "seq": 1,
+            "name": "sqlite_autoindex_study_plans_2",
+            "unique": 1,
+            "origin": "u",
+            "partial": 0
+          },
+          {
+            "seq": 2,
+            "name": "sqlite_autoindex_study_plans_1",
+            "unique": 1,
+            "origin": "pk",
+            "partial": 0
+          }
+        ]
+      },
+      "kg_question_links": {
+        "columns": [
+          {
+            "cid": 0,
+            "name": "link_id",
+            "type": "TEXT",
+            "notnull": 0,
+            "dflt_value": null,
+            "pk": 1
+          },
+          {
+            "cid": 1,
+            "name": "course_id",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 2,
+            "name": "concept_id",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 3,
+            "name": "artifact_id",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 4,
+            "name": "source_id",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 5,
+            "name": "question_index",
+            "type": "INTEGER",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 6,
+            "name": "question_digest",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 7,
+            "name": "active",
+            "type": "INTEGER",
+            "notnull": 1,
+            "dflt_value": "1",
+            "pk": 0
+          },
+          {
+            "cid": 8,
+            "name": "revision",
+            "type": "INTEGER",
+            "notnull": 1,
+            "dflt_value": "1",
+            "pk": 0
+          },
+          {
+            "cid": 9,
+            "name": "created_at",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 10,
+            "name": "updated_at",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          }
+        ],
+        "foreign_keys": [
+          {
+            "id": 0,
+            "seq": 0,
+            "table": "kg_course_sources",
+            "from": "course_id",
+            "to": "course_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          },
+          {
+            "id": 0,
+            "seq": 1,
+            "table": "kg_course_sources",
+            "from": "source_id",
+            "to": "source_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          },
+          {
+            "id": 1,
+            "seq": 0,
+            "table": "artifacts",
+            "from": "artifact_id",
+            "to": "artifact_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          },
+          {
+            "id": 2,
+            "seq": 0,
+            "table": "kg_concepts",
+            "from": "course_id",
+            "to": "course_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          },
+          {
+            "id": 2,
+            "seq": 1,
+            "table": "kg_concepts",
+            "from": "concept_id",
+            "to": "concept_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          }
+        ],
+        "indexes": [
+          {
+            "seq": 0,
+            "name": "kg_question_links_source",
+            "unique": 0,
+            "origin": "c",
+            "partial": 0
+          },
+          {
+            "seq": 1,
+            "name": "kg_question_links_artifact",
+            "unique": 0,
+            "origin": "c",
+            "partial": 0
+          },
+          {
+            "seq": 2,
+            "name": "kg_question_links_concept",
+            "unique": 0,
+            "origin": "c",
+            "partial": 0
+          },
+          {
+            "seq": 3,
+            "name": "sqlite_autoindex_kg_question_links_2",
+            "unique": 1,
+            "origin": "u",
+            "partial": 0
+          },
+          {
+            "seq": 4,
+            "name": "sqlite_autoindex_kg_question_links_1",
+            "unique": 1,
+            "origin": "pk",
+            "partial": 0
+          }
+        ]
+      },
+      "kg_course_plan_links": {
+        "columns": [
+          {
+            "cid": 0,
+            "name": "plan_id",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 1
+          },
+          {
+            "cid": 1,
+            "name": "course_id",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 2
+          },
+          {
+            "cid": 2,
+            "name": "concept_id",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 3
+          },
+          {
+            "cid": 3,
+            "name": "day_index",
+            "type": "INTEGER",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 4
+          }
+        ],
+        "foreign_keys": [
+          {
+            "id": 0,
+            "seq": 0,
+            "table": "kg_concepts",
+            "from": "course_id",
+            "to": "course_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          },
+          {
+            "id": 0,
+            "seq": 1,
+            "table": "kg_concepts",
+            "from": "concept_id",
+            "to": "concept_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          },
+          {
+            "id": 1,
+            "seq": 0,
+            "table": "study_plans",
+            "from": "plan_id",
+            "to": "plan_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          }
+        ],
+        "indexes": [
+          {
+            "seq": 0,
+            "name": "kg_course_plan_links_concept",
+            "unique": 0,
+            "origin": "c",
+            "partial": 0
+          },
+          {
+            "seq": 1,
+            "name": "sqlite_autoindex_kg_course_plan_links_1",
+            "unique": 1,
+            "origin": "pk",
+            "partial": 0
+          }
+        ]
+      },
+      "kg_learning_work": {
+        "columns": [
+          {
+            "cid": 0,
+            "name": "work_id",
+            "type": "TEXT",
+            "notnull": 0,
+            "dflt_value": null,
+            "pk": 1
+          },
+          {
+            "cid": 1,
+            "name": "course_id",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 2,
+            "name": "kind",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 3,
+            "name": "request_key",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 4,
+            "name": "input_digest",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 5,
+            "name": "graph_digest",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 6,
+            "name": "evidence_digest",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 7,
+            "name": "status",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 8,
+            "name": "epoch",
+            "type": "INTEGER",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 9,
+            "name": "lease_until",
+            "type": "TEXT",
+            "notnull": 0,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 10,
+            "name": "payload",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": "'{}'",
+            "pk": 0
+          },
+          {
+            "cid": 11,
+            "name": "error_code",
+            "type": "TEXT",
+            "notnull": 0,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 12,
+            "name": "created_at",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          },
+          {
+            "cid": 13,
+            "name": "updated_at",
+            "type": "TEXT",
+            "notnull": 1,
+            "dflt_value": null,
+            "pk": 0
+          }
+        ],
+        "foreign_keys": [
+          {
+            "id": 0,
+            "seq": 0,
+            "table": "kg_courses",
+            "from": "course_id",
+            "to": "course_id",
+            "on_update": "NO ACTION",
+            "on_delete": "CASCADE",
+            "match": "NONE"
+          }
+        ],
+        "indexes": [
+          {
+            "seq": 0,
+            "name": "kg_learning_work_history",
+            "unique": 0,
+            "origin": "c",
+            "partial": 0
+          },
+          {
+            "seq": 1,
+            "name": "kg_learning_work_running",
+            "unique": 1,
+            "origin": "c",
+            "partial": 1
+          },
+          {
+            "seq": 2,
+            "name": "sqlite_autoindex_kg_learning_work_2",
+            "unique": 1,
+            "origin": "u",
+            "partial": 0
+          },
+          {
+            "seq": 3,
+            "name": "sqlite_autoindex_kg_learning_work_1",
+            "unique": 1,
+            "origin": "pk",
+            "partial": 0
+          }
+        ]
+      }
+    }
+  }
+}
