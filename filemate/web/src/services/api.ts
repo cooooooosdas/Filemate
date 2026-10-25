@@ -1,4 +1,5 @@
 import { saveDownload } from './downloads'
+import type { ReviewAnswer, ReviewAnswerResult, ReviewAttempt, ReviewDetail, ReviewDiagnosis, ReviewEvent, ReviewPage, ReviewPreview, ReviewSchedule, ReviewScheduleReceipt, ReviewState, ReviewSummary } from '../types/wrongbook'
 import type { CoachSnapshot, CoachMutationResult, CoachAnswer, CoachAnalysis, CoachAdvance, CoachConsent, CoachAttempts, CoachFocus } from '../types/interviewCoach'
 import axios from 'axios'
 import type { CourseActionPreview, CourseChapter, CourseConcept, CourseDecision, CourseDraft, CourseGraphPage, CourseMergePreview, CourseOperation, CourseReviewPreview, GraphConfirmation, GraphCourse, GraphMode, GraphPage } from '../types/courseGraph'
@@ -2010,3 +2011,18 @@ export const focusInterviewCoach=(id:string,input:CoachFocus):Promise<CoachMutat
 
 export const prepareInterviewRuntime=(content:import('../types/interviewConfiguration').InterviewDraftContent,request_key:string):Promise<CoachSnapshot>=>coachResult(api.post<unknown,ApiResponse<CoachSnapshot>>('/interviews/runtime',{content,request_key},{timeout:15000}))
 export const commandInterviewRuntime=(id:string,input:import('../types/interviewRuntime').RuntimeCommand):Promise<CoachMutationResult>=>coachResult(api.post<unknown,ApiResponse<CoachMutationResult>>(`/interviews/${encodeURIComponent(id)}/runtime/commands`,input,{timeout:20000}))
+
+async function reviewResult<T>(request: Promise<ApiResponse<T>>): Promise<T> {
+  const response = await request
+  if (response.success && response.data) return response.data
+  throw new Error(response.error || '复习操作未完成，请保留原稿后重试')
+}
+const reviewPath = (id: string) => `/wrongbook/v2/${encodeURIComponent(id)}`
+export const getReviewSummary = (): Promise<ReviewSummary> => reviewResult(api.get<unknown, ApiResponse<ReviewSummary>>('/wrongbook/v2/summary'))
+export const getReviewDetail = (id: string): Promise<ReviewDetail> => reviewResult(api.get<unknown, ApiResponse<ReviewDetail>>(reviewPath(id)))
+export const getReviewAttempts = (id: string, params: {limit?: number; offset?: number} = {}): Promise<ReviewPage<ReviewAttempt>> => reviewResult(api.get<unknown, ApiResponse<ReviewPage<ReviewAttempt>>>(`${reviewPath(id)}/attempts`, {params}))
+export const getReviewEvents = (id: string, params: {limit?: number; offset?: number} = {}): Promise<ReviewPage<ReviewEvent>> => reviewResult(api.get<unknown, ApiResponse<ReviewPage<ReviewEvent>>>(`${reviewPath(id)}/events`, {params}))
+export const submitReviewAnswer = (input: ReviewAnswer): Promise<ReviewAnswerResult> => reviewResult(api.post<unknown, ApiResponse<ReviewAnswerResult>>('/wrongbook/v2/attempts', input))
+export const setReviewDiagnosis = (id: string, input: ReviewDiagnosis): Promise<ReviewState & {wrong_id: string; review_event_id: string}> => reviewResult(api.patch<unknown, ApiResponse<ReviewState & {wrong_id: string; review_event_id: string}>>(`${reviewPath(id)}/diagnosis`, input))
+export const previewReviewSchedule = (id: string, input: ReviewSchedule): Promise<ReviewPreview> => reviewResult(api.post<unknown, ApiResponse<ReviewPreview>>(`${reviewPath(id)}/schedule-preview`, input))
+export const confirmReviewSchedule = (id: string, input: ReviewSchedule & {confirmed: true; confirmation_token: string}): Promise<ReviewScheduleReceipt> => reviewResult(api.post<unknown, ApiResponse<ReviewScheduleReceipt>>(`${reviewPath(id)}/schedule-confirm`, input))

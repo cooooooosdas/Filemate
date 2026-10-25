@@ -3229,13 +3229,18 @@ class SQLiteStorage:
 
     def get_learning_analytics(self, *, source_id: str | None = None) -> dict[str, Any]:
         """汇总学习资产、错题与模拟面试指标。"""
+        from filemate.wrongbook.evidence import TRUSTED_SQL
+
         connection = self._conn()
         scalar_queries = {
             "source_count": "SELECT COUNT(*) FROM sources",
             "artifact_count": "SELECT COUNT(*) FROM artifacts",
-            "pending_wrong_count": "SELECT COUNT(*) FROM wrong_questions WHERE mastered=0",
-            "mastered_wrong_count": "SELECT COUNT(*) FROM wrong_questions WHERE mastered=1",
-            "quiz_attempt_count": "SELECT COUNT(*) FROM quiz_attempts",
+            "pending_wrong_count": "SELECT COUNT(*) FROM wrong_questions WHERE mastered=0 AND (scheduler_version='legacy-v1' OR error_count>0)",
+            "mastered_wrong_count": "SELECT COUNT(*) FROM wrong_questions WHERE mastered=1 AND (scheduler_version='legacy-v1' OR error_count>0)",
+            "legacy_mastered_wrong_count": "SELECT COUNT(*) FROM wrong_questions WHERE mastered=1 AND scheduler_version='legacy-v1'",
+            "criterion_met_wrong_count": "SELECT COUNT(*) FROM wrong_questions WHERE learning_status='criterion_met' AND scheduler_version='review-interval-v2' AND error_count>0",
+            "quiz_attempt_count": "SELECT COUNT(*) FROM quiz_attempts WHERE " + TRUSTED_SQL,
+            "quiz_attempt_total": "SELECT COUNT(*) FROM quiz_attempts",
             "interview_count": "SELECT COUNT(*) FROM interview_sessions",
             "study_plan_count": "SELECT COUNT(*) FROM study_plans",
             "completed_study_plan_count": (
@@ -3259,6 +3264,7 @@ class SQLiteStorage:
                 scoped(query, interview=key == "interview_count"), params
             ).fetchone()[0]) for key, query in scalar_queries.items()
         }
+        result["unverified_quiz_attempt_count"] = result["quiz_attempt_total"] - result["quiz_attempt_count"]
         checked_interviews = []
         unreadable_interviews = 0
         for row in connection.execute(
@@ -3349,9 +3355,9 @@ class SQLiteStorage:
 
         result["evidence_profile"] = build_evidence_profile(
             attempts=[dict(row) for row in connection.execute(
-                scoped("SELECT attempt_id, artifact_id, source_id, question_index, is_correct, score, created_at FROM quiz_attempts"), params)],
+                scoped("SELECT * FROM quiz_attempts"), params)],
             wrongs=[dict(row) for row in connection.execute(
-                scoped("SELECT wrong_id, artifact_id, source_id, question_index, mastered, updated_at FROM wrong_questions"), params)],
+                scoped("SELECT * FROM wrong_questions"), params)],
             plans=[dict(row) for row in connection.execute(
                 scoped("SELECT plan_id, status, plan_data, completed_days, updated_at FROM study_plans"), params)],
             interviews=checked_interviews, source_id=source_id,

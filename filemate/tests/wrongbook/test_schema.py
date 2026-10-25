@@ -1,7 +1,7 @@
 """Review evidence migrations retain synthetic historical records and row order."""
 
-import sqlite3
 import json
+import sqlite3
 
 import pytest
 

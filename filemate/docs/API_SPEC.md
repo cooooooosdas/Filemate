@@ -1,5 +1,27 @@
 # API 规范
 
+## 错题复盘2.0 B级候选（2026-10-26）
+
+业务migration35只追加，保留原作答ID、SQLite rowid、题目版本与旧规则标签。`FILEMATE_ENABLE_WRONGBOOK_V2=0`默认关闭以下新写入口（503）；只读、个人导出和删除始终保留。页面接线属于C级，本节不是上线声明。全部路由沿用服务端认证、租户隔离及全局限流，无owner参数，不调用模型；响应`{success,data,error}`且`Cache-Control:no-store`。
+
+| 方法／路径 | 合同 |
+| --- | --- |
+| GET `/wrongbook/v2/summary` | 全库total、due_count、overdue_count、paused_count、pending_check_count、invalid_time_count、legacy_mastered_count、criterion_met_count；rule_version/as_of/day_zone |
+| GET `/wrongbook/v2/{id}` | 原错题与learning_status/schedule_status、规则版本、revision、eligible_count、复习阶段和时间、多错因与自定义标签、只读历史及数据错误标识 |
+| GET `/wrongbook/v2/{id}/attempts`、`/events` | limit默认30，1–200；offset默认0，0–1000000；稳定时间＋rowid分页，items/total/limit/offset/has_more；事件含前后状态和回执 |
+| POST `/wrongbook/v2/attempts` | artifact_id、question_index(0–100000)、expected_question原始快照、request_key必填；user_answer最多10000字，action=answer或dont_know；answer_revealed布尔、duration_ms可空(0–14400000)、self_reported_result可空(correct/incorrect/unsure) |
+| PATCH `/wrongbook/v2/{id}/diagnosis` | request_key、expected_revision、error_causes最多3项且不重复，可空清除；primary_cause须在其中；custom_tags最多5项，每项1–30字；note最多300字 |
+| POST `/wrongbook/v2/{id}/schedule-preview` | request_key、expected_revision、action=pause/resume/reschedule/activate/undo、可空next_review_at、undo_event_id、reason最多300字；返回精确before/after及15分钟confirmation_token |
+| POST `/wrongbook/v2/{id}/schedule-confirm` | 原预览参数＋confirmed严格true＋confirmation_token；原子保存状态、事件及审计回执，重复确认返回原回执 |
+
+所有写体拒绝额外字段及类型强制转换；request_key是16–80位字母数字下划线或连字符。同键同参数返回原结果，换参数409。缺失对象404、题目或revision冲突409、参数422、存储故障503且不暴露SQL或底层异常。读取查询不允许未知／重复参数。
+
+错因枚举：concept_gap、memory_gap、reasoning_break、expression_gap、option_confusion、careless、method_gap、condition_gap、calculation_error、code_error、boundary_gap、time_pressure、other。空列表表示未确认，不伪造AI诊断。
+
+客观选择／填空沿用实际题目规则核对；主观回答、暂时不会和自报结果保存is_correct/score=NULL，分别标pending或self_reported。看过答案标assisted，不能提高确定能力统计；客户端耗时标client_reported。作答、聚合与review_events在同一事务；不覆盖旧作答。1/3/7/15/30天透明间隔，订正不计有效延迟复习；至少3次有效正确，跨3个上海日期且首次至末次至少7天，才标“达到本轮复习标准”，仍继续滚动复习。旧版两次正确保留历史含义，启用新规则需明确预览确认；不自动复活已完成历史。排期确认绑定原参数和数据，期间有新操作则重新预览。撤销仅恢复最近且未被后续操作覆盖的排期，不删除证据，revision递增。日期须带时区且在服务端当前时间至365天内。暂停不进入自动队列；坏日期单列，不当作逾期。
+
+`GET /review/today`保留旧字段，pending_wrong_count改为全库有效到期数，追加wrong_candidate_count（最多50），deferred_count包含未取入候选的到期记录。画像／成长／技能／图谱只使用可信数值证据，旧规则历史兼容；analytics追加quiz_attempt_total、unverified_quiz_attempt_count、legacy_mastered_wrong_count、criterion_met_wrong_count。旧`/quiz/attempts`及旧诊断入口不能覆盖已采用2.0规则的错题，返回409。关闭新写入口不代表降级数据库；旧应用不保证可读取schema35，需配套schema35兼容版本或恢复完整迁移前备份。个人备份含review_events与新增列；恢复清除旧排期令牌。
+
 2026-10-16 OPT-01候选：五个上传AI接口将同步生成放入线程池；摘要/卡片/笔记为空、结构错误或上游失败返回502，不持久化成功产物。上传和现役工作区保持配额429/治理503。学习导入与上传共用受控解析422，错误明确等待/拆分/解密，未知内部异常不公开。Source元数据保留页数/truncated/enrichment_incomplete及parse_warnings；AI响应、Artifact/Context元数据和计划新增可选warnings，记录实际模型输入截取范围。卡片数1–50、摘要长度1–10000、卡片格式front_back/qa、笔记outline/markdown/mindmap在落盘前校验。无新路由/schema/依赖/环境变量；旧数据缺字段仍可读。实现、证据及未完成项见[优化合同](../../docs/PRODUCT_OPTIMIZATION_EXECUTION_2026-10-16.md)，尚未发布。
 
 2026-10-15 上传故障修复候选：PDF/Office 解码和 `/process` 富提取使用单槽子进程，384 MiB、40 秒墙钟、Linux 25 秒 CPU、8 MiB 输出上限。忙碌、超时、资源超限及失败沿用 `{raw_text,metadata,error}`；`/process` 为 success:false 的失败会话，`/knowledge/import` 沿用解析失败响应。超过 500 页 PDF 要求拆分，文本上限 500,000 字，metadata.truncated 标注截断；超过 50 页保留正文，metadata.enrichment_incomplete=true 和 note 明示未做表格／图表几何提取。API/阶段线程池保留租户及模型授权上下文；子进程不传模型密钥，不执行 LLM 或数据库写入。没有新环境变量、路由或迁移；Windows RSS 巡检不等同于 Linux 地址空间硬限制。见 [故障记录](../../docs/INCIDENT_2026-10-15.md)。

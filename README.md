@@ -1,5 +1,7 @@
 # FileMate
 
+2026-10-26 错题复盘2.0：用户已验收A级及七项设计建议，正按[B级计划](docs/superpowers/plans/2026-10-26-wrongbook-foundation.md)实施数据、可信作答和可撤销排期。追加业务schema35；新写入口由`FILEMATE_ENABLE_WRONGBOOK_V2=0`默认关闭，历史读取、导出和删除保留。接口与前端类型已增加，C级页面、D级AI及E级总体验收尚未实施，本条不表示已部署。
+
 2026-10-25 知识图谱2.0已推送main并上线：课程审核与关系工作台、训练证据、节点练习、学习路径、跨课导航、有限助手和质量工具已整合；追加SQLite3.26生产兼容修复。API41a360bd／Web资产4be657c6，业务schema34／治理3；最终Windows1544后端／213前端、Linux1562后端／213前端与公网11组通过，390库／1022文件正式备份恢复通过。详见[发布回执](docs/KNOWLEDGE_GRAPH_2_RELEASE_2026-10-24.md)、[D／E交付](docs/KNOWLEDGE_GRAPH_2_0_DE_DELIVERY.md)和[技术报告](docs/KNOWLEDGE_GRAPH_2_TECHNICAL_REPORT.md)。总体CONDITIONAL PASS；完整键盘、万节点浏览器、实体设备、人工gold与真人研究保留，新独立音视频采集关闭。下方为各批当时状态。
 
 2026-10-23 D/E本地候选推进：学习侧栏接通明确题目关联、逐题真实作答、人工审核练习及新增计划；图谱助手可分开展示原文、真实训练事实和建议，固定只读步骤后只出计划预览。助手默认关闭，显式`FILEMATE_ENABLE_GRAPH_ASSISTANT=1`才允许新请求；`LLM_PROVIDER/LLM_BASE_URL/LLM_MODEL`沿用现有适配层，浏览器密钥仍限定现役可信DeepSeek端点。业务schema33；整项最终门禁、规模与独立审阅仍待执行。Work设置禁用本地浏览器，新增界面实机验收未完成，不表示已上线或真实学习效果已验证。

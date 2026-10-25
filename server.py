@@ -1734,6 +1734,11 @@ from filemate.course_graph.api import create_router as _course_graph_router
 
 app.include_router(_course_graph_router(_course_graph_storage))
 
+from filemate.wrongbook.api import create_router as _wrongbook_router
+from filemate.wrongbook.repository import ReviewRepository
+
+app.include_router(_wrongbook_router(lambda: _storage))
+
 
 def _require_graph_enabled() -> None:
     if os.getenv("FILEMATE_ENABLE_KNOWLEDGE_GRAPH", "1") == "0":
@@ -3923,11 +3928,9 @@ def today_review():
             }
         )
 
-    wrong_questions = _storage.list_wrong_questions(
-        mastered=False,
-        due_only=True,
-        limit=50,
-    )
+    review_repository = ReviewRepository(_storage)
+    wrong_questions = review_repository.due_page(limit=50)
+    full_due_count = review_repository.summary()["due_count"]
     for wrong in wrong_questions:
         question = wrong.get("question") or {}
         guidance = wrong_review_guidance(wrong, today)
@@ -3962,10 +3965,11 @@ def today_review():
             "date": today.isoformat(),
             "items": recommended,
             "active_plan_count": len(active_plans),
-            "pending_wrong_count": len(wrong_questions),
+            "pending_wrong_count": full_due_count,
+            "wrong_candidate_count": len(wrong_questions),
             "available_minutes": preferences["available_minutes"],
             "item_order": preferences["item_order"],
-            "deferred_count": deferred_count,
+            "deferred_count": deferred_count + max(0, full_due_count - len(wrong_questions)),
             "recommended_minutes": sum(
                 int(item["duration_minutes"]) for item in recommended
             ),

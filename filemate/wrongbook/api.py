@@ -1,0 +1,96 @@
+"""Opt-in commands and always-readable tenant-bound review evidence."""
+
+import os
+import sqlite3
+from collections.abc import Callable
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
+from pydantic import Field
+
+from filemate.execution.storage import QuestionRevisionConflict, SQLiteStorage
+from filemate.wrongbook.commands import ReviewCommands
+from filemate.wrongbook.models import Answer, Diagnosis, Schedule
+from filemate.wrongbook.repository import ReviewRepository
+
+
+class Confirm(Schedule):
+    confirmation_token: str = Field(min_length=1, max_length=256)
+    confirmed: Literal[True]
+
+
+class ReviewRoute(APIRoute):
+    def get_route_handler(self):
+        handler = super().get_route_handler()
+
+        async def guarded(request: Request):
+            if request.method == "GET":
+                allowed = {"limit", "offset"} if request.url.path.endswith(("/attempts", "/events")) else set()
+                keys = list(request.query_params.keys())
+                if any(key not in allowed or len(request.query_params.getlist(key)) != 1 for key in keys):
+                    raise HTTPException(422, "查询参数无效或重复")
+            try:
+                return await handler(request)
+            except QuestionRevisionConflict as exc:
+                raise HTTPException(409, str(exc)) from exc
+            except LookupError as exc:
+                raise HTTPException(404, str(exc)) from exc
+            except ValueError as exc:
+                raise HTTPException(422, "复习参数或数据无效，请重新读取后操作") from exc
+            except sqlite3.Error:
+                return JSONResponse(status_code=503, content={"success": False, "data": None,
+                    "error": "复习数据暂不可用，请稍后重试"}, headers={"Cache-Control": "no-store"})
+        return guarded
+
+
+def _enabled():
+    if os.getenv("FILEMATE_ENABLE_WRONGBOOK_V2", "0") != "1":
+        raise HTTPException(503, "错题复盘2.0写入尚未启用，历史仍可查看")
+
+
+def create_router(get_storage: Callable[[], SQLiteStorage]) -> APIRouter:
+    router = APIRouter(prefix="/wrongbook/v2", route_class=ReviewRoute)
+
+    def repo():
+        return ReviewRepository(get_storage())
+
+    def response(data):
+        return JSONResponse(content={"success": True, "data": data, "error": None},
+                            headers={"Cache-Control": "no-store"})
+
+    @router.get("/summary")
+    def summary():
+        return response(repo().summary())
+
+    @router.post("/attempts", dependencies=[Depends(_enabled)])
+    def answer(body: Answer):
+        return response(repo().submit(body.model_dump()))
+
+    @router.get("/{wrong_id}")
+    def detail(wrong_id: str):
+        return response(repo().detail(wrong_id))
+
+    @router.get("/{wrong_id}/attempts")
+    def attempts(wrong_id: str, limit: int = Query(30, ge=1, le=200), offset: int = Query(0, ge=0, le=1_000_000)):
+        return response(repo().history(wrong_id, kind="attempts", limit=limit, offset=offset))
+
+    @router.get("/{wrong_id}/events")
+    def events(wrong_id: str, limit: int = Query(30, ge=1, le=200), offset: int = Query(0, ge=0, le=1_000_000)):
+        return response(repo().history(wrong_id, kind="events", limit=limit, offset=offset))
+
+    @router.patch("/{wrong_id}/diagnosis", dependencies=[Depends(_enabled)])
+    def diagnosis(wrong_id: str, body: Diagnosis):
+        return response(repo().diagnose(wrong_id, body.model_dump()))
+
+    @router.post("/{wrong_id}/schedule-preview", dependencies=[Depends(_enabled)])
+    def preview(wrong_id: str, body: Schedule):
+        return response(ReviewCommands(repo()).preview(wrong_id, body.model_dump()))
+
+    @router.post("/{wrong_id}/schedule-confirm", dependencies=[Depends(_enabled)])
+    def confirm(wrong_id: str, body: Confirm):
+        return response(ReviewCommands(repo()).confirm(wrong_id,
+            body.model_dump(exclude={"confirmed", "confirmation_token"}), body.confirmation_token))
+
+    return router

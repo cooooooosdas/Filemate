@@ -58,7 +58,7 @@ class ReviewRepository:
             try:
                 row[field] = json.loads(row[field]) if isinstance(row[field], str) else row[field]
                 if not isinstance(row[field], list):
-                    raise ValueError("invalid list")
+                    raise TypeError("invalid list")
             except (ValueError, TypeError, KeyError):
                 row[field] = []
                 row["data_error"] = True
@@ -216,6 +216,17 @@ class ReviewRepository:
                 for field in ("before_state", "after_state", "result"):
                     row[field] = json.loads(row[field])
         return {"items": rows, "total": total, "limit": limit, "offset": offset, "has_more": offset + len(rows) < total}
+
+    def due_page(self, *, limit: int = 50) -> list[dict]:
+        """Filter the full collection before taking bounded queue candidates."""
+        if type(limit) is not int or not 1 <= limit <= 200:
+            raise ValueError("候选数量无效")
+        ids = self.storage._conn().execute("""SELECT wrong_id FROM wrong_questions
+            WHERE schedule_status='active' AND (scheduler_version=? OR mastered=0)
+              AND julianday(next_review_at)<=julianday(?)
+            ORDER BY julianday(next_review_at),updated_at,wrong_id LIMIT ?""",
+            (RULE_VERSION, self.now().isoformat(), limit)).fetchall()
+        return [self.detail(row["wrong_id"]) for row in ids]
 
     def summary(self) -> dict:
         """Count the full collection independently of bounded queue candidates."""

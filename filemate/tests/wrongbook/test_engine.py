@@ -2,7 +2,7 @@
 
 import importlib
 import importlib.util
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -85,7 +85,7 @@ def test_utc_legacy_time_leap_day_and_naive_clock():
                              correct=True, independent=True, now=at("2024-02-29T23:00:00+00:00"))
     assert result["next_review_at"] == "2024-03-01T23:00:00+00:00"
     with pytest.raises(ValueError):
-        rule.transition(None, correct=False, independent=True, now=datetime(2026, 10, 26))
+        rule.transition(None, correct=False, independent=True, now=datetime(2026, 10, 26))  # noqa: DTZ001 - rejects naive clocks
 
 
 def test_paused_and_legacy_counts_do_not_silently_upgrade():

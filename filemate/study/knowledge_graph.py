@@ -219,11 +219,13 @@ def mastery_metrics(
     attempts: list[dict[str, Any]], *, now: datetime | None = None,
 ) -> dict[str, Any]:
     """按公开规则汇总作答，状态不写回用户核心画像。"""
+    from filemate.wrongbook.evidence import trusted_attempt
+
     now = now or datetime.now(timezone.utc)
     valid = []
     for attempt in attempts:
         try:
-            if attempt.get("is_correct") not in (0, 1) or not isinstance(attempt.get("created_at"), str):
+            if not trusted_attempt(attempt) or not isinstance(attempt.get("created_at"), str):
                 continue
             reviewed = datetime.fromisoformat(attempt["created_at"].replace("Z", "+00:00"))
             if reviewed.tzinfo is None:
