@@ -42,6 +42,8 @@ ALTER TABLE wrong_questions ADD COLUMN review_attempt_count INTEGER NOT NULL DEF
 ALTER TABLE wrong_questions ADD COLUMN paused_at TEXT;
 ALTER TABLE wrong_questions ADD COLUMN error_causes TEXT NOT NULL DEFAULT '[]';
 ALTER TABLE wrong_questions ADD COLUMN custom_tags TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE wrong_questions ADD COLUMN legacy_mastered INTEGER NOT NULL DEFAULT 0;
+UPDATE wrong_questions SET legacy_mastered=1 WHERE mastered=1;
 CREATE INDEX idx_review_queue ON wrong_questions(schedule_status,next_review_at,wrong_id);
 
 CREATE TABLE review_events (

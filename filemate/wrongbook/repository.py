@@ -19,6 +19,7 @@ STATE_FIELDS = (
     "first_verified_at", "last_verified_at", "correct_streak", "mastered", "interval_days",
     "next_review_at", "paused_at", "revision", "error_cause", "error_cause_source",
     "error_cause_confidence", "error_cause_note", "error_causes", "custom_tags", "diagnosed_at",
+    "legacy_mastered",
 )
 ENGINE_FIELDS = STATE_FIELDS[:12]
 
@@ -63,7 +64,7 @@ class ReviewRepository:
                 row["data_error"] = True
         if not row["error_causes"] and row["error_cause"] != "unconfirmed":
             row["error_causes"] = [row["error_cause"]]
-        row["legacy_mastered"] = row["scheduler_version"] != RULE_VERSION and bool(row["mastered"])
+        row["legacy_mastered"] = bool(row.get("legacy_mastered")) or row["scheduler_version"] != RULE_VERSION and bool(row["mastered"])
         row["data_error"] = row.get("data_error", False) or parse_time(row.get("next_review_at")) is None
         artifact = self.storage.get_artifact(row["artifact_id"])
         row["read_only_snapshot"] = bool(artifact and artifact.get("metadata", {}).get("read_only_snapshot"))
@@ -121,7 +122,7 @@ class ReviewRepository:
             previous = conn.execute("SELECT wrong_id FROM wrong_questions WHERE artifact_id=? AND question_index=?",
                                     (command.artifact_id, command.question_index)).fetchone()
             old = self.detail(previous["wrong_id"]) if previous else None
-            if old and old["legacy_mastered"]:
+            if old and old["scheduler_version"] != RULE_VERSION and old["mastered"]:
                 raise QuestionRevisionConflict("历史两次复练结果保留；请先预览并确认启用新复习规则")
             self_reported = command.action == "dont_know" or command.self_reported_result is not None
             correct = None if self_reported or question["question_type"] == "short_answer" else check_answer(question, command.user_answer)

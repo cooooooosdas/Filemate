@@ -55,3 +55,22 @@ class Diagnosis(StrictBody):
         if any(not tag.strip() or tag != tag.strip() for tag in self.custom_tags) or len(set(self.custom_tags)) != len(self.custom_tags):
             raise ValueError("自定义标签不能为空、重复或带首尾空格")
         return self
+
+
+class Schedule(StrictBody):
+    request_key: Key
+    expected_revision: int = Field(ge=1)
+    action: Literal["pause", "resume", "reschedule", "activate", "undo"]
+    next_review_at: str | None = Field(default=None, max_length=64)
+    undo_event_id: Identity | None = None
+    reason: str = Field(default="", max_length=300)
+
+    @model_validator(mode="after")
+    def parameters(self):
+        if (self.action == "undo") != (self.undo_event_id is not None):
+            raise ValueError("撤销必须指定对应排期事件")
+        if self.action == "reschedule" and self.next_review_at is None:
+            raise ValueError("改期须指定新的复习时间")
+        if self.action in {"pause", "undo"} and self.next_review_at is not None:
+            raise ValueError("暂停或撤销不接受额外日期")
+        return self
