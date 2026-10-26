@@ -1,5 +1,15 @@
 # API 规范
 
+## 错题工作台C级只读合同（2026-10-26，开发候选）
+
+沿用B级身份、响应包装及no-store，GET不调用模型。`GET /wrongbook/v2/capabilities`返回`write_enabled/rule_version`，只读在关闭写入时保留。`GET /wrongbook/v2/receipts/{request_key}`返回当前空间已保存的review_events回执，键16–80位字母数字下划线／连字符，未查到404；404不证明此前在途请求已失败。
+
+`GET /wrongbook/v2/page`默认limit30（1–100）、offset0（0–1000000），先全库过滤再分页，返回items/total/limit/offset/has_more/as_of。目录项含题目身份与原始摘要、stem（最多300字）、题型、来源名、知识点、状态、次数、日期及read_only_snapshot/data_error，不含原答／参考答案／解析。详情另含原始question与question_digest，提交必须使用原始question。
+
+参数：q≤160、knowledge_q≤120、source_id/course_id≤128；status为all/due/overdue/active/pending/criterion_met/legacy_completed/paused/history/invalid；cause为B级13类或unconfirmed；min_errors/max_errors为0–1000000；due_from/due_to/created_from/created_to为带时区ISO时间（含端点）；sort为due/updated/errors/created、direction为asc/desc，最后按wrong_id稳定排序。无效／相反区间、未知／重复参数422。reviewable_only=true在分页前排除暂停、旧版已完成、历史只读与异常记录，用于有界专注批次。课程只认有效显式映射和当前摘要，不按同名推断。
+
+`GET /wrongbook/v2/filter-options?kind=sources|courses&q=&limit=30&offset=0`返回同结构分页的id/label，只列有真实错题的来源／有效课程映射。摘要增加active_review_count（新规则active且new/needs_review/provisional）和saved_review_attempt_count（新规则review/early_practice的真实记录，包含待核对，不是正确次数）。前端工作区仍在开发，新增合同不是完整C级验收或上线声明。
+
 ## 错题复盘2.0 B级候选（2026-10-26）
 
 独立审阅后补充：确定错误计数也排除assisted记录，待核对和辅助练习不改变既有资格；新版诊断／排期接管legacy记录后旧写入口同样409。到期候选和统计通过同一个严格时间解析函数，拒绝被SQLite宽松规范化的无效日期。个人JSON／ZIP中quiz_attempts新增显式rowid并校验完整、唯一的64位整数序号；恢复保留版本边界。旧备份没有序号时，保守重绑定带graph_attempt_cutoff的产物，原值另存graph_attempt_cutoff_before_restore，回执追加review_evidence_rebound数量及可空review_evidence_notice，旧记录保留但边界不明者不计当前版本证据，恢复后的新作答正常计入。

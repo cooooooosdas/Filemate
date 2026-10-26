@@ -51,9 +51,15 @@ class ReviewRepository:
 
     def detail(self, wrong_id: str) -> dict:
         """Read one scoped wrong record without inferring unavailable evidence."""
-        row = self.storage.get_wrong_question(wrong_id)
+        try:
+            row = self.storage.get_wrong_question(wrong_id)
+        except (ValueError, TypeError):
+            raw = self.storage._conn().execute('SELECT * FROM wrong_questions WHERE wrong_id=?', (wrong_id,)).fetchone()
+            row = {**dict(raw), 'question': {}, 'data_error': True} if raw else None
         if row is None:
             raise LookupError("错题不存在")
+        if not isinstance(row.get('question'), dict):
+            row.update(question={}, data_error=True)
         for field in ("error_causes", "custom_tags"):
             try:
                 row[field] = json.loads(row[field]) if isinstance(row[field], str) else row[field]
@@ -68,6 +74,7 @@ class ReviewRepository:
         row["data_error"] = row.get("data_error", False) or parse_time(row.get("next_review_at")) is None
         artifact = self.storage.get_artifact(row["artifact_id"])
         row["read_only_snapshot"] = bool(artifact and artifact.get("metadata", {}).get("read_only_snapshot"))
+        row['question_digest'] = digest(row['question'])
         return row
 
     @staticmethod
@@ -256,4 +263,9 @@ class ReviewRepository:
             COALESCE(SUM(schedule_status='active' AND (scheduler_version=? OR mastered=0)
                 AND filemate_review_time(next_review_at)<?),0) AS overdue_count
             FROM wrong_questions""", (RULE_VERSION, RULE_VERSION, RULE_VERSION, now.timestamp(), RULE_VERSION, day_start)).fetchone()
-        return {**dict(row), "rule_version": RULE_VERSION, "as_of": stamp, "day_zone": "Asia/Shanghai"}
+        conn = self.time_connection()
+        active = conn.execute("""SELECT COUNT(*) FROM wrong_questions WHERE scheduler_version=?
+            AND schedule_status='active' AND learning_status IN ('new','needs_review','provisional')""", (RULE_VERSION,)).fetchone()[0]
+        attempts = conn.execute("SELECT COUNT(*) FROM quiz_attempts WHERE rule_version=? AND purpose IN ('review','early_practice')", (RULE_VERSION,)).fetchone()[0]
+        return {**dict(row), 'active_review_count': active, 'saved_review_attempt_count': attempts,
+                "rule_version": RULE_VERSION, "as_of": stamp, "day_zone": "Asia/Shanghai"}

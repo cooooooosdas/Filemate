@@ -78,12 +78,12 @@
 - `GET /wrongbook/v2/receipts/{request_key}`只读现有`review_events.result`，不存在404；作用域仍由服务端身份确定，不接受owner。key沿用B级16–80字符约束，响应no-store。
 - 摘要追加`active_review_count`（新规则、active、needs_review/provisional/new）、`saved_review_attempt_count`（新规则purpose为review或early_practice的真实attempt，包含待核对但不称正确）；保持现有全量字段不变。
 
-- [ ] 写失败测试：65题跨页、字面`%_`检索、13类多因、全部10种状态、组合日期／次数排序；总数先过滤再limit，新增摘要为0时真实0；第一页全是只读题时reviewable_only仍能找到后续可作答题。
-- [ ] 写失败测试：课程有效／失效摘要／跨课程隔离、只读旧题、坏JSON或日期；重复／未知参数422、另一个账号404、开关关闭仍可读、所有GET模型调用次数0。
-- [ ] 执行`./.venv/Scripts/python.exe -m pytest filemate/tests/wrongbook/test_workspace_reads.py -q`，保存预期RED。
-- [ ] 实现上述DTO与路由；固定路径注册在`/{wrong_id}`前。SQL参数化，日期用B级`filemate_review_time`，来源／课程同名不自动关联；detail补`question_digest`但保留raw question。
-- [ ] 同命令转GREEN并运行整个`filemate/tests/wrongbook`；同步公共规范，只写实际实现合同。
-- [ ] 仅暂存本任务路径，提交`feat(wrongbook): 增加工作台只读分页与能力合同`。
+- [x] 写失败测试：65题跨页、字面`%_`检索、13类多因、全部10种状态、组合日期／次数排序；总数先过滤再limit，新增摘要为0时真实0；第一页全是只读题时reviewable_only仍能找到后续可作答题。
+- [x] 写失败测试：课程有效／失效摘要／跨课程隔离、只读旧题、坏JSON或日期；重复／未知参数422、另一个账号404、开关关闭仍可读、所有GET模型调用次数0。
+- [x] 执行`./.venv/Scripts/python.exe -m pytest filemate/tests/wrongbook/test_workspace_reads.py -q`，保存预期RED。
+- [x] 实现上述DTO与路由；固定路径注册在`/{wrong_id}`前。SQL参数化，日期用B级`filemate_review_time`，来源／课程同名不自动关联；detail补`question_digest`但保留raw question。
+- [x] 同命令转GREEN并运行整个`filemate/tests/wrongbook`；同步公共规范，只写实际实现合同。
+- [x] 仅暂存本任务路径，提交`feat(wrongbook): 增加工作台只读分页与能力合同`。
 
 ## Task 2：共享提交与导航状态
 

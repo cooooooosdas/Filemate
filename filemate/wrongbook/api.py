@@ -12,7 +12,9 @@ from pydantic import Field, field_validator
 
 from filemate.execution.storage import QuestionRevisionConflict, SQLiteStorage
 from filemate.wrongbook.commands import ReviewCommands
+from filemate.wrongbook.engine import RULE_VERSION
 from filemate.wrongbook.models import Answer, Diagnosis, Schedule
+from filemate.wrongbook.queries import ReviewFilter, ReviewQueries
 from filemate.wrongbook.repository import ReviewRepository
 
 
@@ -35,6 +37,10 @@ class ReviewRoute(APIRoute):
         async def guarded(request: Request):
             if request.method == "GET":
                 allowed = {"limit", "offset"} if request.url.path.endswith(("/attempts", "/events")) else set()
+                if request.url.path.endswith('/page'):
+                    allowed = {*ReviewFilter.model_fields, 'limit', 'offset'}
+                elif request.url.path.endswith('/filter-options'):
+                    allowed = {'kind', 'q', 'limit', 'offset'}
                 keys = list(request.query_params.keys())
                 if any(key not in allowed or len(request.query_params.getlist(key)) != 1 for key in keys):
                     raise HTTPException(422, "查询参数无效或重复")
@@ -70,6 +76,24 @@ def create_router(get_storage: Callable[[], SQLiteStorage]) -> APIRouter:
     @router.get("/summary")
     def summary():
         return response(repo().summary())
+
+    @router.get('/capabilities')
+    def capabilities():
+        return response({'write_enabled': os.getenv('FILEMATE_ENABLE_WRONGBOOK_V2', '0') == '1', 'rule_version': RULE_VERSION})
+
+    @router.get('/page')
+    def page(request: Request, limit: int = Query(30, ge=1, le=100), offset: int = Query(0, ge=0, le=1_000_000)):
+        filters = ReviewFilter.model_validate({key: value for key, value in request.query_params.items() if key not in {'limit', 'offset'}})
+        return response(ReviewQueries(get_storage()).page(filters, limit=limit, offset=offset))
+
+    @router.get('/filter-options')
+    def options(kind: Literal['sources', 'courses'], q: str = Query('', max_length=160),
+                limit: int = Query(30, ge=1, le=100), offset: int = Query(0, ge=0, le=1_000_000)):
+        return response(ReviewQueries(get_storage()).options(kind, q=q, limit=limit, offset=offset))
+
+    @router.get('/receipts/{request_key}')
+    def receipt(request_key: str):
+        return response(ReviewQueries(get_storage()).receipt(request_key))
 
     @router.post("/attempts", dependencies=[Depends(_enabled)])
     def answer(body: Answer):
