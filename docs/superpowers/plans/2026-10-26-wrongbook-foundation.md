@@ -42,63 +42,63 @@
 **Files:** schema.py、storage.py；tests/wrongbook/test_schema.py。
 **Interfaces:** migration35消费v34；产生可空is_correct/score、purpose/judgement/status/version/digest/duration等作答字段；错题revision/schedule/阶段/验证起止/多错因字段；review_events记录before/after及request摘要、可空attempt FK、undo引用。
 
-- [ ] 写测试：用v34迁移脚本构造真实历史数据；迁移后原ID/rowid/答案/时间/索引/FK不变，可保存NULL结果；二次init不变；坏DDL注入后v34原表完整且版本不增加。
-- [ ] 运行`.venv/Scripts/python.exe -m pytest filemate/tests/wrongbook/test_schema.py -q`，观察预期失败（无35或列不支持NULL）。
-- [ ] 实现迁移；旧scheduler_version默认legacy-v1，不反推不存在的复习类型或合格次数。重建quiz_attempts显式复制rowid，重建原索引；新增表无反向原表引用循环。
-- [ ] 同命令及原错题/存储回归通过后，提交`feat(wrongbook): 追加复习证据兼容迁移`。
+- [x] 写测试：用v34迁移脚本构造真实历史数据；迁移后原ID/rowid/答案/时间/索引/FK不变，可保存NULL结果；二次init不变；坏DDL注入后v34原表完整且版本不增加。
+- [x] 运行`.venv/Scripts/python.exe -m pytest filemate/tests/wrongbook/test_schema.py -q`，观察预期失败（无35或列不支持NULL）。
+- [x] 实现迁移；旧scheduler_version默认legacy-v1，不反推不存在的复习类型或合格次数。重建quiz_attempts显式复制rowid，重建原索引；新增表无反向原表引用循环。
+- [x] 同命令及原错题/存储回归通过后，提交`feat(wrongbook): 追加复习证据兼容迁移`。
 
 ### Task 2: 纯状态机与时间规则
 
 **Files:** engine.py；tests/wrongbook/test_engine.py。
 **Interfaces:** `transition(state: dict | None, *, correct: bool | None, independent: bool, now: datetime) -> dict`；`parse_time(value) -> datetime | None`；常量RULE_VERSION与INTERVALS。返回状态补丁及eligible/purpose/reason，不访问DB或模型。
 
-- [ ] 写表驱动测试：新错立即到期、纠正+1天、1/4/11天验证、30天封顶、再错重置、早练不延时、同上海日不推进、看答案/待核对不合格；无效排期不可猜测；UTC旧时间与闰日。
-- [ ] 运行`pytest filemate/tests/wrongbook/test_engine.py -q`观察行为缺失。
-- [ ] 实现固定规则，注入带时区时钟，不从旧review_count推导新次数。
-- [ ] 同命令通过后提交`feat(wrongbook): 实现可解释间隔复习规则`。
+- [x] 写表驱动测试：新错立即到期、纠正+1天、1/4/11天验证、30天封顶、再错重置、早练不延时、同上海日不推进、看答案/待核对不合格；无效排期不可猜测；UTC旧时间与闰日。
+- [x] 运行`pytest filemate/tests/wrongbook/test_engine.py -q`观察行为缺失。
+- [x] 实现固定规则，注入带时区时钟，不从旧review_count推导新次数。
+- [x] 同命令通过后提交`feat(wrongbook): 实现可解释间隔复习规则`。
 
 ### Task 3: 真实作答、诊断与历史事务
 
 **Files:** repository.py、storage.py；tests/wrongbook/test_repository.py。
 **Interfaces:** `ReviewRepository(storage, *, clock=None)`；`submit(payload: dict) -> dict`、`detail(wrong_id)`、`history(wrong_id, *, kind, limit, offset)`、`summary()`、`diagnose(wrong_id, payload)`。消费Task1表与Task2规则，返回持久化回执，所有写使用BEGIN IMMEDIATE。
 
-- [ ] 写测试：首次/复习独立记录、原始错答可追溯、同键回放、换正文冲突、跨连接同时提交只有一条、写event失败整事务回滚、历史版本题集保护、多错因修改清除及乐观revision冲突。
-- [ ] 运行`pytest filemate/tests/wrongbook/test_repository.py -q`观察缺失接口失败。
-- [ ] objective choice/fill规则才生成确定0/1；short_answer与自查使用NULL并记录pending/self_reported；空答案只允许显式dont_know（自述不会不冒充客观错误证据）。同一次请求保存完整question快照摘要；输出判定方法、反馈、原题答案、before/after、下次时间。
-- [ ] 请求键16—80且必填、回答最多10000字、note300、固定原因最多3项、标签最多5项且每项30字、可选主因必须包含于已选；诊断清除恢复unconfirmed/0置信度。
-- [ ] 历史mastered=1必须先经Task4显式activate才使用新排期；未掌握旧题首次有效新答启用新规则。旧入口遇到2.0记录拒绝改用旧算法；不写两套排期。
-- [ ] 所有新增测试通过后提交`feat(wrongbook): 保存幂等作答与错因历史`。
+- [x] 写测试：首次/复习独立记录、原始错答可追溯、同键回放、换正文冲突、跨连接同时提交只有一条、写event失败整事务回滚、历史版本题集保护、多错因修改清除及乐观revision冲突。
+- [x] 运行`pytest filemate/tests/wrongbook/test_repository.py -q`观察缺失接口失败。
+- [x] objective choice/fill规则才生成确定0/1；short_answer与自查使用NULL并记录pending/self_reported；空答案只允许显式dont_know（自述不会不冒充客观错误证据）。同一次请求保存完整question快照摘要；输出判定方法、反馈、原题答案、before/after、下次时间。
+- [x] 请求键16—80且必填、回答最多10000字、note300、固定原因最多3项、标签最多5项且每项30字、可选主因必须包含于已选；诊断清除恢复unconfirmed/0置信度。
+- [x] 历史mastered=1必须先经Task4显式activate才使用新排期；未掌握旧题首次有效新答启用新规则。旧入口遇到2.0记录拒绝改用旧算法；不写两套排期。
+- [x] 所有新增测试通过后提交`feat(wrongbook): 保存幂等作答与错因历史`。
 
 ### Task 4: 排期预览、确认和撤销
 
 **Files:** commands.py、repository.py；tests/wrongbook/test_commands.py。
 **Interfaces:** `preview(wrong_id, payload)`/`confirm(wrong_id, payload, token)`消费现有data_actions；动作pause/resume/reschedule/activate/undo。预览绑定整题revision、参数、备份epoch；确认结果含review_event_id/revision/affected；撤销只恢复排期，不删除作答。
 
-- [ ] 写测试：暂停排除队列、恢复不升级、前移后移时间、重复确认/撤销只一次、token更换动作/参数/用户拒绝、后续作答或诊断后陈旧撤销拒绝、删源后无事件/孤立任务。
-- [ ] 运行`pytest filemate/tests/wrongbook/test_commands.py -q`观察缺失行为。
-- [ ] 复用data_actions签发/检查/完成；事务内重读revision再更新，event记前后字段和undo_of；改期要求时区且限制当前至365天；undo不反复恢复旧revision，始终单调递增。
-- [ ] 同命令通过后提交`feat(wrongbook): 增加可撤销复习排期操作`。
+- [x] 写测试：暂停排除队列、恢复不升级、前移后移时间、重复确认/撤销只一次、token更换动作/参数/用户拒绝、后续作答或诊断后陈旧撤销拒绝、删源后无事件/孤立任务。
+- [x] 运行`pytest filemate/tests/wrongbook/test_commands.py -q`观察缺失行为。
+- [x] 复用data_actions签发/检查/完成；事务内重读revision再更新，event记前后字段和undo_of；改期要求时区且限制当前至365天；undo不反复恢复旧revision，始终单调递增。
+- [x] 同命令通过后提交`feat(wrongbook): 增加可撤销复习排期操作`。
 
 ### Task 5: 隔离API、统计口径与调用合同
 
 **Files:** api.py、server.py、相关证据消费者、前端types/services、README/API_SPEC/.env.example；tests/wrongbook/test_api.py。
 **Interfaces:** `/wrongbook/v2/summary`、`/wrongbook/v2/{id}`、`.../{id}/attempts`、`.../{id}/events`只读；POST`/wrongbook/v2/attempts`、PATCH`.../{id}/diagnosis`、POST`.../{id}/schedule-preview|schedule-confirm`新写开关保护。固定路径先注册；复用当前租户context，无自选owner。
 
-- [ ] 写HTTP测试：开关默认关闭写入503/读取可用、严格extra字段与长度422、他空间ID/token404或409、404/409/422分层、坏输入不暴露正文与密钥、未判定回答不进入所有确定结果消费者。
-- [ ] 运行`pytest filemate/tests/wrongbook/test_api.py -q`观察缺失路由/行为。
-- [ ] 接线并同步类型、API文档；旧接口响应兼容。今日总到期与候选数分开，paused排除，invalid_time单列；新旧已达标准分开命名，成长/技能/图谱排除NULL、自查及不可靠证据。新GET不调用AI。
-- [ ] 定向测试与前端类型检查通过后提交`feat(wrongbook): 接入隔离接口与可信统计`。
+- [x] 写HTTP测试：开关默认关闭写入503/读取可用、严格extra字段与长度422、他空间ID/token404或409、404/409/422分层、坏输入不暴露正文与密钥、未判定回答不进入所有确定结果消费者。
+- [x] 运行`pytest filemate/tests/wrongbook/test_api.py -q`观察缺失路由/行为。
+- [x] 接线并同步类型、API文档；旧接口响应兼容。今日总到期与候选数分开，paused排除，invalid_time单列；新旧已达标准分开命名，成长/技能/图谱排除NULL、自查及不可靠证据。新GET不调用AI。
+- [x] 定向测试与前端类型检查通过后提交`feat(wrongbook): 接入隔离接口与可信统计`。
 
 ### Task 6: 迁移恢复、全量门禁与B级交付
 
 **Files:** tests/wrongbook/test_lifecycle.py、审计证据、交付文档/索引。
 **Interfaces:** 个人签名备份覆盖新表；旧v34备份恢复得到默认legacy字段；恢复前token作废；删除来源cascade；旧/new写入关闭回滚路径可解释。
 
-- [ ] 写测试：v34备份恢复、新表往返、原资料删除cascade、恢复后确认token不可复用、故障回滚；必要兼容修复先观察失败再实现。
-- [ ] 运行`pytest filemate/tests/wrongbook -q`及相关图谱/目标/成长/技能/隐私/面试回归；生产SQLite最低版本兼容使用现有运行时夹具或如实记录未执行。
-- [ ] 执行`scripts/verify.ps1`（项目默认完整门禁），保留完整输出与跳过/警告/失败；检查24个原测试哈希不变。
-- [ ] 使用executing-plans规定的一次全分支独立代码审阅，重要问题以复现测试修复，不循环重审。
-- [ ] 更新B级实际字段/API、验证、限制及C候选；保存提交。B结束后停下等用户验收，不推送部署、不开展C/D。
+- [x] 写测试：v34备份恢复、新表往返、原资料删除cascade、恢复后确认token不可复用、故障回滚；必要兼容修复先观察失败再实现。
+- [x] 运行`pytest filemate/tests/wrongbook -q`及相关图谱/目标/成长/技能/隐私/面试回归；生产SQLite最低版本兼容使用现有运行时夹具或如实记录未执行。
+- [x] 执行`scripts/verify.ps1`（项目默认完整门禁），保留完整输出与跳过/警告/失败；检查24个原测试哈希不变。
+- [x] 使用executing-plans规定的一次全分支独立代码审阅，重要问题以复现测试修复，不循环重审。
+- [x] 更新B级实际字段/API、验证、限制及C候选；保存提交。B结束后停下等用户验收，不推送部署、不开展C/D。
 
 ## Self-review / Execution
 

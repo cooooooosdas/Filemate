@@ -1,0 +1,123 @@
+{
+  "stage": "B_local_engineering_complete_awaiting_user_acceptance",
+  "base": "9b6e257",
+  "code_revision": "7837eb088c79af215e71a7228cf1114b1d7e4283",
+  "full_gate_revision": "8d4b7d3",
+  "command": "powershell -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend",
+  "exit_code": 0,
+  "backend": {
+    "passed": 1611,
+    "skipped": 22,
+    "deselected": 5,
+    "warnings": 3,
+    "seconds": 398.96
+  },
+  "frontend": {
+    "passed": 213,
+    "failed": 0,
+    "build": true,
+    "bundle": true,
+    "initial_javascript_gzip_bytes": 143305,
+    "gzip_budget_bytes": 143360
+  },
+  "post_gate": {
+    "changes": "Restore preview explanation, optional response types and documentation only",
+    "relevant_tests_passed": 97,
+    "vue_tsc_no_emit": true
+  },
+  "review": {
+    "passes": 1,
+    "critical": 0,
+    "important_found": 4,
+    "important_fixed_with_red_green_tests": 4,
+    "minor_deferred": 1,
+    "re_review": false
+  },
+  "local_runtime": {
+    "python": "3.12.13",
+    "sqlite": "3.53.1",
+    "system": "Windows"
+  },
+  "protected_tests": {
+    "count": 24,
+    "all_unchanged": true
+  },
+  "migration_contract": {
+    "base": "9b6e257",
+    "old_max_version": 34,
+    "new_max_version": 35,
+    "old_count": 32,
+    "all_old_contracts_identical": true,
+    "old_signature": "a51ec6bb45c9ff31fcfda19a540c1c49f0eeda770fbdd8fc172938d9c4d25de8"
+  },
+  "synthetic_queue": {
+    "synthetic_only": true,
+    "sqlite_version": "3.53.1",
+    "concurrent_with_project_regression": true,
+    "records": 10000,
+    "due": 8000,
+    "invalid": 1000,
+    "paused": 1000,
+    "candidates": 50,
+    "summary_and_candidates_ms": [
+      59.81,
+      58.84,
+      57.37
+    ],
+    "median_ms": 58.84,
+    "notice": "Local smoke timing, not a service SLA or learning-effect benchmark"
+  },
+  "real_learning_effect_validated": false,
+  "production_sqlite_3_26_executed": false,
+  "deployed": false,
+  "code_sha256": {
+    ".env.example": "b568dd350be7f52182c87b3d0ddd916616f436d5972004b7fefe27c01b681648",
+    "filemate/course_graph/learning_evidence.py": "d129b214ac399272d0cc4b61aa1b74719153bb04beb02d75ddcf5017ad20f151",
+    "filemate/docs/API_SPEC.md": "9e475cfecb9ee60ab8cdaa1b2f649e0bd3da5e055edb60edac99d05b715ee2a5",
+    "filemate/execution/storage.py": "d6ac1fdd2838fd65f74b04f335d094716bd880dd87118eca3e5312400cef4fad",
+    "filemate/operations/personal_backup.py": "a9fce0605df7fb5f5c342128f4d203203cbe2f5f72caa24ea77e71514f919158",
+    "filemate/portfolio/growth.py": "49d225802d98725ef912bac1c151562d082df3b586e65c480f48121354753379",
+    "filemate/study/evidence_profile.py": "a60632910a63ac0d9bbd27cf7118438c7ecf60b67010af1520e9daf988672658",
+    "filemate/study/knowledge_graph.py": "7c42f4078031e64d977f490b0f0af8af4860d9c5957f9f042a44eac1f8087bf2",
+    "filemate/tests/course_graph/test_growth_benchmark.py": "24b3b35cc35126e92a6d4dd1e073f8ab87f6efa992e9a5824b17642445c1c6f8",
+    "filemate/tests/course_graph/test_growth_lifecycle.py": "ba449e1f8ad0d1b5fc77053ddce1629b0e99ac836546933b223faf874076a229",
+    "filemate/tests/course_graph/test_learning_links.py": "4c229e9d6c505303f76ff6594a7b2bfb5acaa1d5ce098fa8df93c142469ac29a",
+    "filemate/tests/course_graph/test_review_closeout.py": "644faa1c689fee61b964dd3e8203ea8260a0cf74301a4141b4ab788f67894503",
+    "filemate/tests/course_graph/test_storage.py": "bf8eb8a6a4c95c813d830e22ba6f01753698aade83841d519d06e52dc264eac4",
+    "filemate/tests/test_backup.py": "86dbc47a8424edcee1a4fd6403d56cde3359f83a5576c5be2f0870ae537898c3",
+    "filemate/tests/test_career.py": "6731170c94e8409d08787791d24bd36d5890e35959bdd1aea4f4558dfce190bd",
+    "filemate/tests/test_deploy_migration_contract.py": "a04e40a77a45db50fcde59e6b580928138c78b0ea1da3c97afb5cde884a35a4f",
+    "filemate/tests/test_digital_human.py": "f93f7bd3eb4d096ce77b78fcafb22fee73e0c2daf0edb256a96982afa1f73fdf",
+    "filemate/tests/test_interview_assessment_storage.py": "489c7da90878827c4be7d922977ec11ec81025a8c84a283485b5290e586cd267",
+    "filemate/tests/test_interview_review.py": "cf95ceba833e1ce6a6608aaae6f7c85d989321a6fa6293dd9d124f9b3be4d74d",
+    "filemate/tests/test_programming.py": "ebb25346465ae073cbfd9a81e7a28e019d450fb8a3c696b9b37d5255e93d9091",
+    "filemate/tests/test_runtime_governance.py": "6dfd3d057481eed24308561da080e5a48ba7372911604346508401a94d67b3df",
+    "filemate/tests/test_storage.py": "07dbf247556eee34ba16cde13ef6828ac163cf5df387455c05007c78e5189b71",
+    "filemate/tests/wrongbook/__init__.py": "232d54cdc63c924a193bc5d602c30f5feba1ea358f3008c7a19e5dfcd4ddd869",
+    "filemate/tests/wrongbook/conftest.py": "8a947a48bcaeae0f396cede49c75966478449516f7d53a4988fb6abd6bb1c5a4",
+    "filemate/tests/wrongbook/test_api.py": "480a541c9555745efeeac6c2e69572a030bdaa5f7eb306862d66a9c11c7b005e",
+    "filemate/tests/wrongbook/test_commands.py": "be226f2b2d776b464e7f17d7d19f7b85062ebab8a60f151616deca5ac4930c9c",
+    "filemate/tests/wrongbook/test_consumers.py": "4662e1b9b401244c370a32e63450a408746438e7c1e207a5c79c045e810b148d",
+    "filemate/tests/wrongbook/test_engine.py": "a63f388149306defe925ae1fd55ce1a5908c370063601edf56d47dd1c932c4f6",
+    "filemate/tests/wrongbook/test_lifecycle.py": "07a5483edd07e7d4481e808d8fc959a1d22eab633f6b6c5946f28f788760b977",
+    "filemate/tests/wrongbook/test_repository.py": "1ccd71ca0fba0d5f5296dfe4e2845d1ca94e1feed0520d8b31868b26b80aa80c",
+    "filemate/tests/wrongbook/test_review_regressions.py": "014da246db5d3bbe7e879b4aafca94ee3cf1abdbadd75b0c4238dcd46fdb31de",
+    "filemate/tests/wrongbook/test_schema.py": "6c17bc5f93c7ca22e06280d3b9c4837358d1ac2527b87b4c124b9cb83311f9ba",
+    "filemate/web/src/services/api.ts": "89c080af32aa74a3285b17eb12959a7f471673070220499962fff7717fde2925",
+    "filemate/web/src/types/wrongbook.ts": "ac626372f7f82110a064eeb8db9e538b131cdaff9a04baee3815f2092eaaef1a",
+    "filemate/wrongbook/__init__.py": "7692df6dc166bf3e4f09228ea08992b6687b7ff2b88cfca4b566b3986d736d1f",
+    "filemate/wrongbook/api.py": "b4d58e870bae2bba59b0b24792a5040487a6ba88f5cf41e8d53691e566c3e69b",
+    "filemate/wrongbook/commands.py": "4e56a4afe5b18dd94c333f611fe640889c944f1e25d22a44db454194c4272f00",
+    "filemate/wrongbook/engine.py": "2060c8797a68d76498d7a7434bfcab55a22fc29f6333337ad9b47e9940e303d3",
+    "filemate/wrongbook/evidence.py": "2326ef5dc30917487927eb0f44de5c3ea2fa671e942181f70a63b515d911847c",
+    "filemate/wrongbook/models.py": "86d404984e62320eedec86bc502a3f03d579002b6b27c48230b612e8d9cdfdb2",
+    "filemate/wrongbook/repository.py": "66495ee13f73a7f3b5c029f812822612f8f0502b3b81d3c62617bf173fdcbc43",
+    "filemate/wrongbook/schema.py": "2601d5a680a60db1db32c5850b2e57c9af15cb561b4f5a1288d1a729593398b8",
+    "scripts/verify.ps1": "3ef48bdd8e358e3cdffede86e43a75fd157754fa2fe8481778b8f81fca55f708",
+    "server.py": "210a1fbc9407219814648c2b5b4c93eaa5c392ef5463c3e81426c467d25430cd"
+  },
+  "log_sha256": {
+    "verify-release-gate.log": "cd7c88870c5f2474ca4056b3105b49dfdac0d30c487cc67c34d4917f720e43d5",
+    "final-backup-notice-green.log": "9f7159642e2ec9ffb7c99ce7e7f83e96ed8e134dd1c267f11f34d2cc5f162110"
+  }
+}

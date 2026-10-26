@@ -1,6 +1,6 @@
 # FileMate
 
-2026-10-26 错题复盘2.0：用户已验收A级及七项设计建议，正按[B级计划](docs/superpowers/plans/2026-10-26-wrongbook-foundation.md)实施数据、可信作答和可撤销排期。追加业务schema35；新写入口由`FILEMATE_ENABLE_WRONGBOOK_V2=0`默认关闭，历史读取、导出和删除保留。接口与前端类型已增加，C级页面、D级AI及E级总体验收尚未实施，本条不表示已部署。
+2026-10-26 错题复盘2.0：[B级本地工程交付](docs/WRONGBOOK_2_0_B_DELIVERY.md)已保存，待用户验收。新增可信作答、多错因、可撤销排期和备份兼容，追加业务schema35；默认门禁后端1611／前端213通过，独立审阅4项重要问题已修复，1项轻微预览计数限制保留。`FILEMATE_ENABLE_WRONGBOOK_V2=0`默认关闭新写入口，历史读取、导出和删除保留；C页面、D AI和E总体验收尚未实施，未推送部署。详见[B级计划](docs/superpowers/plans/2026-10-26-wrongbook-foundation.md)。
 
 2026-10-25 知识图谱2.0已推送main并上线：课程审核与关系工作台、训练证据、节点练习、学习路径、跨课导航、有限助手和质量工具已整合；追加SQLite3.26生产兼容修复。API41a360bd／Web资产4be657c6，业务schema34／治理3；最终Windows1544后端／213前端、Linux1562后端／213前端与公网11组通过，390库／1022文件正式备份恢复通过。详见[发布回执](docs/KNOWLEDGE_GRAPH_2_RELEASE_2026-10-24.md)、[D／E交付](docs/KNOWLEDGE_GRAPH_2_0_DE_DELIVERY.md)和[技术报告](docs/KNOWLEDGE_GRAPH_2_TECHNICAL_REPORT.md)。总体CONDITIONAL PASS；完整键盘、万节点浏览器、实体设备、人工gold与真人研究保留，新独立音视频采集关闭。下方为各批当时状态。
 
