@@ -67,7 +67,7 @@ export function createReviewSubmission(api: SubmissionApi, options: { makeKey?: 
   function revealAnswer() {
     if (disposed || state.busy || state.uncertain) return false
     state.answerRevealed = true
-    records[identity] = { request_key: '', signature_hash: '', ...records[identity], revealed: true }; persist(); return true
+    records[identity] = records[identity] ? { ...records[identity], revealed: true } : { request_key: '', signature_hash: '', revealed: true }; persist(); return true
   }
   async function submit(action: 'answer' | 'dont_know' = 'answer') {
     if (!ref || !raw || state.busy || state.stale || state.receipt || disposed || action === 'answer' && !state.answer.trim()) return false

@@ -870,3 +870,7 @@ powershell -ExecutionPolicy Bypass -File scripts/verify.ps1
 用户确认的八项C计划已实施：课程目录／有界关系画布／原文证据、三视图、全课程符号搜索、分空间浏览偏好、B审核恢复整合及故障恢复。业务schema31不变，无新运行时依赖。`FILEMATE_ENABLE_COURSE_GRAPH=1`和构建期`VITE_ENABLE_COURSE_GRAPH=true`才启用，缺省仍关闭，旧资料图谱保持可用。C候选完成独立审阅及六项修复；用户已追加授权连续推进知识图谱D/E，本轮不部署。
 
 完整功能、性能采样、真实浏览器截图与未测限制见[本地C级交付](docs/KNOWLEDGE_GRAPH_2_0_C_DELIVERY.md)。规模脚本只接受全新绝对输出目录；所有合成资料均不作为真实学生学习效果。
+
+### 错题复盘 C级候选工作台
+
+本地候选界面由 `VITE_ENABLE_WRONGBOOK_V2=true` 编译启用（默认关闭），写入另需 `FILEMATE_ENABLE_WRONGBOOK_V2=1`。目录30题分页、逐题作答、多错因、来源全文、分页历史和排期预览确认共用B级证据；历史快照只读。关闭前端开关恢复旧界面，2.0拥有记录继续只读。未提交正文仅在页内，离开会提示；本机偏好按身份隔离。当前未部署，AI联动不在C级范围。
