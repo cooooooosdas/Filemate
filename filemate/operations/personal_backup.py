@@ -173,7 +173,7 @@ class PersonalBackup:
                 if total > MAX_DATA_BYTES:
                     raise ValueError('个人业务数据超过32MB自助容量，请使用管理员离线备份；未生成残缺备份')
                 tables[name].append(item)
-        return {'format_version': 1, 'schema_version': _MIGRATIONS[-1][0], 'owner': self.owner,
+        return {'format_version': 1, 'schema_version': self.storage.get_schema_version(), 'owner': self.owner,
                 'roots': {key: str(root) for key, root in self.roots.items()}, 'tables': tables,
                 'audit': [dict(row) for row in conn.execute('SELECT * FROM data_action_audit ORDER BY event_id')]}
 

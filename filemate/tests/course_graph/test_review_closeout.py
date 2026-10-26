@@ -32,7 +32,7 @@ def test_upgrade_backfills_legacy_answer_dependencies(learning_context, tmp_path
         conn.execute('DELETE FROM schema_migrations WHERE version=34')
     if method == 'upgrade':
         store.init_schema()
-        assert store.get_schema_version() == 34
+        assert store.get_schema_version() == 35
     else:
         backup = PersonalBackup(store, 'local', tmp_path / 'inbox', tmp_path / 'archive')
         preview = backup.preview(backup.export())

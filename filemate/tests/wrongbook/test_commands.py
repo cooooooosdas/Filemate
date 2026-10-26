@@ -114,3 +114,6 @@ def test_legacy_mastered_requires_explicit_activation_and_keeps_its_label(review
     current = repo.detail(wid)
     assert current["legacy_mastered"] is True and current["mastered"] == 0
     assert current["eligible_count"] == 0 and repo.summary()["due_count"] == 1
+    result = repo.submit(answer_payload(review_store, "A"))
+    assert result["reason"] == "initial_correction"
+    assert repo.detail(wid)["legacy_mastered"] is True

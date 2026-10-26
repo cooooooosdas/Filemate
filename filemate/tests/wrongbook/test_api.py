@@ -6,6 +6,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from filemate.tests.test_accounts import account_server, register  # noqa: F401
 from filemate.tests.test_server_persistence import server_module  # noqa: F401
 
 
@@ -67,6 +68,7 @@ def test_static_routes_errors_history_query_and_confirm_contract(server_module, 
         token = preview.json()["data"]["confirmation_token"]
         confirm = {**command, "confirmation_token": token, "confirmed": True}
         assert client.post(f"/wrongbook/v2/{wid}/schedule-confirm", json={**confirm, "confirmed": False}).status_code == 422
+        assert client.post(f"/wrongbook/v2/{wid}/schedule-confirm", json={**confirm, "confirmed": 1}).status_code == 422
         first = client.post(f"/wrongbook/v2/{wid}/schedule-confirm", json=confirm)
         assert first.status_code == 200, first.text
         assert client.post(f"/wrongbook/v2/{wid}/schedule-confirm", json=confirm).json() == first.json()
@@ -114,3 +116,24 @@ def test_today_full_count_is_separate_from_candidate_limit(server_module):
         assert data["pending_wrong_count"] == 55
         assert data["wrong_candidate_count"] == 50
         assert data["deferred_count"] == 55 - len(data["items"])
+
+
+def test_account_sessions_cannot_read_or_confirm_another_space(account_server, monkeypatch):
+    monkeypatch.setenv("FILEMATE_ENABLE_WRONGBOOK_V2", "1")
+    with TestClient(account_server.app) as alice, TestClient(account_server.app) as bob:
+        assert register(alice).status_code == 200
+        sid = alice.post("/knowledge/import", files={"file": ("synthetic.txt", "原创栈资料".encode(), "text/plain")}).json()["data"]["source_id"]
+        store = next(store for store in account_server._tenant_storages.values() if store.get_source(sid))
+        body = seed(store)
+        response = alice.post("/wrongbook/v2/attempts", json=body)
+        assert response.status_code == 200, response.text
+        wid = response.json()["data"]["wrong_id"]
+        command = {"action": "pause", "request_key": "synthetic-cross-user-key", "expected_revision": 1}
+        token = alice.post(f"/wrongbook/v2/{wid}/schedule-preview", json=command).json()["data"]["confirmation_token"]
+        assert register(bob, email="second@example.invalid").status_code == 200
+        assert bob.get("/wrongbook/v2/summary").json()["data"]["total"] == 0
+        for suffix in ("", "/attempts", "/events"):
+            assert bob.get(f"/wrongbook/v2/{wid}" + suffix).status_code == 404
+        assert bob.post("/wrongbook/v2/attempts", json=body).status_code == 404
+        assert bob.post(f"/wrongbook/v2/{wid}/schedule-confirm", json={**command, "confirmed": True, "confirmation_token": token}).status_code == 404
+        assert alice.get(f"/wrongbook/v2/{wid}/attempts").json()["data"]["total"] == 1

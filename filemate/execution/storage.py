@@ -1397,6 +1397,10 @@ class SQLiteStorage:
             "wrong_questions": conn.execute(
                 "SELECT COUNT(*) FROM wrong_questions WHERE source_id=?", (source_id,)
             ).fetchone()[0],
+            "review_events": conn.execute(
+                "SELECT COUNT(*) FROM review_events WHERE artifact_id IN (SELECT artifact_id FROM artifacts WHERE source_id=?)",
+                (source_id,),
+            ).fetchone()[0],
             "study_plans": conn.execute(
                 "SELECT COUNT(*) FROM study_plans WHERE source_id=?", (source_id,)
             ).fetchone()[0],
@@ -1939,10 +1943,10 @@ class SQLiteStorage:
             raise ValueError("题目序号无效")
         question = questions[question_index]
         active_review = self._conn().execute(
-            "SELECT scheduler_version FROM wrong_questions WHERE artifact_id=? AND question_index=?",
+            "SELECT * FROM wrong_questions WHERE artifact_id=? AND question_index=?",
             (artifact_id, question_index),
         ).fetchone()
-        if active_review and active_review["scheduler_version"] != "legacy-v1":
+        if active_review and dict(active_review).get("scheduler_version", "legacy-v1") != "legacy-v1":
             raise QuestionRevisionConflict("此题已启用2.0规则，请使用新版复习入口；原记录保留")
         if expected_question is not None and question != expected_question:
             raise QuestionRevisionConflict("题目已更新，请刷新题集后重新作答")

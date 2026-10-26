@@ -46,7 +46,7 @@ try {
         filemate/tests/test_server_persistence.py `
         filemate/tests/test_retrieval.py `
         filemate/tests/test_study.py `
-        filemate/study `
+        filemate/study filemate/wrongbook filemate/tests/wrongbook `
         filemate/course_graph filemate/tests/course_graph `
         filemate/portfolio `
         filemate/tests/test_p1_resume.py `

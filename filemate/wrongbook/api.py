@@ -8,7 +8,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from filemate.execution.storage import QuestionRevisionConflict, SQLiteStorage
 from filemate.wrongbook.commands import ReviewCommands
@@ -19,6 +19,13 @@ from filemate.wrongbook.repository import ReviewRepository
 class Confirm(Schedule):
     confirmation_token: str = Field(min_length=1, max_length=256)
     confirmed: Literal[True]
+
+    @field_validator("confirmed", mode="before")
+    @classmethod
+    def explicit_confirmation(cls, value):
+        if value is not True:
+            raise ValueError("请明确确认排期操作")
+        return value
 
 
 class ReviewRoute(APIRoute):
