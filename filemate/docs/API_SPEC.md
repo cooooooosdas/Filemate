@@ -2,6 +2,8 @@
 
 ## 错题复盘2.0 B级候选（2026-10-26）
 
+独立审阅后补充：确定错误计数也排除assisted记录，待核对和辅助练习不改变既有资格；新版诊断／排期接管legacy记录后旧写入口同样409。到期候选和统计通过同一个严格时间解析函数，拒绝被SQLite宽松规范化的无效日期。个人JSON／ZIP中quiz_attempts新增显式rowid并校验完整、唯一的64位整数序号；恢复保留版本边界。旧备份没有序号时，保守重绑定带graph_attempt_cutoff的产物，原值另存graph_attempt_cutoff_before_restore，回执追加review_evidence_rebound数量及可空review_evidence_notice，旧记录保留但边界不明者不计当前版本证据，恢复后的新作答正常计入。
+
 业务migration35只追加，保留原作答ID、SQLite rowid、题目版本与旧规则标签。`FILEMATE_ENABLE_WRONGBOOK_V2=0`默认关闭以下新写入口（503）；只读、个人导出和删除始终保留。页面接线属于C级，本节不是上线声明。全部路由沿用服务端认证、租户隔离及全局限流，无owner参数，不调用模型；响应`{success,data,error}`且`Cache-Control:no-store`。
 
 | 方法／路径 | 合同 |

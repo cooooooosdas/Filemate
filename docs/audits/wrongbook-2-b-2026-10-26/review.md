@@ -9,7 +9,7 @@
 | SQLite日期规范化与Python拒绝不一致 | 2024-02-30、24:00、now及数字日期已复现。候选和统计复用状态机的严格时间函数，不投递无效时间。 |
 | assisted错答通过聚合影响能力状态 | 已复现资格被清空与画像分母增加。辅助与待核对练习保留事实但不修改资格字段，不增加可信error_count；新记录保持pending_check。 |
 
-新增test_review_regressions.py包含10项已失败复现及1项资格标记传播边界；HTTP旧诊断冲突补充RED→GREEN。覆盖备份往返、旧备份保守恢复、旧入口、异常日期、辅助练习及旧规则不被待核对记录改写。重要修复后运行174项定向回归通过；最终项目门禁结果见[交付记录](../../../WRONGBOOK_2_0_B_DELIVERY.md)。日志在`_working/wrongbook-b-20261026/`。
+新增test_review_regressions.py包含10项已失败复现及1项资格标记传播边界；HTTP旧诊断冲突补充RED→GREEN。覆盖备份往返、旧备份保守恢复、旧入口、异常日期、辅助练习及旧规则不被待核对记录改写。重要修复后运行174项定向回归通过；最终项目门禁结果见[交付记录](../../WRONGBOOK_2_0_B_DELIVERY.md)。日志在`_working/wrongbook-b-20261026/`。
 
 ## Minor保留
 

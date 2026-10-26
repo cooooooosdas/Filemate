@@ -317,7 +317,7 @@ class PersonalBackup:
                     'backup_created_at': content.get('created_at'), 'restored_counts': {name: len(rows) for name, rows in content['tables'].items()},
                     'current_counts': {name: len(rows) for name, rows in self._snapshot()['tables'].items()}, 'file_count': len(files),
                     'current_file_count': len(self._files()),
-                    'notice': '确认后整体替换当前业务数据与托管上传/归档文件；旧文件操作会话仅作为失败历史，不重放操作。密码、登录会话和API密钥不恢复。请先导出当前数据，其他设备操作会使预览失效。'}
+                    'notice': '确认后整体替换当前业务数据与托管上传/归档文件；旧文件操作会话仅作为失败历史，不重放操作。密码、登录会话和API密钥不恢复。请先导出当前数据，其他设备操作会使预览失效。旧备份缺少作答序号时，版本边界不明的历史作答暂不计入当前题目评价；原记录保留，新作答正常计入。'}
 
     def _rebind(self, value: Any, old_roots: dict[str, str], key: str = '') -> Any:
         if isinstance(value, dict):

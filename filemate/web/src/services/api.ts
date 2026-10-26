@@ -180,7 +180,7 @@ export interface PersonalRestorePreview { backup_id: string; confirmation_token:
 export const exportPersonalData = async (format: 'backup' | 'json') => api.get('/api/privacy/export', { params: { format }, responseType: 'blob', timeout: 120000 })
 export const previewPersonalRestore = async (file: File) => { const body = new FormData(); body.append('file', file); return (await api.post<unknown, ApiResponse<PersonalRestorePreview>>('/api/privacy/restore-preview', body, { timeout: 120000, headers: { 'Content-Type': 'multipart/form-data' } })).data! }
 export const restorePersonalData = async (preview: PersonalRestorePreview) => {
-  const result = (await api.post<unknown, ApiResponse<{ restored: boolean; cleanup_pending?: boolean }>>('/api/privacy/restore', { backup_id: preview.backup_id, confirmation_token: preview.confirmation_token, confirmed: true }, { timeout: 120000 })).data!
+  const result = (await api.post<unknown, ApiResponse<{ restored: boolean; cleanup_pending?: boolean; review_evidence_rebound?: number; review_evidence_notice?: string | null }>>('/api/privacy/restore', { backup_id: preview.backup_id, confirmation_token: preview.confirmation_token, confirmed: true }, { timeout: 120000 })).data!
   if (result.restored) window.dispatchEvent(new Event('filemate:data-restored'))
   return result
 }

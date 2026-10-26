@@ -51,7 +51,10 @@ def test_old_backup_without_sequences_conservatively_rebinds_cutoffs(tmp_path, m
     old = OldBackup(store, "synthetic-owner", tmp_path / "inbox", tmp_path / "archive")
     raw = old.export()
     store.init_schema()
-    result = restore(backup_for(store, tmp_path), raw)
+    backup = backup_for(store, tmp_path)
+    preview = backup.preview(raw)
+    assert "作答序号" in preview["notice"] and "原记录" in preview["notice"]
+    result = backup.restore(preview["backup_id"], preview["confirmation_token"])
     assert result["review_evidence_rebound"] == 1
     row = dict(store._conn().execute("SELECT rowid AS evidence_sequence,* FROM quiz_attempts").fetchone())
     assert not _after_question_revision(row, store.get_artifact(aid))
