@@ -38,3 +38,4 @@ export function reviewTime(value: string | null | undefined) {
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? '时间待修复' : new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date)
 }
+export const reviewEventAction = (action: string) => action.startsWith('schedule_') ? action.slice(9) : action

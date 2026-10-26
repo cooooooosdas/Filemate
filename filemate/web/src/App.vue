@@ -664,6 +664,9 @@ function isAuthPath(path: string): boolean {
 
 .topbar-actions {
   display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 8px;
 }

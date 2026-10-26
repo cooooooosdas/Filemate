@@ -1236,3 +1236,10 @@ Task6前端接线：课程知识点详情的“开始学习与练习”打开同
 ### C级作答入口预检（本地候选）
 
 `GET /wrongbook/v2/question-access/{artifact_id}/{question_index}` 返回 `legacy_writable/read_only_snapshot`，按服务端身份定位真实题集，非法序号422、不存在404，禁止未知查询参数，无模型调用。旧界面须先预检再提交；新界面仍须能力开关，未知状态不降回旧算法。今日复习队列 `route` 精确指向 `/wrongbook?focus=<wrong_id>`。复盘HTTP实现放在按路由载入的 `services/review-api.ts`，复用 `services/api.ts` 的认证、错误和超时客户端。
+
+
+### C级工作台查询的兼容与运行边界
+
+`GET /wrongbook/v2/page` 的全库搜索只匹配题干、知识点与资料名，不搜索参考答案。安装有SQLite JSON1时在SQL内安全提取题干；无JSON1时使用兼容UDF。两条路径均先筛选再分页，坏JSON不会使整页崩溃；两者的低版本性能仍须分别实测，不把本机原生路径的计时作为生产承诺。没有新增表、字段或迁移。
+
+C级浏览器验收使用隔离合成账号与真实API。备份恢复测试会显式注入恢复通知、延迟已完成POST的响应以核对身份代次；这不代表生产SQLite3.26恢复已验收。前端仅在新规则能力确认后写入；503/409/待核对都不会重试旧判题。

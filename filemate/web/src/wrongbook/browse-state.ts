@@ -63,12 +63,21 @@ export function createReviewPreferences(storage: ReviewStorage, scope: string | 
     batch = sanitizeBatch(saved.batch)
     if (saved.browse && typeof saved.browse.query === 'object') browse = { browse: readReviewBrowse(saved.browse.query), scroll: Math.max(0, Math.min(1000000, Number(saved.browse.scroll) || 0)) }
   } catch { /* 使用当前页状态。 */ }
-  const persist = () => { try { if (key) storage.setItem(key, JSON.stringify({ browse: browse ? { query: reviewBrowseQuery(browse.browse), scroll: browse.scroll } : null, batch })) } catch { /* 使用当前页状态。 */ } }
+  const persist = (part: 'browse' | 'batch') => {
+    try {
+      if (!key) return
+      const latest = JSON.parse(storage.getItem(key) || '{}')
+      // 目录和专注控制器共享命名空间，只更新自己负责的字段。
+      if (part === 'browse') batch = sanitizeBatch(latest.batch)
+      else if (latest.browse?.query && typeof latest.browse.query === 'object') browse = { browse: readReviewBrowse(latest.browse.query), scroll: Math.max(0, Math.min(1000000, Number(latest.browse.scroll) || 0)) }
+      storage.setItem(key, JSON.stringify({ browse: browse ? { query: reviewBrowseQuery(browse.browse), scroll: browse.scroll } : null, batch }))
+    } catch { /* 使用当前页状态。 */ }
+  }
   return {
     getBrowse: () => browse ? structuredClone(browse) : null,
-    setBrowse(value: ReviewBrowse, scroll = 0) { browse = { browse: readReviewBrowse(reviewBrowseQuery(value)), scroll: Math.max(0, Math.min(1000000, scroll)) }; persist() },
+    setBrowse(value: ReviewBrowse, scroll = 0) { browse = { browse: readReviewBrowse(reviewBrowseQuery(value)), scroll: Math.max(0, Math.min(1000000, scroll)) }; persist('browse') },
     getBatch: () => batch ? structuredClone(batch) : null,
-    saveBatch(value: ReviewBatch) { const safe = sanitizeBatch(value); if (!safe) return false; batch = safe; persist(); return true },
-    clearBatch() { batch = null; persist() }, clearMemory() { batch = null; browse = null },
+    saveBatch(value: ReviewBatch) { const safe = sanitizeBatch(value); if (!safe) return false; batch = safe; persist('batch'); return true },
+    clearBatch() { batch = null; persist('batch') }, clearMemory() { batch = null; browse = null },
   }
 }

@@ -211,3 +211,41 @@ def test_question_access_is_scoped_and_prevents_legacy_write(review_store):
     assert client.get(path).json()['data']['legacy_writable'] is False
     assert client.get('/wrongbook/v2/question-access/missing/0').status_code == 404
     assert client.get(path + '?owner=other').status_code == 422
+
+
+def test_native_search_does_not_decode_full_library_in_python(review_store, monkeypatch):
+    store, *_, clock = review_store
+    many(store, 120)
+    module = importlib.import_module('filemate.wrongbook.queries')
+    original, calls = module._object, []
+    def counted(raw):
+        calls.append(1)
+        return original(raw)
+    monkeypatch.setattr(module, '_object', counted)
+    result = module.ReviewQueries(store, clock=lambda: clock[0]).page(module.ReviewFilter(q='知识点00119'))
+    assert result['total'] == 1
+    assert len(calls) <= 10
+
+
+@pytest.mark.parametrize('fallback', [False, True])
+def test_search_native_and_compatibility_paths_exclude_answers_and_bad_json(review_store, monkeypatch, fallback):
+    store = review_store[0]
+    many(store, 3)
+    module = importlib.import_module('filemate.wrongbook.queries')
+    if fallback:
+        monkeypatch.setattr(module, '_stem_expression', lambda conn: 'review_stem(w.question)')
+    query = module.ReviewQueries(store)
+    assert query.page(module.ReviewFilter(q='后进先出'))['total'] == 0
+    assert query.page(module.ReviewFilter(q='知识点00002'))['total'] == 1
+    store._conn().execute("UPDATE wrong_questions SET question='invalid JSON',knowledge_label=''")
+    store._conn().commit()
+    assert query.page(module.ReviewFilter(q='知识点'))['total'] == 0
+
+
+def test_json_extension_missing_keeps_compatible_query():
+    import sqlite3
+    module = importlib.import_module('filemate.wrongbook.queries')
+    class WithoutJson:
+        def execute(self, sql):
+            raise sqlite3.OperationalError('no such function: json_extract')
+    assert module._stem_expression(WithoutJson()) == 'review_stem(w.question)'

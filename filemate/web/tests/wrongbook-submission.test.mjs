@@ -92,3 +92,9 @@ test('display normalization never edits the expected question or runs HTML', () 
   assert.deepEqual(shown.options, [{ key: 'X', text: '左边' }, { key: 'Y', text: '右边' }])
   assert.equal(shown.stem, '<script>hello</script>'); assert.equal(shown.type, 'choice'); assert.deepEqual(input, before)
 })
+
+test('schedule events expose their actual undo action',()=>{
+ assert.equal(typeof present.reviewEventAction,'function')
+ assert.equal(present.reviewEventAction('schedule_pause'),'pause')
+ assert.equal(present.reviewEventAction('schedule_undo'),'undo')
+})

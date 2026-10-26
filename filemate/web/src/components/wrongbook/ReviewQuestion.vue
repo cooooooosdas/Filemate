@@ -13,7 +13,7 @@
       <button v-if="allowAssistance !== false" :disabled="locked" @click="submit('dont_know')">暂时不会</button>
       <button v-if="allowAssistance !== false && !s.receipt && !s.answerRevealed" :disabled="s.busy || s.uncertain" @click="submission.revealAnswer()"><View :size="19" />查看答案</button>
     </div>
-    <p v-if="s.error" role="alert" class="review-error">{{ s.error }}</p>
+    <p v-if="s.error" ref="errorFocus" role="alert" tabindex="-1" class="review-error">{{ s.error }}</p>
     <div v-if="s.uncertain" class="review-actions"><button :disabled="s.busy" @click="submission.recover()">查询保存回执</button><button :disabled="s.busy || s.stale" @click="submit('answer')">原样重试</button></div>
     <p v-if="s.answerRevealed && !s.receipt" class="review-notice">已查看参考，本次将记为辅助练习，不计独立验证。</p>
     <section v-if="s.receipt" class="review-receipt" role="status"><h3>{{ reviewResultLabel(s.receipt) }}</h3><p>{{ s.receipt.feedback }}</p><p>{{ s.receipt.eligible ? '本次计入合格验证。' : '本次已保存；是否计入合格验证由真实作答与复习时间共同决定。' }}</p></section>
@@ -21,13 +21,15 @@
   </section>
 </template>
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import { View } from '../../icons'
 import { presentReviewQuestion, reviewResultLabel } from '../../wrongbook/presentation'
 import type { createReviewSubmission } from '../../wrongbook/submission'
-const props = defineProps<{ question: Record<string, unknown>; identity: string; submission: ReturnType<typeof createReviewSubmission>; readonly?: boolean; readonlyReason?: string; allowAssistance?: boolean }>()
+const props = withDefaults(defineProps<{ question: Record<string, unknown>; identity: string; submission: ReturnType<typeof createReviewSubmission>; readonly?: boolean; readonlyReason?: string; allowAssistance?: boolean }>(), { allowAssistance: true })
 const emit = defineEmits<{ saved: [] }>()
 const s = computed(() => props.submission.state)
+const errorFocus = ref<HTMLElement | null>(null)
+watch(() => s.value.error, async value => { if (value) { await nextTick(); errorFocus.value?.focus() } })
 const shown = computed(() => presentReviewQuestion(props.question))
 const locked = computed(() => !!props.readonly || s.value.busy || s.value.stale || !!s.value.receipt || s.value.uncertain)
 async function submit(action: 'answer' | 'dont_know') { if (await props.submission.submit(action)) emit('saved') }

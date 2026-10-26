@@ -34,3 +34,10 @@ test('blocked storage and corrupt preferences preserve usable in-page navigation
   const unknown = mod.createReviewPreferences(memory(), null)
   assert.equal(unknown.getBatch(), null)
 })
+
+test('stale navigation preferences cannot erase a newer focus batch',()=>{
+ const data=new Map(),storage={getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)},scope='a'.repeat(64)
+ const navigation=mod.createReviewPreferences(storage,scope),focus=mod.createReviewPreferences(storage,scope)
+ const batch={created_at:new Date().toISOString(),position:0,items:[{wrong_id:'w',artifact_id:'a',question_index:0,question_digest:'a'.repeat(64),attempt_id:'saved'}]}
+ focus.saveBatch(batch);navigation.setBrowse(mod.readReviewBrowse({mode:'focus'}));assert.deepEqual(mod.createReviewPreferences(storage,scope).getBatch(),batch)
+})

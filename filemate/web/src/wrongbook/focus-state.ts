@@ -16,6 +16,8 @@ export function createFocusReviewController(api: FocusApi, submission: ReturnTyp
   async function recordSaved() {
     const e = epoch, item = state.items[state.position], receipt = submission.state.receipt
     if (!item || !receipt) return false
+    // 先保留待核验引用；刷新仍须查服务器，不能提前算完成。
+    item.attempt_id = receipt.attempt_id; persist()
     try {
       if (!await verify(item.wrong_id, receipt.attempt_id, item) || !fresh(e)) { if (fresh(e)) state.error = '回执与本题记录尚未核验，请重试核验。'; return false }
       state.completed = { ...state.completed, [item.wrong_id]: receipt.attempt_id }; item.attempt_id = receipt.attempt_id; persist(); return true

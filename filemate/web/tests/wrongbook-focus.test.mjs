@@ -36,3 +36,15 @@ test('pending save recovery queries receipt; it never automatically submits',asy
  const a=setup({storage,submitReviewAnswer:async()=>{posts++;throw Error('offline')}});await a.c.start({});a.submission.setAnswer('private');await a.submission.submit();a.c.dispose()
  const b=setup({storage,getReviewAttempts:async()=>({items:[{attempt_id:'saved',artifact_id:'a',question_index:0}],has_more:false})});await b.c.resume();assert.equal(b.posts(),0);assert.equal(b.c.state.completed.w,'saved');assert.ok(!JSON.stringify([...Object.values(storage)]).includes('private'))
 })
+
+test('receipt reference survives refresh while server verification is still in flight',async()=>{
+ const storage=memoryReviewStorage();let release
+ const x=setup({storage,getReviewAttempts:()=>new Promise(resolve=>{release=resolve})})
+ await x.c.start({});x.submission.setAnswer('answer');await x.submission.submit()
+ const verifying=x.c.recordSaved()
+ assert.equal(createReviewPreferences(storage,'a'.repeat(64)).getBatch().items[0].attempt_id,'saved')
+ assert.equal(x.c.state.completed.w,undefined)
+ x.c.dispose();release({items:[{attempt_id:'saved',artifact_id:'a',question_index:0}]});await verifying
+ const y=setup({storage,getReviewAttempts:async()=>({items:[{attempt_id:'saved',artifact_id:'a',question_index:0}]})})
+ await y.c.resume();assert.equal(y.c.state.completed.w,'saved');assert.equal(y.posts(),0)
+})

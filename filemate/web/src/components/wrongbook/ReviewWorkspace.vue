@@ -45,9 +45,9 @@ const dateLabels = { due_from:'到期起点',due_to:'到期终点',created_from:
 const focusMode = computed(()=>route.query.mode === 'focus'), focusRef = ref<InstanceType<typeof FocusReview> | null>(null)
 let preferences = createReviewPreferences(browserReviewStorage(),null), ready = false, optionOffset = 0, optionEpoch = 0
 function browse() { return {filters:s.filters,focus: typeof route.query.focus === 'string' ? route.query.focus : '',offset:s.offset,mode:focusMode.value?'focus' as const:'browse' as const,notice:''} }
-function remember() { preferences.setBrowse(browse(), window.scrollY) }
+function remember() { preferences.setBrowse(browse(), document.querySelector('.content-scroll')?.scrollTop ?? window.scrollY) }
 async function allow() { if (!c.dirty() && !focusRef.value?.dirty()) return true; try { await ElMessageBox.confirm('有未提交内容或待确认操作。离开后未提交正文不会保存；在途请求仍可能在服务器完成。是否离开？','保留当前复盘？',{confirmButtonText:'离开',cancelButtonText:'继续复盘',type:'warning'}); return true } catch { return false } }
-onBeforeRouteLeave(allow); onBeforeRouteUpdate(allow)
+onBeforeRouteLeave(async()=>{if(!await allow())return false;remember();return true}); onBeforeRouteUpdate(allow)
 function apply(offset = 0) { const clean = readReviewBrowse(Object.fromEntries(Object.entries(filters.value).filter(([,v])=>v!==''&&v!=null).map(([k,v])=>[k,String(v)]))); notice.value = clean.notice; router.push({query:reviewBrowseQuery({...clean,offset})}) }
 function clearFilters() { filters.value = {status:'all',sort:'due',direction:'asc'}; apply() }
 function pick(id: string) { router.push({query:reviewBrowseQuery({...browse(),focus:id})}) }
@@ -61,7 +61,14 @@ function localDate(value?: string) { return value ? value.slice(0,16) : '' }
 function setDate(key: keyof typeof dateLabels,e: Event) { const value=(e.target as HTMLInputElement).value; filters.value[key]=value?`${value}:00+08:00`:undefined }
 function unload(e: BeforeUnloadEvent) { remember(); if(c.dirty()||focusRef.value?.dirty()){e.preventDefault();e.returnValue=''} }
 async function identityChanged() { ready=false;focusRef.value?.invalidate();c.resetIdentity(null);preferences.clearMemory();sources.value=[];courses.value=[];await initialize(false) }
-async function initialize(restore=true) { await c.initialize();preferences=createReviewPreferences(browserReviewStorage(),s.scope);ready=true;const saved=restore?preferences.getBrowse():null;if(saved&&Object.keys(route.query).length===0){await router.replace({query:reviewBrowseQuery(saved.browse)});await nextTick();window.scrollTo(0,saved.scroll)}else await routeLoad();loadOptions() }
+async function initialize(restore=true) {
+  await c.initialize();preferences=createReviewPreferences(browserReviewStorage(),s.scope);ready=true
+  const saved=restore?preferences.getBrowse():null
+  if(saved&&Object.keys(route.query).length===0) await router.replace({query:reviewBrowseQuery(saved.browse)})
+  await routeLoad();await nextTick()
+  if(saved&&JSON.stringify(reviewBrowseQuery(readReviewBrowse(route.query)))===JSON.stringify(reviewBrowseQuery(saved.browse))){const scroll=document.querySelector('.content-scroll');if(scroll)scroll.scrollTop=saved.scroll;else window.scrollTo(0,saved.scroll);remember()}
+  loadOptions()
+}
 onMounted(()=>{initialize();window.addEventListener('beforeunload',unload);window.addEventListener('filemate:session-expired',identityChanged);window.addEventListener('filemate:data-restored',identityChanged)})
-onBeforeUnmount(()=>{remember();c.dispose();++optionEpoch;window.removeEventListener('beforeunload',unload);window.removeEventListener('filemate:session-expired',identityChanged);window.removeEventListener('filemate:data-restored',identityChanged)})
+onBeforeUnmount(()=>{c.dispose();++optionEpoch;window.removeEventListener('beforeunload',unload);window.removeEventListener('filemate:session-expired',identityChanged);window.removeEventListener('filemate:data-restored',identityChanged)})
 </script>

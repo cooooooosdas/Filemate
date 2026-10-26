@@ -2,6 +2,7 @@
 
 import json
 import re
+import sqlite3
 from collections.abc import Callable
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -59,6 +60,17 @@ def _object(raw):
         return value if isinstance(value, dict) else {}
     except (ValueError, TypeError):
         return {}
+
+
+def _stem_expression(conn: sqlite3.Connection) -> str:
+    try:
+        conn.execute("SELECT json_extract('{}','$.stem')")
+    except sqlite3.OperationalError:
+        return 'review_stem(w.question)'
+    return """CASE WHEN json_valid(w.question) THEN CASE WHEN json_type(w.question)='object'
+        THEN COALESCE(NULLIF(CAST(json_extract(w.question,'$.stem') AS TEXT),''),
+                      CAST(json_extract(w.question,'$.question') AS TEXT),'')
+        ELSE '' END ELSE '' END"""
 
 
 class ReviewQueries:
@@ -140,7 +152,7 @@ class ReviewQueries:
         for field in ('q', 'knowledge_q'):
             value = getattr(filters, field)
             if value:
-                terms = ["review_stem(w.question)", 'w.knowledge_label', "COALESCE(s.original_name,'')"] if field == 'q' else ['w.knowledge_label']
+                terms = [_stem_expression(conn), 'w.knowledge_label', "COALESCE(s.original_name,'')"] if field == 'q' else ['w.knowledge_label']
                 conditions.append('(' + ' OR '.join(f'instr(lower({term}),lower(?))>0' for term in terms) + ')')
                 params.extend([value] * len(terms))
         if filters.source_id:
