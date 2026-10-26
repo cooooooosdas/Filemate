@@ -127,6 +127,7 @@ class ReviewRepository:
             self_reported = command.action == "dont_know" or command.self_reported_result is not None
             correct = None if self_reported or question["question_type"] == "short_answer" else check_answer(question, command.user_answer)
             status = "self_reported" if self_reported else "pending" if correct is None else "assisted" if command.answer_revealed else "verified"
+            verified_wrong = correct is False and status == "verified"
             method = "self_report" if self_reported else "ungraded" if correct is None else "objective_rule"
             state = transition(old, correct=correct, independent=not command.answer_revealed, now=self.now())
             if old is None and conn.execute(
@@ -155,7 +156,7 @@ class ReviewRepository:
                      knowledge_key,knowledge_label,created_at,updated_at)
                     VALUES (?,?,?,?,?,?,?,0,?,?,?,?)""",
                     (wid, command.artifact_id, artifact.get("source_id"), command.question_index,
-                     json.dumps(raw, ensure_ascii=False), command.user_answer, int(correct is False),
+                     json.dumps(raw, ensure_ascii=False), command.user_answer, int(verified_wrong),
                      knowledge_key, knowledge_label, stamp, stamp))
             else:
                 wid = old["wrong_id"] if old else None
@@ -165,7 +166,7 @@ class ReviewRepository:
                                revision=old["revision"] + 1 if old else 1,
                                review_attempt_count=(old["review_attempt_count"] + 1) if old else 0)
                 if old:
-                    changes.update(error_count=old["error_count"] + int(correct is False),
+                    changes.update(error_count=old["error_count"] + int(verified_wrong),
                                    review_count=old["review_count"] + 1)
                 conn.execute("UPDATE wrong_questions SET " + ",".join(f"{key}=?" for key in changes) + " WHERE wrong_id=?",
                              [*changes.values(), wid])
@@ -217,31 +218,42 @@ class ReviewRepository:
                     row[field] = json.loads(row[field])
         return {"items": rows, "total": total, "limit": limit, "offset": offset, "has_more": offset + len(rows) < total}
 
+    def time_connection(self):
+        """Share the engine's strict parsing with SQL counts and bounded selection."""
+        conn = self.storage._conn()
+
+        def strict_time(value):
+            parsed = parse_time(value)
+            return (parsed - datetime(1970, 1, 1, tzinfo=timezone.utc)).total_seconds() if parsed else None
+
+        conn.create_function("filemate_review_time", 1, strict_time, deterministic=True)
+        return conn
+
     def due_page(self, *, limit: int = 50) -> list[dict]:
         """Filter the full collection before taking bounded queue candidates."""
         if type(limit) is not int or not 1 <= limit <= 200:
             raise ValueError("候选数量无效")
-        ids = self.storage._conn().execute("""SELECT wrong_id FROM wrong_questions
+        ids = self.time_connection().execute("""SELECT wrong_id FROM wrong_questions
             WHERE schedule_status='active' AND (scheduler_version=? OR mastered=0)
-              AND julianday(next_review_at)<=julianday(?)
-            ORDER BY julianday(next_review_at),updated_at,wrong_id LIMIT ?""",
-            (RULE_VERSION, self.now().isoformat(), limit)).fetchall()
+              AND filemate_review_time(next_review_at)<=?
+            ORDER BY filemate_review_time(next_review_at),updated_at,wrong_id LIMIT ?""",
+            (RULE_VERSION, self.now().timestamp(), limit)).fetchall()
         return [self.detail(row["wrong_id"]) for row in ids]
 
     def summary(self) -> dict:
         """Count the full collection independently of bounded queue candidates."""
         now = self.now()
         stamp = now.isoformat(timespec="seconds")
-        day_start = now.astimezone(LOCAL_ZONE).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc).isoformat()
-        row = self.storage._conn().execute("""SELECT COUNT(*) AS total,
+        day_start = now.astimezone(LOCAL_ZONE).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc).timestamp()
+        row = self.time_connection().execute("""SELECT COUNT(*) AS total,
             COALESCE(SUM(schedule_status='paused'),0) AS paused_count,
             COALESCE(SUM(scheduler_version!=? AND mastered=1),0) AS legacy_mastered_count,
             COALESCE(SUM(scheduler_version=? AND learning_status='criterion_met'),0) AS criterion_met_count,
             COALESCE(SUM(learning_status='pending_check'),0) AS pending_check_count,
-            COALESCE(SUM(julianday(next_review_at) IS NULL),0) AS invalid_time_count,
+            COALESCE(SUM(filemate_review_time(next_review_at) IS NULL),0) AS invalid_time_count,
             COALESCE(SUM(schedule_status='active' AND (scheduler_version=? OR mastered=0)
-                AND julianday(next_review_at)<=julianday(?)),0) AS due_count,
+                AND filemate_review_time(next_review_at)<=?),0) AS due_count,
             COALESCE(SUM(schedule_status='active' AND (scheduler_version=? OR mastered=0)
-                AND julianday(next_review_at)<julianday(?)),0) AS overdue_count
-            FROM wrong_questions""", (RULE_VERSION, RULE_VERSION, RULE_VERSION, stamp, RULE_VERSION, day_start)).fetchone()
+                AND filemate_review_time(next_review_at)<?),0) AS overdue_count
+            FROM wrong_questions""", (RULE_VERSION, RULE_VERSION, RULE_VERSION, now.timestamp(), RULE_VERSION, day_start)).fetchone()
         return {**dict(row), "rule_version": RULE_VERSION, "as_of": stamp, "day_zone": "Asia/Shanghai"}

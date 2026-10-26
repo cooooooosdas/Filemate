@@ -46,10 +46,13 @@ def transition(state: dict | None, *, correct: bool | None,
         result["interval_days"] = days
         result["next_review_at"] = (now + timedelta(days=days)).isoformat(timespec="seconds")
 
-    if correct is None:
-        if not state or legacy:
+    if correct is None or not independent:
+        if state:
+            result.update(state)
+        else:
             result["learning_status"] = "pending_check"
-        result["reason"] = "pending_check"
+        result.update(eligible=False, purpose="review" if state else "first_practice",
+                      reason="pending_check" if correct is None else "answer_revealed")
         return result
     if not correct:
         result.update(learning_status="needs_review" if state else "new",
@@ -57,9 +60,6 @@ def transition(state: dict | None, *, correct: bool | None,
                       last_verified_at=None, mastered=0, correct_streak=0,
                       reason="incorrect")
         schedule(1 if state else 0)
-        return result
-    if not independent:
-        result["reason"] = "answer_revealed"
         return result
     if result["schedule_status"] == "paused":
         result["reason"] = "paused_practice"

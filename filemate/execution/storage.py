@@ -1946,7 +1946,8 @@ class SQLiteStorage:
             "SELECT * FROM wrong_questions WHERE artifact_id=? AND question_index=?",
             (artifact_id, question_index),
         ).fetchone()
-        if active_review and dict(active_review).get("scheduler_version", "legacy-v1") != "legacy-v1":
+        if active_review and (dict(active_review).get("scheduler_version", "legacy-v1") != "legacy-v1"
+                              or dict(active_review).get("revision", 1) > 1):
             raise QuestionRevisionConflict("此题已启用2.0规则，请使用新版复习入口；原记录保留")
         if expected_question is not None and question != expected_question:
             raise QuestionRevisionConflict("题目已更新，请刷新题集后重新作答")
@@ -2203,33 +2204,39 @@ class SQLiteStorage:
         """保存用户确认的错因，并保留同一知识点标识。"""
         if error_cause not in _ERROR_CAUSES:
             raise ValueError("错因类型无效")
-        wrong = self.get_wrong_question(wrong_id)
-        if wrong is None:
-            raise ValueError("错题不存在")
-        if wrong.get("scheduler_version") != "legacy-v1":
-            raise QuestionRevisionConflict("此题已启用2.0规则，请使用带修订检查的错因入口")
         clean_note = note.strip()
         if len(clean_note) > 300:
             raise ValueError("错因备注不能超过 300 字")
         now = _now_iso()
         with self._write_lock:
-            self._conn().execute(
-                """UPDATE wrong_questions SET
-                   knowledge_key=?, knowledge_label=?, error_cause=?,
-                   error_cause_source='user', error_cause_confidence=1,
-                   error_cause_note=?, diagnosed_at=?, updated_at=?
-                   WHERE wrong_id=?""",
-                (
-                    wrong["knowledge_key"],
-                    wrong["knowledge_label"],
-                    error_cause,
-                    clean_note,
-                    now,
-                    now,
-                    wrong_id,
-                ),
-            )
-            self._conn().commit()
+            connection = self._conn()
+            try:
+                connection.execute("BEGIN IMMEDIATE")
+                wrong = self.get_wrong_question(wrong_id)
+                if wrong is None:
+                    raise ValueError("错题不存在")
+                if wrong.get("scheduler_version", "legacy-v1") != "legacy-v1" or wrong.get("revision", 1) > 1:
+                    raise QuestionRevisionConflict("此题已由2.0接管，请使用带修订检查的错因入口")
+                connection.execute(
+                    """UPDATE wrong_questions SET
+                       knowledge_key=?, knowledge_label=?, error_cause=?,
+                       error_cause_source='user', error_cause_confidence=1,
+                       error_cause_note=?, diagnosed_at=?, updated_at=?
+                       WHERE wrong_id=?""",
+                    (
+                        wrong["knowledge_key"],
+                        wrong["knowledge_label"],
+                        error_cause,
+                        clean_note,
+                        now,
+                        now,
+                        wrong_id,
+                    ),
+                )
+                connection.commit()
+            except BaseException:
+                connection.rollback()
+                raise
         updated = self.get_wrong_question(wrong_id)
         if updated is None:
             raise ValueError("错题不存在")

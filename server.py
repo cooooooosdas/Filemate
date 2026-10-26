@@ -3764,6 +3764,8 @@ def update_wrongbook_diagnosis(
             error_cause=request.error_cause,
             note=request.note,
         )
+    except QuestionRevisionConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
         detail = str(exc)
         status_code = 404 if detail == "错题不存在" else 422

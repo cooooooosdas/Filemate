@@ -34,6 +34,7 @@ def test_disabled_writes_leave_history_readable(server_module, monkeypatch):
         assert client.get(f"/wrongbook/v2/{wid}").json()["data"]["wrong_id"] == wid
         assert client.get(f"/wrongbook/v2/{wid}/attempts").json()["data"]["total"] == 1
         assert client.post("/quiz/attempts", json=body).status_code == 409
+        assert client.patch(f"/wrongbook/{wid}/diagnosis", json={"error_cause": "careless"}).status_code == 409
 
 
 @pytest.mark.parametrize("change", [{"unexpected": "secret-key-must-not-echo"}, {"user_answer": ""},

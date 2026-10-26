@@ -159,16 +159,20 @@ class PersonalBackup:
 
     def _tables(self) -> dict[str, list[str]]:
         conn = self.storage._conn()
-        return {row[0]: [column[1] for column in conn.execute(f'PRAGMA table_info("{row[0]}")')]
+        tables = {row[0]: [column[1] for column in conn.execute(f'PRAGMA table_info("{row[0]}")')]
                 for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
                 if row[0] not in EXCLUDED_TABLES}
+        if 'quiz_attempts' in tables:
+            tables['quiz_attempts'].append('rowid')
+        return tables
 
     def _snapshot(self) -> dict[str, Any]:
         conn = self.storage._conn()
         tables = {}; total = 0
         for name in self._tables():
             tables[name] = []
-            for row in conn.execute(f'SELECT * FROM "{name}" ORDER BY rowid'):
+            projection = 'rowid AS rowid,*' if name == 'quiz_attempts' else '*'
+            for row in conn.execute(f'SELECT {projection} FROM "{name}" ORDER BY rowid'):
                 item = dict(row); total += len(_json(item))
                 if total > MAX_DATA_BYTES:
                     raise ValueError('个人业务数据超过32MB自助容量，请使用管理员离线备份；未生成残缺备份')
@@ -274,6 +278,12 @@ class PersonalBackup:
         for name, rows in tables.items():
             if not isinstance(rows, list) or any(not isinstance(row, dict) or not set(row) <= set(allowed[name]) for row in rows):
                 raise ValueError('备份字段结构不符合现役合同')
+        attempts = tables.get('quiz_attempts', [])
+        sequences = [row['rowid'] for row in attempts if 'rowid' in row]
+        if sequences and (len(sequences) != len(attempts)
+                or any(type(value) is not int or not -(2**63) <= value < 2**63 for value in sequences)
+                or len(set(sequences)) != len(sequences)):
+            raise ValueError('备份作答证据序号无效')
         files = {}
         for name, value in contents.items():
             parts = _relative(name).parts
@@ -392,12 +402,31 @@ class PersonalBackup:
                 from filemate.course_graph.privacy import normalize_restored_course_graph
 
                 normalize_restored_course_graph(conn)
+                # 旧备份缺失序号时无法复原题目版本边界，保留历史但不冒认其有效性。
+                rebound = 0
+                if not any('rowid' in row for row in content['tables'].get('quiz_attempts', [])):
+                    cutoff = conn.execute('SELECT COALESCE(MAX(rowid),0) FROM quiz_attempts').fetchone()[0]
+                    for artifact in conn.execute('SELECT artifact_id,metadata FROM artifacts').fetchall():
+                        try:
+                            metadata = json.loads(artifact['metadata'])
+                        except (ValueError, TypeError):
+                            continue
+                        if isinstance(metadata, dict) and 'graph_attempt_cutoff' in metadata:
+                            metadata['graph_attempt_cutoff_before_restore'] = metadata['graph_attempt_cutoff']
+                            metadata['graph_attempt_cutoff'] = cutoff
+                            metadata['graph_attempt_cutoff_restore_notice'] = '旧备份未保存作答序号；历史版本资格待核验，新作答正常计入'
+                            conn.execute('UPDATE artifacts SET metadata=? WHERE artifact_id=?',
+                                         (json.dumps(metadata, ensure_ascii=False), artifact['artifact_id']))
+                            rebound += 1
                 conn.execute("UPDATE sessions SET status='failed',error='备份恢复的历史会话；文件操作不重放'")
                 conn.execute("UPDATE execution_records SET status='failed',error='备份恢复后禁止重放文件操作'")
                 conn.execute("DELETE FROM data_action_previews WHERE action!='personal_restore'")
                 if conn.execute('PRAGMA foreign_key_check').fetchone():
                     raise ValueError('恢复的数据关系不完整，当前数据保留')
-                receipt = {'restored': True, 'cleanup_pending': False, 'file_count': len(files), 'counts': {name: len(rows) for name, rows in content['tables'].items()}}
+                receipt = {'restored': True, 'cleanup_pending': False, 'file_count': len(files),
+                           'review_evidence_rebound': rebound,
+                           'review_evidence_notice': '旧备份题目版本边界待核验，历史记录保留，新作答正常计入' if rebound else None,
+                           'counts': {name: len(rows) for name, rows in content['tables'].items()}}
                 data_actions.finish(conn, 'personal_restore', identifier, token, receipt)
                 conn.commit()
             except Exception:
