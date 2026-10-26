@@ -3,7 +3,7 @@
     <header><div><small>{{ label }}</small><h3>{{ artifact.title }}</h3></div><button type="button" @click="download">导出</button></header>
     <AnalysisWarnings :messages="artifact.metadata?.warnings" />
     <p v-if="artifact.metadata?.source_truncated && !artifact.metadata?.warnings" class="notice">本次内容依据资料前 {{ artifact.metadata.input_characters }} 字生成，未覆盖全文。</p>
-    <p v-if="artifact.metadata?.read_only_snapshot" class="notice">这是修改前的历史题集，正文只读。复练仍保存到这份旧题证据，不影响新版题目的成绩。</p>
+    <p v-if="artifact.metadata?.read_only_snapshot" class="notice">这是修改前的历史题集，仅供查看，不能保存新作答。</p>
     <template v-if="artifact.artifact_type === 'knowledge_cards' && cards.length">
       <div class="pager"><span>知识卡 {{ index + 1 }} / {{ cards.length }}</span><div><button :disabled="index === 0" aria-label="上一张卡片" @click="move(-1)">上一张</button><button :disabled="index === cards.length - 1" aria-label="下一张卡片" @click="move(1)">下一张</button></div></div>
       <button class="flashcard" type="button" :aria-expanded="revealed" @click="revealed = !revealed">
@@ -13,11 +13,7 @@
     </template>
     <template v-else-if="artifact.artifact_type === 'questions' && questions.length">
       <div class="pager"><span>练习 {{ index + 1 }} / {{ questions.length }}</span><div><button :disabled="index === 0" @click="move(-1)">上一题</button><button :disabled="index === questions.length - 1" @click="move(1)">下一题</button></div></div>
-      <h4>{{ question?.stem || question?.question }}</h4>
-      <fieldset v-if="options.length"><legend class="sr-only">选择答案</legend><label v-for="option in options" :key="option.key" class="choice"><input v-model="answers[index]" type="radio" :name="`answer-${artifact.artifact_id}-${index}`" :value="option.key" :disabled="Boolean(results[index]) || saving" /><span>{{ option.text }}</span></label></fieldset>
-      <textarea v-else v-model="answers[index]" rows="4" aria-label="练习答案" placeholder="写下你的回答…" :disabled="Boolean(results[index]) || saving" />
-      <button v-if="!results[index]" class="primary" :disabled="!answers[index]?.trim() || saving" @click="submit">{{ saving ? '正在保存作答…' : '提交答案' }}</button>
-      <div v-else class="answer-feedback" role="status"><strong>{{ results[index]?.is_correct ? '回答正确' : '已记录到错题本' }}</strong><p>{{ results[index]?.feedback }}</p><p>参考答案：{{ results[index]?.reference_answer }}</p><p>{{ question?.analysis || question?.explanation }}</p><router-link v-if="!results[index]?.is_correct" to="/wrongbook">前往复盘</router-link></div>
+      <ReviewEntry v-if="question && active" :key="`${artifact.artifact_id}-${index}`" ref="entry" :artifact-id="artifact.artifact_id" :question-index="index" :question="question" :readonly="!!artifact.metadata?.read_only_snapshot" />
       <p class="muted">作答会保存；此处的本轮答题标记不会跨页面保留。</p>
     </template>
     <div v-else-if="artifact.artifact_type === 'notes' && sections.length" class="note-content"><section v-for="(section, i) in sections" :key="i"><h4>{{ section.title }}</h4><p>{{ section.content }}</p></section></div>
@@ -29,39 +25,23 @@
 <script setup lang="ts">
 import { saveDownload } from '../services/downloads'
 import AnalysisWarnings from './AnalysisWarnings.vue'
-import { computed, ref, watch } from 'vue'
-import { submitQuizAttempt, type KnowledgeArtifact, type QuizAttemptResult } from '../services/api'
+import { computed, ref, watch, onDeactivated, onBeforeUnmount, onActivated } from 'vue'
+import { ElMessageBox } from 'element-plus'
+import type { KnowledgeArtifact } from '../services/api'
+import ReviewEntry from './wrongbook/ReviewEntry.vue'
 const props = defineProps<{ artifact: KnowledgeArtifact }>()
-const index = ref(0)
-const revealed = ref(false)
-const answers = ref<Record<number, string>>({})
-const results = ref<Record<number, QuizAttemptResult>>({})
-const saving = ref(false)
-const error = ref('')
+const index = ref(0), revealed = ref(false), error = ref(''), entry=ref<InstanceType<typeof ReviewEntry>|null>(null), active=ref(true)
 const label = computed(() => ({ summary: '摘要', notes: '结构化笔记', knowledge_cards: '主动回忆', questions: '随堂练习' }[props.artifact.artifact_type] || '学习内容'))
 const cards = computed(() => Array.isArray(props.artifact.content) ? props.artifact.content : [])
 const questions = cards
 const question = computed(() => questions.value[index.value])
 const sections = computed(() => Array.isArray(props.artifact.content?.sections) ? props.artifact.content.sections : [])
-const options = computed(() => {
-  const items = question.value?.options
-  if (Array.isArray(items)) return items.map((text, i) => ({ key: String.fromCharCode(65 + i), text: String(text) }))
-  if (items && typeof items === 'object') return Object.entries(items).map(([key, value]) => ({ key, text: `${key}. ${value}` }))
-  return []
-})
-watch(() => props.artifact.artifact_id, () => { index.value = 0; revealed.value = false; answers.value = {}; results.value = {}; error.value = '' })
-function move(offset: number) { index.value += offset; revealed.value = false; error.value = '' }
-async function submit() {
-  if (saving.value || !answers.value[index.value]?.trim()) return
-  const targetId = props.artifact.artifact_id
-  const targetIndex = index.value
-  saving.value = true; error.value = ''
-  try {
-    const result = await submitQuizAttempt(targetId, targetIndex, answers.value[targetIndex]!, question.value)
-    if (props.artifact.artifact_id === targetId) results.value[targetIndex] = result
-  } catch (cause) { if (props.artifact.artifact_id === targetId) error.value = cause instanceof Error ? cause.message : '提交失败' }
-  finally { saving.value = false }
-}
+watch(() => [props.artifact.artifact_id,props.artifact.content], () => { entry.value?.invalidate();index.value=0;revealed.value=false;error.value='' })
+async function canLeave(){if(!entry.value?.dirty())return true;try{await ElMessageBox.confirm('未提交正文不会保存，在途请求仍可能在服务器完成。是否离开？','保留当前作答？',{confirmButtonText:'离开',cancelButtonText:'继续作答'});return true}catch{return false}}
+async function move(offset:number){if(!await canLeave())return;index.value+=offset;revealed.value=false;error.value=''}
+function invalidate(){entry.value?.invalidate();active.value=false}
+onDeactivated(invalidate);onBeforeUnmount(invalidate);onActivated(()=>{active.value=true})
+defineExpose({canLeave,invalidate,dirty:()=>entry.value?.dirty()||false})
 function download() {
   const text = typeof props.artifact.content === 'string' ? props.artifact.content : JSON.stringify(props.artifact.content, null, 2)
   void saveDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), `${props.artifact.title}.txt`)

@@ -148,10 +148,10 @@
 - LearningArtifact暴露`canLeave()/invalidate()`并在KeepAlive停用与卸载清理在途应用；LearningWorkspace将它纳入现有离开保护。题集变化绑定raw快照，历史提示改为真实只读，不再声称可保存旧版复练。
 - 图谱练习控制器适配共享提交和可空结果；绑定原course/concept/question代次，失效题先刷新，保持图谱原有证据规则及只读来源边界，不扩展图谱UI或生成算法。
 
-- [ ] 先写RED：四入口（含工作区）相同答案合同；主观NULL不显示错误、2.0题不能被旧算法改写；进入其他题目／账号后旧回执不显示；今日深链定位正确错题。
-- [ ] 写RED：KeepAlive切换题集和外部路由均提示原稿、网络不确定沿用原key、参考答案查看后辅助标记真实传输。
-- [ ] 跑`node --test tests/wrongbook-entrypoints.test.mjs tests/course-learning-state.test.mjs tests/course-practice-component.test.mjs`，再实施接线转GREEN；后端今日定向测试增加route断言。
-- [ ] 提交`feat(wrongbook): 统一今日与课程练习的复习入口`。
+- [x] 先写RED：四入口（含工作区）相同答案合同；主观NULL不显示错误、2.0题不能被旧算法改写；进入其他题目／账号后旧回执不显示；今日深链定位正确错题。
+- [x] 写RED：KeepAlive切换题集和外部路由均提示原稿、网络不确定沿用原key、参考答案查看后辅助标记真实传输。
+- [x] 跑`node --test tests/wrongbook-entrypoints.test.mjs tests/course-learning-state.test.mjs tests/course-practice-component.test.mjs`，再实施接线转GREEN；后端今日定向测试增加route断言。
+- [x] 提交`feat(wrongbook): 统一今日与课程练习的复习入口`。
 
 ## Task 6：真实浏览器、规模与交付
 

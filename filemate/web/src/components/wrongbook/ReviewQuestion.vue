@@ -10,8 +10,8 @@
     <p v-if="readonly" class="review-notice">{{ readonlyReason || '当前为只读记录，可查看证据，不能提交作答。' }}</p>
     <div v-else class="review-actions">
       <button class="primary" :disabled="locked || !s.answer.trim()" @click="submit('answer')">{{ s.busy ? '正在保存…' : '提交回答' }}</button>
-      <button :disabled="locked" @click="submit('dont_know')">暂时不会</button>
-      <button v-if="!s.receipt && !s.answerRevealed" :disabled="s.busy || s.uncertain" @click="submission.revealAnswer()"><View :size="19" />查看答案</button>
+      <button v-if="allowAssistance !== false" :disabled="locked" @click="submit('dont_know')">暂时不会</button>
+      <button v-if="allowAssistance !== false && !s.receipt && !s.answerRevealed" :disabled="s.busy || s.uncertain" @click="submission.revealAnswer()"><View :size="19" />查看答案</button>
     </div>
     <p v-if="s.error" role="alert" class="review-error">{{ s.error }}</p>
     <div v-if="s.uncertain" class="review-actions"><button :disabled="s.busy" @click="submission.recover()">查询保存回执</button><button :disabled="s.busy || s.stale" @click="submit('answer')">原样重试</button></div>
@@ -25,7 +25,7 @@ import { computed } from 'vue'
 import { View } from '../../icons'
 import { presentReviewQuestion, reviewResultLabel } from '../../wrongbook/presentation'
 import type { createReviewSubmission } from '../../wrongbook/submission'
-const props = defineProps<{ question: Record<string, unknown>; identity: string; submission: ReturnType<typeof createReviewSubmission>; readonly?: boolean; readonlyReason?: string }>()
+const props = defineProps<{ question: Record<string, unknown>; identity: string; submission: ReturnType<typeof createReviewSubmission>; readonly?: boolean; readonlyReason?: string; allowAssistance?: boolean }>()
 const emit = defineEmits<{ saved: [] }>()
 const s = computed(() => props.submission.state)
 const shown = computed(() => presentReviewQuestion(props.question))

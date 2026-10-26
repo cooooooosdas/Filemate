@@ -28,10 +28,7 @@
             <p>{{ item.reason }}</p>
             <ul v-if="item.tasks?.length"><li v-for="task in item.tasks" :key="task">{{ task }}</li></ul>
             <p v-if="item.explanation && results[item.item_id]" class="hint">复习提示：{{ item.explanation }}</p>
-            <div v-if="item.kind === 'wrong_question'" class="retry">
-              <label><span class="sr-only">重新回答这道错题</span><input v-model="answers[item.item_id]" :name="`today_${item.wrong_id}`" autocomplete="off" placeholder="先回忆，再输入答案…" @keyup.enter="retry(item)" /></label>
-              <button type="button" :disabled="!answers[item.item_id]?.trim() || working.has(item.item_id)" @click="retry(item)">提交答案</button>
-            </div>
+            <ReviewEntry v-if="item.kind === 'wrong_question' && item.artifact_id && item.question_index !== undefined && item.question_snapshot" :ref="el => setEntry(item.item_id,el)" :artifact-id="item.artifact_id" :question-index="item.question_index" :question="item.question_snapshot" @saved="load" />
             <p v-if="results[item.item_id]" class="feedback">{{ results[item.item_id] }}</p>
           </div>
           <div class="task-action">
@@ -50,7 +47,7 @@
         <aside class="today-aside" aria-label="今日安排与时间">
           <section class="summary" aria-label="今日学习概览">
             <article><span class="summary-icon"><Notebook :size="25" /></span><div><span>今日任务</span><strong>{{ data.items.length }}<small> 项</small></strong><p>按计划与错题记录安排</p></div></article>
-            <article class="review-stat"><span class="summary-icon"><Clock :size="25" /></span><div><span>待复习错题</span><strong>{{ data.pending_wrong_count }}<small> 题</small></strong><p>连续答对两次标记掌握</p></div></article>
+            <article class="review-stat"><span class="summary-icon"><Clock :size="25" /></span><div><span>待复习错题</span><strong>{{ data.pending_wrong_count }}<small> 题</small></strong><p>依据实际作答与复习排期</p></div></article>
             <article><span class="summary-icon"><Reading :size="25" /></span><div><span>进行中计划</span><strong>{{ data.active_plan_count }}<small> 个</small></strong><p>已完成的进度自动保留</p></div></article>
           </section>
       <section class="coach-controls" aria-label="今日学习安排">
@@ -82,21 +79,22 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { onMounted, onBeforeUnmount, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { CircleCheckFilled } from '@element-plus/icons-vue'
 import { ArrowRight, Clock, Notebook, Reading } from '../icons'
 import StudyMotif from '../components/StudyMotif.vue'
 import {
   getTodayReview,
   saveTodayReviewPreferences,
-  submitQuizAttempt,
   updateStudyPlanDay,
   type TodayReview,
   type TodayReviewItem
 } from '../services/api'
 import CompanionCard from '../components/CompanionCard.vue'
 import DataState from '../components/DataState.vue'
+import ReviewEntry from '../components/wrongbook/ReviewEntry.vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import {
   publishCompanionEvent,
   type CompanionEvent
@@ -111,7 +109,11 @@ function focusQueue(): void {
 const data = ref<TodayReview | null>(null)
 const loading = ref(true)
 const error = ref('')
-const answers = ref<Record<string, string>>({})
+const entries = new Map<string, {dirty():boolean;invalidate():void}>()
+function setEntry(id:string,el:unknown){if(el)entries.set(id,el as {dirty():boolean;invalidate():void});else entries.delete(id)}
+async function canLeave(){if(![...entries.values()].some(e=>e.dirty()))return true;try{await ElMessageBox.confirm('未提交正文不会保存，在途请求仍可能保存。是否离开？','保留当前作答？',{confirmButtonText:'离开',cancelButtonText:'继续作答'});return true}catch{return false}}
+onBeforeRouteLeave(canLeave)
+let generation=0
 const results = ref<Record<string, string>>({})
 const working = ref<Set<string>>(new Set())
 const companionEvent = ref<CompanionEvent | null>(null)
@@ -125,10 +127,14 @@ const setWorking = (itemId: string, active: boolean) => {
 }
 
 const load = async () => {
-  loading.value = true
+  const current=++generation
+  if (!data.value) loading.value = true
   error.value = ''
   try {
-    data.value = await getTodayReview()
+    const next = await getTodayReview()
+    if(current!==generation)return
+    if([...entries.values()].some(e=>e.dirty()))return
+    data.value = next
     availableInput.value = data.value.available_minutes
   }
   catch (e: any) { error.value = e?.message || '今日学习队列加载失败'; ElMessage.error(error.value) }
@@ -187,35 +193,15 @@ const completePlan = async (item: TodayReviewItem) => {
   } finally { setWorking(item.item_id, false) }
 }
 
-const retry = async (item: TodayReviewItem) => {
-  const answer = answers.value[item.item_id]?.trim()
-  if (!answer || !item.artifact_id || item.question_index === undefined) return
-  setWorking(item.item_id, true)
-  try {
-    const result = await submitQuizAttempt(item.artifact_id, item.question_index, answer, item.question_snapshot)
-    results.value[item.item_id] = `${result.feedback}（匹配度 ${Math.round(result.score * 100)}%）`
-    companionEvent.value = publishCompanionEvent({
-      mood: result.is_correct ? 'wink' : 'encouraging',
-      title: result.is_correct ? '这道题已经重新拿下' : '错题正在变成下一次的得分点',
-      message: result.is_correct
-        ? '继续保持，连续答对后系统会把它标记为已掌握。'
-        : '先对照解析找出错因，再用自己的话回答一次。',
-      evidence: `依据：本次作答匹配度 ${Math.round(result.score * 100)}%`,
-      route: '/wrongbook',
-      actionLabel: '查看错题证据'
-    })
-    answers.value[item.item_id] = ''
-    await load()
-  } catch (error: any) {
-    ElMessage.error(error.message || '答案提交失败')
-  } finally { setWorking(item.item_id, false) }
-}
-
 const formatDate = (value: string) => new Intl.DateTimeFormat('zh-CN', {
   month: 'long', day: 'numeric', weekday: 'long'
 }).format(new Date(`${value}T00:00:00`))
 
-onMounted(load)
+function visible(){if(!document.hidden&&!loading.value)load()}
+function invalidate(){++generation;for(const e of entries.values())e.invalidate();data.value=null;load()}
+function unload(e:BeforeUnloadEvent){if([...entries.values()].some(x=>x.dirty())){e.preventDefault();e.returnValue=''}}
+onMounted(()=>{load();document.addEventListener('visibilitychange',visible);window.addEventListener('beforeunload',unload);window.addEventListener('filemate:session-expired',invalidate);window.addEventListener('filemate:data-restored',invalidate)})
+onBeforeUnmount(()=>{++generation;document.removeEventListener('visibilitychange',visible);window.removeEventListener('beforeunload',unload);window.removeEventListener('filemate:session-expired',invalidate);window.removeEventListener('filemate:data-restored',invalidate)})
 </script>
 
 <style scoped>

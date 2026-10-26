@@ -5,7 +5,7 @@ import sqlite3
 from collections.abc import Callable
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from pydantic import Field, field_validator
@@ -94,6 +94,20 @@ def create_router(get_storage: Callable[[], SQLiteStorage]) -> APIRouter:
     @router.get('/receipts/{request_key}')
     def receipt(request_key: str):
         return response(ReviewQueries(get_storage()).receipt(request_key))
+
+    @router.get('/question-access/{artifact_id}/{question_index}')
+    def question_access(artifact_id: str, question_index: int = Path(ge=0, le=100_000)):
+        storage = get_storage()
+        artifact = storage.get_artifact(artifact_id)
+        if not artifact or artifact.get('artifact_type') != 'questions':
+            raise LookupError('题集不存在')
+        questions = artifact.get('content')
+        if not isinstance(questions, list) or question_index >= len(questions):
+            raise LookupError('题目不存在')
+        history = bool((artifact.get('metadata') or {}).get('read_only_snapshot'))
+        row = storage._conn().execute('SELECT scheduler_version,revision FROM wrong_questions WHERE artifact_id=? AND question_index=?', (artifact_id, question_index)).fetchone()
+        owned = bool(row and (row['scheduler_version'] != 'legacy-v1' or row['revision'] > 1))
+        return response({'legacy_writable': not history and not owned, 'read_only_snapshot': history})
 
     @router.post("/attempts", dependencies=[Depends(_enabled)])
     def answer(body: Answer):

@@ -23,6 +23,7 @@ from contextvars import ContextVar
 from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal
+from urllib.parse import quote
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
@@ -3952,7 +3953,7 @@ def today_review():
                 "question_snapshot": question,
                 "wrong_id": wrong["wrong_id"],
                 "explanation": question.get("explanation", ""),
-                "route": "/wrongbook",
+                "route": f"/wrongbook?focus={quote(wrong['wrong_id'], safe='')}",
             }
         )
 

@@ -1,3 +1,4 @@
+import type { createReviewEntry } from '../wrongbook/entry-state.ts'
 import type { AnswerReceipt, LearningApi, LearningEvidence, LearningPreview, LearningReceipt, LearningWork, PathOptions, PathPreview, PracticeDecision, PracticeOptions, QuestionCandidate, QuestionRef, RelatedCourse, RelatedInput } from '../types/courseLearning.ts'
 import type { GraphConfirmation, GraphPage } from '../types/courseGraph.ts'
 
@@ -10,7 +11,7 @@ export interface LearningState {
   pathOptions: PathOptions; pathPreview: PathPreview | null; planReceipt: LearningReceipt | null
   linksPreview: LearningPreview | null; relatedPreview: LearningPreview | null; lastReceipt: LearningReceipt | null
 }
-export function createCourseLearningController(api: LearningApi, observe: (s: LearningState) => LearningState = s => s) {
+export function createCourseLearningController(api: LearningApi, observe: (s: LearningState) => LearningState = s => s, review?: ReturnType<typeof createReviewEntry>) {
   const initial = (): LearningState => ({ scope: '', cid: '', nid: '', busy: '', error: '', evidence: null,
     candidates: emptyPage(), related: emptyPage(), selected: null, answer: '', answerReceipt: null, work: null,
     decisions: [], practicePreview: null, practiceReceipt: null, pathOptions: { goal: '巩固当前知识点', days: 3, daily_minutes: 20 },
@@ -19,7 +20,7 @@ export function createCourseLearningController(api: LearningApi, observe: (s: Le
   let epoch = 0, abort = new AbortController(), disposed = false
   let links: { items: QuestionRef[]; active: boolean } | null = null, related: RelatedInput | null = null
   const pending = new Map<string, { signature: string; key: string }>()
-  const dirty = () => !!state.busy || !!(state.answer.trim() && !state.answerReceipt) || !!state.practicePreview || !!state.pathPreview || !!state.linksPreview || !!state.relatedPreview || !!(state.work && ['running', 'ready'].includes(state.work.status))
+  const dirty = () => !!review?.dirty() || !!state.busy || !!(state.answer.trim() && !state.answerReceipt) || !!state.practicePreview || !!state.pathPreview || !!state.linksPreview || !!state.relatedPreview || !!(state.work && ['running', 'ready'].includes(state.work.status))
   const fresh = (e: number) => !disposed && e === epoch
   const error = (cause: unknown) => (cause as { status?: number }).status === 409 ? '内容已变化，请刷新后重新预览；原回答保留。' : '操作暂未完成，输入已保留。可重试；重复确认沿用同一请求。'
   async function run<T>(kind: string, execute: () => Promise<T>, apply: (r: T) => void): Promise<boolean> {
@@ -42,7 +43,7 @@ export function createCourseLearningController(api: LearningApi, observe: (s: Le
     }
   }
   const confirmation = (token: string, key: string): GraphConfirmation => ({ confirmed: true, confirmation_token: token, request_key: key })
-  function resetIdentity() { ++epoch; abort.abort(); abort = new AbortController(); pending.clear(); links = null; related = null; Object.assign(state, initial()) }
+  function resetIdentity() { review?.invalidate(); ++epoch; abort.abort(); abort = new AbortController(); pending.clear(); links = null; related = null; Object.assign(state, initial()) }
   async function open(scope: string, cid: string, nid: string, discard = false) {
     if (scope === state.scope && cid === state.cid && nid === state.nid) return true
     if (!discard && dirty()) return false
@@ -56,17 +57,19 @@ export function createCourseLearningController(api: LearningApi, observe: (s: Le
   async function loadCandidates(q = '', offset = 0) {
     return run('questions', () => api.getCourseQuestions(state.cid, state.nid, q, offset, abort.signal), r => { state.candidates = r })
   }
-  function chooseQuestion(item: QuestionCandidate) { if (state.busy) return; state.selected = structuredClone(item); state.answer = ''; state.answerReceipt = null }
-  function setAnswer(value: string) { if (!state.busy && !state.answerReceipt) state.answer = value }
+  function chooseQuestion(item: QuestionCandidate) { if (state.busy) return; state.selected = JSON.parse(JSON.stringify(item)); state.answer = ''; state.answerReceipt = null; if(review) void review.open(item, item.question as Record<string,unknown>) }
+  function setAnswer(value: string) { if (!state.busy && !state.answerReceipt) { state.answer = value; review?.submission.setAnswer(value) } }
   async function submitAnswer() {
     const selected = state.selected
     if (!selected || !state.answer.trim() || state.answerReceipt) return false
     const { cid, nid } = state
+    if(review){const e=epoch; if(review.state.loading || review.state.readonly){state.error=review.state.message||'正在核验服务能力，请稍候。';return false};const ok=await review.submission.submit();if(!fresh(e))return false;if(ok)await reviewSaved();else state.error=review.submission.state.error;return ok}
     const body = [selected.artifact_id, selected.question_index, state.answer, selected.question]
     const ok = await run('answer', () => command('answer', body, key => api.submitQuizAttempt(selected.artifact_id, selected.question_index, state.answer, selected.question, key)), r => { state.answerReceipt = r })
     if (ok && cid === state.cid && nid === state.nid) await loadEvidence()
     return ok
   }
+  async function reviewSaved(){if(!review?.submission.state.receipt)return false;state.answerReceipt=review.submission.state.receipt;state.answer=review.submission.state.answer;const ok=await loadEvidence();if(!ok)state.error='作答已保存，学习记录刷新失败，可重试读取。';return true}
   async function generatePractice(options: PracticeOptions) {
     return run('generate', () => command('generate', options, key => api.generateCoursePractice(state.cid, state.nid, { ...options, request_key: key })), r => { state.work = r; state.decisions = []; state.practicePreview = null; state.practiceReceipt = null })
   }
@@ -116,5 +119,5 @@ export function createCourseLearningController(api: LearningApi, observe: (s: Le
     if (!work || state.busy) return false
     return run('cancel', () => command('cancel', work.work_id, key => api.cancelCourseLearningWork(state.cid, work.work_id, key)), r => { state.work = r; state.practicePreview = null })
   }
-  return { state, open, loadEvidence, loadCandidates, chooseQuestion, setAnswer, submitAnswer, generatePractice, recoverWork, setDecisions, reviewPractice, confirmPractice, setPathOptions, previewPath, confirmPath, previewLinks, confirmLinks, previewRelated, confirmRelated, cancel, dirty, resetIdentity, dispose() { resetIdentity(); disposed = true } }
+  return { state, reviewSaved, open, loadEvidence, loadCandidates, chooseQuestion, setAnswer, submitAnswer, generatePractice, recoverWork, setDecisions, reviewPractice, confirmPractice, setPathOptions, previewPath, confirmPath, previewLinks, confirmLinks, previewRelated, confirmRelated, cancel, dirty, resetIdentity, dispose() { resetIdentity(); review?.dispose(); disposed = true } }
 }

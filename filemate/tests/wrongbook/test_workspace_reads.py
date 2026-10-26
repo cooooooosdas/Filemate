@@ -189,3 +189,25 @@ def test_http_cross_account_receipt_and_page_isolation(account_server, monkeypat
         assert second.get('/wrongbook/v2/page').json()['data']['total'] == 0
         assert second.get('/wrongbook/v2/' + wid).status_code == 404
         assert second.get('/wrongbook/v2/receipts/' + body['request_key']).status_code == 404
+
+
+def test_question_access_is_scoped_and_prevents_legacy_write(review_store):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from filemate.wrongbook.api import create_router
+    store, _, aid, _, _ = review_store
+    store.record_quiz_attempt(artifact_id=aid, question_index=0, user_answer="B", is_correct=False, score=0, feedback="合成")
+    wid = store._conn().execute("SELECT wrong_id FROM wrong_questions WHERE artifact_id=?", (aid,)).fetchone()[0]
+    app = FastAPI()
+    app.include_router(create_router(lambda: store))
+    client = TestClient(app)
+    path = f'/wrongbook/v2/question-access/{aid}/0'
+    response = client.get(path)
+    assert response.status_code == 200
+    assert response.json()['data']['legacy_writable'] is True
+    store._conn().execute("UPDATE wrong_questions SET scheduler_version='review-interval-v2' WHERE wrong_id=?", (wid,))
+    store._conn().commit()
+    assert client.get(path).json()['data']['legacy_writable'] is False
+    assert client.get('/wrongbook/v2/question-access/missing/0').status_code == 404
+    assert client.get(path + '?owner=other').status_code == 422

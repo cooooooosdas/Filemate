@@ -51,7 +51,7 @@
           <p v-if="generationError" role="alert" class="inline-error">{{ generationError }} <button :disabled="busy || !authorized" @click="generate">重试</button></p>
           <p v-if="generating" class="generation-note" role="status">正在生成，完成后会自动保存到这份资料。无需重复上传。</p>
           <section v-if="artifacts.length" class="saved-contents" aria-label="已保存的学习内容"><h2>接着学</h2><div class="artifact-picker"><button v-for="item in artifacts" :key="item.artifact_id" :aria-pressed="activeArtifactId === item.artifact_id" :title="item.title" @click="selectArtifact(item.artifact_id)"><span>{{ artifactLabel(item.artifact_type) }}</span><strong>{{ item.title }}</strong><time>{{ formatDate(item.created_at) }}</time></button></div></section>
-          <KeepAlive><LearningArtifact v-if="activeArtifact" :key="activeArtifact.artifact_id" :artifact="activeArtifact" /></KeepAlive>
+          <KeepAlive><LearningArtifact ref="artifactPanel" v-if="activeArtifact" :key="activeArtifact.artifact_id" :artifact="activeArtifact" /></KeepAlive>
           <div v-if="!activeArtifact" class="resource-empty"><el-icon><Notebook /></el-icon><h3>还没有学习内容</h3><p>先整理一份笔记，再用卡片回忆、用练习检验。不必一次做完。</p></div>
         </div>
       </aside>
@@ -111,7 +111,9 @@ let internalNavigation = false
 const message = (cause: unknown) => cause instanceof Error ? cause.message : '操作失败，请重试'
 function formatDate(value?: string) { return value ? new Date(value).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '' }
 async function loadSources() { loadingSources.value = true; try { sources.value = await getKnowledgeSources(200) } finally { loadingSources.value = false } }
+const artifactPanel=ref<InstanceType<typeof LearningArtifact>|null>(null)
 async function allowLeaving(): Promise<boolean> {
+  if (artifactPanel.value && !await artifactPanel.value.canLeave()) return false
   if (busy.value) { ElMessage.info('请等当前学习操作完成后再切换。'); return false }
   if (!questionText.value.trim()) return true
   try {

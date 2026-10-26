@@ -1393,7 +1393,7 @@ export interface TodayReviewItem {
   day_index?: number
   artifact_id?: string
   question_index?: number
-  question_snapshot?: object
+  question_snapshot?: Record<string, unknown>
   wrong_id?: string
   explanation?: string
   error_cause?: WrongErrorCause

@@ -138,3 +138,16 @@ def test_account_sessions_cannot_read_or_confirm_another_space(account_server, m
         assert bob.post("/wrongbook/v2/attempts", json=body).status_code == 404
         assert bob.post(f"/wrongbook/v2/{wid}/schedule-confirm", json={**command, "confirmed": True, "confirmation_token": token}).status_code == 404
         assert alice.get(f"/wrongbook/v2/{wid}/attempts").json()["data"]["total"] == 1
+
+
+def test_today_review_links_to_exact_wrong_record(server_module):
+    module, store = server_module
+    body = seed(store)
+    store.record_quiz_attempt(artifact_id=body['artifact_id'], question_index=0, user_answer='B', is_correct=False, score=0, feedback='合成')
+    wid = store._conn().execute('SELECT wrong_id FROM wrong_questions WHERE artifact_id=?', (body['artifact_id'],)).fetchone()[0]
+    store._conn().execute("UPDATE wrong_questions SET next_review_at='2020-01-01T00:00:00Z' WHERE wrong_id=?", (wid,))
+    store._conn().commit()
+    with TestClient(module.app) as client:
+        queue = client.get('/review/today').json()['data']['items']
+        item = next(row for row in queue if row.get('wrong_id') == wid)
+        assert item['route'] == f'/wrongbook?focus={wid}'
