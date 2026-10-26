@@ -97,10 +97,10 @@
 - `createReviewPreferences(storage, scope)`仅保存筛选、选中ID、有限滚动位置和最多20个批次引用／attempt ID／请求key及摘要，不保存正文。失效／超界数据丢弃并提示；拒绝本机存储时页内可用。
 - 本机待确认请求仅保存key、输入摘要和题目引用；恢复先GET回执。有回执以服务端为准；404仅表示当前未查到，不能声称失败或自动换键。原稿仍在内存时可原样重试；强刷后需重新输入同一内容匹配摘要，或先跳过此题，原未知请求保持待核验。
 
-- [ ] 写Node失败测试：双击＋Enter、提交成功后响应丢失、同key重试、409原稿保留、主观NULL、看答案后再清空输入仍为assisted；不确定状态不能变更body重交。
-- [ ] 写Node失败测试：切题／账号后迟到回执不可应用，旧批次不能在新scope恢复，坏存储／非法URL／重复focus不串题，本机记录没有回答或题目正文。
-- [ ] 执行`node --test tests/wrongbook-submission.test.mjs tests/wrongbook-browse.test.mjs`（目录`filemate/web`）保存RED，实施上述控制器后同命令GREEN。
-- [ ] 提交`feat(wrongbook): 统一幂等提交与安全浏览状态`。
+- [x] 写Node失败测试：双击＋Enter、提交成功后响应丢失、同key重试、409原稿保留、主观NULL、看答案后再清空输入仍为assisted；不确定状态不能变更body重交。
+- [x] 写Node失败测试：切题／账号后迟到回执不可应用，旧批次不能在新scope恢复，坏存储／非法URL／重复focus不串题，本机记录没有回答或题目正文。
+- [x] 执行`node --test tests/wrongbook-submission.test.mjs tests/wrongbook-browse.test.mjs`（目录`filemate/web`）保存RED，实施上述控制器后同命令GREEN。
+- [x] 提交`feat(wrongbook): 统一幂等提交与安全浏览状态`。
 
 ## Task 3：浏览复盘工作区与真实证据
 
