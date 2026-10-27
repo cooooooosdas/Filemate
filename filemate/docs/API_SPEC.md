@@ -8,7 +8,7 @@
 
 参数：q≤160、knowledge_q≤120、source_id/course_id≤128；status为all/due/overdue/active/pending/criterion_met/legacy_completed/paused/history/invalid；cause为B级13类或unconfirmed；min_errors/max_errors为0–1000000；due_from/due_to/created_from/created_to为带时区ISO时间（含端点）；sort为due/updated/errors/created、direction为asc/desc，最后按wrong_id稳定排序。无效／相反区间、未知／重复参数422。reviewable_only=true在分页前排除暂停、旧版已完成、历史只读与异常记录，用于有界专注批次。课程只认有效显式映射和当前摘要，不按同名推断。
 
-`GET /wrongbook/v2/filter-options?kind=sources|courses&q=&limit=30&offset=0`返回同结构分页的id/label，只列有真实错题的来源／有效课程映射。摘要增加active_review_count（新规则active且new/needs_review/provisional）和saved_review_attempt_count（新规则review/early_practice的真实记录，包含待核对，不是正确次数）。前端工作区仍在开发，新增合同不是完整C级验收或上线声明。
+`GET /wrongbook/v2/filter-options?kind=sources|courses&q=&limit=30&offset=0`返回同结构分页的id/label，只列有真实错题的来源／有效课程映射。摘要增加active_review_count（新规则active且new/needs_review/provisional）和saved_review_attempt_count（新规则review/early_practice的真实记录，包含待核对，不是正确次数）。前端工作区已接线并完成本地C级工程验收；用户阶段验收和生产上线仍单独记录。
 
 ## 错题复盘2.0 B级候选（2026-10-26）
 

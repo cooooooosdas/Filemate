@@ -1,6 +1,6 @@
 # 错题复盘2.0 C级交互工作台交付记录
 
-2026-10-26。状态：候选实现已完成，最终门禁、浏览器验收及独立审阅待收口；本页随后填入真实结果。
+2026-10-27完成。本地工程验收通过，等待用户C级阶段验收；总体CONDITIONAL PASS。没有推送、合并或生产部署。
 
 ## 用户可见变化
 
@@ -27,7 +27,14 @@
 
 ## 验证结果
 
-待最后门禁、浏览器及独立审阅结束填入。匿名摘要将保存至`docs/audits/wrongbook-2-c-2026-10-26/verification.json`；原始日志／截图仅在`_working/wrongbook-c-20261026/`，不提交数据库、截图、密码或真实资料。
+- 最终全量门禁exit 0：后端1648通过、22跳过、5按标记排除、3条依赖弃用警告；前端257通过、0失败，Ruff、类型检查、构建及体积检查通过。
+- 新版开关开启／关闭构建均通过，首屏gzip分别142888／142929字节，预算143360字节，没有扩大预算或提前载入重模块。
+- 真实Edge浏览器21组通过，pageerror为0；五种屏宽×四主题共20组视觉检查，另含375px专注作答、键盘、200%缩放、减少动态。对比度只测题目与阅读面板，不泛称全站无障碍通过。
+- 100／1000／10000条真实鉴权API，各丢弃2次预热后记录20次；万条列表p95约45.7ms，搜索p95约71.6ms；实际页面搜索反馈467.8ms、目录搜索结果DOM为1项，默认列表最多30项。
+- 此前并行后台回归负载下的1532.6ms页面反馈失败记录仍保留。最终独立运行达到原门限，不能外推为生产高负载SLA。
+- 一次全分支独立审阅发现8项Important，全部在同轮以RED→GREEN修复；没有追加复审。详见[审阅与修复](audits/wrongbook-2-c-2026-10-26/review.md)。24个原有修改状态测试逐文件SHA256均未改变；schema仍为35。
+
+匿名机器摘要：[verification.json](audits/wrongbook-2-c-2026-10-26/verification.json)。原始日志／截图仅保存在`_working/wrongbook-c-20261026/`；不提交数据库、密码、截图或真实资料。22项跳过主要涉及Linux分支、可选OCR、缺少样本及符号链接权限；5项真实端到端测试按not e2e排除。
 
 ## 已知边界
 
@@ -42,4 +49,37 @@
 
 ## 执行裁定记录
 
-最终独立审阅结束后附全部裁定、代价与保留轻微项；不把未执行项目记作通过。
+以下逐行保存执行裁定及代价，含后来被替代的方案；完整账本见[执行记录](audits/wrongbook-2-c-2026-10-26/execution-record.md)。
+
+- Ruling: No new worktree or dependency reinstall — existing isolated worktree and installed runtimes are the tested B environment — cost if wrong: baseline dependency drift, checked by baseline and final verify.
+
+- Ruling: move review HTTP implementations to services/review-api.ts with lazy services/api.ts facades — build measured 144014 gzip > 143360 budget; preserve public call signatures and shared auth interceptors — cost if wrong: lazy import or cycle errors, covered by enabled build and real browser.
+
+- Ruling: direct route-only services/review-api.ts over named lazy facades; all callers retain the shared authenticated Axios client. New UI split the Vue runtime and added gzip overhead; group its interdependent runtime modules in Vite. Enabled build now 142786 / 143360 gzip bytes, without widening budget or excluding static imports. Cost if wrong: shared-runtime regressions, covered by full gate/browser.
+
+- Ruling: add scoped question-access read endpoint before legacy submissions — artifact/index entries do not carry wrong_id, so client cannot otherwise know 2.0 ownership before a rejected POST; no schema or writes added. Cost if wrong: extra bounded GET per question; measured in browser and full regression.
+
+- Ruling: use optional SQLite JSON1 for native stem search with guarded malformed JSON and UDF fallback when unavailable — measured 10000-row Python callbacks exceeded 500ms; no schema/runtime upgrade — cost if wrong: compatibility fallback may miss the performance target on SQLite without JSON1, explicitly remains an E/runtime measurement dependency.
+
+- Final: Ruling: production SQLite3.26 migration/restore and JSON1-free performance remain E dependencies — local functional and timing checks cannot prove production runtime behavior — cost if wrong: production-only migration/performance failure; not approved for deployment here.
+
+- Final: Ruling: D AI analysis, precise graph links and incremental goals stay outside C — preserving the approved stage boundary — cost if wrong: those desired integrations remain unavailable until D.
+
+- Final: Ruling: no real-student learning or live-model claim — synthetic engineering checks only — cost if wrong: effectiveness and live service reliability remain unproven.
+
+- Final: Ruling: retain B derived-source deletion-preview undercount as the existing Minor — actual deletion works; C does not change this B boundary — cost if wrong: a user sees an understated review-event deletion count.
+
+- Final: Ruling: do not add cross-device batch sync or forced-close answer recovery — contract keeps unsent text only in memory and gives leave guards — cost if wrong: forced closure still loses unsent text.
+
+- Final: Ruling: course code-reading uses the existing supported short_answer type with a code field, displayed as code and saved pending — a synthetic fixture incorrectly used unsupported question_type=code and correctly received 422; do not expand the course grading contract or execute code — cost if wrong: code responses remain ungraded until evidence-based review; unified OJ stays a separate card.
+
+- Task 6: Ruling: task-done uses a closeout command that checks the just-completed mandatory full verify receipt, pinned source hashes and 21-check browser receipt, then reruns the complete frontend suite — avoid repeating the long backend run without a new source change — cost if wrong: stale evidence could be accepted; exact exit receipts and unchanged source hashes gate completion.
+
+保留轻微项：B级间接派生资料删除预览少计review_events；实际级联删除正确。独立审阅没有新增C级Minor。
+
+
+## 收尾修复与实际边界
+
+独立审阅后补齐多作答组件共享恢复、回执题目与版本核验、刷新后原答／原动作重试、手机专注样式、资料切换及刷新保护、资料页身份／恢复失效、作答后的详情修订刷新，以及图谱连续切题的一次性离开许可。读取最新详情失败时保留成功回执，禁止继续用旧revision写入，可点“重新读取详情”。
+
+课程代码阅读沿用short_answer＋code字段，支持完整代码文本输入与待核对保存；没有把课程练习当作OJ执行。合成备份恢复覆盖错题工作台与资料练习两处，实际执行签名ZIP预览确认，应用恢复通知属于显式注入，不代表完整隐私面板或生产恢复验收。
