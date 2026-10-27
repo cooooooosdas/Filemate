@@ -9,6 +9,27 @@ function setup(overrides = {}) {
   const api = { getReviewBrowserScope: async () => 'a'.repeat(64), getReviewCapabilities: async () => ({ write_enabled: true }), getReviewSummary: async () => ({ total: 1 }), getReviewPage: async p => ({ items: [detail('first')], total: 1, has_more: false, offset: p.offset }), getReviewDetail: async id => detail(id), getReviewAttempts: async () => ({ items: [], total: 0 }), getReviewEvents: async () => ({ items: [], total: 0 }), getLearningSource: async () => ({ raw_text: '原文' }), setReviewDiagnosis: async (id, body) => { calls.push(body); return { ...detail(id), error_causes: body.error_causes } }, previewReviewSchedule: async (id, body) => ({ wrong_id: id, before: {}, after: { schedule_status: 'paused' }, confirmation_token: 'token' }), confirmReviewSchedule: async (id, body) => { calls.push(body); return { wrong_id: id, after: { schedule_status: 'paused' }, review_event_id: 'event' } }, submitReviewAnswer: async () => ({}), getReviewReceipt: async () => ({}), ...overrides }
   return { control: mod.createReviewWorkspaceController(api), calls }
 }
+
+test('after an answer refresh detail revision without losing receipt or unsaved diagnosis',async()=>{
+ let revision=1;const expected=[]
+ const {control:c}=setup({getReviewDetail:async id=>({...detail(id),revision}),submitReviewAnswer:async()=>{revision++;return {attempt_id:'saved'}},setReviewDiagnosis:async(id,b)=>{expected.push(b.expected_revision);return {}}})
+ await c.initialize();await c.select('first');c.state.diagnosis.note='my unsaved diagnosis';c.submission.setAnswer('A');await c.submission.submit()
+ assert.equal(await c.refreshAfterAnswer(),true);assert.equal(c.state.detail.revision,2);assert.equal(c.submission.state.receipt.attempt_id,'saved');assert.equal(c.state.diagnosis.note,'my unsaved diagnosis')
+ await c.saveDiagnosis();assert.deepEqual(expected,[2])
+})
+
+test('late answer detail refresh cannot replace another selection',async()=>{
+ let release,hold=false;const {control:c}=setup({getReviewDetail:async id=>hold&&id==='first'?new Promise(r=>{release=r}):detail(id)})
+ await c.initialize();await c.select('first');hold=true;const refresh=c.refreshAfterAnswer();await c.select('second');release({...detail('first'),revision:9});await refresh
+ assert.equal(c.state.detail.wrong_id,'second')
+})
+
+test('failed post-answer refresh preserves success and blocks stale revision writes until retry',async()=>{
+ let fail=false;const {control:c}=setup({getReviewDetail:async id=>{if(fail)throw Error('offline');return detail(id)}})
+ await c.initialize();await c.select('first');c.submission.state.receipt={attempt_id:'saved'};fail=true
+ assert.equal(await c.refreshAfterAnswer(),false);assert.equal(c.submission.state.receipt.attempt_id,'saved');assert.equal(c.writable(),false)
+ fail=false;await c.refreshAfterAnswer();assert.equal(c.writable(),true)
+})
 test('deep links select their actual id, and missing ids never fall back to first', async () => {
   const { control: c } = setup({ getReviewDetail: async id => { if (id === 'gone') throw { status: 404 }; return detail(id) } })
   await c.initialize(); await c.loadPage({}); await c.select('page100'); assert.equal(c.state.detail.wrong_id, 'page100')

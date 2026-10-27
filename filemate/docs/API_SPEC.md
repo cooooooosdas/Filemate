@@ -2,7 +2,7 @@
 
 ## 错题工作台C级只读合同（2026-10-26，开发候选）
 
-沿用B级身份、响应包装及no-store，GET不调用模型。`GET /wrongbook/v2/capabilities`返回`write_enabled/rule_version`，只读在关闭写入时保留。`GET /wrongbook/v2/receipts/{request_key}`返回当前空间已保存的review_events回执，键16–80位字母数字下划线／连字符，未查到404；404不证明此前在途请求已失败。
+沿用B级身份、响应包装及no-store，GET不调用模型。`GET /wrongbook/v2/capabilities`返回`write_enabled/rule_version`，只读在关闭写入时保留。`GET /wrongbook/v2/receipts/{request_key}`返回当前空间已保存的review_events回执，键16–80位字母数字下划线／连字符，未查到404；404不证明此前在途请求已失败。作答回执额外从实际quiz_attempts读取artifact_id/question_index/question_digest，客户端须与服务端题目摘要逐项核对才可应用；证据已删除则404，不使用本机元数据生成成功结果。POST原回执合同不变。
 
 `GET /wrongbook/v2/page`默认limit30（1–100）、offset0（0–1000000），先全库过滤再分页，返回items/total/limit/offset/has_more/as_of。目录项含题目身份与原始摘要、stem（最多300字）、题型、来源名、知识点、状态、次数、日期及read_only_snapshot/data_error，不含原答／参考答案／解析。详情另含原始question与question_digest，提交必须使用原始question。
 
@@ -1235,7 +1235,7 @@ Task6前端接线：课程知识点详情的“开始学习与练习”打开同
 
 ### C级作答入口预检（本地候选）
 
-`GET /wrongbook/v2/question-access/{artifact_id}/{question_index}` 返回 `legacy_writable/read_only_snapshot`，按服务端身份定位真实题集，非法序号422、不存在404，禁止未知查询参数，无模型调用。旧界面须先预检再提交；新界面仍须能力开关，未知状态不降回旧算法。今日复习队列 `route` 精确指向 `/wrongbook?focus=<wrong_id>`。复盘HTTP实现放在按路由载入的 `services/review-api.ts`，复用 `services/api.ts` 的认证、错误和超时客户端。
+`GET /wrongbook/v2/question-access/{artifact_id}/{question_index}` 返回 `legacy_writable/read_only_snapshot/question_digest`，摘要来自服务端原始题目，用于所有入口核验恢复回执；按服务端身份定位真实题集，非法序号422、不存在404，禁止未知查询参数，无模型调用。旧界面须先预检再提交；新界面仍须能力开关，未知状态不降回旧算法。今日复习队列 `route` 精确指向 `/wrongbook?focus=<wrong_id>`。复盘HTTP实现放在按路由载入的 `services/review-api.ts`，复用 `services/api.ts` 的认证、错误和超时客户端。
 
 
 ### C级工作台查询的兼容与运行边界

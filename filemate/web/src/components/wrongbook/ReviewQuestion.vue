@@ -14,7 +14,8 @@
       <button v-if="allowAssistance !== false && !s.receipt && !s.answerRevealed" :disabled="s.busy || s.uncertain" @click="submission.revealAnswer()"><View :size="19" />查看答案</button>
     </div>
     <p v-if="s.error" ref="errorFocus" role="alert" tabindex="-1" class="review-error">{{ s.error }}</p>
-    <div v-if="s.uncertain" class="review-actions"><button :disabled="s.busy" @click="submission.recover()">查询保存回执</button><button :disabled="s.busy || s.stale" @click="submit('answer')">原样重试</button></div>
+    <p v-if="s.retryNeedsInput" class="review-notice">请重新输入上次的完整回答后原样重试；只有与原请求摘要一致才会发送。</p>
+    <div v-if="s.uncertain" class="review-actions"><button :disabled="s.busy" @click="recover">查询保存回执</button><button :disabled="s.busy || s.stale" @click="retry">原样重试</button></div>
     <p v-if="s.answerRevealed && !s.receipt" class="review-notice">已查看参考，本次将记为辅助练习，不计独立验证。</p>
     <section v-if="s.receipt" class="review-receipt" role="status"><h3>{{ reviewResultLabel(s.receipt) }}</h3><p>{{ s.receipt.feedback }}</p><p>{{ s.receipt.eligible ? '本次计入合格验证。' : '本次已保存；是否计入合格验证由真实作答与复习时间共同决定。' }}</p></section>
     <section v-if="s.answerRevealed || s.receipt" class="review-reference"><h3>参考与解析</h3><p class="preserve">{{ shown.reference || s.receipt?.reference_answer || '暂无参考答案' }}</p><p class="preserve">{{ shown.explanation }}</p></section>
@@ -31,6 +32,8 @@ const s = computed(() => props.submission.state)
 const errorFocus = ref<HTMLElement | null>(null)
 watch(() => s.value.error, async value => { if (value) { await nextTick(); errorFocus.value?.focus() } })
 const shown = computed(() => presentReviewQuestion(props.question))
-const locked = computed(() => !!props.readonly || s.value.busy || s.value.stale || !!s.value.receipt || s.value.uncertain)
+const locked = computed(() => !!props.readonly || s.value.busy || s.value.stale || !!s.value.receipt || s.value.uncertain && !s.value.retryNeedsInput)
 async function submit(action: 'answer' | 'dont_know') { if (await props.submission.submit(action)) emit('saved') }
+async function retry() { if (await props.submission.retry()) emit('saved') }
+async function recover() { if (await props.submission.recover()) emit('saved') }
 </script>

@@ -2,7 +2,7 @@ import { createReviewSubmission, type ReviewStorage, type ReviewSubmissionState 
 import type { ReviewAnswer, ReviewAnswerResult, ReviewCapabilities, ReviewRef } from '../types/wrongbook.ts'
 export type EntryApi = {
   getReviewBrowserScope():Promise<string|null>;getReviewCapabilities():Promise<ReviewCapabilities>
-  getReviewQuestionAccess(aid:string,index:number):Promise<{legacy_writable:boolean;read_only_snapshot:boolean}>
+  getReviewQuestionAccess(aid:string,index:number):Promise<{legacy_writable:boolean;read_only_snapshot:boolean;question_digest?:string}>
   submitReviewAnswer(b:ReviewAnswer):Promise<ReviewAnswerResult>;getReviewReceipt(k:string):Promise<unknown>
   submitQuizAttempt(aid:string,index:number,answer:string,question?:Record<string,unknown>,key?:string):Promise<{is_correct:boolean|null;feedback?:string;reference_answer?:string;attempt_id?:string}>
 }
@@ -22,7 +22,7 @@ export function createReviewEntry(api:EntryApi,options:{enabled:boolean;storage?
     try{
       const [scope,access,cap]=await Promise.all([api.getReviewBrowserScope().catch(()=>null),api.getReviewQuestionAccess(ref.artifact_id,ref.question_index),options.enabled?api.getReviewCapabilities():Promise.resolve(null)])
       if(disposed||e!==epoch)return false
-      submission.resetIdentity(scope);await submission.open(ref,raw)
+      submission.resetIdentity(scope);await submission.open({...ref,question_digest:access.question_digest},raw)
       if(disposed||e!==epoch)return false
       if(readonly||access.read_only_snapshot)state.message='历史题集只读，不能保存新作答。'
       else if(options.enabled){if(cap?.write_enabled)state.mode='v2';else state.message='新规则写入暂未开启，可查看题目并稍后重连。'}

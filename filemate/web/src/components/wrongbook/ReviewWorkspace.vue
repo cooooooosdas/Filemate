@@ -12,7 +12,7 @@
       <label v-for="(label,key) in dateLabels" :key="key">{{ label }}（上海）<input :value="localDate(filters[key])" type="datetime-local" @change="setDate(key,$event)" /></label>
       <label>排序<select v-model="filters.sort"><option value="due">到期时间</option><option value="updated">最近更新</option><option value="errors">错误次数</option><option value="created">收录时间</option></select></label><label>顺序<select v-model="filters.direction"><option value="asc">升序</option><option value="desc">降序</option></select></label>
     </div></details></form>
-    <p v-if="s.message" role="status" class="review-notice">{{ s.message }}</p><p v-if="s.writeError && !s.preview" role="alert" class="review-error">{{ s.writeError }}</p>
+    <p v-if="s.message" role="status" class="review-notice">{{ s.message }}</p><button v-if="s.detailNeedsRefresh" @click="c.refreshAfterAnswer()">重新读取详情</button><p v-if="s.writeError && !s.preview" role="alert" class="review-error">{{ s.writeError }}</p>
     <FocusReview v-if="focusMode && s.capability?.write_enabled" :key="s.scope || 'memory'" ref="focusRef" :scope="s.scope" :filters="s.filters" :enabled="s.capability.write_enabled" @exit="back" />
     <div v-else class="review-columns" :class="{'has-selection': !!route.query.focus}">
       <ReviewList :items="s.items" :selected="s.selected" :total="s.total" :offset="s.offset" :has-more="s.hasMore" :loading="s.loading" :error="s.listError" @select="pick" @page="apply" @reload="c.loadPage(s.filters,s.offset)" />
@@ -55,7 +55,7 @@ function back() { router.push({query:reviewBrowseQuery({...browse(),focus:'',mod
 async function begin() { router.push({query:reviewBrowseQuery({...browse(),focus:'',mode:'focus'})}) }
 async function routeLoad() { if (!ready) return; const b = readReviewBrowse(route.query); filters.value = {...b.filters}; notice.value = b.notice; if (!await c.loadPage(b.filters,b.offset)) return; if (b.mode === 'focus') { c.submission.resetIdentity(s.scope); remember(); return }; if (b.focus) await c.select(b.focus); else if (s.items[0]) await c.select(s.items[0].wrong_id); remember() }
 watch(()=>route.query,routeLoad)
-async function saved() { await Promise.all([c.loadPage(s.filters,s.offset),api.getReviewSummary().then(v=>{s.summary=v}).catch(()=>{s.message='作答已保存，概览刷新失败。'})]) }
+async function saved() { await Promise.all([c.refreshAfterAnswer(),c.loadPage(s.filters,s.offset),c.initialize()]) }
 async function loadOptions(reset = true) { const e=++optionEpoch; if(reset)optionOffset=0; optionsError.value=''; try { const [a,b]=await Promise.all([api.getReviewFilterOptions('sources',{q:optionQuery.value,offset:optionOffset}),api.getReviewFilterOptions('courses',{q:optionQuery.value,offset:optionOffset})]); if(e!==optionEpoch)return; sources.value=reset?a.items:[...sources.value,...a.items];courses.value=reset?b.items:[...courses.value,...b.items]; optionsMore.value=a.has_more||b.has_more;optionOffset+=30 } catch { if(e===optionEpoch)optionsError.value='筛选选项读取失败，请重新查找。' } }
 function localDate(value?: string) { return value ? value.slice(0,16) : '' }
 function setDate(key: keyof typeof dateLabels,e: Event) { const value=(e.target as HTMLInputElement).value; filters.value[key]=value?`${value}:00+08:00`:undefined }

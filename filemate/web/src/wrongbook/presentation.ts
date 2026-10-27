@@ -17,7 +17,7 @@ export function presentReviewQuestion(raw: Record<string, unknown>) {
     ? raw.options.map((value, index) => ({ key: String.fromCharCode(65 + index), text: String(value) }))
     : raw.options && typeof raw.options === 'object'
       ? Object.entries(raw.options).map(([key, value]) => ({ key, text: String(value) })) : []
-  return { stem: text(raw.stem || raw.question), type, options,
+  return { stem: text(raw.stem || raw.question), type: type === 'short_answer' && text(raw.code) ? 'code' : type, options,
     reference: text(raw.answer), explanation: text(raw.analysis || raw.explanation),
     code: text(raw.code), knowledge: text(raw.knowledge_point) }
 }

@@ -222,10 +222,18 @@ class ReviewQueries:
     def receipt(self, key):
         if not isinstance(key, str) or not re.fullmatch(r'[A-Za-z0-9_-]{16,80}', key):
             raise ValueError('请求标识无效')
-        row = self.storage._conn().execute('SELECT result FROM review_events WHERE request_key=?', (key,)).fetchone()
+        row = self.storage._conn().execute('''SELECT e.result,q.artifact_id,q.question_index,q.question_digest
+            FROM review_events e LEFT JOIN quiz_attempts q ON q.attempt_id=e.attempt_id
+            WHERE e.request_key=?''', (key,)).fetchone()
         if row is None:
             raise LookupError('暂未找到该操作回执')
-        return json.loads(row['result'])
+        result = json.loads(row['result'])
+        if result.get('attempt_id'):
+            if row['artifact_id'] is None:
+                raise LookupError('作答证据已不存在，暂不能核验该回执')
+            result.update(artifact_id=row['artifact_id'], question_index=row['question_index'],
+                          question_digest=row['question_digest'])
+        return result
 
 
 def _list(raw):

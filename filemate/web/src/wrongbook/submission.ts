@@ -13,12 +13,12 @@ export async function reviewHash(value: unknown) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stableReviewJSON(value))))].map(n => n.toString(16).padStart(2, '0')).join('')
 }
 type InputRef = Pick<ReviewRef, 'artifact_id' | 'question_index'> & Partial<ReviewRef>
-type Pending = { request_key: string; signature_hash: string; revealed: boolean }
+type Pending = { request_key: string; signature_hash: string; revealed: boolean; action?: 'answer' | 'dont_know' }
 type SubmissionApi = { submitReviewAnswer(body: ReviewAnswer): Promise<ReviewAnswerResult>; getReviewReceipt(key: string): Promise<unknown> }
-export type ReviewSubmissionState = { answer: string; answerRevealed: boolean; busy: boolean; receipt: ReviewAnswerResult | null; error: string; uncertain: boolean; stale: boolean }
+export type ReviewSubmissionState = { answer: string; answerRevealed: boolean; busy: boolean; receipt: ReviewAnswerResult | null; error: string; uncertain: boolean; stale: boolean; retryNeedsInput: boolean }
 
 export function createReviewSubmission(api: SubmissionApi, options: { makeKey?: () => string; scope?: string | null; storage?: ReviewStorage; observe?: (state: ReviewSubmissionState) => ReviewSubmissionState } = {}) {
-  const initial = (): ReviewSubmissionState => ({ answer: '', answerRevealed: false, busy: false, receipt: null, error: '', uncertain: false, stale: false })
+  const initial = (): ReviewSubmissionState => ({ answer: '', answerRevealed: false, busy: false, receipt: null, error: '', uncertain: false, stale: false, retryNeedsInput: false })
   const state = (options.observe ?? (s => s))(initial())
   const storage = options.storage ?? memoryReviewStorage(), makeKey = options.makeKey ?? (() => crypto.randomUUID())
   let scope = options.scope ?? null, epoch = 0, disposed = false, identity = '', ref: InputRef | null = null
@@ -33,11 +33,14 @@ export function createReviewSubmission(api: SubmissionApi, options: { makeKey?: 
       for (const [id, record] of Object.entries(data).slice(-20)) {
         const item = record as Pending
         if (id.length > 300 || !item || typeof item !== 'object' || typeof item.revealed !== 'boolean' || typeof item.request_key !== 'string' || !/^(?:[A-Za-z0-9_-]{16,80})?$/.test(item.request_key) || typeof item.signature_hash !== 'string' || !/^(?:[a-f0-9]{64})?$/.test(item.signature_hash)) continue
-        records[id] = { request_key: item.request_key, signature_hash: item.signature_hash, revealed: item.revealed }
+        records[id] = { request_key: item.request_key, signature_hash: item.signature_hash, revealed: item.revealed, action: item.action === 'dont_know' ? 'dont_know' : 'answer' }
       }
     } catch { /* 不可用的本机存储不影响页内作答。 */ }
   }
   function persist() {
+    // 每次只合并本题的变更，避免同页其他作答组件被旧快照覆盖。
+    const own = records[identity]
+    if (storageKey()) { load(); if (own) records[identity] = own; else delete records[identity] }
     const keys = Object.keys(records)
     // 未确认请求不能被自动淘汰，否则刷新会丢失去重标识。
     while (keys.length > 20) {
@@ -54,10 +57,12 @@ export function createReviewSubmission(api: SubmissionApi, options: { makeKey?: 
     Object.assign(state, initial())
     const questionHash = await reviewHash(question)
     if (!fresh(e)) return false
+    if (storageKey()) load()
     ref = { ...target }; raw = JSON.parse(JSON.stringify(question))
     identity = `${target.artifact_id}:${target.question_index}:${questionHash}`
     const saved = records[identity]
     state.answerRevealed = saved?.revealed ?? false; state.uncertain = !!saved?.request_key
+    state.retryNeedsInput = state.uncertain && saved?.action !== 'dont_know'
     return true
   }
   function setAnswer(value: string) {
@@ -66,6 +71,8 @@ export function createReviewSubmission(api: SubmissionApi, options: { makeKey?: 
   }
   function revealAnswer() {
     if (disposed || state.busy || state.uncertain) return false
+    if (storageKey()) load()
+    if (records[identity]?.request_key) { state.uncertain = true; state.retryNeedsInput = !pendingBody && records[identity]?.action !== 'dont_know'; return false }
     state.answerRevealed = true
     records[identity] = records[identity] ? { ...records[identity], revealed: true } : { request_key: '', signature_hash: '', revealed: true }; persist(); return true
   }
@@ -73,6 +80,8 @@ export function createReviewSubmission(api: SubmissionApi, options: { makeKey?: 
     if (!ref || !raw || state.busy || state.stale || state.receipt || disposed || action === 'answer' && !state.answer.trim()) return false
     const e = epoch; state.busy = true; state.error = ''
     try {
+      if (storageKey()) load()
+      state.answerRevealed ||= records[identity]?.revealed ?? false
       const input = { artifact_id: ref.artifact_id, question_index: ref.question_index, expected_question: raw,
         user_answer: action === 'dont_know' ? '' : state.answer, action, answer_revealed: state.answerRevealed }
       const signature = await reviewHash(input)
@@ -82,7 +91,7 @@ export function createReviewSubmission(api: SubmissionApi, options: { makeKey?: 
       if (!saved?.request_key && Object.values(records).filter(r => r.request_key).length >= 20) { state.error = '请先核验已有待确认作答，再开始新的提交。'; return false }
       const key = saved?.request_key || makeKey()
       pendingBody ??= { ...input, request_key: key }
-      records[identity] = { request_key: key, signature_hash: signature, revealed: state.answerRevealed }; persist()
+      records[identity] = { request_key: key, signature_hash: signature, revealed: state.answerRevealed, action }; persist(); state.retryNeedsInput = false
       const result = await api.submitReviewAnswer(pendingBody)
       if (!fresh(e)) return false
       state.receipt = result; state.uncertain = false; delete records[identity]; persist(); return true
@@ -103,14 +112,18 @@ export function createReviewSubmission(api: SubmissionApi, options: { makeKey?: 
       const result = await api.getReviewReceipt(saved.request_key)
       if (!fresh(e)) return false
       if (!result || typeof result !== 'object' || !('attempt_id' in result)) throw Error('invalid_receipt')
+      const proof = result as ReviewAnswerResult & { artifact_id?: string; question_index?: number; question_digest?: string }
+      if (!ref?.question_digest || proof.artifact_id !== ref.artifact_id || proof.question_index !== ref.question_index || proof.question_digest !== ref.question_digest) throw Error('receipt_provenance_mismatch')
+      if (!fresh(e)) return false
       state.receipt = result as ReviewAnswerResult; state.uncertain = false; delete records[identity]; persist(); return true
     } catch {
       if (fresh(e)) { state.uncertain = true; state.error = '暂未查到回执，不代表保存失败。请保留原稿后核验或原样重试。' }
       return false
     } finally { if (fresh(e)) state.busy = false }
   }
+  function retry() { return submit(pendingBody?.action ?? records[identity]?.action ?? 'answer') }
   function resetIdentity(next: string | null) { ++epoch; scope = next; ref = null; raw = null; pendingBody = null; identity = ''; Object.assign(state, initial()); load() }
-  return { state, open, setAnswer, revealAnswer, submit, recover, resetIdentity,
+  return { state, open, setAnswer, revealAnswer, submit, retry, recover, resetIdentity,
     dirty: () => state.busy || state.uncertain || !!state.answer.trim() && !state.receipt,
     dispose() { ++epoch; disposed = true; ref = null; raw = null; pendingBody = null; Object.assign(state, initial()) } }
 }

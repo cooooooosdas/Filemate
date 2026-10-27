@@ -136,6 +136,20 @@ def test_current_explicit_course_mapping_only(learning_context):
     assert read.page(filters(course_id=cid))['total'] == 0
 
 
+def test_receipt_provenance_comes_from_the_actual_saved_attempt(review_store):
+    from filemate.execution.data_actions import digest
+
+    store, _, _, _, clock = review_store
+    body = answer_payload(review_store)
+    saved = ReviewRepository(store, clock=lambda: clock[0]).submit(body)
+    read, _ = queries(store)
+    receipt = read.receipt(body['request_key'])
+    assert receipt['artifact_id'] == body['artifact_id']
+    assert receipt['question_index'] == body['question_index']
+    assert receipt['question_digest'] == digest(body['expected_question'])
+    assert receipt['attempt_id'] == saved['attempt_id']
+
+
 def test_summary_receipt_and_detail_keep_real_saved_evidence(review_store):
     store, _, _, _, clock = review_store
     repo = ReviewRepository(store, clock=lambda: clock[0])
@@ -144,7 +158,7 @@ def test_summary_receipt_and_detail_keep_real_saved_evidence(review_store):
     result = repo.submit(body)
     repo.submit(answer_payload(review_store, 'A', key='workspace-second-answer'))
     read, _ = queries(store)
-    assert read.receipt(body['request_key']) == result
+    assert {k: read.receipt(body['request_key'])[k] for k in result} == result
     assert repo.summary()['saved_review_attempt_count'] == 1
     assert len(repo.detail(result['wrong_id'])['question_digest']) == 64
     with pytest.raises(LookupError):
@@ -166,7 +180,9 @@ def test_http_capabilities_filters_receipts_and_no_model_calls(server_module, mo
         assert page.status_code == 200 and page.json()['data']['total'] == 1
         assert page.headers['cache-control'] == 'no-store'
         assert client.get('/wrongbook/v2/filter-options?kind=sources').json()['data']['total'] == 1
-        assert client.get('/wrongbook/v2/receipts/' + body['request_key']).json()['data'] == saved
+        receipt = client.get('/wrongbook/v2/receipts/' + body['request_key']).json()['data']
+        assert {k: receipt[k] for k in saved} == saved
+        assert receipt['artifact_id'] == body['artifact_id']
         for suffix in ('?q=a&q=b', '?owner=someone', '?status=madeup', '?limit=101', '?offset=-1', '?reviewable_only=maybe'):
             assert client.get('/wrongbook/v2/page' + suffix).status_code == 422
         assert client.get('/wrongbook/v2/receipts/short').status_code == 422

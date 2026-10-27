@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from filemate.accounts import AccountStore, validate_password
 from filemate.execution.storage import SQLiteStorage
+from filemate.study.question_validation import validate_question
 
 
 def seed_course(store: SQLiteStorage, sid: str, aid: str) -> dict[str, Any]:
@@ -29,8 +30,8 @@ def seed_course(store: SQLiteStorage, sid: str, aid: str) -> dict[str, Any]:
     review.confirm_review(store, cid, did, 'synthetic_publish_0001', preview['confirmation_token'], True)
     nid = store._conn().execute("SELECT concept_id FROM kg_concepts WHERE label='栈' AND course_id=?", (cid,)).fetchone()[0]
     from filemate.course_graph.question_links import question_digest
-    q = store.get_artifact(aid)['content'][0]
-    refs = [{'artifact_id': aid, 'question_index': 0, 'question_digest': question_digest(q)}]
+    refs = [{'artifact_id': aid, 'question_index': i, 'question_digest': question_digest(q)}
+            for i, q in enumerate(store.get_artifact(aid)['content'][:3])]
     preview = question_links.preview_question_links(store, cid, nid, refs, True)
     question_links.confirm_question_links(store, cid, nid, refs, True, preview['confirmation_token'], 'synthetic_links_0001', True)
     return {'course_id': cid, 'concept_id': nid}
@@ -45,7 +46,9 @@ def seed(database: Path, count: int) -> dict[str, Any]:
     questions[0].update(question_type='choice', options=['后进先出', '先进先出'], answer='A')
     if count > 2:
         questions[2].update(question_type='short_answer', stem='合成复盘00003：解释栈和队列及 O(n log n)。')
-        questions[3].update(question_type='code', stem='合成复盘00004：阅读以下超长代码', code='int main() {\n' + '  // 原创工程验收代码\n' * 300 + '}')
+        questions[3].update(question_type='short_answer', stem='合成复盘00004：阅读以下超长代码', code='int main() {\n' + '  // 原创工程验收代码\n' * 300 + '}')
+    for question in questions:
+        validate_question(question)
     aid = store.save_artifact(source_id=source, artifact_type='questions', content=questions)
     history = store.save_artifact(source_id=source, artifact_type='questions', content=[questions[0]], metadata={'read_only_snapshot': True})
     refs = []

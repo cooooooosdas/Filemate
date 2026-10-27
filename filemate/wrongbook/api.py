@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from pydantic import Field, field_validator
 
+from filemate.execution.data_actions import digest
 from filemate.execution.storage import QuestionRevisionConflict, SQLiteStorage
 from filemate.wrongbook.commands import ReviewCommands
 from filemate.wrongbook.engine import RULE_VERSION
@@ -107,7 +108,8 @@ def create_router(get_storage: Callable[[], SQLiteStorage]) -> APIRouter:
         history = bool((artifact.get('metadata') or {}).get('read_only_snapshot'))
         row = storage._conn().execute('SELECT scheduler_version,revision FROM wrong_questions WHERE artifact_id=? AND question_index=?', (artifact_id, question_index)).fetchone()
         owned = bool(row and (row['scheduler_version'] != 'legacy-v1' or row['revision'] > 1))
-        return response({'legacy_writable': not history and not owned, 'read_only_snapshot': history})
+        return response({'legacy_writable': not history and not owned, 'read_only_snapshot': history,
+                         'question_digest': digest(questions[question_index])})
 
     @router.post("/attempts", dependencies=[Depends(_enabled)])
     def answer(body: Answer):

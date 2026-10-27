@@ -34,7 +34,7 @@ test('seven day expiry and identity reset never replay requests',async()=>{
 test('pending save recovery queries receipt; it never automatically submits',async()=>{
  const storage=memoryReviewStorage();let posts=0
  const a=setup({storage,submitReviewAnswer:async()=>{posts++;throw Error('offline')}});await a.c.start({});a.submission.setAnswer('private');await a.submission.submit();a.c.dispose()
- const b=setup({storage,getReviewAttempts:async()=>({items:[{attempt_id:'saved',artifact_id:'a',question_index:0}],has_more:false})});await b.c.resume();assert.equal(b.posts(),0);assert.equal(b.c.state.completed.w,'saved');assert.ok(!JSON.stringify([...Object.values(storage)]).includes('private'))
+ const b=setup({storage,getReviewReceipt:async()=>({...ref,attempt_id:'saved'}),getReviewAttempts:async()=>({items:[{attempt_id:'saved',artifact_id:'a',question_index:0}],has_more:false})});await b.c.resume();assert.equal(b.posts(),0);assert.equal(b.c.state.completed.w,'saved');assert.ok(!JSON.stringify([...Object.values(storage)]).includes('private'))
 })
 
 test('receipt reference survives refresh while server verification is still in flight',async()=>{

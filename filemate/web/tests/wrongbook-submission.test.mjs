@@ -43,7 +43,7 @@ test('refresh first recovers a persisted receipt without another POST', async ()
   const first = setup({ submitReviewAnswer: async () => { throw Error('offline') } }, storage).control
   await first.open(ref, raw); first.setAnswer('B'); await first.submit(); first.dispose()
   let posted = 0
-  const second = setup({ submitReviewAnswer: async () => { posted++; return receipt }, getReviewReceipt: async () => receipt }, storage).control
+  const second = setup({ submitReviewAnswer: async () => { posted++; return receipt }, getReviewReceipt: async () => ({...receipt,artifact_id:'a',question_index:0,question_digest:ref.question_digest}) }, storage).control
   await second.open(ref, raw); await second.recover()
   assert.equal(second.state.receipt.attempt_id, 'saved'); assert.equal(posted, 0)
 })
@@ -97,4 +97,44 @@ test('schedule events expose their actual undo action',()=>{
  assert.equal(typeof present.reviewEventAction,'function')
  assert.equal(present.reviewEventAction('schedule_pause'),'pause')
  assert.equal(present.reviewEventAction('schedule_undo'),'undo')
+})
+
+test('course code responses use the supported subjective type and show a code editor label',()=>{
+ const shown=present.presentReviewQuestion({question_type:'short_answer',stem:'解释代码',code:'int main() {}',answer:'说明'})
+ assert.equal(shown.type,'code')
+})
+
+test('simultaneous entries preserve other pending keys and assisted flags without resurrecting removals', async () => {
+  const storage=memory(), offline={submitReviewAnswer:async()=>{throw Error('offline')}}
+  const a=setup(offline,storage).control,b=setup(offline,storage).control
+  const other={...ref,question_index:1}
+  await a.open(ref,raw);await b.open(other,raw);a.revealAnswer();a.setAnswer('A');await a.submit();b.setAnswer('B');await b.submit()
+  const reload=setup(offline,storage).control;await reload.open(ref,raw)
+  assert.equal(reload.state.uncertain,true);assert.equal(reload.state.answerRevealed,true)
+  const proof={...receipt,artifact_id:'a',question_index:0,question_digest:ref.question_digest}
+  const recovered=setup({getReviewReceipt:async()=>proof},storage).control;await recovered.open(ref,raw);assert.equal(await recovered.recover(),true)
+  b.resetIdentity(scope);await b.open(other,raw);b.revealAnswer()
+  const final=setup(offline,storage).control;await final.open(ref,raw);assert.equal(final.state.uncertain,false)
+  await final.open(other,raw);assert.equal(final.state.uncertain,true)
+})
+
+test('receipt recovery rejects another question or version and accepts verified provenance only',async()=>{
+  for(const wrong of [{artifact_id:'other',question_index:0},{artifact_id:'a',question_index:1},{artifact_id:'a',question_index:0,question_digest:'f'.repeat(64)}]){
+    const storage=memory(),first=setup({submitReviewAnswer:async()=>{throw Error('lost')}},storage).control
+    await first.open(ref,raw);first.setAnswer('A');await first.submit()
+    const c=setup({getReviewReceipt:async()=>({...receipt,artifact_id:'a',question_index:0,question_digest:ref.question_digest,...wrong})},storage).control
+    await c.open(ref,raw);assert.equal(await c.recover(),false);assert.equal(c.state.receipt,null);assert.equal(c.state.uncertain,true)
+  }
+})
+
+test('after refresh the original action can be retried without changing its key or input',async()=>{
+  for(const action of ['answer','dont_know']){
+    const storage=memory();let original
+    const c=setup({submitReviewAnswer:async b=>{original=structuredClone(b);throw Error('not sent')}},storage).control
+    await c.open(ref,raw);if(action==='answer')c.setAnswer('B');await c.submit(action)
+    const next=setup({},storage);await next.control.open(ref,raw);await next.control.recover()
+    assert.equal(next.control.state.retryNeedsInput,action==='answer')
+    if(action==='answer')assert.equal(next.control.setAnswer('B'),true)
+    assert.equal(await next.control.retry(),true);assert.deepEqual(next.requests[0],original)
+  }
 })

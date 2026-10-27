@@ -51,7 +51,7 @@
           <p v-if="generationError" role="alert" class="inline-error">{{ generationError }} <button :disabled="busy || !authorized" @click="generate">重试</button></p>
           <p v-if="generating" class="generation-note" role="status">正在生成，完成后会自动保存到这份资料。无需重复上传。</p>
           <section v-if="artifacts.length" class="saved-contents" aria-label="已保存的学习内容"><h2>接着学</h2><div class="artifact-picker"><button v-for="item in artifacts" :key="item.artifact_id" :aria-pressed="activeArtifactId === item.artifact_id" :title="item.title" @click="selectArtifact(item.artifact_id)"><span>{{ artifactLabel(item.artifact_type) }}</span><strong>{{ item.title }}</strong><time>{{ formatDate(item.created_at) }}</time></button></div></section>
-          <KeepAlive><LearningArtifact ref="artifactPanel" v-if="activeArtifact" :key="activeArtifact.artifact_id" :artifact="activeArtifact" /></KeepAlive>
+          <KeepAlive :key="contentEpoch"><LearningArtifact ref="artifactPanel" v-if="activeArtifact" :key="activeArtifact.artifact_id" :artifact="activeArtifact" /></KeepAlive>
           <div v-if="!activeArtifact" class="resource-empty"><el-icon><Notebook /></el-icon><h3>还没有学习内容</h3><p>先整理一份笔记，再用卡片回忆、用练习检验。不必一次做完。</p></div>
         </div>
       </aside>
@@ -73,6 +73,7 @@ const digitalHumanEnabled = import.meta.env.VITE_ENABLE_DIGITAL_HUMAN !== 'false
 const sources = ref<KnowledgeSource[]>([]); const source = ref<KnowledgeSourceDetail | null>(null)
 const sessions = ref<AISessionSummary[]>([]); const context = ref<AIContextDetail | null>(null)
 const artifacts = ref<KnowledgeArtifact[]>([]); const activeArtifactId = ref('')
+const contentEpoch = ref(0)
 const activeArtifact = computed(() => artifacts.value.find(item => item.artifact_id === activeArtifactId.value))
 const search = ref(''); const filteredSources = computed(() => sources.value.filter(item => item.original_name.toLocaleLowerCase().includes(search.value.toLocaleLowerCase())))
 const loadingSources = ref(false); const loading = ref(false); const sending = ref(false); const generating = ref(false)
@@ -98,9 +99,12 @@ const generationTask = computed(() => generationTasks.find(task => task.id === g
 function artifactLabel(kind: string): string { return generationTasks.find(task => task.id === kind)?.label || '学习内容' }
 async function selectArtifact(id: string): Promise<void> {
   if (!artifacts.value.some(item => item.artifact_id === id)) return
+  if (id !== activeArtifactId.value && artifactPanel.value && !await artifactPanel.value.canLeave()) return
   creatingContent.value = false
   activeArtifactId.value = id; resourceTab.value = 'artifacts'; activePane.value = 'resources'
-  await router.replace({ path: '/ai-tools', query: { ...route.query, artifact: id } })
+  internalNavigation = true
+  try { await router.replace({ path: '/ai-tools', query: { ...route.query, artifact: id } }) }
+  finally { internalNavigation = false }
 }
 const chatMode = ref<'answer' | 'socratic' | 'feynman'>('answer')
 const modes = [{ id: 'answer' as const, label: '直接讲解' }, { id: 'socratic' as const, label: '引导我思考' }, { id: 'feynman' as const, label: '听我讲一遍' }]
@@ -130,16 +134,16 @@ async function navigateSource(id: string, ctx?: string, approved = false) {
   finally { internalNavigation = false }
 }
 function guardRefresh(event: Event): void {
-  if (!busy.value && !questionText.value.trim()) return
+  if (!busy.value && !questionText.value.trim() && !artifactPanel.value?.dirty()) return
   event.preventDefault()
-  ElMessage.info(busy.value ? '请等当前学习操作完成后再刷新。' : '问题尚未发送，请先发送或清空后再刷新。')
+  ElMessage.info(busy.value ? '请等当前学习操作完成后再刷新。' : '有未提交的练习或问题，请先保存或清空后再刷新。')
 }
 function guardUnload(event: BeforeUnloadEvent): void {
-  if (busy.value || questionText.value.trim()) { event.preventDefault(); event.returnValue = '' }
+  if (busy.value || questionText.value.trim() || artifactPanel.value?.dirty()) { event.preventDefault(); event.returnValue = '' }
 }
 onBeforeRouteLeave(allowLeaving)
 onBeforeRouteUpdate(to => {
-  if (internalNavigation || (to.query.source === source.value?.source_id && to.query.ctx === context.value?.ctx_id)) return true
+  if (internalNavigation || (to.query.source === source.value?.source_id && to.query.ctx === context.value?.ctx_id && (!to.query.artifact || to.query.artifact === activeArtifactId.value))) return true
   return allowLeaving()
 })
 async function openRoute() {
@@ -227,8 +231,14 @@ watch(() => [route.query.source, route.query.ctx, route.query.artifact], () => {
   }
   void openRoute()
 })
-onMounted(() => { void reload(); window.addEventListener('filemate:before-refresh', guardRefresh); window.addEventListener('beforeunload', guardUnload) })
-onUnmounted(() => { epoch++; window.removeEventListener('filemate:before-refresh', guardRefresh); window.removeEventListener('beforeunload', guardUnload) })
+function identityChanged() {
+  ++epoch; artifactPanel.value?.invalidate(); contentEpoch.value++
+  source.value=null;context.value=null;artifacts.value=[];sessions.value=[];sources.value=[];activeArtifactId.value='';questionText.value='';citation.value=null;authorized.value=false
+  loading.value=false;sending.value=false;generating.value=false
+  void Promise.all([loadSources(),openRoute()]).catch(cause=>{error.value=message(cause)})
+}
+onMounted(() => { void reload(); window.addEventListener('filemate:before-refresh', guardRefresh); window.addEventListener('beforeunload', guardUnload);window.addEventListener('filemate:data-restored',identityChanged);window.addEventListener('filemate:session-expired',identityChanged) })
+onUnmounted(() => { epoch++; window.removeEventListener('filemate:before-refresh', guardRefresh); window.removeEventListener('beforeunload', guardUnload);window.removeEventListener('filemate:data-restored',identityChanged);window.removeEventListener('filemate:session-expired',identityChanged) })
 </script>
 
 
