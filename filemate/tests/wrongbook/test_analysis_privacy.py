@@ -13,6 +13,70 @@ from filemate.tests.wrongbook.test_analysis_repository import (  # noqa: F401
 )
 
 
+def test_source_preview_counts_analysis_cascaded_from_multisource_questions(analysis_case):
+    store, clock, context = analysis_case
+    other = store.save_source(original_name='合成第二来源', source_path='synthetic-second.txt')
+    with store._conn() as conn:
+        conn.execute('INSERT INTO kg_learning_artifact_sources VALUES(?,?)',
+            (context['ref']['artifact_id'], other))
+    repo = repository(store, clock)
+    view, _, epoch = repo.claim(context, 'synthetic-transitive-delete-0001')
+    assert repo.finish(view['analysis_id'], epoch, {'kind': 'insufficient_evidence'}, {})
+    before = store.preview_source_deletion(other)['affected']
+    assert before['wrong_review_analyses'] == 1
+    assert before['artifacts'] == 2
+    store.delete_source(other)
+    assert store._conn().execute('SELECT COUNT(*) FROM wrong_review_analyses').fetchone()[0] == 0
+
+
+@pytest.mark.parametrize('operation', ['plan', 'adopt', 'undo'])
+def test_learning_previews_never_persist_copies_of_private_text(analysis_case, operation):
+    from filemate.tests.wrongbook.test_analysis_adoption import commands, supported
+    from filemate.tests.wrongbook.test_learning_plans import selection
+
+    store, clock, context = analysis_case
+    api, wid = commands(store, clock), context['ref']['wrong_id']
+    marker = 'PRIVATE_SOURCE_SENTENCE'
+    if operation == 'plan':
+        body = selection(api, context)
+        body['tasks'][0]['instructions'] = marker
+        preview = api.preview_plan(wid, body)
+        api.confirm_plan(wid, body, preview['confirmation_token'], 'synthetic-private-plan-0001', True)
+    else:
+        aid, revision = supported(analysis_case)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET error_cause_note=? WHERE wrong_id=?', (marker, wid))
+        body = {'selected_causes': ['concept_gap'], 'expected_revision': revision}
+        # 支持函数已绑定原备注，修改备注后需建立当前分析。
+        from filemate.wrongbook.learning_context import ReviewLearningContext
+        current = ReviewLearningContext(store, lambda: clock[0]).build(wid, context['attempt']['attempt_id'])
+        repo = repository(store, clock)
+        view, _, epoch = repo.claim(current, 'synthetic-private-analysis-0001')
+        assert repo.finish(view['analysis_id'], epoch, {'kind': 'supported_hypotheses',
+            'possible_causes': [{'cause_code': 'concept_gap', 'hypothesis': '候选原因'}]}, {})
+        aid = view['analysis_id']
+        preview = api.preview_adoption(wid, aid, body)
+        if operation == 'undo':
+            receipt = api.confirm_adoption(wid, aid, body, preview['confirmation_token'], 'synthetic-private-adopt-0001', True)
+            api.preview_undo(wid, receipt['review_event_id'])
+    rows = store._conn().execute("SELECT revision,result FROM data_action_previews WHERE action LIKE 'review_learning_%'").fetchall()
+    assert rows and all(marker not in str(tuple(row)) for row in rows)
+    store.delete_source(context['_source_dependencies'][0]['source_id'])
+    assert all(marker not in row[0] for row in store._conn().execute('SELECT revision FROM data_action_previews'))
+
+
+def test_history_detail_uses_its_own_bounded_source_quotes(analysis_case):
+    store, clock, context = analysis_case
+    repo = repository(store, clock)
+    context['source_evidence'] = [{'evidence_id': 'original', 'source_id': context['_source_dependencies'][0]['source_id'],
+        'quote': '当时实际发送的合成原文', 'start': 0, 'end': 11}]
+    view, _, epoch = repo.claim(context, 'synthetic-history-quotes-0001')
+    assert repo.finish(view['analysis_id'], epoch, {'kind': 'insufficient_evidence'}, {})
+    detail = repo.get(context['ref']['wrong_id'], view['analysis_id'])
+    assert detail['source_evidence'] == context['source_evidence']
+    assert 'source_evidence' not in repo.page(context['ref']['wrong_id'])['items'][0]
+
+
 def test_delete_every_input_source_purges_snapshot_and_artifact(analysis_case):
     store, clock, context = analysis_case
     other = store.save_source(original_name='仅贡献标签的合成资料', source_path='synthetic-other.txt')

@@ -69,6 +69,7 @@ class ReviewAnalysisRepository:
                 raise AnalysisGone('analysis_result_deleted')
             view['result'] = artifact['content'] if artifact else None
             view['provenance'] = artifact['metadata'].get('provenance') if artifact else None
+            view['source_evidence'] = snapshot.get('source_evidence', [])
         return view
 
     def find_request(self, key):

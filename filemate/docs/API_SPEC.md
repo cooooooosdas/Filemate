@@ -1,10 +1,10 @@
 # API 规范
 
-## 错题D级学习上下文（2026-10-28，逐项开发中）
+## 错题D级学习上下文（2026-10-28，本地开发候选）
 
 分析路线：`POST /wrongbook/v2/{wrong_id}/analyses`接收attempt_id、input_digest、request_key、可空course_id、credential_mode=server|browser、force_refresh=false、allow_external_model严格true。默认模型开关FILEMATE_ENABLE_WRONGBOOK_AI=0；需同时开启V2。每次新工作最多一次模型请求、20秒总期限，无自动修复／重试。不同键相同有效输入默认复用ready结果；强制刷新需新键。同键异内容409，被删除请求墓碑410。已认领的模型故障返回200的failed记录及固定error_code，调用方必须检查status；不触发账户401退出。
 
-`GET /wrongbook/v2/{wrong_id}/analyses`默认limit20、最大100、offset≤1000000，仅返回摘要；详情`GET .../analyses/{analysis_id}`按需返回result/provenance/stale。`GET /wrongbook/v2/analysis-requests/{request_key}`仅恢复已保存回执，404不证明在途请求不存在，禁止自动重发。`POST .../analyses/{analysis_id}/cancel`只接收request_key，停止后禁止旧epoch写回，不删除真实作答。关闭AI开关后仍可读、取消与导出。
+`GET /wrongbook/v2/{wrong_id}/analyses`默认limit20、最大100、offset≤1000000，仅返回摘要；详情`GET .../analyses/{analysis_id}`按需返回result/provenance/stale以及该分析自身的有界source_evidence引用快照，不能用当前上下文替换历史原文。`GET /wrongbook/v2/analysis-requests/{request_key}`仅恢复已保存回执，404不证明在途请求不存在，禁止自动重发；410为已删除终态，可清除该pending，重新读取后仍须独立授权新调用。`POST .../analyses/{analysis_id}/cancel`只接收request_key，停止后禁止旧epoch写回，不删除真实作答。关闭AI开关后仍可读、取消与导出。
 
 `POST .../analyses/{analysis_id}/adoption-preview`接收selected_causes（1–3个不重复的真实候选代码）及expected_revision；返回合并前后、confirmation_token（15分钟）。确认路线adoption-confirm额外接收request_key、confirmation_token、confirmed严格true；保留现有人工错因、备注和标签，合计超过3项拒绝，用户需重新选择；事件标记analysis_adopt并记录analysis_id。陈旧输入、人工修改或来源变化409。此操作不会调用模型，临时密钥不能附在GET、取消、采纳或相似后缀；只有精确分析POST且credential_mode=browser、受信Origin及Action=model允许使用浏览器密钥，固定DeepSeek官方端点，不切换服务器配置。
 
@@ -15,6 +15,8 @@ D级本地schema追加36，旧迁移不改写。分析运行、全部输入来�
 `POST .../learning-plan-preview`接收expected_revision、可选attempt_id/course_id/goal_id、start_date（上海当日至未来30日）及1–7项tasks。任务只能取当前候选action_id，可编辑title≤120、instructions≤500、duration_minutes=5–60、day_offset=0–6。确认路线learning-plan-confirm额外接收confirmation_token、request_key、confirmed严格true。预览不新建计划；确认原子新增一个现役StudyPlan及Artifact，绑定全部输入资料，不修改原目标、旧计划或完成记录。来源、作答、图谱、目标或编辑内容变化使旧预览409。
 
 `POST .../learning-operations/{event_id}/undo-preview`接收空对象；undo-confirm接收confirmation_token、request_key、confirmed严格true。仅支持本卡analysis_adopt／learning_plan_confirm事件；恢复诊断前值或删除本次新建且未修改、未完成的计划，保留全部作答。撤销亦需预览确认，重复确认返回原回执，之后手改或完成任务409。增量计划和撤销不依赖AI开关，仍需V2写入开关。
+
+三类review_learning预览只持久化绑定摘要，不复制任务正文或人工备注；采纳确认令牌的回执仅保留事件ID与影响数量，完整回执从所属复盘事件读取。来源删除预览沿多来源派生产物、作答、错题、分析及结果计算去重影响集合；同题证据变化时前端保留任务编辑但需重新预览，未知确认保留原键／令牌／原命令核验。
 
 `GET /wrongbook/v2/{wrong_id}/connections?limit=30&offset=0` 返回当前版本、有效课程来源、确认映射及融合后的概念，route精确定位课程／节点／证据视图。limit为1–30，offset为0–1000000；未知／重复参数422，不存在404，数据库暂不可用503。历史题仍可读取真实作答，但无当前图谱链接。question-access额外返回wrong_id/review_route，可空；摘要不符或只读历史不返回跳转。只读接口不返回内部来源依赖、密钥或文件路径。
 

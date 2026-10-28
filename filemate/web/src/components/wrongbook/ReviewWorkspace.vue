@@ -71,6 +71,7 @@ async function initialize(restore=true) {
   loadOptions()
 }
 async function visible(){if(document.hidden||c.dirty()||focusRef.value?.dirty()||evidenceRef.value?.dirty())return;await c.initialize();await c.loadPage(s.filters,s.offset);if(s.detail)await c.refreshAfterAnswer()}
-onMounted(()=>{initialize();document.addEventListener('visibilitychange',visible);window.addEventListener('filemate:review-changed',visible);window.addEventListener('beforeunload',unload);window.addEventListener('filemate:session-expired',identityChanged);window.addEventListener('filemate:data-restored',identityChanged)})
-onBeforeUnmount(()=>{document.removeEventListener('visibilitychange',visible);window.removeEventListener('filemate:review-changed',visible);c.dispose();++optionEpoch;window.removeEventListener('beforeunload',unload);window.removeEventListener('filemate:session-expired',identityChanged);window.removeEventListener('filemate:data-restored',identityChanged)})
+function reviewChanged(event:Event){if((event as CustomEvent).detail?.source!=='review-learning')void visible()}
+onMounted(()=>{initialize();document.addEventListener('visibilitychange',visible);window.addEventListener('filemate:review-changed',reviewChanged);window.addEventListener('beforeunload',unload);window.addEventListener('filemate:session-expired',identityChanged);window.addEventListener('filemate:data-restored',identityChanged)})
+onBeforeUnmount(()=>{document.removeEventListener('visibilitychange',visible);window.removeEventListener('filemate:review-changed',reviewChanged);c.dispose();++optionEpoch;window.removeEventListener('beforeunload',unload);window.removeEventListener('filemate:session-expired',identityChanged);window.removeEventListener('filemate:data-restored',identityChanged)})
 </script>

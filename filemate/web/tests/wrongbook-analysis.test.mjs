@@ -34,3 +34,6 @@ test('multi-instance pending merges, seven-day TTL and twenty-entry bound preser
 test('mismatched receipt cannot become a success and cancellation invalidates late publication',async()=>{
  const x=setup({getReviewAnalysisRequest:async k=>result('other',k),startReviewAnalysis:async()=>{throw Error('offline')}});await x.c.open(ref('w'),'attempt');x.c.state.authorized=true;await x.c.authorizeAndAnalyze();await x.c.recover();assert.equal(x.c.state.analysis,null);assert.equal(x.c.state.uncertain,true)
 })
+test('a server 410 tombstone ends uncertainty and permits a separately authorized fresh analysis',async()=>{
+ let lose=true;const x=setup({startReviewAnalysis:async(id,b)=>{if(lose)throw Error('lost');return result(id,b.request_key)},getReviewAnalysisRequest:async()=>{throw {status:410}}});await x.c.open(ref('w'),'attempt');x.c.state.authorized=true;await x.c.authorizeAndAnalyze();await x.c.recover();assert.equal(x.c.state.uncertain,false);lose=false;x.c.state.authorized=true;assert.equal(await x.c.authorizeAndAnalyze(),true)
+})

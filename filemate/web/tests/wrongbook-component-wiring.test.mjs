@@ -12,9 +12,22 @@ async function setup(file,props={},deps={}){
  const code=ts.transpileModule(script,{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,module={exports:{}}
  const runtime={...vue,onMounted:fn=>mounted.push(fn),onUnmounted(){},onBeforeUnmount(){},onActivated(){},onDeactivated(){}}
  new Function('require','module','exports',code)(name=>name==='vue'?runtime:deps[name]||{},module,module.exports)
- let state;scope.run(()=>{state=module.exports.default.setup(vue.reactive(props),{expose(){},emit(){}})})
- return {state,mounted,scope,listeners}
+ const input=vue.reactive(props)
+ let state;scope.run(()=>{state=module.exports.default.setup(input,{expose(){},emit(){}})})
+ return {state,props:input,mounted,scope,listeners}
 }
+
+test('new-answer revision clears old previews but preserves the real editable task draft',async()=>{
+ const {createReviewLearningController}=await import('../src/wrongbook/learning-state.ts')
+ const {createReviewAnalysisController}=await import('../src/wrongbook/analysis-state.ts')
+ let revision=1
+ const action={action_id:'b'.repeat(64),title:'原任务',instructions:'独立作答',duration_minutes:10,day_offset:0}
+ const ref={wrong_id:'w',artifact_id:'a',question_index:0,question_digest:'d'.repeat(64)}
+ const api={getReviewBrowserScope:async()=> 'a'.repeat(64),getReviewAttempts:async()=>({items:[{attempt_id:'attempt'}]}),getReviewConnections:async()=>({items:[]}),getReviewEvents:async()=>({items:[]}),getReviewAnalyses:async()=>({items:[]}),getReviewLearningContext:async()=>({ref,attempt:{attempt_id:'attempt'},review_state:{revision},next_actions:[action],related_attempts:[],source_evidence:[]})}
+ const deps={'../../wrongbook/analysis-state':{createReviewAnalysisController},'../../wrongbook/learning-state':{createReviewLearningController},'../../wrongbook/submission':{browserReviewStorage:()=>({getItem:()=>null,setItem(){}})},'../../services/review-api':api,'../../services/api':{getReverseGoals:async()=>[]}}
+ const x=await setup('components/wrongbook/ReviewLearningHub.vue',{detail:{...ref,revision},manualDirty:false,canWrite:true},deps)
+ await new Promise(r=>setImmediate(r));x.state.l.state.selection.tasks[0].title='我的未保存任务';x.state.l.state.preview={confirmation_token:'old'};revision=2;x.props.detail={...ref,revision};await vue.nextTick();await new Promise(r=>setImmediate(r));assert.equal(x.state.l.state.preview,null);assert.equal(x.state.l.state.selection.tasks[0].title,'我的未保存任务');assert.equal(x.state.l.dirty(),true);x.scope.stop()
+})
 
 test('mounted learning hub preserves manual diagnosis and focuses its actual confirmation region',async()=>{
  let adopted=0,focused=0,confirmed=0
@@ -28,10 +41,23 @@ test('mounted learning hub preserves manual diagnosis and focuses its actual con
  x.state.mode.value='adopt';await x.state.confirm();assert.equal(confirmed,0);x.scope.stop()
 })
 
+test('the hub cannot start undo while evidence is still loading',async()=>{
+ let attempted=0,finish
+ const a={state:vue.reactive({context:null}),invalidate(){},dirty:()=>false},l={state:vue.reactive({preview:null}),invalidate(){},dirty:()=>false,previewUndo:async()=>{attempted++}}
+ const deps={'../../wrongbook/analysis-state':{createReviewAnalysisController:()=>a},'../../wrongbook/learning-state':{createReviewLearningController:()=>l},'../../wrongbook/submission':{browserReviewStorage:()=>({})},'../../services/review-api':{getReviewAttempts:()=>new Promise(r=>{finish=r}),getReviewConnections:async()=>({items:[]}),getReviewEvents:async()=>({items:[]})},'../../services/api':{getReverseGoals:async()=>[]}}
+ const x=await setup('components/wrongbook/ReviewLearningHub.vue',{detail:{wrong_id:'w'},canWrite:true},deps)
+ await x.state.undo('saved');assert.equal(attempted,0);finish({items:[]});x.scope.stop()
+})
+
 test('mounted question allows exact input recovery after refresh but locks an in-memory unknown request',async()=>{
  const submission={state:vue.reactive({answer:'',busy:false,stale:false,receipt:null,uncertain:true,retryNeedsInput:true})}
  const x=await setup('components/wrongbook/ReviewQuestion.vue',{question:{},identity:'q',submission},{'../../wrongbook/presentation':{presentReviewQuestion:()=>({options:[]})}})
  assert.equal(x.state.locked.value,false);submission.state.retryNeedsInput=false;assert.equal(x.state.locked.value,true);x.scope.stop()
+})
+
+test('historical analysis renders its own quote even when the current context has different text',async()=>{
+ const c={state:vue.reactive({analysis:{source_evidence:[{evidence_id:'quote',quote:'当时原文'}]},context:{source_evidence:[{evidence_id:'quote',quote:'现在的另一段原文'}]}})}
+ const x=await setup('components/wrongbook/ReviewAnalysis.vue',{c},{'../../wrongbook/presentation':{}});assert.equal(x.state.quoteFor('quote'),'当时原文');x.scope.stop()
 })
 
 test('learning artifact switching and refresh both protect its real answer draft',async()=>{

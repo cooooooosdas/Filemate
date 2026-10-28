@@ -51,7 +51,7 @@ class ReviewLearningCommands:
             old, analysis, after = self._adoption(wrong_id, analysis_id, body)
             binding = json.dumps({'command_digest': self._adoption_digest(wrong_id, analysis_id, body),
                 'before_digest': data_actions.digest(old), 'analysis_digest': data_actions.digest(analysis),
-                'after': after}, ensure_ascii=False, sort_keys=True)
+                'after_digest': data_actions.digest(after)}, ensure_ascii=False, sort_keys=True)
             token = data_actions.issue(conn, 'review_learning_adopt', f'{wrong_id}:{analysis_id}', binding)
             return {'wrong_id': wrong_id, 'analysis_id': analysis_id, 'before': self.repo.state(old),
                 'after': after, 'confirmation_token': token, 'expires_in_seconds': 900}
@@ -75,12 +75,19 @@ class ReviewLearningCommands:
                 if binding['command_digest'] != fingerprint:
                     raise ValueError('changed_selection')
                 if preview['result'] is not None:
-                    result = data_actions.check(conn, 'review_learning_adopt', f'{wrong_id}:{analysis_id}', token, None)
+                    saved = data_actions.check(conn, 'review_learning_adopt', f'{wrong_id}:{analysis_id}', token, None)
+                    event = conn.execute("SELECT result FROM review_events WHERE event_id=? AND wrong_id=? AND action='analysis_adopt'",
+                        (saved['review_event_id'], wrong_id)).fetchone()
+                    if event is None:
+                        raise ValueError('receipt_deleted')
+                    result = json.loads(event['result'])
                     if replay is not None and replay != result:
                         raise ValueError('receipt_conflict')
                     return result
                 old, analysis, after = self._adoption(wrong_id, analysis_id, body)
-                if binding['before_digest'] != data_actions.digest(old) or binding['analysis_digest'] != data_actions.digest(analysis):
+                if (binding['before_digest'] != data_actions.digest(old)
+                        or binding['analysis_digest'] != data_actions.digest(analysis)
+                        or binding['after_digest'] != data_actions.digest(after)):
                     raise ValueError('input_changed')
                 data_actions.check(conn, 'review_learning_adopt', f'{wrong_id}:{analysis_id}', token, preview['revision'])
             except (ValueError, KeyError, TypeError) as exc:
@@ -89,7 +96,8 @@ class ReviewLearningCommands:
             result = self.repo._diagnose_in_transaction(conn, wrong_id, command, fingerprint=fingerprint,
                 action='analysis_adopt', extra={'analysis_id': analysis_id, 'selected_causes': body.selected_causes,
                     'affected': {'wrong_questions': 1}})
-            data_actions.finish(conn, 'review_learning_adopt', f'{wrong_id}:{analysis_id}', token, result)
+            data_actions.finish(conn, 'review_learning_adopt', f'{wrong_id}:{analysis_id}', token,
+                {k: result[k] for k in ('wrong_id', 'review_event_id', 'affected')})
             return result
 
     def _plan_context(self, wrong_id, attempt_id=None, course_id=None):
@@ -172,7 +180,8 @@ class ReviewLearningCommands:
         body = LearningPlan.model_validate(selection)
         with self.repo.transaction() as conn:
             proposal = self._prepare_plan(wrong_id, body)
-            binding = json.dumps({'command_digest': self._plan_fingerprint(wrong_id, body), 'proposal': proposal}, ensure_ascii=False, sort_keys=True)
+            binding = json.dumps({'command_digest': self._plan_fingerprint(wrong_id, body),
+                'proposal_digest': data_actions.digest(proposal)}, sort_keys=True)
             token = data_actions.issue(conn, 'review_learning_plan', wrong_id, binding)
             return {'wrong_id': wrong_id, 'plan': proposal['plan'], 'affected': {'plans': 1, 'tasks': len(body.tasks)},
                 'confirmation_token': token, 'expires_in_seconds': 900}
@@ -212,7 +221,7 @@ class ReviewLearningCommands:
             saved = conn.execute('SELECT result FROM data_action_previews WHERE token_hash=?', (data_actions.digest(token),)).fetchone()
             proposal = None if saved and saved['result'] else self._prepare_plan(wrong_id, body)
             receipt = self._check_learning_token(conn, 'review_learning_plan', wrong_id, token, fingerprint,
-                {'command_digest': fingerprint, 'proposal': proposal} if proposal else None)
+                {'command_digest': fingerprint, 'proposal_digest': data_actions.digest(proposal)} if proposal else None)
             if receipt is not None:
                 return receipt
             plan = proposal['plan']
@@ -263,7 +272,7 @@ class ReviewLearningCommands:
         with self.repo.transaction() as conn:
             proposal = self._undo_proposal(wrong_id, event_id)
             fingerprint = data_actions.digest({'action': 'learning_undo', 'wrong_id': wrong_id, 'event_id': event_id})
-            binding = json.dumps({'command_digest': fingerprint, 'proposal': proposal}, ensure_ascii=False, sort_keys=True)
+            binding = json.dumps({'command_digest': fingerprint, 'proposal_digest': data_actions.digest(proposal)}, sort_keys=True)
             token = data_actions.issue(conn, 'review_learning_undo', f'{wrong_id}:{event_id}', binding)
             return {'wrong_id': wrong_id, 'event_id': event_id, 'changes': proposal,
                 'confirmation_token': token, 'expires_in_seconds': 900}
@@ -281,7 +290,7 @@ class ReviewLearningCommands:
             saved = conn.execute('SELECT result FROM data_action_previews WHERE token_hash=?', (data_actions.digest(token),)).fetchone()
             proposal = None if saved and saved['result'] else self._undo_proposal(wrong_id, event_id)
             receipt = self._check_learning_token(conn, 'review_learning_undo', f'{wrong_id}:{event_id}', token, fingerprint,
-                {'command_digest': fingerprint, 'proposal': proposal} if proposal else None)
+                {'command_digest': fingerprint, 'proposal_digest': data_actions.digest(proposal)} if proposal else None)
             if receipt is not None:
                 return receipt
             row = self.repo.detail(wrong_id)

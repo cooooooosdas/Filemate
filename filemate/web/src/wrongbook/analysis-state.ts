@@ -56,7 +56,7 @@ export function createReviewAnalysisController(api: AnalysisApi, observe = <T ex
     if (!pending || state.busy) return false
     const e = epoch, p = pending; state.busy = true
     try { const a = await api.getReviewAnalysisRequest(p.request_key); if (!fresh(e)) return false; apply(a,p); state.error = ''; return true }
-    catch { if (fresh(e)) { state.uncertain = true; state.error = '结果尚未核验，请查询原请求或查看历史；不会自动重新调用模型。' }; return false }
+    catch (error) { if (fresh(e)) { if ((error as {status?:number}).status===410) { persist(null,p.request_key);pending=null;state.uncertain=false;state.analysis=null;state.authorized=false;state.error='原分析结果已删除。可重新读取证据，并单独授权一次新分析。' } else { state.uncertain = true; state.error = '结果尚未核验，请查询原请求或查看历史；不会自动重新调用模型。' } }; return false }
     finally { if (fresh(e)) state.busy = false }
   }
   async function open(target: ReviewRef, attemptId: string, courseId?: string) {

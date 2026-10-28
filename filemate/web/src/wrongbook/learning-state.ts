@@ -12,6 +12,16 @@ export function createReviewLearningController(api:LearningApi,observe=<T extend
   const current=()=>stableReviewJSON(kind==='plan'?state.selection:kind==='adopt'?adoption:{event_id:target})
   function invalidate(){++epoch;ref=null;key='';signature='';baseline='';adoption=null;Object.assign(state,{selection:null,preview:null,receipt:null,busy:false,uncertain:false,error:''})}
   function open(value:ReviewRef){invalidate();ref={...value}}
+  function refresh(value:ReviewRef,next:PlanSelection){
+    const same=ref&&(['wrong_id','artifact_id','question_index','question_digest'] as const).every(k=>ref![k]===value[k])
+    if(!same){open(value);state.selection=next;baseline=stableReviewJSON(next);return}
+    if(state.busy||state.uncertain)return
+    const edited=!!baseline&&baseline!==stableReviewJSON(state.selection)
+    ++epoch;state.preview=null;key='';signature='';ref={...value}
+    state.selection=edited&&state.selection?{...state.selection,expected_revision:next.expected_revision,attempt_id:next.attempt_id,course_id:next.course_id}:next
+    baseline=stableReviewJSON(next)
+    state.error=edited?'证据已更新，已保留你的任务编辑。请核对候选是否仍适用并重新预览。':''
+  }
   async function preview(next:typeof kind,id='') {
     if(!ref||state.busy||state.uncertain)return false
     const e=++epoch;kind=next;target=id;state.preview=null;state.error='';state.busy=true;key='';signature=current()
@@ -37,5 +47,5 @@ export function createReviewLearningController(api:LearningApi,observe=<T extend
       if(e===epoch){const status=(error as {status?:number}).status;if(status&&[400,403,409,410,422,429].includes(status)){state.preview=null;state.uncertain=false;key='';state.error='预览或证据已失效，请重新读取后再预览；原有数据保留。'}else{state.uncertain=true;state.error='确认结果待核验，请原样重试；使用相同键，不会重复写入。'}}return false
     }finally{if(e===epoch)state.busy=false}
   }
-  return {state,open,invalidate,setSelection(value:PlanSelection){state.selection=value;baseline=stableReviewJSON(value)},previewPlan:()=>state.selection?preview('plan'):Promise.resolve(false),previewAdoption:(id:string,b:AdoptionSelection)=>{if(state.uncertain||state.busy)return Promise.resolve(false);adoption=JSON.parse(JSON.stringify(b));return preview('adopt',id)},previewUndo:(id:string)=>preview('undo',id),confirm,cancelPreview(){if(!state.busy&&!state.uncertain){state.preview=null;key='';signature=''}},dirty:()=>state.busy||state.uncertain||!!state.preview||!!baseline&&baseline!==stableReviewJSON(state.selection)}
+  return {state,open,refresh,invalidate,setSelection(value:PlanSelection){state.selection=value;baseline=stableReviewJSON(value)},previewPlan:()=>state.selection?preview('plan'):Promise.resolve(false),previewAdoption:(id:string,b:AdoptionSelection)=>{if(state.uncertain||state.busy)return Promise.resolve(false);adoption=JSON.parse(JSON.stringify(b));return preview('adopt',id)},previewUndo:(id:string)=>preview('undo',id),confirm,cancelPreview(){if(!state.busy&&!state.uncertain){state.preview=null;key='';signature=''}},dirty:()=>state.busy||state.uncertain||!!state.preview||!!baseline&&baseline!==stableReviewJSON(state.selection)}
 }

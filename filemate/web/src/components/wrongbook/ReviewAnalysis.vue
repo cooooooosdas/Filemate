@@ -31,7 +31,7 @@ defineEmits<{adopt:[id:string,causes:ReviewCause[]]}>()
 const s=props.c.state,selected=ref<ReviewCause[]>([])
 watch(()=>s.analysis,()=>{selected.value=[]})
 const causeName=(code:string)=>reviewCauses.find(item=>item.value===code)?.label || code
-const quoteFor=(id:string)=>s.context?.source_evidence.find(item=>item.evidence_id===id)?.quote
+const quoteFor=(id:string)=>s.analysis?.source_evidence?.find(item=>item.evidence_id===id)?.quote
 const statusLabel=(status:string)=>({running:'正在分析',ready:'分析已保存',failed:'分析未完成',cancelled:'已取消',interrupted:'分析已中断',cancelling:'正在取消'}[status]||status)
 const errors:Record<string,string>={credentials_missing:'模型密钥未配置，请在设置中保存有效凭据。',timeout:'分析超时，原答与历史已保留。',invalid_output:'模型结果未通过结构或引用校验，没有保存为有效分析。',quota_exceeded:'已到调用额度，请稍后主动重试。',provider_unavailable:'模型服务暂不可用，请检查配置后主动重试。'}
 </script>
