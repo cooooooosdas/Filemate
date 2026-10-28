@@ -1,5 +1,7 @@
 # FileMate 多 Agent 执行开发文档
 
+2026-10-28错题专项当前卡：用户在[C级交付](WRONGBOOK_2_0_C_DELIVERY.md)后要求继续，进入[D级七项计划](superpowers/plans/2026-10-28-wrongbook-learning-loop.md)审阅；沿用当前会话逐项实施、最后一次独立审阅。计划确认前仅做源码核对与文档，不提前迁移或上线。D完成后独立汇报并待验收，E的真实运行时迁移／恢复与总体验收另卡。下方图谱、面试等历史授权不扩大本错题阶段范围。
+
 2026-10-23最新范围：用户已授权知识图谱2.0 C修复后连续推进D／E全部工程，并确认训练状态、跨课导航、最多七任务的有限Agent与科研边界。实现与最终证据以[D／E交付](KNOWLEDGE_GRAPH_2_0_DE_DELIVERY.md)、[十项计划](superpowers/plans/2026-10-23-knowledge-growth-de.md)为准。当前业务33／治理3；新界面浏览器实测、真人研究与生产发布不能记为通过，下方旧阶段状态不覆盖本条。
 
 2026-10-22最新边界：[模拟面试2.0发布回执](INTERVIEW_2_0_RELEASE_2026-10-21.md)已取代下方旧“本地未推送”状态，历史记录保留其当时范围。知识图谱2.0严格按[分级执行记录](KNOWLEDGE_GRAPH_2_0_EXECUTION.md)推进；A级已通过，用户已同意[B级九项计划](superpowers/plans/2026-10-22-course-knowledge-graph-foundation.md)，正在实施课程存储与候选提取。业务迁移追加31，尚未生产迁移或发布，C—E未开始。旧功能/科研缺项不因此关闭。

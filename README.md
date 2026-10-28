@@ -1,6 +1,6 @@
 # FileMate
 
-2026-10-27 错题复盘2.0：用户已批准并逐项实施[C级六项计划](docs/superpowers/plans/2026-10-26-wrongbook-workspace.md)。当前候选包括全库分页筛选、单题复盘、有界专注批次，以及今日／课程／图谱练习共享提交；C级本地工程验收已完成（后端1648／前端257／浏览器21组通过），独立审阅8项重要问题已修复，等待用户阶段验收，详见[C级交付记录](docs/WRONGBOOK_2_0_C_DELIVERY.md)。延用[B级](docs/WRONGBOOK_2_0_B_DELIVERY.md)schema35，没有C级迁移。前端`VITE_ENABLE_WRONGBOOK_V2=false`、后端`FILEMATE_ENABLE_WRONGBOOK_V2=0`默认关闭新入口／新写入；2.0记录不会降级到旧判题。D级AI、E级总体验收与生产SQLite3.26迁移恢复仍未验收，本轮未推送部署。
+2026-10-28 错题复盘2.0：用户在[C级交付](docs/WRONGBOOK_2_0_C_DELIVERY.md)后要求继续，已整理[D级七项实现计划](docs/superpowers/plans/2026-10-28-wrongbook-learning-loop.md)，等待计划审阅后实施有证据的按需AI分析、图谱往返与增量学习任务。D尚未修改产品代码或迁移；当前仍为[B级](docs/WRONGBOOK_2_0_B_DELIVERY.md)schema35。C级本地工程验收的后端1648／前端257／浏览器21组结果属于其已固定源码，不作为本轮新测试；独立审阅8项重要问题已修复。前端`VITE_ENABLE_WRONGBOOK_V2=false`、后端`FILEMATE_ENABLE_WRONGBOOK_V2=0`默认关闭新入口／新写入；2.0记录不会降级到旧判题。D级AI、E级总体验收与生产SQLite3.26迁移恢复仍未验收，本轮未推送部署。
 
 2026-10-25 知识图谱2.0已推送main并上线：课程审核与关系工作台、训练证据、节点练习、学习路径、跨课导航、有限助手和质量工具已整合；追加SQLite3.26生产兼容修复。API41a360bd／Web资产4be657c6，业务schema34／治理3；最终Windows1544后端／213前端、Linux1562后端／213前端与公网11组通过，390库／1022文件正式备份恢复通过。详见[发布回执](docs/KNOWLEDGE_GRAPH_2_RELEASE_2026-10-24.md)、[D／E交付](docs/KNOWLEDGE_GRAPH_2_0_DE_DELIVERY.md)和[技术报告](docs/KNOWLEDGE_GRAPH_2_TECHNICAL_REPORT.md)。总体CONDITIONAL PASS；完整键盘、万节点浏览器、实体设备、人工gold与真人研究保留，新独立音视频采集关闭。下方为各批当时状态。
 

@@ -1,5 +1,7 @@
 # FileMate 当前交付资源索引
 
+2026-10-28错题复盘2.0当前进度：[C级交付](WRONGBOOK_2_0_C_DELIVERY.md)的代码与本地验收已保存，用户要求继续，已形成[D级七项计划](superpowers/plans/2026-10-28-wrongbook-learning-loop.md)，待审阅后实施。D范围为按需授权AI错因、持久引用与恢复、真实图谱定位、可编辑的增量任务和失败验收；当前产品schema仍35，尚未开发D、未执行D功能测试、未推送部署。下方A级“尚待进入B”等文字为历史快照，不覆盖[B级交付](WRONGBOOK_2_0_B_DELIVERY.md)和C级成果。
+
 2026-10-26交付核对／10-25取证，新专项A级（未开发、未上线）：[错题复盘2.0现状审计与待确认设计](superpowers/specs/2026-10-25-wrongbook-2-design.md)，包含十步调用链、数据关系、布局草案、排期候选及七项产品决策。[本轮验证](audits/wrongbook-2-a-2026-10-25/verification.json)：144项后端、13项图谱前端和5组合成现状探针通过；发现的幂等、即时掌握、队列计数与主观判定缺口尚未修复。严格待用户确认后才进入B，不改变下方现役主站状态。
 
 2026-10-25当前主站：[知识图谱2.0发布回执](KNOWLEDGE_GRAPH_2_RELEASE_2026-10-24.md)、[D／E交付](KNOWLEDGE_GRAPH_2_0_DE_DELIVERY.md)、[技术报告](KNOWLEDGE_GRAPH_2_TECHNICAL_REPORT.md)、[生产SQLite兼容修复](SQLITE_RUNTIME_COMPAT_2026-10-25.md)。API41a360bd／Web资产4be657c6已上线，业务34／治理3；最终Windows1544／前端213，Linux1562／前端213，公网11组、正式390库／1022文件备份恢复通过。CONDITIONAL PASS及原始缺项保留；下方为历史批次。
