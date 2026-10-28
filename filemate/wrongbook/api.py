@@ -82,7 +82,10 @@ def create_router(get_storage: Callable[[], SQLiteStorage]) -> APIRouter:
 
     @router.get('/capabilities')
     def capabilities():
-        return response({'write_enabled': os.getenv('FILEMATE_ENABLE_WRONGBOOK_V2', '0') == '1', 'rule_version': RULE_VERSION})
+        from filemate.wrongbook.analysis_repository import enabled
+
+        return response({'write_enabled': os.getenv('FILEMATE_ENABLE_WRONGBOOK_V2', '0') == '1',
+                         'analysis_enabled': enabled(), 'rule_version': RULE_VERSION})
 
     @router.get('/page')
     def page(request: Request, limit: int = Query(30, ge=1, le=100), offset: int = Query(0, ge=0, le=1_000_000)):

@@ -2,6 +2,12 @@
 
 ## 错题D级学习上下文（2026-10-28，逐项开发中）
 
+分析路线：`POST /wrongbook/v2/{wrong_id}/analyses`接收attempt_id、input_digest、request_key、可空course_id、credential_mode=server|browser、force_refresh=false、allow_external_model严格true。默认模型开关FILEMATE_ENABLE_WRONGBOOK_AI=0；需同时开启V2。每次新工作最多一次模型请求、20秒总期限，无自动修复／重试。不同键相同有效输入默认复用ready结果；强制刷新需新键。同键异内容409，被删除请求墓碑410。已认领的模型故障返回200的failed记录及固定error_code，调用方必须检查status；不触发账户401退出。
+
+`GET /wrongbook/v2/{wrong_id}/analyses`默认limit20、最大100、offset≤1000000，仅返回摘要；详情`GET .../analyses/{analysis_id}`按需返回result/provenance/stale。`GET /wrongbook/v2/analysis-requests/{request_key}`仅恢复已保存回执，404不证明在途请求不存在，禁止自动重发。`POST .../analyses/{analysis_id}/cancel`只接收request_key，停止后禁止旧epoch写回，不删除真实作答。关闭AI开关后仍可读、取消与导出。
+
+`POST .../analyses/{analysis_id}/adoption-preview`接收selected_causes（1–3个不重复的真实候选代码）及expected_revision；返回合并前后、confirmation_token（15分钟）。确认路线adoption-confirm额外接收request_key、confirmation_token、confirmed严格true；保留现有人工错因、备注和标签，合计超过3项拒绝，用户需重新选择；事件标记analysis_adopt并记录analysis_id。陈旧输入、人工修改或来源变化409。此操作不会调用模型，临时密钥不能附在GET、取消、采纳或相似后缀；只有精确分析POST且credential_mode=browser、受信Origin及Action=model允许使用浏览器密钥，固定DeepSeek官方端点，不切换服务器配置。
+
 D级本地schema追加36，旧迁移不改写。分析运行、全部输入来源依赖及无正文请求墓碑分别保存；结果作为wrong_review_analysis Artifact，与全部输入来源共同关联。删除任一输入来源会清除整份分析输入与结果；个人／管理员备份恢复轮换epoch，运行中记录标记interrupted，不重放模型请求。外发准入沿用独立治理账本，恢复个人数据不退还额度。此为本地工程实现，生产旧SQLite迁移及容量验收留到E级。
 
 `GET /wrongbook/v2/{wrong_id}/learning-context?attempt_id=<真实作答ID>&course_id=<可选单门课程>&credential_mode=server|browser` 不调用模型。返回原始题目、选定原答、最多5次其他真实作答、用户确认错因、当前复习状态、明确映射的概念、最多3段总计6000字的逐字资料引用与覆盖说明。原题≤60000 JSON字符、原答≤10000字、公开上下文≤128KiB；超限422，不截断原答。无来源明确标记not_found，不伪造引用。input_digest/context_revision绑定全部实际输入、来源版本、Provider及提示词，as_of不参与摘要。credential_mode只选择非敏感的Provider身份，GET不发送密钥，不构成分析授权；浏览器模式固定DeepSeek。现阶段next_actions为空且suggestions_available=false。

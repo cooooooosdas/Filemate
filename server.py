@@ -572,6 +572,15 @@ async def isolate_model_credentials(request: Request, call_next):
             return JSONResponse(status_code=403, content={
                 'success': False, 'data': None, 'error': '本地提取不接收模型密钥',
             })
+    if request.url.path.startswith('/wrongbook/v2/'):
+        try:
+            body = await request.json()
+        except ValueError:
+            body = None
+        if not isinstance(body, dict) or body.get('credential_mode') != 'browser':
+            return JSONResponse(status_code=403, content={
+                'success': False, 'data': None, 'error': '请先预览浏览器凭据模式的分析范围',
+            })
     with model_request_key(value):
         return await call_next(request)
 

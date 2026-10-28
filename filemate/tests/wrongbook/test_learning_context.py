@@ -13,7 +13,7 @@ from filemate.llm_client import LLMClient
 from filemate.tests.course_graph.conftest import course_context, course_store  # noqa: F401
 from filemate.tests.course_graph.test_learning_links import confirm, learning_context  # noqa: F401
 from filemate.tests.test_server_persistence import server_module  # noqa: F401
-from filemate.tests.wrongbook.conftest import answer_payload
+from filemate.tests.wrongbook.conftest import answer_payload, review_store  # noqa: F401
 from filemate.tests.wrongbook.test_api import seed
 from filemate.wrongbook.repository import ReviewRepository
 

@@ -2,6 +2,17 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { browserVaultAvailable, isModelRequest, requiresModelCredential, validateApiKey } from '../src/services/llm-vault.ts'
 
+test('wrongbook credentials apply only to an explicit analysis POST', () => {
+  const path = '/wrongbook/v2/w/analyses'
+  assert.equal(isModelRequest('POST', path), true)
+  for (const suffix of ['/extra', '/a', '/a/cancel', '/a/adoption-preview', '/a/adoption-confirm', '?x=y']) {
+    assert.equal(isModelRequest('POST', path + suffix), false)
+  }
+  assert.equal(isModelRequest('GET', path), false)
+  assert.equal(requiresModelCredential('POST', path, { credential_mode: 'server' }), false)
+  assert.equal(requiresModelCredential('POST', path, { credential_mode: 'browser' }), true)
+})
+
 test('course model credential is scoped to the exact extract route and explicit llm mode', () => {
   const route = '/api/knowledge-graph/courses/c/drafts/d/sources/s/extract'
   assert.equal(requiresModelCredential('POST', route, { mode: 'llm' }), true)

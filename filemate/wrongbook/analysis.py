@@ -11,6 +11,7 @@ from filemate.execution.storage import QuestionRevisionConflict
 from filemate.llm_client import LLMConfig
 from filemate.llm_client.bounded_call import BoundedLLMRunner
 from filemate.llm_client.exceptions import LLMConfigError
+from filemate.llm_client.request_credentials import REQUEST_API_KEY
 from filemate.runtime_governance import default_scope
 from filemate.wrongbook.analysis_models import AnalysisOutput, Analyze, validate_output
 from filemate.wrongbook.analysis_repository import ReviewAnalysisRepository, request_fingerprint
@@ -46,6 +47,9 @@ class ReviewAnalysisService:
         deadline = started + max(0, row['deadline']-self.repo.repo.now().timestamp())
         aid = view['analysis_id']
         try:
+            if body.credential_mode == 'browser' and not REQUEST_API_KEY.get():
+                self.repo.fail(aid, epoch, 'credentials_missing')
+                return self.repo.get(wrong_id, aid)
             config = self.config_factory()
             if not config.api_key:
                 self.repo.fail(aid, epoch, 'credentials_missing')

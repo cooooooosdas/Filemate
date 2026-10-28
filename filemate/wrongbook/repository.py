@@ -192,22 +192,26 @@ class ReviewRepository:
         command = Diagnosis.model_validate(payload)
         fingerprint = digest({"operation": "diagnosis", "wrong_id": wrong_id, **command.model_dump()})
         with self.transaction() as conn:
-            replay = self.replay(conn, command.request_key, fingerprint)
-            if replay is not None:
-                return replay
-            old = self.detail(wrong_id)
-            if command.expected_revision != old["revision"]:
-                raise QuestionRevisionConflict("错题已变化，请重新读取后确认错因")
-            primary = command.primary_cause or next(iter(command.error_causes), "unconfirmed")
-            confirmed = primary != "unconfirmed"
-            stamp = self.now().isoformat(timespec="seconds")
-            conn.execute("""UPDATE wrong_questions SET error_causes=?,custom_tags=?,error_cause=?,error_cause_source=?,
-                error_cause_confidence=?,error_cause_note=?,diagnosed_at=?,updated_at=?,revision=revision+1 WHERE wrong_id=?""",
-                (json.dumps(command.error_causes), json.dumps(command.custom_tags, ensure_ascii=False), primary,
-                 "user" if confirmed else "unconfirmed", int(confirmed), command.note, stamp if confirmed else None, stamp, wrong_id))
-            after = self.state(self.detail(wrong_id))
-            return self.event(conn, row=old, action="diagnosis", key=command.request_key, fingerprint=fingerprint,
-                              before=self.state(old), after=after, result={"wrong_id": wrong_id, **after})
+            return self._diagnose_in_transaction(conn, wrong_id, command, fingerprint=fingerprint)
+
+    def _diagnose_in_transaction(self, conn, wrong_id, command, *, fingerprint, action='diagnosis', extra=None):
+        """Share the existing revision and receipt rules with explicitly adopted causes."""
+        replay = self.replay(conn, command.request_key, fingerprint)
+        if replay is not None:
+            return replay
+        old = self.detail(wrong_id)
+        if command.expected_revision != old['revision']:
+            raise QuestionRevisionConflict('错题已变化，请重新读取后确认错因')
+        primary = command.primary_cause or next(iter(command.error_causes), 'unconfirmed')
+        confirmed = primary != 'unconfirmed'
+        stamp = self.now().isoformat(timespec='seconds')
+        conn.execute('''UPDATE wrong_questions SET error_causes=?,custom_tags=?,error_cause=?,error_cause_source=?,
+            error_cause_confidence=?,error_cause_note=?,diagnosed_at=?,updated_at=?,revision=revision+1 WHERE wrong_id=?''',
+            (json.dumps(command.error_causes), json.dumps(command.custom_tags, ensure_ascii=False), primary,
+             'user' if confirmed else 'unconfirmed', int(confirmed), command.note, stamp if confirmed else None, stamp, wrong_id))
+        after = self.state(self.detail(wrong_id))
+        return self.event(conn, row=old, action=action, key=command.request_key, fingerprint=fingerprint,
+            before=self.state(old), after=after, result={'wrong_id': wrong_id, **after, **(extra or {})})
 
     def history(self, wrong_id: str, *, kind: str, limit: int = 30, offset: int = 0) -> dict:
         """Read a bounded, stable page using the original question identity."""

@@ -3,7 +3,7 @@
 import re
 from typing import Annotated, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from filemate.wrongbook.models import Cause, Identity, Key, StrictBody
 
@@ -18,6 +18,41 @@ class Analyze(StrictBody):
     request_key: Key
     force_refresh: bool = False
     allow_external_model: Literal[True]
+
+    @field_validator('allow_external_model', mode='before')
+    @classmethod
+    def explicit_consent(cls, value):
+        if value is not True:
+            raise ValueError('explicit_consent_required')
+        return value
+
+
+class Cancel(StrictBody):
+    request_key: Key
+
+
+class Adoption(StrictBody):
+    selected_causes: list[Cause] = Field(min_length=1, max_length=3)
+    expected_revision: int = Field(ge=1)
+
+    @model_validator(mode='after')
+    def unique_selection(self):
+        if len(set(self.selected_causes)) != len(self.selected_causes):
+            raise ValueError('duplicate_causes')
+        return self
+
+
+class AdoptionConfirm(Adoption):
+    request_key: Key
+    confirmation_token: str = Field(min_length=1, max_length=256)
+    confirmed: Literal[True]
+
+    @field_validator('confirmed', mode='before')
+    @classmethod
+    def explicit_confirmation(cls, value):
+        if value is not True:
+            raise ValueError('explicit_confirmation_required')
+        return value
 
 
 class AnswerReference(StrictBody):
