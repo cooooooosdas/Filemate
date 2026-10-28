@@ -72,6 +72,7 @@
       </section>
 
       <LearningPath :goal="activeGoal" :updating-task="updatingTask" @toggle="toggleTask" />
+      <section class="evidence-panel"><h2>从复盘补一小步</h2><p>错题复盘新增的行动保存在学习计划中，确认后才创建，不会重排这里的原目标。</p><RouterLink to="/study-plan">查看学习计划与任务依据</RouterLink><RouterLink to="/wrongbook">从真实作答安排下一步</RouterLink></section>
 
       <section class="evidence-layout">
         <article class="evidence-panel">

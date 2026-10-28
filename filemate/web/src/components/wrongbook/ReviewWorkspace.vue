@@ -16,7 +16,7 @@
     <FocusReview v-if="focusMode && s.capability?.write_enabled" :key="s.scope || 'memory'" ref="focusRef" :scope="s.scope" :filters="s.filters" :enabled="s.capability.write_enabled" @exit="back" />
     <div v-else class="review-columns" :class="{'has-selection': !!route.query.focus}">
       <ReviewList :items="s.items" :selected="s.selected" :total="s.total" :offset="s.offset" :has-more="s.hasMore" :loading="s.loading" :error="s.listError" @select="pick" @page="apply" @reload="c.loadPage(s.filters,s.offset)" />
-      <section class="review-main" aria-label="单题复盘"><button class="back-catalog" @click="back"><ArrowRight :size="18" class="back-icon" />返回目录</button><p v-if="s.detailLoading" role="status">正在读取题目…</p><div v-else-if="s.detailError" role="alert"><h2>暂时无法打开此题</h2><p>{{ s.detailError }}</p><button @click="c.select(s.selected)">重试此题</button></div><template v-else-if="s.detail"><p class="review-meta">{{ reviewStateLabel(s.detail) }} · 错误 {{ s.detail.error_count }} 次 · 复习作答 {{ s.detail.review_attempt_count }} 次</p><ReviewQuestion :key="s.detail.wrong_id" :question="s.detail.question" :identity="s.detail.wrong_id" :submission="c.submission" :readonly="!s.capability?.write_enabled || s.detail.read_only_snapshot || s.detail.data_error" @saved="saved" /><ReviewEvidence :key="s.detail.wrong_id" :c="c" :d="s.detail" /></template><div v-else class="review-empty"><Reading :size="40" /><h2>从目录选择一道题</h2><p>你的真实作答、错因和复习进程会在这里汇合。</p></div></section>
+      <section class="review-main" aria-label="单题复盘"><button class="back-catalog" @click="back"><ArrowRight :size="18" class="back-icon" />返回目录</button><p v-if="s.detailLoading" role="status">正在读取题目…</p><div v-else-if="s.detailError" role="alert"><h2>暂时无法打开此题</h2><p>{{ s.detailError }}</p><button @click="c.select(s.selected)">重试此题</button></div><template v-else-if="s.detail"><p class="review-meta">{{ reviewStateLabel(s.detail) }} · 错误 {{ s.detail.error_count }} 次 · 复习作答 {{ s.detail.review_attempt_count }} 次</p><ReviewQuestion :key="s.detail.wrong_id" :question="s.detail.question" :identity="s.detail.wrong_id" :submission="c.submission" :readonly="!s.capability?.write_enabled || s.detail.read_only_snapshot || s.detail.data_error" @saved="saved" /><ReviewEvidence ref="evidenceRef" :key="s.detail.wrong_id" :c="c" :d="s.detail" /></template><div v-else class="review-empty"><Reading :size="40" /><h2>从目录选择一道题</h2><p>你的真实作答、错因和复习进程会在这里汇合。</p></div></section>
     </div>
   </main>
 </template>
@@ -43,10 +43,11 @@ const filters = ref<ReviewFilter>({ status: 'all', sort: 'due', direction: 'asc'
 const statuses = { all:'全部记录',due:'今日到期',overdue:'已经逾期',active:'进行中新规则',pending:'待核对',criterion_met:'达到本轮标准',legacy_completed:'历史两次答对',paused:'已暂停',history:'历史只读',invalid:'记录待修复' }
 const dateLabels = { due_from:'到期起点',due_to:'到期终点',created_from:'收录起点',created_to:'收录终点' }
 const focusMode = computed(()=>route.query.mode === 'focus'), focusRef = ref<InstanceType<typeof FocusReview> | null>(null)
+const evidenceRef=ref<{dirty():boolean;invalidate():void}|null>(null)
 let preferences = createReviewPreferences(browserReviewStorage(),null), ready = false, optionOffset = 0, optionEpoch = 0
 function browse() { return {filters:s.filters,focus: typeof route.query.focus === 'string' ? route.query.focus : '',offset:s.offset,mode:focusMode.value?'focus' as const:'browse' as const,notice:''} }
 function remember() { preferences.setBrowse(browse(), document.querySelector('.content-scroll')?.scrollTop ?? window.scrollY) }
-async function allow() { if (!c.dirty() && !focusRef.value?.dirty()) return true; try { await ElMessageBox.confirm('有未提交内容或待确认操作。离开后未提交正文不会保存；在途请求仍可能在服务器完成。是否离开？','保留当前复盘？',{confirmButtonText:'离开',cancelButtonText:'继续复盘',type:'warning'}); return true } catch { return false } }
+async function allow() { if (!c.dirty() && !focusRef.value?.dirty() && !evidenceRef.value?.dirty()) return true; try { await ElMessageBox.confirm('有未提交内容或待确认操作。离开后未提交正文不会保存；在途请求仍可能在服务器完成。是否离开？','保留当前复盘？',{confirmButtonText:'离开',cancelButtonText:'继续复盘',type:'warning'}); return true } catch { return false } }
 onBeforeRouteLeave(async()=>{if(!await allow())return false;remember();return true}); onBeforeRouteUpdate(allow)
 function apply(offset = 0) { const clean = readReviewBrowse(Object.fromEntries(Object.entries(filters.value).filter(([,v])=>v!==''&&v!=null).map(([k,v])=>[k,String(v)]))); notice.value = clean.notice; router.push({query:reviewBrowseQuery({...clean,offset})}) }
 function clearFilters() { filters.value = {status:'all',sort:'due',direction:'asc'}; apply() }
@@ -59,8 +60,8 @@ async function saved() { await Promise.all([c.refreshAfterAnswer(),c.loadPage(s.
 async function loadOptions(reset = true) { const e=++optionEpoch; if(reset)optionOffset=0; optionsError.value=''; try { const [a,b]=await Promise.all([api.getReviewFilterOptions('sources',{q:optionQuery.value,offset:optionOffset}),api.getReviewFilterOptions('courses',{q:optionQuery.value,offset:optionOffset})]); if(e!==optionEpoch)return; sources.value=reset?a.items:[...sources.value,...a.items];courses.value=reset?b.items:[...courses.value,...b.items]; optionsMore.value=a.has_more||b.has_more;optionOffset+=30 } catch { if(e===optionEpoch)optionsError.value='筛选选项读取失败，请重新查找。' } }
 function localDate(value?: string) { return value ? value.slice(0,16) : '' }
 function setDate(key: keyof typeof dateLabels,e: Event) { const value=(e.target as HTMLInputElement).value; filters.value[key]=value?`${value}:00+08:00`:undefined }
-function unload(e: BeforeUnloadEvent) { remember(); if(c.dirty()||focusRef.value?.dirty()){e.preventDefault();e.returnValue=''} }
-async function identityChanged() { ready=false;focusRef.value?.invalidate();c.resetIdentity(null);preferences.clearMemory();sources.value=[];courses.value=[];await initialize(false) }
+function unload(e: BeforeUnloadEvent) { remember(); if(c.dirty()||focusRef.value?.dirty()||evidenceRef.value?.dirty()){e.preventDefault();e.returnValue=''} }
+async function identityChanged() { ready=false;evidenceRef.value?.invalidate();focusRef.value?.invalidate();c.resetIdentity(null);preferences.clearMemory();sources.value=[];courses.value=[];await initialize(false) }
 async function initialize(restore=true) {
   await c.initialize();preferences=createReviewPreferences(browserReviewStorage(),s.scope);ready=true
   const saved=restore?preferences.getBrowse():null
@@ -69,6 +70,7 @@ async function initialize(restore=true) {
   if(saved&&JSON.stringify(reviewBrowseQuery(readReviewBrowse(route.query)))===JSON.stringify(reviewBrowseQuery(saved.browse))){const scroll=document.querySelector('.content-scroll');if(scroll)scroll.scrollTop=saved.scroll;else window.scrollTo(0,saved.scroll);remember()}
   loadOptions()
 }
-onMounted(()=>{initialize();window.addEventListener('beforeunload',unload);window.addEventListener('filemate:session-expired',identityChanged);window.addEventListener('filemate:data-restored',identityChanged)})
-onBeforeUnmount(()=>{c.dispose();++optionEpoch;window.removeEventListener('beforeunload',unload);window.removeEventListener('filemate:session-expired',identityChanged);window.removeEventListener('filemate:data-restored',identityChanged)})
+async function visible(){if(document.hidden||c.dirty()||focusRef.value?.dirty()||evidenceRef.value?.dirty())return;await c.initialize();await c.loadPage(s.filters,s.offset);if(s.detail)await c.refreshAfterAnswer()}
+onMounted(()=>{initialize();document.addEventListener('visibilitychange',visible);window.addEventListener('filemate:review-changed',visible);window.addEventListener('beforeunload',unload);window.addEventListener('filemate:session-expired',identityChanged);window.addEventListener('filemate:data-restored',identityChanged)})
+onBeforeUnmount(()=>{document.removeEventListener('visibilitychange',visible);window.removeEventListener('filemate:review-changed',visible);c.dispose();++optionEpoch;window.removeEventListener('beforeunload',unload);window.removeEventListener('filemate:session-expired',identityChanged);window.removeEventListener('filemate:data-restored',identityChanged)})
 </script>

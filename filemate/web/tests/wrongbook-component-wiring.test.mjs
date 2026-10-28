@@ -16,6 +16,18 @@ async function setup(file,props={},deps={}){
  return {state,mounted,scope,listeners}
 }
 
+test('mounted learning hub preserves manual diagnosis and focuses its actual confirmation region',async()=>{
+ let adopted=0,focused=0,confirmed=0
+ const a={state:vue.reactive({context:null}),open:async()=>{},invalidate(){},dirty:()=>false}
+ const l={state:vue.reactive({preview:null,receipt:null}),open(){},setSelection(){},invalidate(){},dirty:()=>false,previewAdoption:async()=>{adopted++},confirm:async()=>{confirmed++;return false}}
+ const props={detail:{wrong_id:'w',revision:1},manualDirty:true,canWrite:true}
+ const deps={'../../wrongbook/analysis-state':{createReviewAnalysisController:()=>a},'../../wrongbook/learning-state':{createReviewLearningController:()=>l},'../../wrongbook/submission':{browserReviewStorage:()=>({})},'../../services/review-api':{getReviewAttempts:async()=>({items:[]}),getReviewConnections:async()=>({items:[]}),getReviewEvents:async()=>({items:[]})},'../../services/api':{getReverseGoals:async()=>[]}}
+ const x=await setup('components/wrongbook/ReviewLearningHub.vue',props,deps)
+ await new Promise(r=>setImmediate(r));await x.state.adopt('analysis',['careless']);assert.equal(adopted,0)
+ x.state.confirmation.value={focus(){focused++}};l.state.preview={confirmation_token:'t'};await vue.nextTick();await vue.nextTick();assert.equal(focused,1)
+ x.state.mode.value='adopt';await x.state.confirm();assert.equal(confirmed,0);x.scope.stop()
+})
+
 test('mounted question allows exact input recovery after refresh but locks an in-memory unknown request',async()=>{
  const submission={state:vue.reactive({answer:'',busy:false,stale:false,receipt:null,uncertain:true,retryNeedsInput:true})}
  const x=await setup('components/wrongbook/ReviewQuestion.vue',{question:{},identity:'q',submission},{'../../wrongbook/presentation':{presentReviewQuestion:()=>({options:[]})}})

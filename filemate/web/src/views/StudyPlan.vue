@@ -5,6 +5,7 @@
         <h1>学习计划</h1>
         <p>选好资料和考试日期，把复习分到每一天。</p>
         <p v-if="restoredTitle" class="restore-note">已恢复：{{ restoredTitle }}，完成状态会自动保存到学习空间。</p>
+        <p v-if="plan?.review_learning?.ref?.wrong_id" class="restore-note"><RouterLink :to="`/wrongbook?focus=${encodeURIComponent(plan.review_learning.ref.wrong_id)}`">回看生成此计划的作答与复盘证据</RouterLink> · 完成任务不代表答对或掌握</p>
       </div>
     </header>
 

@@ -90,6 +90,6 @@ export type ReviewListItem = ReviewState & {
   error_count: number; review_count: number; review_attempt_count: number
   created_at: string; updated_at: string; read_only_snapshot: boolean; data_error: boolean
 }
-export type ReviewCapabilities = { write_enabled: boolean; rule_version: string }
+export type ReviewCapabilities = { write_enabled: boolean; analysis_enabled?: boolean; rule_version: string }
 export type ReviewOption = { id: string; label: string }
 export type ReviewRef = { wrong_id: string; artifact_id: string; question_index: number; question_digest: string }

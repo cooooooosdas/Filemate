@@ -1,4 +1,4 @@
-<template><div class="review-workspace review-entry"><p v-if="c.state.loading" role="status">正在核验题目…</p><ReviewQuestion v-else :question="question" :identity="`${artifactId}-${questionIndex}`" :submission="c.submission" :readonly="c.state.readonly" :readonly-reason="c.state.message" :allow-assistance="c.state.mode === 'v2'" @saved="$emit('saved')" /><button v-if="c.state.readonly && !readonly" @click="open">重新连接</button></div></template>
+<template><div class="review-workspace review-entry"><p v-if="c.state.loading" role="status">正在核验题目…</p><ReviewQuestion v-else :question="question" :identity="`${artifactId}-${questionIndex}`" :submission="c.submission" :readonly="c.state.readonly" :readonly-reason="c.state.message" :allow-assistance="c.state.mode === 'v2'" @saved="$emit('saved')" /><button v-if="c.state.readonly && !readonly" @click="open">重新连接</button><RouterLink v-if="c.state.reviewRoute" :to="c.state.reviewRoute">打开此题复盘</RouterLink></div></template>
 <script setup lang="ts">
 import { reactive, watch, onMounted, onBeforeUnmount } from 'vue'
 import * as reviewApi from '../../services/review-api'

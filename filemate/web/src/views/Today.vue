@@ -200,8 +200,8 @@ const formatDate = (value: string) => new Intl.DateTimeFormat('zh-CN', {
 function visible(){if(!document.hidden&&!loading.value)load()}
 function invalidate(){++generation;for(const e of entries.values())e.invalidate();data.value=null;load()}
 function unload(e:BeforeUnloadEvent){if([...entries.values()].some(x=>x.dirty())){e.preventDefault();e.returnValue=''}}
-onMounted(()=>{load();document.addEventListener('visibilitychange',visible);window.addEventListener('beforeunload',unload);window.addEventListener('filemate:session-expired',invalidate);window.addEventListener('filemate:data-restored',invalidate)})
-onBeforeUnmount(()=>{++generation;document.removeEventListener('visibilitychange',visible);window.removeEventListener('beforeunload',unload);window.removeEventListener('filemate:session-expired',invalidate);window.removeEventListener('filemate:data-restored',invalidate)})
+onMounted(()=>{load();document.addEventListener('visibilitychange',visible);window.addEventListener('filemate:review-changed',visible);window.addEventListener('beforeunload',unload);window.addEventListener('filemate:session-expired',invalidate);window.addEventListener('filemate:data-restored',invalidate)})
+onBeforeUnmount(()=>{++generation;document.removeEventListener('visibilitychange',visible);window.removeEventListener('filemate:review-changed',visible);window.removeEventListener('beforeunload',unload);window.removeEventListener('filemate:session-expired',invalidate);window.removeEventListener('filemate:data-restored',invalidate)})
 </script>
 
 <style scoped>

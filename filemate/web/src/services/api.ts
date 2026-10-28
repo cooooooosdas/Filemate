@@ -1863,6 +1863,7 @@ export interface StudyCheckpoint {
 }
 
 export interface StudyPlan {
+  review_learning?: { ref?: { wrong_id: string }; attempt_id?: string; context_revision?: string; goal_id?: string | null; basis?: unknown[] }
   warnings?: string[]
   title: string
   exam_date: string

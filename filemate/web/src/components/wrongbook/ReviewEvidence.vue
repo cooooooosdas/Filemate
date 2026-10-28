@@ -4,15 +4,21 @@
     <details @toggle="sourceToggle"><summary>资料来源</summary><div class="evidence-content"><p>资料全文，暂无原题定位。</p><p v-if="c.state.sourceLoading">正在读取原资料…</p><p v-if="c.state.sourceError" role="alert">{{ c.state.sourceError }} <button @click="c.loadSource()">重试来源</button></p><pre v-if="sourceText" class="preserve source-text">{{ sourceText }}</pre><p v-else-if="c.state.source && !c.state.sourceLoading">原资料暂未提供可读正文。</p></div></details>
     <details @toggle="historyToggle"><summary>作答与操作历史</summary><div class="evidence-content"><div class="review-actions"><button @click="c.history('attempts')">作答记录</button><button @click="c.history('events')">操作记录</button></div><p v-if="c.state.historyLoading">正在读取历史…</p><p v-if="c.state.historyError" role="alert">{{ c.state.historyError }} <button @click="c.history(c.state.historyKind,c.state.historyOffset)">重试历史</button></p><p v-else-if="!c.state.historyLoading && !c.state.historyItems.length">暂无记录。</p><ol class="history-list"><li v-for="(row, i) in c.state.historyItems" :key="i"><template v-if="'attempt_id' in row && 'is_correct' in row"><b>{{ row.is_correct === null ? '待核对' : row.answer_revealed ? '辅助练习' : row.is_correct ? '本次答对' : '本次未答对' }}</b><p class="preserve">{{ row.user_answer || '暂时不会' }}</p><p>{{ row.feedback }}</p><span>{{ reviewTime(row.created_at) }} · {{ row.rule_version || '历史规则' }}</span></template><template v-else-if="'action' in row"><b>{{ eventLabel(row.action) }}</b><p>{{ reviewTime(row.created_at) }}</p><button v-if="['pause','resume','reschedule','activate'].includes(reviewEventAction(row.action))" :disabled="!c.writable()" @click="c.previewSchedule({action:'undo',undo_event_id:row.event_id})">预览撤销此次操作</button></template></li></ol><nav class="review-pages"><button :disabled="c.state.historyLoading || c.state.historyOffset === 0" @click="c.history(c.state.historyKind,c.state.historyOffset-20)">上一组记录</button><button :disabled="c.state.historyLoading || c.state.historyOffset+20>=c.state.historyTotal" @click="c.history(c.state.historyKind,c.state.historyOffset+20)">下一组记录</button></nav></div></details>
     <details><summary>复习排期与规则</summary><div class="evidence-content"><p>当前：{{ reviewStateLabel(d) }} · 下次 {{ reviewTime(d.next_review_at) }}</p><p v-if="d.scheduler_version !== 'legacy-v1'">1／3／7／15／30天。至少3次合格验证、跨3个上海日期、首末相隔7天，才达到本轮复习标准。</p><p v-else>此题保留历史“两次答对”口径，不代表长期掌握。</p><ReviewSchedule :c="c" :d="d" /></div></details>
+    <div class="learning-entry" v-if="!d.read_only_snapshot && !d.data_error"><button v-if="!learningOpen" :disabled="!c.submission.state.receipt && !c.submission.state.answerRevealed" @click="learningOpen=true">分析这次回答，安排下一步</button><p v-if="!learningOpen">先独立作答或核对参考，再打开证据分析。</p><p v-if="learningError" role="alert">学习面板加载失败，基础复习仍可继续。<button @click="retryLoad">重试加载面板</button></p><ReviewLearningHub v-if="learningOpen" ref="learning" :detail="d" :selected-attempt="c.submission.state.receipt?.attempt_id" :can-write="c.writable()" :analysis-enabled="!!c.state.capability?.analysis_enabled" :manual-dirty="c.diagnosisDirty()" @changed="c.refreshAfterAnswer()" /></div>
   </section>
 </template>
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, defineAsyncComponent } from 'vue'
 import type { ReviewDetail } from '../../types/wrongbook'
 import type { createReviewWorkspaceController } from '../../wrongbook/workspace-state'
 import { reviewCauses, reviewTime, reviewStateLabel, reviewEventAction } from '../../wrongbook/presentation'
 import ReviewSchedule from './ReviewSchedule.vue'
 const props = defineProps<{ c: ReturnType<typeof createReviewWorkspaceController>; d: ReviewDetail }>()
+const learningOpen=ref(false), learningError=ref(false), learning=ref<{dirty():boolean;invalidate():void}|null>(null)
+let retryLearning:(()=>void)|null=null
+const ReviewLearningHub=defineAsyncComponent({loader:()=>import('./ReviewLearningHub.vue'),onError(_error,retry){learningError.value=true;retryLearning=()=>{learningError.value=false;retry()}}})
+function retryLoad(){retryLearning?.()}
+defineExpose({dirty:()=>!!learning.value?.dirty(),invalidate:()=>learning.value?.invalidate()})
 const sourceText = computed(() => { const s = props.c.state.source as { raw_text?: string } | null; return typeof s?.raw_text === 'string' ? s.raw_text : '' })
 function clear() { props.c.state.diagnosis = { error_causes: [], primary_cause: null, custom_tags: [], note: '' } }
 function clearPrimary() { const d = props.c.state.diagnosis; if (d.primary_cause && !d.error_causes.includes(d.primary_cause)) d.primary_cause = null }

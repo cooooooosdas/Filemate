@@ -139,6 +139,7 @@ export function createReviewWorkspaceController(api: WorkspaceApi, observe: <T e
   }
   function resetIdentity(scope: string | null) { ++epoch; ++detailEpoch; ++listEpoch; state.scope = scope; state.capability = null; state.items = []; state.detail = null; state.selected = ''; state.historyItems = []; state.source = null; state.diagnosis = blankDiagnosis(); diagnosisBaseline = ''; state.preview = null; state.writing = false; state.loading = false; state.detailLoading = false; pendingSchedule = null; pendingDiagnosis = null; submission.resetIdentity(scope) }
   return { state, submission, initialize, loadPage, select, history, loadSource, saveDiagnosis, previewSchedule, confirmSchedule, resetIdentity, writable, refreshAfterAnswer,
+    diagnosisDirty: () => !!state.detail && diagnosisBaseline !== stableReviewJSON(state.diagnosis),
     cancelPreview() { if (!state.writing && !state.writeError.includes('待核验')) { state.preview = null; pendingSchedule = null } },
     dirty: () => submission.dirty() || state.writing || !!state.preview || !!pendingDiagnosis || !!state.detail && diagnosisBaseline !== stableReviewJSON(state.diagnosis),
     dispose() { resetIdentity(null); disposed = true; submission.dispose() } }
