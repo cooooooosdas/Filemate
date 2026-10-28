@@ -195,7 +195,7 @@ class ReviewLearningContext:
                 '_source_dependencies': [deps[k] for k in sorted(deps)], '_graph_binding': graph_binding}
             result['input_digest'] = digest(result)
             result['context_revision'] = digest({'input_digest': result['input_digest'], 'revision': detail['revision']})
+            result['as_of'] = now.astimezone(timezone.utc).isoformat()
             if len(json.dumps(public_context(result), ensure_ascii=False).encode('utf-8')) > CONTEXT_BYTES:
                 raise ValueError('analysis_context_too_large')
-            result['as_of'] = now.astimezone(timezone.utc).isoformat()
             return result

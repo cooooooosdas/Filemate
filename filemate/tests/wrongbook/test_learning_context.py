@@ -182,3 +182,16 @@ def test_oversized_context_is_rejected_without_truncating_original_answer(review
     store._conn().commit()
     with pytest.raises(ValueError, match='analysis_context_too_large'):
         service(store, ReviewRepository(store).now).build(result['wrong_id'], result['attempt_id'])
+
+
+def test_public_byte_limit_includes_preview_timestamp(review_store, monkeypatch):
+    from filemate.wrongbook import learning_context as module
+
+    store, _, _, _, clock = review_store
+    attempt = ReviewRepository(store, clock=lambda: clock[0]).submit(answer_payload(review_store))
+    reader = service(store, lambda: clock[0])
+    context = reader.build(attempt['wrong_id'], attempt['attempt_id'])
+    size = len(json.dumps(module.public_context(context), ensure_ascii=False).encode('utf-8'))
+    monkeypatch.setattr(module, 'CONTEXT_BYTES', size-1)
+    with pytest.raises(ValueError, match='analysis_context_too_large'):
+        reader.build(attempt['wrong_id'], attempt['attempt_id'])

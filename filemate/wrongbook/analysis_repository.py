@@ -28,6 +28,11 @@ def valid_key(key: str) -> None:
         raise ValueError('invalid_request_key')
 
 
+def request_fingerprint(wrong_id, attempt_id, input_digest, force_refresh=False, course_id=None, credential_mode='server'):
+    return digest({'wrong_id': wrong_id, 'attempt_id': attempt_id, 'input_digest': input_digest,
+        'force_refresh': force_refresh, 'course_id': course_id, 'credential_mode': credential_mode})
+
+
 class ReviewAnalysisRepository:
     def __init__(self, storage, clock=None):
         self.storage = storage
@@ -74,7 +79,7 @@ class ReviewAnalysisRepository:
             return None
         if row[0] is None:
             raise AnalysisGone('analysis_result_deleted')
-        return self._view(self._row(row[0]))
+        return {**self._view(self._row(row[0])), 'request_key': key}
 
     def get(self, wrong_id, analysis_id):
         row = self._row(analysis_id)
@@ -95,8 +100,9 @@ class ReviewAnalysisRepository:
     def claim(self, context, request_key, force_refresh=False):
         """Claim one durable slot; cache and receipt reads never admit model work."""
         valid_key(request_key)
-        fingerprint = digest({'wrong_id': context['ref']['wrong_id'], 'attempt_id': context['attempt']['attempt_id'],
-            'input_digest': context['input_digest'], 'force_refresh': force_refresh})
+        fingerprint = request_fingerprint(context['ref']['wrong_id'], context['attempt']['attempt_id'],
+            context['input_digest'], force_refresh, (context.get('_graph_binding') or {}).get('course_id'),
+            context.get('credential_mode', 'server'))
         now = self.repo.now()
         with self.repo.transaction() as conn:
             old = conn.execute('SELECT * FROM wrong_review_analysis_requests WHERE request_key=?', (request_key,)).fetchone()
@@ -114,7 +120,7 @@ class ReviewAnalysisRepository:
             cached = None if force_refresh else conn.execute("SELECT * FROM wrong_review_analyses WHERE wrong_id=? AND input_digest=? AND status='ready' AND result_artifact_id IS NOT NULL ORDER BY created_at DESC LIMIT 1", (context['ref']['wrong_id'], context['input_digest'])).fetchone()
             if cached:
                 conn.execute('INSERT INTO wrong_review_analysis_requests VALUES(?,?,?,?)', (request_key, fingerprint, cached['analysis_id'], now.isoformat()))
-                return self._view(dict(cached)), False, None
+                return {**self._view(dict(cached)), 'request_key': request_key}, False, None
             if conn.execute("SELECT 1 FROM wrong_review_analyses WHERE wrong_id=? AND status IN ('running','cancelling')", (context['ref']['wrong_id'],)).fetchone():
                 raise QuestionRevisionConflict('analysis_already_running')
             if not admit_learning(self.storage.db_path, 'wrongbook-analysis', request_key, fingerprint, now=now.timestamp()):
@@ -131,13 +137,13 @@ class ReviewAnalysisRepository:
             conn.execute('INSERT INTO wrong_review_analysis_requests VALUES(?,?,?,?)', (request_key, fingerprint, aid, now.isoformat()))
             return self._view(self._row(aid)), True, epoch
 
-    def active(self, analysis_id, epoch):
+    def active(self, analysis_id, epoch, *, check_deadline=True):
         """Check a worker lease without authorizing additional calls."""
         try:
             row = self._row(analysis_id)
         except LookupError:
             return False
-        return row['epoch'] == epoch and row['status'] == 'running' and self.repo.now().timestamp() <= row['deadline'] and enabled()
+        return row['epoch'] == epoch and row['status'] == 'running' and (not check_deadline or self.repo.now().timestamp() <= row['deadline']) and enabled()
 
     def finish(self, analysis_id, epoch, result, provenance):
         """Commit one result only while every original input and lease remains valid."""

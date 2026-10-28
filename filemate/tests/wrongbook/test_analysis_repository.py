@@ -1,4 +1,5 @@
 """Synthetic durable analysis lifecycle without any external model calls."""
+# ruff: noqa: F811
 
 import importlib
 from datetime import timedelta
@@ -6,7 +7,7 @@ from datetime import timedelta
 import pytest
 
 from filemate.execution.storage import QuestionRevisionConflict, SQLiteStorage
-from filemate.tests.wrongbook.conftest import answer_payload
+from filemate.tests.wrongbook.conftest import answer_payload, review_store  # noqa: F401
 from filemate.wrongbook.learning_context import ReviewLearningContext
 from filemate.wrongbook.repository import ReviewRepository
 
