@@ -62,7 +62,7 @@ def test_preview_and_three_databases_restore(managed: Path, tmp_path: Path) -> N
         entry["database"]["schema_version"]
         for entry in report["manifest"]["entries"]
         if entry["kind"] == "database"
-    } == {35}
+    } == {36}
     target = tmp_path / "staged"
     restore_plan = backup.plan_restore(snapshot, target)
     assert not target.exists()
@@ -305,3 +305,30 @@ def test_admin_restore_rotates_interview_draft_version(managed: Path, tmp_path: 
         restored.save_draft(DraftContent(target_role='旧页面'), before['revision'], 'admin-draft-request02', before['version_token'])
     assert restored.read_draft()['content']['target_role'] == '合成目标'
     restored_storage.close()
+
+
+def test_admin_restore_interrupts_review_analysis_and_rotates_epoch(managed: Path, tmp_path: Path, monkeypatch) -> None:
+    from filemate.wrongbook.analysis_repository import ReviewAnalysisRepository
+    from filemate.wrongbook.learning_context import ReviewLearningContext
+    from filemate.wrongbook.repository import ReviewRepository
+
+    monkeypatch.setenv('FILEMATE_ENABLE_WRONGBOOK_V2', '1')
+    monkeypatch.setenv('FILEMATE_ENABLE_WRONGBOOK_AI', '1')
+    store = SQLiteStorage(managed/'filemate.db')
+    sid = store.save_source(original_name='合成', source_path=str(managed/'inbox/原创复习资料.txt'))
+    question = {'question_type': 'fill', 'stem': '数组下标起点', 'answer': '0'}
+    aid = store.save_artifact(source_id=sid, artifact_type='questions', content=[question])
+    attempt = ReviewRepository(store).submit({'artifact_id': aid, 'question_index': 0,
+        'expected_question': question, 'user_answer': '1', 'request_key': 'admin-review-answer-0001'})
+    context = ReviewLearningContext(store).build(attempt['wrong_id'], attempt['attempt_id'])
+    view, _, epoch = ReviewAnalysisRepository(store).claim(context, 'admin-review-analysis-0001')
+    store.close()
+    snapshot, target = tmp_path/'review-backup', tmp_path/'review-staged'
+    _create(managed, snapshot)
+    plan = backup.plan_restore(snapshot, target)
+    backup.restore_backup(snapshot, target, plan['confirmation'])
+    restored = SQLiteStorage(target/'filemate.db')
+    repo = ReviewAnalysisRepository(restored)
+    assert repo.get(attempt['wrong_id'], view['analysis_id'])['status'] == 'interrupted'
+    assert not repo.finish(view['analysis_id'], epoch, {}, {})
+    restored.close()

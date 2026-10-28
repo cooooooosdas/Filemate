@@ -36,7 +36,9 @@ def test_upgrade_keeps_legacy_evidence_identity_and_rowid(tmp_path, monkeypatch)
     store, _, _, attempt_id = legacy_store(tmp_path, monkeypatch)
     before = dict(store._conn().execute("SELECT rowid,* FROM quiz_attempts").fetchone())
     wrong = store.list_wrong_questions()[0]
-    store.init_schema()
+    with monkeypatch.context() as patch:
+        patch.setattr(storage_module, '_MIGRATIONS', tuple(m for m in storage_module._MIGRATIONS if m[0] <= 35))
+        store.init_schema()
     assert store.get_schema_version() == 35
     after = dict(store._conn().execute("SELECT rowid,* FROM quiz_attempts").fetchone())
     assert {key: after[key] for key in before} == before
@@ -46,7 +48,9 @@ def test_upgrade_keeps_legacy_evidence_identity_and_rowid(tmp_path, monkeypatch)
     assert store.get_wrong_question(wrong["wrong_id"])["scheduler_version"] == "legacy-v1"
     assert store._conn().execute("PRAGMA foreign_key_check").fetchall() == []
     assert store._conn().execute("PRAGMA quick_check").fetchone()[0] == "ok"
-    store.init_schema()
+    with monkeypatch.context() as patch:
+        patch.setattr(storage_module, '_MIGRATIONS', tuple(m for m in storage_module._MIGRATIONS if m[0] <= 35))
+        store.init_schema()
     assert store._conn().execute("SELECT COUNT(*) FROM quiz_attempts").fetchone()[0] == 1
     store.close()
 
@@ -69,11 +73,11 @@ def test_unjudged_answers_can_be_saved_without_false_zero(tmp_path):
 
 def test_failed_migration_restores_original_table_and_version(tmp_path, monkeypatch):
     store, _, _, _ = legacy_store(tmp_path, monkeypatch)
-    assert storage_module._MIGRATIONS[-1][0] == 35
-    version, name, script = storage_module._MIGRATIONS[-1]
+    historical = tuple(m for m in storage_module._MIGRATIONS if m[0] <= 35)
+    version, name, script = historical[-1]
     with monkeypatch.context() as patch:
         patch.setattr(storage_module, "_MIGRATIONS", (
-            *storage_module._MIGRATIONS[:-1], (version, name, script + "\nINVALID AUDIT SQL;"),
+            *historical[:-1], (version, name, script + "\nINVALID AUDIT SQL;"),
         ))
         with pytest.raises(sqlite3.OperationalError):
             store.init_schema()
@@ -81,7 +85,9 @@ def test_failed_migration_restores_original_table_and_version(tmp_path, monkeypa
     assert store._conn().execute("SELECT rowid,user_answer FROM quiz_attempts").fetchone()[:] == (57, "先进先出")
     columns = {r["name"]: r["notnull"] for r in store._conn().execute("PRAGMA table_info(quiz_attempts)")}
     assert columns["is_correct"] == 1
-    store.init_schema()
+    with monkeypatch.context() as patch:
+        patch.setattr(storage_module, '_MIGRATIONS', historical)
+        store.init_schema()
     assert store.get_schema_version() == 35
     store.close()
 

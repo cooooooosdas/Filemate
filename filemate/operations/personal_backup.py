@@ -402,6 +402,9 @@ class PersonalBackup:
                 from filemate.course_graph.privacy import normalize_restored_course_graph
 
                 normalize_restored_course_graph(conn)
+                from filemate.wrongbook.privacy import normalize_restored_wrongbook
+
+                normalize_restored_wrongbook(conn)
                 # 旧备份缺失序号时无法复原题目版本边界，保留历史但不冒认其有效性。
                 rebound = 0
                 if not any('rowid' in row for row in content['tables'].get('quiz_attempts', [])):

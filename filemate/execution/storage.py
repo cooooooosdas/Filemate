@@ -30,6 +30,7 @@ from filemate.execution import (
 from filemate.interview_assessment import schema as interview_assessment_schema
 from filemate.interview_coach import schema as interview_coach_schema
 from filemate.task_resources import admit_plan, admit_tasks
+from filemate.wrongbook import analysis_schema as review_analysis_schema
 from filemate.wrongbook import schema as review_schema
 
 logger = logging.getLogger(__name__)
@@ -637,6 +638,7 @@ _MIGRATIONS = (
     (33, "course_learning_derived_sources", learning_schema.DERIVED_SOURCES_SCHEMA),
     (34, "course_answer_source_backfill", learning_schema.ANSWER_SOURCE_BACKFILL_SCHEMA),
     (35, "wrongbook_review_evidence", review_schema.SCHEMA),
+    (36, "wrongbook_learning_analysis", review_analysis_schema.SCHEMA),
 )
 
 
@@ -1415,6 +1417,9 @@ class SQLiteStorage:
         from filemate.course_graph.privacy import source_impact
 
         counts.update(source_impact(self, source_id)["counts"])
+        from filemate.wrongbook.privacy import source_impact as review_source_impact
+
+        counts.update(review_source_impact(self, source_id)['counts'])
         return {
             "source_id": source_id,
             "original_name": source.get("original_name"),
@@ -1462,6 +1467,9 @@ class SQLiteStorage:
         from filemate.course_graph.privacy import source_revision_fragment
 
         snapshot["course_graph"] = source_revision_fragment(self, source_id)
+        from filemate.wrongbook.privacy import source_impact as review_source_impact
+
+        snapshot['review_learning'] = review_source_impact(self, source_id)['revision']
         return data_actions.digest(snapshot)
 
     def source_deletion_preview(self, source_id: str) -> dict[str, Any] | None:
