@@ -10,7 +10,11 @@
 
 D级本地schema追加36，旧迁移不改写。分析运行、全部输入来源依赖及无正文请求墓碑分别保存；结果作为wrong_review_analysis Artifact，与全部输入来源共同关联。删除任一输入来源会清除整份分析输入与结果；个人／管理员备份恢复轮换epoch，运行中记录标记interrupted，不重放模型请求。外发准入沿用独立治理账本，恢复个人数据不退还额度。此为本地工程实现，生产旧SQLite迁移及容量验收留到E级。
 
-`GET /wrongbook/v2/{wrong_id}/learning-context?attempt_id=<真实作答ID>&course_id=<可选单门课程>&credential_mode=server|browser` 不调用模型。返回原始题目、选定原答、最多5次其他真实作答、用户确认错因、当前复习状态、明确映射的概念、最多3段总计6000字的逐字资料引用与覆盖说明。原题≤60000 JSON字符、原答≤10000字、公开上下文≤128KiB；超限422，不截断原答。无来源明确标记not_found，不伪造引用。input_digest/context_revision绑定全部实际输入、来源版本、Provider及提示词，as_of不参与摘要。credential_mode只选择非敏感的Provider身份，GET不发送密钥，不构成分析授权；浏览器模式固定DeepSeek。现阶段next_actions为空且suggestions_available=false。
+`GET /wrongbook/v2/{wrong_id}/learning-context?attempt_id=<真实作答ID>&course_id=<可选单门课程>&credential_mode=server|browser` 不调用模型。返回原始题目、选定原答、最多5次其他真实作答、用户确认错因、当前复习状态、明确映射的概念、最多3段总计6000字的逐字资料引用与覆盖说明。原题≤60000 JSON字符、原答≤10000字、公开上下文≤128KiB；超限422，不截断原答。无来源明确标记not_found，不伪造引用。input_digest/context_revision绑定全部实际输入、来源版本、Provider及提示词，as_of不参与摘要。credential_mode只选择非敏感的Provider身份，GET不发送密钥，不构成分析授权；浏览器模式固定DeepSeek。next_actions返回服务器规则候选及真实训练分母／作答ID；单次错答最多一项短行动，重复错答、逾期或人工确认错因才扩展，合计最多7项，不调用模型。
+
+`POST .../learning-plan-preview`接收expected_revision、可选attempt_id/course_id/goal_id、start_date（上海当日至未来30日）及1–7项tasks。任务只能取当前候选action_id，可编辑title≤120、instructions≤500、duration_minutes=5–60、day_offset=0–6。确认路线learning-plan-confirm额外接收confirmation_token、request_key、confirmed严格true。预览不新建计划；确认原子新增一个现役StudyPlan及Artifact，绑定全部输入资料，不修改原目标、旧计划或完成记录。来源、作答、图谱、目标或编辑内容变化使旧预览409。
+
+`POST .../learning-operations/{event_id}/undo-preview`接收空对象；undo-confirm接收confirmation_token、request_key、confirmed严格true。仅支持本卡analysis_adopt／learning_plan_confirm事件；恢复诊断前值或删除本次新建且未修改、未完成的计划，保留全部作答。撤销亦需预览确认，重复确认返回原回执，之后手改或完成任务409。增量计划和撤销不依赖AI开关，仍需V2写入开关。
 
 `GET /wrongbook/v2/{wrong_id}/connections?limit=30&offset=0` 返回当前版本、有效课程来源、确认映射及融合后的概念，route精确定位课程／节点／证据视图。limit为1–30，offset为0–1000000；未知／重复参数422，不存在404，数据库暂不可用503。历史题仍可读取真实作答，但无当前图谱链接。question-access额外返回wrong_id/review_route，可空；摘要不符或只读历史不返回跳转。只读接口不返回内部来源依赖、密钥或文件路径。
 

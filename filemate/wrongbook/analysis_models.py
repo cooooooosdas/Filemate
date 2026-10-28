@@ -55,6 +55,57 @@ class AdoptionConfirm(Adoption):
         return value
 
 
+class LearningTask(StrictBody):
+    action_id: str = Field(pattern=r'^[a-f0-9]{64}$')
+    title: str = Field(min_length=1, max_length=120)
+    instructions: str = Field(min_length=1, max_length=500)
+    duration_minutes: int = Field(ge=5, le=60)
+    day_offset: int = Field(ge=0, le=6)
+
+
+class LearningPlan(StrictBody):
+    expected_revision: int = Field(ge=1)
+    attempt_id: Identity | None = None
+    course_id: Identity | None = None
+    goal_id: Identity | None = None
+    start_date: str = Field(pattern=r'^\d{4}-\d{2}-\d{2}$')
+    tasks: list[LearningTask] = Field(min_length=1, max_length=7)
+
+    @model_validator(mode='after')
+    def distinct_tasks(self):
+        if len({t.action_id for t in self.tasks}) != len(self.tasks):
+            raise ValueError('duplicate_actions')
+        if any(not t.title.strip() or not t.instructions.strip() for t in self.tasks):
+            raise ValueError('blank_action')
+        return self
+
+
+class LearningPlanConfirm(LearningPlan):
+    request_key: Key
+    confirmation_token: str = Field(min_length=1, max_length=256)
+    confirmed: Literal[True]
+
+    @field_validator('confirmed', mode='before')
+    @classmethod
+    def explicit_confirmation(cls, value):
+        if value is not True:
+            raise ValueError('explicit_confirmation_required')
+        return value
+
+
+class UndoConfirm(StrictBody):
+    request_key: Key
+    confirmation_token: str = Field(min_length=1, max_length=256)
+    confirmed: Literal[True]
+
+    @field_validator('confirmed', mode='before')
+    @classmethod
+    def explicit_confirmation(cls, value):
+        if value is not True:
+            raise ValueError('explicit_confirmation_required')
+        return value
+
+
 class AnswerReference(StrictBody):
     attempt_id: Identity
     quote: str = Field(min_length=1, max_length=1000)

@@ -10,8 +10,17 @@ from fastapi.routing import APIRoute
 from filemate.execution.storage import QuestionRevisionConflict
 from filemate.runtime_governance import BudgetExceeded, GovernanceUnavailable
 from filemate.wrongbook.analysis import ReviewAnalysisService
-from filemate.wrongbook.analysis_models import Adoption, AdoptionConfirm, Analyze, Cancel
+from filemate.wrongbook.analysis_models import (
+    Adoption,
+    AdoptionConfirm,
+    Analyze,
+    Cancel,
+    LearningPlan,
+    LearningPlanConfirm,
+    UndoConfirm,
+)
 from filemate.wrongbook.analysis_repository import AnalysisGone, ReviewAnalysisRepository, enabled
+from filemate.wrongbook.api import _enabled
 from filemate.wrongbook.learning_commands import ReviewLearningCommands
 from filemate.wrongbook.learning_context import ReviewLearningContext, public_context
 
@@ -101,6 +110,27 @@ def create_router(get_storage):
     def adoption_confirm(wrong_id: str, analysis_id: str, body: AdoptionConfirm):
         return response(ReviewLearningCommands(get_storage()).confirm_adoption(wrong_id, analysis_id,
             body.model_dump(exclude={'request_key', 'confirmed', 'confirmation_token'}),
+            body.confirmation_token, body.request_key, body.confirmed))
+
+    @router.post('/{wrong_id}/learning-plan-preview', dependencies=[Depends(_enabled)])
+    def plan_preview(wrong_id: str, body: LearningPlan):
+        return response(ReviewLearningCommands(get_storage()).preview_plan(wrong_id, body.model_dump()))
+
+    @router.post('/{wrong_id}/learning-plan-confirm', dependencies=[Depends(_enabled)])
+    def plan_confirm(wrong_id: str, body: LearningPlanConfirm):
+        return response(ReviewLearningCommands(get_storage()).confirm_plan(wrong_id,
+            body.model_dump(exclude={'request_key', 'confirmed', 'confirmation_token'}),
+            body.confirmation_token, body.request_key, body.confirmed))
+
+    @router.post('/{wrong_id}/learning-operations/{event_id}/undo-preview', dependencies=[Depends(_enabled)])
+    def undo_preview(wrong_id: str, event_id: str, body: dict):
+        if body:
+            raise ValueError('unexpected_parameters')
+        return response(ReviewLearningCommands(get_storage()).preview_undo(wrong_id, event_id))
+
+    @router.post('/{wrong_id}/learning-operations/{event_id}/undo-confirm', dependencies=[Depends(_enabled)])
+    def undo_confirm(wrong_id: str, event_id: str, body: UndoConfirm):
+        return response(ReviewLearningCommands(get_storage()).confirm_undo(wrong_id, event_id,
             body.confirmation_token, body.request_key, body.confirmed))
 
     return router

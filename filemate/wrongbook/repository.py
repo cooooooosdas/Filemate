@@ -93,9 +93,9 @@ class ReviewRepository:
 
     def event(self, conn: Any, *, row: dict, action: str, key: str, fingerprint: str,
               before: dict, after: dict, result: dict, attempt_id: str | None = None,
-              undo_of: str | None = None) -> dict:
+              undo_of: str | None = None, event_id: str | None = None) -> dict:
         """Persist the response beside its state transition for safe uncertain retries."""
-        event_id = uuid.uuid4().hex
+        event_id = event_id or uuid.uuid4().hex
         result = {**result, "review_event_id": event_id}
         conn.execute("""INSERT INTO review_events
             (event_id,artifact_id,wrong_id,attempt_id,action,request_key,input_digest,

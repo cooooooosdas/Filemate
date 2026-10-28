@@ -38,7 +38,8 @@ def test_context_binds_real_attempt_and_bounds_history(review_store):
     assert context['coverage']['total_attempts'] == 9
     assert context['coverage']['related_attempts_omitted'] == 3
     assert context['confirmed_diagnosis']['error_causes'] == []
-    assert context['next_actions'] == []
+    assert 1 <= len(context['next_actions']) <= 7
+    assert context['coverage']['suggestions_available'] is True
     assert {s['source_id'] for s in context['_source_dependencies']} == {sid}
     other = repo.submit(answer_payload(review_store, index=2, answer='错误', key='context-foreign-attempt-key'))
     with pytest.raises(LookupError):

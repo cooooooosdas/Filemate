@@ -14,6 +14,7 @@ from filemate.study.knowledge_graph import _after_question_revision
 from filemate.understanding.retrieval import PAGE_MARKER, rank_chunks, split_document
 from filemate.wrongbook.engine import RULE_VERSION
 from filemate.wrongbook.evidence import trusted_attempt
+from filemate.wrongbook.learning_suggestions import build_suggestions
 from filemate.wrongbook.repository import ReviewRepository
 
 PROMPT_VERSION = 'wrongbook-analysis-v1'
@@ -134,7 +135,7 @@ class ReviewLearningContext:
         with self.storage.read_snapshot() as read:
             detail, conn = ReviewRepository(read).detail(wrong_id), read._conn()
             artifact = read.get_artifact(detail['artifact_id'])
-            row = conn.execute('SELECT * FROM quiz_attempts WHERE attempt_id=? AND artifact_id=? AND question_index=?',
+            row = conn.execute('SELECT rowid AS evidence_sequence,* FROM quiz_attempts WHERE attempt_id=? AND artifact_id=? AND question_index=?',
                 (attempt_id, detail['artifact_id'], detail['question_index'])).fetchone()
             if row is None or not artifact:
                 raise LookupError('作答不存在或不属于此题')
@@ -186,11 +187,12 @@ class ReviewLearningContext:
                     'primary_cause': detail['error_cause'] if confirmed else None,
                     'note': detail['error_cause_note'] if confirmed else '', 'custom_tags': detail['custom_tags']},
                 'review_state': ReviewRepository.state(detail), 'read_only_snapshot': detail['read_only_snapshot'],
-                'graph_links': selected, 'source_evidence': quotes, 'next_actions': [],
+                'graph_links': selected, 'source_evidence': quotes,
+                'next_actions': build_suggestions(read, detail, now, quotes),
                 'coverage': {'total_attempts': count, 'related_attempts_omitted': max(0, count-1-len(history)),
                     'graph_links_in_scope': len(selected), 'quotes': len(quotes),
                     'source_evidence_status': 'available' if quotes else 'not_found', 'bounded_context': True,
-                    'suggestions_available': False},
+                    'suggestions_available': not detail['read_only_snapshot']},
                 **provider_binding(credential_mode), 'prompt_version': PROMPT_VERSION, 'rule_version': RULE_VERSION,
                 '_source_dependencies': [deps[k] for k in sorted(deps)], '_graph_binding': graph_binding}
             result['input_digest'] = digest(result)
