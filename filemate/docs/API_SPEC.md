@@ -1,5 +1,11 @@
 # API 规范
 
+## 错题D级学习上下文（2026-10-28，逐项开发中）
+
+`GET /wrongbook/v2/{wrong_id}/learning-context?attempt_id=<真实作答ID>&course_id=<可选单门课程>&credential_mode=server|browser` 不调用模型。返回原始题目、选定原答、最多5次其他真实作答、用户确认错因、当前复习状态、明确映射的概念、最多3段总计6000字的逐字资料引用与覆盖说明。原题≤60000 JSON字符、原答≤10000字、公开上下文≤128KiB；超限422，不截断原答。无来源明确标记not_found，不伪造引用。input_digest/context_revision绑定全部实际输入、来源版本、Provider及提示词，as_of不参与摘要。credential_mode只选择非敏感的Provider身份，GET不发送密钥，不构成分析授权；浏览器模式固定DeepSeek。现阶段next_actions为空且suggestions_available=false。
+
+`GET /wrongbook/v2/{wrong_id}/connections?limit=30&offset=0` 返回当前版本、有效课程来源、确认映射及融合后的概念，route精确定位课程／节点／证据视图。limit为1–30，offset为0–1000000；未知／重复参数422，不存在404，数据库暂不可用503。历史题仍可读取真实作答，但无当前图谱链接。question-access额外返回wrong_id/review_route，可空；摘要不符或只读历史不返回跳转。只读接口不返回内部来源依赖、密钥或文件路径。
+
 ## 错题工作台C级只读合同（2026-10-26，开发候选）
 
 沿用B级身份、响应包装及no-store，GET不调用模型。`GET /wrongbook/v2/capabilities`返回`write_enabled/rule_version`，只读在关闭写入时保留。`GET /wrongbook/v2/receipts/{request_key}`返回当前空间已保存的review_events回执，键16–80位字母数字下划线／连字符，未查到404；404不证明此前在途请求已失败。作答回执额外从实际quiz_attempts读取artifact_id/question_index/question_digest，客户端须与服务端题目摘要逐项核对才可应用；证据已删除则404，不使用本机元数据生成成功结果。POST原回执合同不变。

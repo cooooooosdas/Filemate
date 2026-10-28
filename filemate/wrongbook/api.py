@@ -1,9 +1,11 @@
 """Opt-in commands and always-readable tenant-bound review evidence."""
 
+import json
 import os
 import sqlite3
 from collections.abc import Callable
 from typing import Literal
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import JSONResponse
@@ -106,10 +108,16 @@ def create_router(get_storage: Callable[[], SQLiteStorage]) -> APIRouter:
         if not isinstance(questions, list) or question_index >= len(questions):
             raise LookupError('题目不存在')
         history = bool((artifact.get('metadata') or {}).get('read_only_snapshot'))
-        row = storage._conn().execute('SELECT scheduler_version,revision FROM wrong_questions WHERE artifact_id=? AND question_index=?', (artifact_id, question_index)).fetchone()
+        row = storage._conn().execute('SELECT wrong_id,question,scheduler_version,revision FROM wrong_questions WHERE artifact_id=? AND question_index=?', (artifact_id, question_index)).fetchone()
         owned = bool(row and (row['scheduler_version'] != 'legacy-v1' or row['revision'] > 1))
+        try:
+            current_match = row and digest(json.loads(row['question'])) == digest(questions[question_index])
+        except (TypeError, ValueError):
+            current_match = False
+        wrong_id = row['wrong_id'] if current_match and not history else None
         return response({'legacy_writable': not history and not owned, 'read_only_snapshot': history,
-                         'question_digest': digest(questions[question_index])})
+                         'question_digest': digest(questions[question_index]), 'wrong_id': wrong_id,
+                         'review_route': '/wrongbook?' + urlencode({'focus': wrong_id}) if wrong_id else None})
 
     @router.post("/attempts", dependencies=[Depends(_enabled)])
     def answer(body: Answer):
