@@ -15,6 +15,9 @@ test('opening reads exact outbound question answers history and quotes without m
  assert.equal(await c.authorizeAndAnalyze(),false);c.state.authorized=true;assert.equal(await c.authorizeAndAnalyze(),true);assert.equal(calls.length,1);assert.equal(c.state.authorized,false)
  assert.equal(await c.authorizeAndAnalyze(),false);assert.equal(calls.length,1)
 })
+test('actual full review detail is narrowed to the four identity fields before context checks',async()=>{
+ const {c}=setup();await c.open({...ref('w'),revision:7,question:{stem:'当前题目'},latest_answer:'不会进入pending的正文'},'attempt');assert.ok(c.state.context);assert.equal(c.state.error,'')
+})
 test('unknown POST is recovered through same-key GET only, no body or key persisted',async()=>{
  let key;const x=setup({startReviewAnalysis:async(id,b)=>{key=b.request_key;throw Error('network lost')}});await x.c.open(ref('w'),'attempt');x.c.state.authorized=true;await x.c.authorizeAndAnalyze();assert.equal(x.c.state.uncertain,true)
  const raw=x.storage.getItem('filemate-review-analysis-pending-v1:'+'a'.repeat(64));assert.ok(raw.includes(key));assert.ok(!raw.includes('原回答')&&!raw.includes('原文'))

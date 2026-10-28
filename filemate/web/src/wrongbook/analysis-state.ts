@@ -60,7 +60,7 @@ export function createReviewAnalysisController(api: AnalysisApi, observe = <T ex
     finally { if (fresh(e)) state.busy = false }
   }
   async function open(target: ReviewRef, attemptId: string, courseId?: string) {
-    invalidate(); ref = { ...target }; attempt = attemptId; course = courseId; const e = epoch
+    invalidate(); ref = { wrong_id:target.wrong_id,artifact_id:target.artifact_id,question_index:target.question_index,question_digest:target.question_digest }; attempt = attemptId; course = courseId; const e = epoch
     try { const s = await api.getReviewBrowserScope(); if (!fresh(e)) return false; scope = s } catch { if (!fresh(e)) return false }
     pending = Object.values(records()).find(p=>p.ref.wrong_id===target.wrong_id && p.ref.question_digest===target.question_digest && p.attempt_id===attemptId) ?? null
     state.uncertain = !!pending

@@ -4,6 +4,9 @@ const mod=await import('../src/wrongbook/learning-state.ts').catch(()=>({}))
 const ref={wrong_id:'w',artifact_id:'a',question_index:0,question_digest:'d'.repeat(64)}
 function setup(overrides={}){assert.equal(typeof mod.createReviewLearningController,'function');const calls=[],api={previewReviewLearningPlan:async(id,b)=>({wrong_id:id,confirmation_token:'token',plan:b}),confirmReviewLearningPlan:async(id,b)=>{calls.push(b);return {wrong_id:id,review_event_id:'event',plan_id:'plan',route:'/study-plan?plan=plan'}},previewReviewAdoption:async()=>({confirmation_token:'token'}),confirmReviewAdoption:async()=>({wrong_id:'w',review_event_id:'event'}),previewReviewLearningUndo:async()=>({confirmation_token:'undo',changes:{kind:'plan'}}),confirmReviewLearningUndo:async()=>({wrong_id:'w',review_event_id:'undo-event'}),...overrides};return {c:mod.createReviewLearningController(api,s=>s),calls}}
 const selection=()=>({expected_revision:1,start_date:'2026-10-28',tasks:[{action_id:'b'.repeat(64),title:'重练',instructions:'独立作答',duration_minutes:10,day_offset:0}]})
+test('saved edited plan releases the navigation guard while unsaved task text remains protected',async()=>{
+ const {c}=setup();c.open(ref);c.setSelection(selection());c.state.selection.tasks[0].title='我自己的行动标题';assert.equal(c.dirty(),true);await c.previewPlan();await c.confirm();assert.equal(c.dirty(),false)
+})
 test('edit requires fresh preview, cancel and conflict never mutate original goal or show success',async()=>{
  const {c,calls}=setup();c.open(ref);c.state.selection=selection();await c.previewPlan();c.state.selection.tasks[0].title='新的标题';assert.equal(await c.confirm(),false);assert.equal(calls.length,0);await c.previewPlan();c.cancelPreview();assert.equal(c.state.preview,null);assert.equal(c.state.receipt,null);assert.equal(calls.length,0)
  await c.previewPlan();assert.equal(await c.confirm(),true);assert.equal(c.state.receipt.plan_id,'plan');assert.equal(calls[0].confirmed,true)

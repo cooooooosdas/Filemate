@@ -32,7 +32,7 @@ export function createReviewLearningController(api:LearningApi,observe=<T extend
       const r=kind==='plan'?await api.confirmReviewLearningPlan(ref.wrong_id,{...state.selection!,...body}):kind==='adopt'?await api.confirmReviewAdoption(ref.wrong_id,target,{...adoption!,...body}):await api.confirmReviewLearningUndo(ref.wrong_id,target,body)
       if(e!==epoch)return false
       if(r.wrong_id!==ref.wrong_id||!r.review_event_id)throw Error('invalid_receipt')
-      state.receipt=r;state.preview=null;state.uncertain=false;key='';return true
+      state.receipt=r;state.preview=null;state.uncertain=false;key='';if(kind==='plan')baseline=stableReviewJSON(state.selection);return true
     }catch(error){
       if(e===epoch){const status=(error as {status?:number}).status;if(status&&[400,403,409,410,422,429].includes(status)){state.preview=null;state.uncertain=false;key='';state.error='预览或证据已失效，请重新读取后再预览；原有数据保留。'}else{state.uncertain=true;state.error='确认结果待核验，请原样重试；使用相同键，不会重复写入。'}}return false
     }finally{if(e===epoch)state.busy=false}
