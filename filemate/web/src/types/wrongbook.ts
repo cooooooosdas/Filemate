@@ -82,13 +82,25 @@ export type ReviewFilter = {
   q?: string; source_id?: string; course_id?: string; knowledge_q?: string; status?: ReviewStatus
   cause?: ReviewCause | 'unconfirmed'; min_errors?: number; max_errors?: number
   due_from?: string; due_to?: string; created_from?: string; created_to?: string
-  sort?: 'due' | 'updated' | 'errors' | 'created'; direction?: 'asc' | 'desc'; reviewable_only?: boolean
+  sort?: 'due' | 'updated' | 'errors' | 'created' | 'recommended'; direction?: 'asc' | 'desc'; reviewable_only?: boolean
 }
 export type ReviewListItem = ReviewState & {
   wrong_id: string; artifact_id: string; question_index: number; question_digest: string
   source_id: string | null; source_name: string | null; stem: string; question_type: string; knowledge_label: string
   error_count: number; review_count: number; review_attempt_count: number
   created_at: string; updated_at: string; read_only_snapshot: boolean; data_error: boolean
+  priority?: ReviewPriority
+}
+export type ReviewPriority = { priority_score: number; overdue_days: number; reason: string; rule_version: 'review2-priority-v1' }
+export type ReviewSessionRef = { wrong_id: string; artifact_id: string; source_id: string | null; question_index: number; question_digest: string; revision: number; next_review_at: string }
+export type ReviewSessionCheck = { refs: ReviewSessionRef[]; filters?: ReviewFilter }
+export type ReviewSessionReady = { status: 'ready'; refs: ReviewSessionRef[]; as_of: string; rule_version: 'review2-session-v1' }
+export type ReviewSessionPreview = {
+  status: 'preview_only'; scope: 'filtered_eligible_due'; as_of: string; day_zone: 'Asia/Shanghai'; filters: ReviewFilter
+  items: { ref: ReviewSessionRef; stem: string; knowledge_label: string; priority: ReviewPriority; estimated_minutes: number }[]
+  selected_count: number; eligible_count: number; deferred_count: number; estimated_minutes: number
+  available_minutes: number; minutes_per_question: number; selection_limit: 20
+  rule_version: 'review2-session-v1'; priority_rule_version: 'review2-priority-v1'; estimate_note: string; warning: string | null
 }
 export type ReviewCapabilities = { write_enabled: boolean; analysis_enabled?: boolean; rule_version: string }
 export type ReviewOption = { id: string; label: string }

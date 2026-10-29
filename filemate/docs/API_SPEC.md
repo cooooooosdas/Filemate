@@ -1279,3 +1279,11 @@ C级浏览器验收使用隔离合成账号与真实API。备份恢复测试会�
 推荐页顶层增加 `priority_rule_version=review2-priority-v1`、`recommendation_scope=filtered_eligible_due`、`day_zone=Asia/Shanghai` 与说明；每项增加 `priority={priority_score,overdue_days,reason,rule_version}`。分数为 `min(上海逾期天数,30)*3 + min(error_count,10)*4 + (error_cause_source=user ? 4 : 0)`。error_count是已保存的历史错答次数，旧记录判定来源可能不同；user仅说明本人标注过错因。该分数是队列启发式，不是掌握率、已验证正确率或学习效果。
 
 本次所有page响应固定同一个服务端UTC `as_of`，旧无时区时间按UTC解释；客户端不得自传时钟。日期换算仍复用严格Python引擎；JSON1原生校验与无JSON1兼容路径均拒绝损坏/非有限JSON。按不同到期字符串在当前快照中换算后关联，避免每行多次Python回调，无跨账号结果缓存。无新增迁移或模型调用；可见入口仍属后续C级。
+
+`GET /wrongbook/v2/session-preview`：复用page筛选（不接受limit/offset），另需 `available_minutes=0..1440`，可选 `minutes_per_question=1..60`，默认4。时长必须整数文本，拒绝小数/布尔/重复或未知参数。只在当前筛选内选择可复习到期题，默认due顺序，recommended显式启用。最多20题，预算不足一题时返回空选择，仍给真实全范围候选数；预估仅指本次短练，不替换今日复盘的10—15分钟建议。
+
+响应：`status=preview_only`、`scope=filtered_eligible_due`、`as_of/day_zone/filters`、`items`、`eligible_count/selected_count/deferred_count`、`estimated_minutes/available_minutes/minutes_per_question/selection_limit`、`rule_version=review2-session-v1`、`priority_rule_version`、`estimate_note/warning`。每项只含简短题干、知识点、优先级解释、估时与 `ref={wrong_id,artifact_id,source_id,question_index,question_digest,revision,next_review_at}`；不返回原答或参考答案。
+
+`POST /wrongbook/v2/session-check`：JSON严格为 `{refs:[...], filters?:{...}}`，refs为1—20项且wrong_id不得重复，字段同上，类型严格；总请求体上限64KiB，不接受URL查询参数。应回传预览的filters，以复核课程/资料/搜索等上下文。服务端在同一只读快照和同一as_of内核对资格、来源、当前题集原始摘要、排期与修订号，任一不符/已删除/另一身份均统一409“请重新生成预览”，不部分开始。成功仅返回 `status=ready/refs/as_of/rule_version`，不创建任务、attempt、event或锁。ready是瞬时核验，不是预留或评分承诺；真正作答仍走既有attempt端点并重新验证当前题目和状态。
+
+两个新端点均受现有 `FILEMATE_ENABLE_WRONGBOOK_V2=1` 控制，关闭503，原历史查询保持可用；沿用认证、Origin保护、统一错误及no-store。数据库异常503不暴露内部位置。无新增环境变量、迁移、持久任务或模型凭据外发。B仅交付后台与类型化客户端，正式可见控件在C级接入。

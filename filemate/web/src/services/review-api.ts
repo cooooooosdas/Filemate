@@ -1,5 +1,6 @@
 import type { ReviewAnswer, ReviewAnswerResult, ReviewAttempt, ReviewDetail, ReviewDiagnosis, ReviewEvent, ReviewPage, ReviewPreview, ReviewSchedule, ReviewScheduleReceipt, ReviewState, ReviewSummary } from '../types/wrongbook'
 import type { ReviewCapabilities, ReviewFilter, ReviewListItem, ReviewOption } from '../types/wrongbook'
+import type { ReviewSessionPreview, ReviewSessionCheck, ReviewSessionReady } from '../types/wrongbook'
 import type { ApiResponse } from '../types'
 import { reviewHTTP as api, getCourseBrowserScope } from './api'
 import { hasBrowserApiKey } from './llm-vault'
@@ -10,6 +11,8 @@ async function reviewResult<T>(request: Promise<ApiResponse<T>>): Promise<T> {
   throw new Error(response.error || '复习操作未完成，请保留原稿后重试')
 }
 const reviewPath = (id: string) => `/wrongbook/v2/${encodeURIComponent(id)}`
+export const getReviewSessionPreview = (params: ReviewFilter & { available_minutes: number; minutes_per_question?: number }): Promise<ReviewSessionPreview> => reviewResult(api.get<unknown, ApiResponse<ReviewSessionPreview>>('/wrongbook/v2/session-preview', { params, timeout: 15000 }))
+export const checkReviewSession = (body: ReviewSessionCheck): Promise<ReviewSessionReady> => reviewResult(api.post<unknown, ApiResponse<ReviewSessionReady>>('/wrongbook/v2/session-check', body, { timeout: 10000 }))
 export const getReviewSummary = (): Promise<ReviewSummary> => reviewResult(api.get<unknown, ApiResponse<ReviewSummary>>('/wrongbook/v2/summary'))
 export const getReviewCapabilities = (): Promise<ReviewCapabilities> => reviewResult(api.get<unknown, ApiResponse<ReviewCapabilities>>('/wrongbook/v2/capabilities', { timeout: 10000 }))
 export const getReviewBrowserScope = getCourseBrowserScope

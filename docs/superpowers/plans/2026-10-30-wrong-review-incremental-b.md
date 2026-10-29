@@ -49,12 +49,12 @@
 
 **Interfaces:** priority_details(row:dict, *, now:datetime) -> dict，返回priority_score/overdue_days/reason/rule_version；ReviewFilter.sort增加recommended；ReviewQueries.page保持普通页合同，推荐页items增加priority，顶层给priority_rule_version和recommendation_scope。不暴露参考答案。
 
-- [ ] 先写纯函数与查询测试：同分稳定；上海同日不逾期；无效/溢出时间拒绝；暂停、只读、坏记录、未来题排除；旧mastered排除但V2 criterion_met到期保留；跨页最高分先出；普通due结果不变；新原因不是掌握率。
-- [ ] 运行新测试，Expected：缺少insights/recommended合同或断言失败。
-- [ ] 用当前受控只读快照、现役parse_time和版本状态实现；错误计数非非负整数的记录不纳入推荐，不虚构次数。冻结as_of，排序使用同一规则常量且结果最多limit条。
-- [ ] 在全新四规模合成库记录cProfile/EXPLAIN和HTTP四并发基线；若SQL宽行排序占用突出，采用排序键/ID有界物化后按ID取正文。原500ms门槛不变，不以优化意图关闭E-P2-01。
-- [ ] 测试SQL和Python原因的一致性、JSON1与兼容分支、全范围过滤和别的身份；运行`.venv/Scripts/python.exe -m pytest filemate/tests/wrongbook/test_insights.py filemate/tests/wrongbook/test_workspace_reads.py -q`，Expected：通过。
-- [ ] 提交`feat(wrongbook): 增加基于证据的可解释推荐`，task-done复跑上述文件。
+- [x] 先写纯函数与查询测试：同分稳定；上海同日不逾期；无效/溢出时间拒绝；暂停、只读、坏记录、未来题排除；旧mastered排除但V2 criterion_met到期保留；跨页最高分先出；普通due结果不变；新原因不是掌握率。
+- [x] 运行新测试，Expected：缺少insights/recommended合同或断言失败。
+- [x] 用当前受控只读快照、现役parse_time和版本状态实现；错误计数非非负整数的记录不纳入推荐，不虚构次数。冻结as_of，排序使用同一规则常量且结果最多limit条。
+- [x] 在全新四规模合成库记录cProfile/EXPLAIN和HTTP四并发基线；若SQL宽行排序占用突出，采用排序键/ID有界物化后按ID取正文。原500ms门槛不变，不以优化意图关闭E-P2-01。
+- [x] 测试SQL和Python原因的一致性、JSON1与兼容分支、全范围过滤和别的身份；运行`.venv/Scripts/python.exe -m pytest filemate/tests/wrongbook/test_insights.py filemate/tests/wrongbook/test_workspace_reads.py -q`，Expected：通过。
+- [x] 提交`feat(wrongbook): 增加基于证据的可解释推荐`，task-done复跑上述文件。
 
 ## Task 3: 只读时间预算预览与开始前核验
 

@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import sqlite3
 from collections.abc import Callable
 from typing import Literal
@@ -19,6 +20,7 @@ from filemate.wrongbook.engine import RULE_VERSION
 from filemate.wrongbook.models import Answer, Diagnosis, Schedule
 from filemate.wrongbook.queries import ReviewFilter, ReviewQueries
 from filemate.wrongbook.repository import ReviewRepository
+from filemate.wrongbook.session_preview import ReviewSessions, SessionCheck
 
 
 class Confirm(Schedule):
@@ -44,9 +46,20 @@ class ReviewRoute(APIRoute):
                     allowed = {*ReviewFilter.model_fields, 'limit', 'offset'}
                 elif request.url.path.endswith('/filter-options'):
                     allowed = {'kind', 'q', 'limit', 'offset'}
+                elif request.url.path.endswith('/session-preview'):
+                    allowed = {*ReviewFilter.model_fields, 'available_minutes', 'minutes_per_question'}
+                    for name in ('available_minutes', 'minutes_per_question'):
+                        value = request.query_params.get(name)
+                        if value is not None and not re.fullmatch(r'[0-9]{1,4}', value):
+                            raise HTTPException(422, '复习时长须为整数')
                 keys = list(request.query_params.keys())
                 if any(key not in allowed or len(request.query_params.getlist(key)) != 1 for key in keys):
                     raise HTTPException(422, "查询参数无效或重复")
+            if request.url.path.endswith('/session-check'):
+                if request.query_params:
+                    raise HTTPException(422, '核验不接受查询参数')
+                if len(await request.body()) > 65536:
+                    raise HTTPException(413, '核验请求过大')
             try:
                 return await handler(request)
             except QuestionRevisionConflict as exc:
@@ -96,6 +109,18 @@ def create_router(get_storage: Callable[[], SQLiteStorage]) -> APIRouter:
     def options(kind: Literal['sources', 'courses'], q: str = Query('', max_length=160),
                 limit: int = Query(30, ge=1, le=100), offset: int = Query(0, ge=0, le=1_000_000)):
         return response(ReviewQueries(get_storage()).options(kind, q=q, limit=limit, offset=offset))
+
+    @router.get('/session-preview', dependencies=[Depends(_enabled)])
+    def session_preview(request: Request, available_minutes: int = Query(..., ge=0, le=1440),
+                        minutes_per_question: int = Query(4, ge=1, le=60)):
+        filters = ReviewFilter.model_validate({key: value for key, value in request.query_params.items()
+                                              if key not in {'available_minutes', 'minutes_per_question'}})
+        return response(ReviewSessions(get_storage()).preview(filters, available_minutes=available_minutes,
+                                                             minutes_per_question=minutes_per_question))
+
+    @router.post('/session-check', dependencies=[Depends(_enabled)])
+    def session_check(body: SessionCheck):
+        return response(ReviewSessions(get_storage()).check([ref.model_dump() for ref in body.refs], filters=body.filters))
 
     @router.get('/receipts/{request_key}')
     def receipt(request_key: str):

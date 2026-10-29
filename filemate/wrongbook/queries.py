@@ -234,71 +234,80 @@ class ReviewQueries:
         return ' AND '.join(conditions), params
 
     def page(self, filters: ReviewFilter, *, limit=30, offset=0, eligible_only=False):
+        as_of = ReviewRepository(self.storage, clock=self.clock).now()
+        with self.storage.read_snapshot() as read:
+            return self._snapshot_page(read, filters, as_of=as_of, limit=limit, offset=offset, eligible_only=eligible_only)
+
+    def _snapshot_page(self, read, filters: ReviewFilter, *, as_of: datetime, limit=30, offset=0,
+                       eligible_only=False, wrong_ids: list[str] | None = None):
         _bounds(limit, offset)
         filters = ReviewFilter.model_validate(filters)
         recommended = filters.sort == 'recommended'
-        as_of = ReviewRepository(self.storage, clock=self.clock).now()
         if recommended or eligible_only:
             filters = filters.model_copy(update={'reviewable_only': True})
-        with self.storage.read_snapshot() as read:
-            conn, repo = self._configure(read, as_of)
-            prefix, time_join = '', ''
-            when, day = 'filemate_review_time(w.next_review_at)', 'review_local_day(w.next_review_at)'
-            if recommended or eligible_only:
-                # Grouping prevents SQLite from calling Python once per row for repeated dates.
-                prefix = """WITH review_times AS (SELECT next_review_at AS raw,
-                    filemate_review_time(next_review_at) AS due,
-                    review_local_day(next_review_at) AS local_day FROM wrong_questions GROUP BY next_review_at) """
-                time_join = ' JOIN review_times rt ON rt.raw IS w.next_review_at'
-                when, day = 'rt.due', 'rt.local_day'
-            where, params = self._where(read, filters, conn, repo, when=when)
-            if recommended or eligible_only:
-                where += f""" AND {when}<=?
-                    AND {day} IS NOT NULL
-                    AND typeof(w.error_count)='integer' AND w.error_count>=0
-                    AND {_metadata_expression(conn)}=1
-                    AND a.artifact_type='questions' AND a.source_id IS w.source_id
-                    AND (w.source_id IS NULL OR s.source_id IS NOT NULL)"""
-                params.append(as_of.timestamp())
-            base = ' FROM wrong_questions w' + time_join + ' LEFT JOIN artifacts a ON a.artifact_id=w.artifact_id LEFT JOIN sources s ON s.source_id=w.source_id WHERE ' + where
-            total = conn.execute(prefix + 'SELECT COUNT(*)' + base, params).fetchone()[0]
-            projection, sort_params = '', []
+        conn, repo = self._configure(read, as_of)
+        prefix, time_join = '', ''
+        when, day = 'filemate_review_time(w.next_review_at)', 'review_local_day(w.next_review_at)'
+        if recommended or eligible_only:
+            # Grouping prevents SQLite from calling Python once per row for repeated dates.
+            prefix = """WITH review_times AS (SELECT next_review_at AS raw,
+                filemate_review_time(next_review_at) AS due,
+                review_local_day(next_review_at) AS local_day FROM wrong_questions GROUP BY next_review_at) """
+            time_join = ' JOIN review_times rt ON rt.raw IS w.next_review_at'
+            when, day = 'rt.due', 'rt.local_day'
+        where, params = self._where(read, filters, conn, repo, when=when)
+        if recommended or eligible_only:
+            where += f""" AND {when}<=?
+                AND {day} IS NOT NULL
+                AND typeof(w.error_count)='integer' AND w.error_count>=0
+                AND {_metadata_expression(conn)}=1
+                AND a.artifact_type='questions' AND a.source_id IS w.source_id
+                AND (w.source_id IS NULL OR s.source_id IS NOT NULL)"""
+            params.append(as_of.timestamp())
+        if wrong_ids is not None:
+            if not 1 <= len(wrong_ids) <= 20:
+                raise ValueError('核验题目数量无效')
+            where += ' AND w.wrong_id IN (' + ','.join('?' for _ in wrong_ids) + ')'
+            params.extend(wrong_ids)
+        base = ' FROM wrong_questions w' + time_join + ' LEFT JOIN artifacts a ON a.artifact_id=w.artifact_id LEFT JOIN sources s ON s.source_id=w.source_id WHERE ' + where
+        total = conn.execute(prefix + 'SELECT COUNT(*)' + base, params).fetchone()[0]
+        projection, sort_params = '', []
+        if recommended:
+            projection = f""", MIN({MAX_OVERDUE_DAYS}, MAX(0, ?-{day}))*{OVERDUE_WEIGHT}
+                +MIN({MAX_ERRORS},w.error_count)*{ERROR_WEIGHT}
+                +CASE WHEN w.error_cause_source='user' THEN {USER_CAUSE_WEIGHT} ELSE 0 END AS _rank_score"""
+            sort_params = [review_day(as_of.isoformat())]
+            order = f'_rank_score DESC,{when} ASC,w.wrong_id ASC'
+        else:
+            sort = {'due': when, 'updated': 'filemate_review_time(w.updated_at)',
+                    'created': 'filemate_review_time(w.created_at)', 'errors': 'w.error_count'}[filters.sort]
+            order = f'{sort} {filters.direction},w.wrong_id {filters.direction}'
+        rows = conn.execute(prefix + 'SELECT w.*,s.original_name AS source_name,a.metadata AS artifact_metadata' + projection + base +
+            f' ORDER BY {order} LIMIT ? OFFSET ?', [*sort_params, *params, limit, offset]).fetchall()
+        items = []
+        for raw in rows:
+            row = dict(raw)
+            question = _object(row.pop('question'))
+            metadata = _object(row.pop('artifact_metadata'))
+            row.pop('latest_answer', None)
+            row.update(stem=str(question.get('stem') or question.get('question') or '')[:300],
+                question_type=str(question.get('question_type') or question.get('type') or ''),
+                question_digest=digest(question), read_only_snapshot=bool(metadata.get('read_only_snapshot')),
+                data_error=not question or parse_time(row['next_review_at']) is None or _list(row['error_causes']) is None or _list(row['custom_tags']) is None)
+            row['error_causes'] = _list(row['error_causes']) or []
+            row['custom_tags'] = _list(row['custom_tags']) or []
             if recommended:
-                projection = f""", MIN({MAX_OVERDUE_DAYS}, MAX(0, ?-{day}))*{OVERDUE_WEIGHT}
-                    +MIN({MAX_ERRORS},w.error_count)*{ERROR_WEIGHT}
-                    +CASE WHEN w.error_cause_source='user' THEN {USER_CAUSE_WEIGHT} ELSE 0 END AS _rank_score"""
-                sort_params = [review_day(as_of.isoformat())]
-                order = f'_rank_score DESC,{when} ASC,w.wrong_id ASC'
-            else:
-                sort = {'due': when, 'updated': 'filemate_review_time(w.updated_at)',
-                        'created': 'filemate_review_time(w.created_at)', 'errors': 'w.error_count'}[filters.sort]
-                order = f'{sort} {filters.direction},w.wrong_id {filters.direction}'
-            rows = conn.execute(prefix + 'SELECT w.*,s.original_name AS source_name,a.metadata AS artifact_metadata' + projection + base +
-                f' ORDER BY {order} LIMIT ? OFFSET ?', [*sort_params, *params, limit, offset]).fetchall()
-            items = []
-            for raw in rows:
-                row = dict(raw)
-                question = _object(row.pop('question'))
-                metadata = _object(row.pop('artifact_metadata'))
-                row.pop('latest_answer', None)
-                row.update(stem=str(question.get('stem') or question.get('question') or '')[:300],
-                    question_type=str(question.get('question_type') or question.get('type') or ''),
-                    question_digest=digest(question), read_only_snapshot=bool(metadata.get('read_only_snapshot')),
-                    data_error=not question or parse_time(row['next_review_at']) is None or _list(row['error_causes']) is None or _list(row['custom_tags']) is None)
-                row['error_causes'] = _list(row['error_causes']) or []
-                row['custom_tags'] = _list(row['custom_tags']) or []
-                if recommended:
-                    row['priority'] = priority_details(row, now=as_of)
-                    if row.pop('_rank_score') != row['priority']['priority_score']:
-                        raise ValueError('推荐依据暂不可核验')
-                items.append(row)
-            result = {'items': items, 'total': total, 'limit': limit, 'offset': offset,
-                      'has_more': offset + len(items) < total, 'as_of': as_of.isoformat()}
-            if recommended:
-                result.update(priority_rule_version=PRIORITY_RULE_VERSION,
-                              recommendation_scope='filtered_eligible_due', day_zone='Asia/Shanghai',
-                              priority_rule_note='队列启发式排序，非掌握率或学习效果评价')
-            return result
+                row['priority'] = priority_details(row, now=as_of)
+                if row.pop('_rank_score') != row['priority']['priority_score']:
+                    raise ValueError('推荐依据暂不可核验')
+            items.append(row)
+        result = {'items': items, 'total': total, 'limit': limit, 'offset': offset,
+                  'has_more': offset + len(items) < total, 'as_of': as_of.isoformat()}
+        if recommended:
+            result.update(priority_rule_version=PRIORITY_RULE_VERSION,
+                          recommendation_scope='filtered_eligible_due', day_zone='Asia/Shanghai',
+                          priority_rule_note='队列启发式排序，非掌握率或学习效果评价')
+        return result
 
     def options(self, kind, *, q='', limit=30, offset=0):
         _bounds(limit, offset)
