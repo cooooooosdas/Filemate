@@ -1,5 +1,7 @@
 # FileMate
 
+2026-10-29 新增错题增量包已完成[A级差异审计](docs/superpowers/specs/2026-10-29-wrong-review-incremental-a-audit.md)：复用已完成的A—E，候选排序与概览尚未接入；本轮按包内范围仅审计，三项方向已确认，B级实施待A级验收。现役产品证据仍以E级交付为准，未新增API、迁移或部署。
+
 2026-10-29 错题复盘2.0 A—E本轮工程与验收已整理，[E级交付](docs/WRONGBOOK_2_0_E_DELIVERY.md)为当前事实源。十个流程、迁移与完整恢复通过，E独立审阅发现的问题已修复；总体CONDITIONAL PASS，万条库四并发仍有P2容量问题，生产Linux及真实效果验证保留依赖。未推送部署。历史D证据保留原版本语境。
 
 2026-10-25 知识图谱2.0已推送main并上线：课程审核与关系工作台、训练证据、节点练习、学习路径、跨课导航、有限助手和质量工具已整合；追加SQLite3.26生产兼容修复。API41a360bd／Web资产4be657c6，业务schema34／治理3；最终Windows1544后端／213前端、Linux1562后端／213前端与公网11组通过，390库／1022文件正式备份恢复通过。详见[发布回执](docs/KNOWLEDGE_GRAPH_2_RELEASE_2026-10-24.md)、[D／E交付](docs/KNOWLEDGE_GRAPH_2_0_DE_DELIVERY.md)和[技术报告](docs/KNOWLEDGE_GRAPH_2_TECHNICAL_REPORT.md)。总体CONDITIONAL PASS；完整键盘、万节点浏览器、实体设备、人工gold与真人研究保留，新独立音视频采集关闭。下方为各批当时状态。

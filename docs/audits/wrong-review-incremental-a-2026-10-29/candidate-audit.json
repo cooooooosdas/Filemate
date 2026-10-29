@@ -1,0 +1,88 @@
+{
+  "package_sha256": "b793b52ed581e9a60f6fa40113e34b59c650725baeb50f8b2bd4d12ca7d2e4a6",
+  "candidate_tests": {
+    "run": 10,
+    "passed": true,
+    "failures": 0,
+    "errors": 0,
+    "isolation": "dynamic candidate module only; no production installation"
+  },
+  "boundary_probes": [
+    {
+      "case": "paused_not_eligible",
+      "expected": 0,
+      "actual": 1,
+      "matches_current_contract": false
+    },
+    {
+      "case": "snapshot_not_writable",
+      "expected": 0,
+      "actual": 1,
+      "matches_current_contract": false
+    },
+    {
+      "case": "criterion_met_still_periodically_due",
+      "expected": 1,
+      "actual": 0,
+      "matches_current_contract": false
+    },
+    {
+      "case": "shanghai_same_day_not_overdue",
+      "expected": 0,
+      "actual": 1,
+      "matches_current_contract": false
+    },
+    {
+      "case": "overflow_time_excluded",
+      "expected": 0,
+      "exception": "OverflowError",
+      "message": "date value out of range",
+      "matches_current_contract": false
+    },
+    {
+      "case": "float_budget_rejected_cleanly",
+      "expected": "ValueError",
+      "exception": "TypeError",
+      "message": "slice indices must be integers or None or have an __index__ method",
+      "matches_current_contract": false
+    },
+    {
+      "case": "bool_minutes_rejected_cleanly",
+      "expected": "ValueError",
+      "actual": {
+        "status": "preview_only",
+        "items": [
+          {
+            "wrong_id": "w",
+            "knowledge_label": "栈",
+            "due_at": "2026-10-28T12:00:00+00:00",
+            "overdue_days": 1,
+            "error_count": 2,
+            "review_count": 3,
+            "error_cause": "concept_gap",
+            "cause_confirmed": true,
+            "priority_score": 15,
+            "reason": "逾期1天；历史错答2次；已确认错因",
+            "estimated_minutes": true
+          }
+        ],
+        "selected_count": 1,
+        "eligible_count": 1,
+        "deferred_count": 0,
+        "estimated_minutes": 1,
+        "available_minutes": 9,
+        "rule_version": "review2-priority-v1",
+        "warning": "排序只表示复习优先级，不等于知识掌握率；需确认后才创建任务。"
+      },
+      "matches_current_contract": false
+    },
+    {
+      "case": "duplicate_conflicting_rows_order_invariant",
+      "expected": true,
+      "actual": false,
+      "matches_current_contract": false
+    }
+  ],
+  "synthetic": true,
+  "product_files_changed": false
+}

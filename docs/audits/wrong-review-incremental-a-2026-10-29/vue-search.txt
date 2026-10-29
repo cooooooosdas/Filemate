@@ -1,0 +1,36 @@
+## UI Pro Max Stack Guidelines
+**Stack:** vue | **Query:** computed derived state props types
+**Source:** stacks/vue.csv | **Found:** 3 results
+
+### Result 1
+- **Category:** Reactivity
+- **Guideline:** Use computed for derived state
+- **Description:** Computed properties cache and update automatically
+- **Do:** computed() for derived values
+- **Don't:** Methods for derived values
+- **Code Good:** const doubled = computed(() => count.value * 2)
+- **Code Bad:** const doubled = () => count.value * 2
+- **Severity:** Medium
+- **Docs URL:** https://vuejs.org/guide/essentials/computed.html
+
+### Result 2
+- **Category:** Props
+- **Guideline:** Define props with defineProps
+- **Description:** Type-safe prop definitions
+- **Do:** defineProps with TypeScript
+- **Don't:** Props without types
+- **Code Good:** defineProps<{ msg: string }>()
+- **Code Bad:** defineProps(['msg'])
+- **Severity:** Medium
+- **Docs URL:** https://vuejs.org/guide/typescript/composition-api.html#typing-component-props
+
+### Result 3
+- **Category:** TypeScript
+- **Guideline:** Use PropType for complex props
+- **Description:** Type complex prop types
+- **Do:** PropType<User> for object props
+- **Don't:** Object without type
+- **Code Good:** type: Object as PropType<User>
+- **Code Bad:** type: Object
+- **Severity:** Medium
+- **Docs URL:**

@@ -1,0 +1,71 @@
+{
+  "phase": "A_ONLY",
+  "status": "A_AUDIT_COMPLETE_DIRECTIONS_CONFIRMED_B_NOT_STARTED",
+  "baseline_head": "8a655bf23a4a56886a5d2fde2526e766cb485ac8",
+  "branch": "codex/wrongbook-2-audit",
+  "remote_main": "9f06d1d79d777e50c113908481cbdaf57fb79705",
+  "local_commits_ahead_of_main": 37,
+  "candidate_zip_sha256": "b793b52ed581e9a60f6fa40113e34b59c650725baeb50f8b2bd4d12ca7d2e4a6",
+  "candidate_tests_passed": 10,
+  "candidate_python_boundary_differences": 8,
+  "frontend_date_disagreement_reproduced": true,
+  "current_wrongbook_tests": {
+    "passed": 169,
+    "warnings": 1,
+    "seconds": 91.15
+  },
+  "unchanged_product_source_files": 642,
+  "pre_existing_tests_preserved": 24,
+  "product_api_schema_env_changes": false,
+  "new_browser_run": false,
+  "screenshots": "reused E synthetic-account baselines; visually inspected this audit",
+  "ci_scope": "main only; no local-branch CI or PR",
+  "known_existing_issue": "E-P2-01 remains open; performance not rerun",
+  "full_gate_rerun": false,
+  "audit_report_sha256": "ab9db48711d8c322ce013b4334f89377578aecccd0ba62f37716a23aa9a9bcb6",
+  "artifact_sha256": {
+    "candidate-audit.json": "fde4190a4004a666d2755b59844dd01428f2ef8ca37353612dc5053d9209c754",
+    "candidate-unit-tests.txt": "c3538ac718a5843f882be5eebe47aeabe3ff88440334cbb1214d9e477e3e9221",
+    "ci-local-branch.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "ci-main.json": "88aa83c5e7e4a4f58581214125cc849402c23c11e56fd6c2473b914802e31324",
+    "current-workspace-desktop.png": "b34f746051f9d43ff6c88f6d9bd17509fd496869d3e18873180146393f92945f",
+    "current-workspace-mobile.png": "4d14c551cd58e0d976ec378ce8d4fc2ad7249d877465c96a29954409174b85db",
+    "current-wrongbook-tests-exit.txt": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "current-wrongbook-tests.txt": "835ef97657854edebcc5d41f568ffe4be1a6649bd50594e1c2f63ef9f9ed5939",
+    "frontend-date-probe.json": "1cf8f237be19254d9d57fd7590be78312101acc16a7be406e7cc525320686175",
+    "local-route-inventory.json": "a83eb61bd2a766612c4d02b39f0a2cd6ce69124b0aaff07e9595abb1598e47f9",
+    "pr-local-branch.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "remote-main.txt": "530c21b8348ed0a455aa2f145f61f82d2e475688034fdf363933f38ffd1b2cd1",
+    "ux-search.txt": "9871c5fc7d3b4d0c84dbb5853b8899d0ad631f1a6ada63f8614b4211c4b57458",
+    "vue-search.txt": "b0bec762eeb217c7daabc590aecf9ef5e83b34a514e4d148901d46eed2c43d99"
+  },
+  "product_decisions_confirmed": {
+    "sorting": "due default plus opt-in explained recommendation",
+    "time_budget": "current focus-session preview only",
+    "layout": "retain two columns, prioritize current question and focus mode"
+  },
+  "runtime": {
+    "local_python": "3.12.13",
+    "declared_minimum": "3.10",
+    "ci_python": "3.11",
+    "static_finding": "A-TOOL-01: evidence helper uses Path.walk requiring3.12; not executed on older interpreter",
+    "primary_reference": "https://docs.python.org/3/library/pathlib.html#pathlib.Path.walk"
+  },
+  "artifact_original_sha256": {
+    "candidate-audit.json": "c2868810c3e1aa45e41aeca691dc205f575cbb1515d99f7c4ec94ae36af4beb5",
+    "candidate-unit-tests.txt": "e565f6b15d85126aa3aab5c44835c757d9a040aee51ba1c8d21945f71febeb8b",
+    "ci-local-branch.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "ci-main.json": "88aa83c5e7e4a4f58581214125cc849402c23c11e56fd6c2473b914802e31324",
+    "current-workspace-desktop.png": "b34f746051f9d43ff6c88f6d9bd17509fd496869d3e18873180146393f92945f",
+    "current-workspace-mobile.png": "4d14c551cd58e0d976ec378ce8d4fc2ad7249d877465c96a29954409174b85db",
+    "current-wrongbook-tests-exit.txt": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354",
+    "current-wrongbook-tests.txt": "4970ef4464c580eb89edd7d384ade65038042ff20e965a6ea070d4fcc0efb4a2",
+    "frontend-date-probe.json": "1cf8f237be19254d9d57fd7590be78312101acc16a7be406e7cc525320686175",
+    "local-route-inventory.json": "84c21e14d9067a1437c715daf86de3ca66fa066fcfa7176b25c29abd8e510066",
+    "pr-local-branch.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "remote-main.txt": "530c21b8348ed0a455aa2f145f61f82d2e475688034fdf363933f38ffd1b2cd1",
+    "ux-search.txt": "3103fda912c09eabf0ef7e88d5a6bc97c916e336529d6768ae1e7db2740d5c52",
+    "vue-search.txt": "8c8624816d77b9bf2ba0fa003c3ed59f4bc3cee7d0118227514a747e4b22f9ad"
+  },
+  "artifact_byte_policy": "UTF-8 text normalized to LF, trailing whitespace removed; raw originals retained under _working; PNG bytes unchanged"
+}
