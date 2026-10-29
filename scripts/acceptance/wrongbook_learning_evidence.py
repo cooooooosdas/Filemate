@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,7 +16,8 @@ def source_hashes():
     """Exclude runtime data, build products and dependencies from the source manifest."""
     paths = {ROOT/name for name in ('server.py', 'main.py', 'pyproject.toml', 'uv.lock', '.env.example')}
     for directory, suffixes in [('filemate', {'.py'}), ('scripts', {'.py', '.mjs', '.ps1'})]:
-        for parent, dirs, files in (ROOT/directory).walk():
+        for folder, dirs, files in os.walk(ROOT/directory):
+            parent = Path(folder)
             dirs[:] = [d for d in dirs if d not in {'web', '__pycache__', '.venv', 'node_modules', 'dist'}]
             paths.update(parent/f for f in files if Path(f).suffix in suffixes)
     for directory in ('src', 'tests', 'scripts'):
