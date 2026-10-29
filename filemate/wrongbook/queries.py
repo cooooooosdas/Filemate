@@ -13,6 +13,16 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from filemate.execution.data_actions import digest
 from filemate.execution.storage import SQLiteStorage
 from filemate.wrongbook.engine import LOCAL_ZONE, parse_time
+from filemate.wrongbook.insights import (
+    ERROR_WEIGHT,
+    MAX_ERRORS,
+    MAX_OVERDUE_DAYS,
+    OVERDUE_WEIGHT,
+    PRIORITY_RULE_VERSION,
+    USER_CAUSE_WEIGHT,
+    priority_details,
+    review_day,
+)
 from filemate.wrongbook.models import Cause
 from filemate.wrongbook.repository import ReviewRepository
 
@@ -31,7 +41,7 @@ class ReviewFilter(BaseModel):
     due_to: str | None = None
     created_from: str | None = None
     created_to: str | None = None
-    sort: Literal['due', 'updated', 'errors', 'created'] = 'due'
+    sort: Literal['due', 'updated', 'errors', 'created', 'recommended'] = 'due'
     direction: Literal['asc', 'desc'] = 'asc'
     reviewable_only: bool = False
 
@@ -62,10 +72,16 @@ def _object(raw):
         return {}
 
 
-def _stem_expression(conn: sqlite3.Connection) -> str:
+def _has_json1(conn: sqlite3.Connection) -> bool:
     try:
         conn.execute("SELECT json_extract('{}','$.stem')")
     except sqlite3.OperationalError:
+        return False
+    return True
+
+
+def _stem_expression(conn: sqlite3.Connection) -> str:
+    if not _has_json1(conn):
         return 'review_stem(w.question)'
     return """CASE WHEN json_valid(w.question) THEN CASE WHEN json_type(w.question)='object'
         THEN COALESCE(NULLIF(CAST(json_extract(w.question,'$.stem') AS TEXT),''),
@@ -73,19 +89,60 @@ def _stem_expression(conn: sqlite3.Connection) -> str:
         ELSE '' END ELSE '' END"""
 
 
+def _bad_expression(conn: sqlite3.Connection) -> str:
+    if not _has_json1(conn):
+        return 'review_bad(w.question,w.error_causes,w.custom_tags)'
+    return """CASE WHEN json_valid(w.question) AND json_valid(w.error_causes) AND json_valid(w.custom_tags)
+        THEN CASE WHEN json_type(w.question)='object' AND json(w.question)!='{}'
+            AND json_type(w.error_causes)='array' AND json_type(w.custom_tags)='array'
+            THEN 0 ELSE 1 END ELSE 1 END"""
+
+
+def _history_expression(conn: sqlite3.Connection) -> str:
+    if not _has_json1(conn):
+        return 'review_history(a.metadata)'
+    return """CASE WHEN json_valid(a.metadata) THEN CASE
+        WHEN json_type(a.metadata,'$.read_only_snapshot') IS NULL THEN 0
+        WHEN json_type(a.metadata,'$.read_only_snapshot')='true' THEN 1
+        WHEN json_type(a.metadata,'$.read_only_snapshot') IN ('false','null') THEN 0
+        ELSE review_history(a.metadata) END ELSE review_history(a.metadata) END"""
+
+
+def _strict_json(raw):
+    def invalid_constant(value):
+        raise ValueError('non-finite JSON')
+    return json.loads(raw, parse_constant=invalid_constant)
+
+
+def _metadata_valid(raw):
+    try:
+        return int(isinstance(_strict_json(raw or '{}'), dict))
+    except (ValueError, TypeError):
+        return 0
+
+
+def _metadata_expression(conn: sqlite3.Connection) -> str:
+    if not _has_json1(conn):
+        return 'review_metadata(a.metadata)'
+    return """CASE WHEN a.metadata IS NULL OR a.metadata='' THEN 1
+        WHEN json_valid(a.metadata) THEN json_type(a.metadata)='object' ELSE 0 END"""
+
+
 class ReviewQueries:
     def __init__(self, storage: SQLiteStorage, *, clock: Callable[[], datetime] | None = None):
         self.storage = storage
         self.clock = clock or (lambda: datetime.now(timezone.utc))
 
-    def _configure(self, read):
-        repo = ReviewRepository(read, clock=self.clock)
+    def _configure(self, read, as_of=None):
+        repo = ReviewRepository(read, clock=(lambda: as_of) if as_of is not None else self.clock)
         conn = repo.time_connection()
-        obj = lru_cache(maxsize=2048)(_object)
+        obj = lru_cache(maxsize=128)(_object)
+        arrays = lru_cache(maxsize=128)(_strict_json)
 
         def invalid(question, causes, tags):
             try:
-                return int(not obj(question) or not isinstance(json.loads(causes), list) or not isinstance(json.loads(tags), list))
+                value = _strict_json(question)
+                return int(not isinstance(value, dict) or not value or not isinstance(arrays(causes), list) or not isinstance(arrays(tags), list))
             except (ValueError, TypeError):
                 return 1
 
@@ -93,6 +150,8 @@ class ReviewQueries:
         conn.create_function('review_history', 1, lambda m: int(bool(obj(m).get('read_only_snapshot'))), deterministic=True)
         conn.create_function('review_bad', 3, invalid, deterministic=True)
         conn.create_function('review_cause', 3, lambda raw, old, cause: int(cause in (_list(raw) or []) or _list(raw) == [] and old == cause), deterministic=True)
+        conn.create_function('review_local_day', 1, lru_cache(maxsize=2048)(review_day), deterministic=True)
+        conn.create_function('review_metadata', 1, lru_cache(maxsize=128)(_metadata_valid), deterministic=True)
         return conn, repo
 
     @staticmethod
@@ -126,11 +185,10 @@ class ReviewQueries:
                 continue
         return pairs
 
-    def _where(self, read, filters, conn, repo):
+    def _where(self, read, filters, conn, repo, *, when='filemate_review_time(w.next_review_at)'):
         now = repo.now()
-        when = 'filemate_review_time(w.next_review_at)'
-        history = 'review_history(a.metadata)'
-        bad = f'(review_bad(w.question,w.error_causes,w.custom_tags)=1 OR {when} IS NULL)'
+        history = _history_expression(conn)
+        bad = f'({_bad_expression(conn)}=1 OR {when} IS NULL)'
         active = "(w.scheduler_version='review-interval-v2' AND w.schedule_status='active' AND w.learning_status IN ('new','needs_review','provisional'))"
         legacy_done = "(w.scheduler_version!='review-interval-v2' AND w.mastered=1)"
         due = f"(w.schedule_status='active' AND (w.scheduler_version='review-interval-v2' OR w.mastered=0) AND {when}<=?)"
@@ -171,21 +229,52 @@ class ReviewQueries:
             if value:
                 column = 'next_review_at' if key.startswith('due_') else 'created_at'
                 op = '>=' if key.endswith('from') else '<='
-                conditions.append(f'filemate_review_time(w.{column}){op}?'); params.append(parse_time(value).timestamp())
+                expression = when if column == 'next_review_at' else f'filemate_review_time(w.{column})'
+                conditions.append(f'{expression}{op}?'); params.append(parse_time(value).timestamp())
         return ' AND '.join(conditions), params
 
-    def page(self, filters: ReviewFilter, *, limit=30, offset=0):
+    def page(self, filters: ReviewFilter, *, limit=30, offset=0, eligible_only=False):
         _bounds(limit, offset)
         filters = ReviewFilter.model_validate(filters)
+        recommended = filters.sort == 'recommended'
+        as_of = ReviewRepository(self.storage, clock=self.clock).now()
+        if recommended or eligible_only:
+            filters = filters.model_copy(update={'reviewable_only': True})
         with self.storage.read_snapshot() as read:
-            conn, repo = self._configure(read)
-            where, params = self._where(read, filters, conn, repo)
-            base = ' FROM wrong_questions w LEFT JOIN artifacts a ON a.artifact_id=w.artifact_id LEFT JOIN sources s ON s.source_id=w.source_id WHERE ' + where
-            total = conn.execute('SELECT COUNT(*)' + base, params).fetchone()[0]
-            sort = {'due': 'filemate_review_time(w.next_review_at)', 'updated': 'filemate_review_time(w.updated_at)',
-                    'created': 'filemate_review_time(w.created_at)', 'errors': 'w.error_count'}[filters.sort]
-            rows = conn.execute('SELECT w.*,s.original_name AS source_name,a.metadata AS artifact_metadata' + base +
-                f' ORDER BY {sort} {filters.direction},w.wrong_id {filters.direction} LIMIT ? OFFSET ?', [*params, limit, offset]).fetchall()
+            conn, repo = self._configure(read, as_of)
+            prefix, time_join = '', ''
+            when, day = 'filemate_review_time(w.next_review_at)', 'review_local_day(w.next_review_at)'
+            if recommended or eligible_only:
+                # Grouping prevents SQLite from calling Python once per row for repeated dates.
+                prefix = """WITH review_times AS (SELECT next_review_at AS raw,
+                    filemate_review_time(next_review_at) AS due,
+                    review_local_day(next_review_at) AS local_day FROM wrong_questions GROUP BY next_review_at) """
+                time_join = ' JOIN review_times rt ON rt.raw IS w.next_review_at'
+                when, day = 'rt.due', 'rt.local_day'
+            where, params = self._where(read, filters, conn, repo, when=when)
+            if recommended or eligible_only:
+                where += f""" AND {when}<=?
+                    AND {day} IS NOT NULL
+                    AND typeof(w.error_count)='integer' AND w.error_count>=0
+                    AND {_metadata_expression(conn)}=1
+                    AND a.artifact_type='questions' AND a.source_id IS w.source_id
+                    AND (w.source_id IS NULL OR s.source_id IS NOT NULL)"""
+                params.append(as_of.timestamp())
+            base = ' FROM wrong_questions w' + time_join + ' LEFT JOIN artifacts a ON a.artifact_id=w.artifact_id LEFT JOIN sources s ON s.source_id=w.source_id WHERE ' + where
+            total = conn.execute(prefix + 'SELECT COUNT(*)' + base, params).fetchone()[0]
+            projection, sort_params = '', []
+            if recommended:
+                projection = f""", MIN({MAX_OVERDUE_DAYS}, MAX(0, ?-{day}))*{OVERDUE_WEIGHT}
+                    +MIN({MAX_ERRORS},w.error_count)*{ERROR_WEIGHT}
+                    +CASE WHEN w.error_cause_source='user' THEN {USER_CAUSE_WEIGHT} ELSE 0 END AS _rank_score"""
+                sort_params = [review_day(as_of.isoformat())]
+                order = f'_rank_score DESC,{when} ASC,w.wrong_id ASC'
+            else:
+                sort = {'due': when, 'updated': 'filemate_review_time(w.updated_at)',
+                        'created': 'filemate_review_time(w.created_at)', 'errors': 'w.error_count'}[filters.sort]
+                order = f'{sort} {filters.direction},w.wrong_id {filters.direction}'
+            rows = conn.execute(prefix + 'SELECT w.*,s.original_name AS source_name,a.metadata AS artifact_metadata' + projection + base +
+                f' ORDER BY {order} LIMIT ? OFFSET ?', [*sort_params, *params, limit, offset]).fetchall()
             items = []
             for raw in rows:
                 row = dict(raw)
@@ -198,9 +287,18 @@ class ReviewQueries:
                     data_error=not question or parse_time(row['next_review_at']) is None or _list(row['error_causes']) is None or _list(row['custom_tags']) is None)
                 row['error_causes'] = _list(row['error_causes']) or []
                 row['custom_tags'] = _list(row['custom_tags']) or []
+                if recommended:
+                    row['priority'] = priority_details(row, now=as_of)
+                    if row.pop('_rank_score') != row['priority']['priority_score']:
+                        raise ValueError('推荐依据暂不可核验')
                 items.append(row)
-            return {'items': items, 'total': total, 'limit': limit, 'offset': offset,
-                    'has_more': offset + len(items) < total, 'as_of': repo.now().isoformat()}
+            result = {'items': items, 'total': total, 'limit': limit, 'offset': offset,
+                      'has_more': offset + len(items) < total, 'as_of': as_of.isoformat()}
+            if recommended:
+                result.update(priority_rule_version=PRIORITY_RULE_VERSION,
+                              recommendation_scope='filtered_eligible_due', day_zone='Asia/Shanghai',
+                              priority_rule_note='队列启发式排序，非掌握率或学习效果评价')
+            return result
 
     def options(self, kind, *, q='', limit=30, offset=0):
         _bounds(limit, offset)

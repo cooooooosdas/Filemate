@@ -1,6 +1,6 @@
 # 错题增量B级：可信推荐与本次复习预览
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 在既有错题状态和真实作答合同上增加可解释推荐、只读时间预算预览与开始前核验，不创建第二套状态机。
 
@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - 默认仍sort=due；显式sort=recommended才使用推荐，推荐分数不等于掌握率。
-- 推荐规则review2-priority-v1：min(上海逾期天数,30)*3 + min(历史客观错答数,10)*4 + 人工确认错因4分；仅作排序启发式，不声称学习效果。
+- 推荐规则review2-priority-v1：min(上海逾期天数,30)*3 + min(已保存的历史错答次数,10)*4 + 人工确认错因4分；仅作排序启发式，不声称学习效果。
 - 推荐固定按分数降序、到期时间升序、wrong_id升序；direction不改变此顺序，服务合同明确说明。原四类排序保持原义。
 - 推荐与预算候选取原筛选和“active、到期、有效记录、非历史只读、非旧版已完成”的交集；V2已达本轮标准但再次到期仍可入选。
 - 同一服务端as_of贯穿筛选、排序与响应；上海日界，旧无时区时间继续按UTC解释。异常/溢出日期不拖垮整页。
@@ -37,11 +37,11 @@
 
 **Interfaces:** source_hashes() -> dict[str,str]合同保持；遍历仍排除web/缓存/依赖并纳入既有前端文件。
 
-- [ ] 写test_source_hashes_without_path_walk：在临时树放一份Python、一个web/node_modules诱饵和一份Vue；替换ROOT并让Path.walk调用失败，断言只有合约要求文件参与摘要。
-- [ ] 运行`.venv/Scripts/python.exe -m pytest filemate/tests/wrongbook/test_acceptance_compat.py -q`，Expected：旧实现因Path.walk失败。
-- [ ] 用兼容的os.walk和pathlib.Path替换Path.walk，不提高项目版本门槛；运行上述测试，Expected：通过。
-- [ ] 用现有uv管理的Python3.11.15真实调用source_hashes，Expected：成功；记录未安装3.10的边界，检查静态py310规则。
-- [ ] 提交`fix(audit): 兼容旧Python的源码摘要遍历`，task-done复跑该文件。
+- [x] 写test_source_hashes_without_path_walk：在临时树放一份Python、一个web/node_modules诱饵和一份Vue；替换ROOT并让Path.walk调用失败，断言只有合约要求文件参与摘要。
+- [x] 运行`.venv/Scripts/python.exe -m pytest filemate/tests/wrongbook/test_acceptance_compat.py -q`，Expected：旧实现因Path.walk失败。
+- [x] 用兼容的os.walk和pathlib.Path替换Path.walk，不提高项目版本门槛；运行上述测试，Expected：通过。
+- [x] 用现有uv管理的Python3.11.15真实调用source_hashes，Expected：成功；记录未安装3.10的边界，检查静态py310规则。
+- [x] 提交`fix(audit): 兼容旧Python的源码摘要遍历`，task-done复跑该文件。
 
 ## Task 2: 透明推荐及有界查询
 

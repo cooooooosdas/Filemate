@@ -1,6 +1,6 @@
 # FileMate
 
-2026-10-29 新增错题增量包已完成[A级差异审计](docs/superpowers/specs/2026-10-29-wrong-review-incremental-a-audit.md)：复用已完成的A—E，候选排序与概览尚未接入；本轮按包内范围仅审计，三项方向已确认，B级实施待A级验收。现役产品证据仍以E级交付为准，未新增API、迁移或部署。
+2026-10-30 用户已验收错题增量A级，正在按[B级实施计划](docs/superpowers/plans/2026-10-30-wrong-review-incremental-b.md)推进可信推荐与本次复习预览。保留默认到期排序，后台合同先行；C级可见入口、完整B验收与发布尚未完成。历史E证据保持原冻结内容，本轮不新增迁移、不部署。
 
 2026-10-29 错题复盘2.0 A—E本轮工程与验收已整理，[E级交付](docs/WRONGBOOK_2_0_E_DELIVERY.md)为当前事实源。十个流程、迁移与完整恢复通过，E独立审阅发现的问题已修复；总体CONDITIONAL PASS，万条库四并发仍有P2容量问题，生产Linux及真实效果验证保留依赖。未推送部署。历史D证据保留原版本语境。
 

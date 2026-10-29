@@ -1269,3 +1269,13 @@ C级浏览器验收使用隔离合成账号与真实API。备份恢复测试会�
 沿用schema36与既有 /wrongbook/v2 路由，无新增环境变量。新模型输出同一候选内相同attempt_id／quote引用不可重复计为依据，无效结果保留失败状态；规则判题、NULL待核对与掌握判据不变。前端仅V2筛选复用实例，空结果清除旧题及在途详情；关闭开关保留旧版导航行为。
 
 本地E结果为CONDITIONAL：单请求0／100／1000／10000规模达500ms P95，万条库四并发仍有容量问题。具体证据与生产边界以 docs/WRONGBOOK_2_0_E_DELIVERY.md 为准。
+
+## 2026-10-30 错题增量B：可解释推荐
+
+`GET /wrongbook/v2/page` 新增显式 `sort=recommended`；缺省仍为 `due`，原四种排序和 direction 原义保留。推荐固定按分数降序、到期时刻升序、wrong_id升序，direction不改变推荐顺序。仍在当前身份的同一SQLite只读快照内完成全范围筛选、排序、计数后分页，不加载第一页伪装全库推荐。
+
+推荐范围是原筛选与可复习到期题的交集：active、有效日期/题目/错因数组/元数据、历史错答次数为非负整数、题集与来源仍匹配；排除历史只读、旧版已完成、暂停、未来及损坏记录。V2已达本轮标准但再次到期仍可推荐。无来源的合法题集可保留，不补造来源。
+
+推荐页顶层增加 `priority_rule_version=review2-priority-v1`、`recommendation_scope=filtered_eligible_due`、`day_zone=Asia/Shanghai` 与说明；每项增加 `priority={priority_score,overdue_days,reason,rule_version}`。分数为 `min(上海逾期天数,30)*3 + min(error_count,10)*4 + (error_cause_source=user ? 4 : 0)`。error_count是已保存的历史错答次数，旧记录判定来源可能不同；user仅说明本人标注过错因。该分数是队列启发式，不是掌握率、已验证正确率或学习效果。
+
+本次所有page响应固定同一个服务端UTC `as_of`，旧无时区时间按UTC解释；客户端不得自传时钟。日期换算仍复用严格Python引擎；JSON1原生校验与无JSON1兼容路径均拒绝损坏/非有限JSON。按不同到期字符串在当前快照中换算后关联，避免每行多次Python回调，无跨账号结果缓存。无新增迁移或模型调用；可见入口仍属后续C级。
