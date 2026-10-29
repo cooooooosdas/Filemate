@@ -1,0 +1,94 @@
+{
+  "synthetic": true,
+  "checks": [
+    {
+      "name": "01 wrong answer creates durable independent attempt",
+      "passed": true,
+      "evidence": {
+        "wrong_id": "50ebad3ff5e945369507c0c76688cb35",
+        "attempt_id": "1deec50e0b9d4404bdeaad80c6f137ec"
+      }
+    },
+    {
+      "name": "02 original answer, question analysis and source remain readable",
+      "passed": true,
+      "evidence": {
+        "source_id": "3f20492c5d4f41deb3cf4c029baae192"
+      }
+    },
+    {
+      "name": "03 diagnosis and second independent answer persist",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "04 due correct answer updates conservative rule and date",
+      "passed": true,
+      "evidence": {
+        "rule": "review-interval-v2",
+        "status": "provisional",
+        "next_review_at": "2026-10-30T06:55:13+00:00"
+      }
+    },
+    {
+      "name": "05 wrong again preserves all attempts and replans",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "06 Today and review state agree after due completion",
+      "passed": true,
+      "evidence": {
+        "pending_before": 1,
+        "pending_after": 0
+      }
+    },
+    {
+      "name": "07 precise real course and node references exist",
+      "passed": true,
+      "evidence": {
+        "course_id": "a4d05c9f-5cca-41d9-951d-bf707bb10c69",
+        "concept_id": "d9a4f712-e762-4cca-b4f9-6306e08cf69e"
+      }
+    },
+    {
+      "name": "08 unavailable provider persists failure and leaves base practice usable",
+      "passed": true,
+      "evidence": {
+        "analysis_status": "failed"
+      }
+    },
+    {
+      "name": "09 process restart and fresh login preserve answers and analysis",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "10 actual SQLite326 reads legacy and current migrated data",
+      "passed": true,
+      "evidence": {
+        "compatibility": "_working\\wrongbook-e-20261029\\runtime-326-relative\\result.json"
+      }
+    },
+    {
+      "name": "whole managed backup verifies and restores to a new root",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "backup CLI rejects repeated creation and restore without overwriting",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "whole recovery preserves wrongbook versions, failed AI and source content",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "restored account isolation rejects another account wrong record",
+      "passed": true,
+      "evidence": {}
+    }
+  ]
+}

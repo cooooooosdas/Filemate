@@ -1,0 +1,139 @@
+{
+  "scope": "entry plus Home and recursive static imports; gzip estimated, not a network timing",
+  "measurements": {
+    "javascript": 385882,
+    "javascript_gzip": 142977,
+    "css": 111534
+  },
+  "budget": {
+    "javascript": 460800,
+    "javascript_gzip": 143360,
+    "css": 153600
+  },
+  "exceeded": [],
+  "eagerHeavyModules": [],
+  "files": [
+    {
+      "path": "assets/Home-BLyf5baI.js",
+      "bytes": 11415,
+      "gzip_bytes": 4795
+    },
+    {
+      "path": "assets/Home-C_o_aHCT.css",
+      "bytes": 15375,
+      "gzip_bytes": 3290
+    },
+    {
+      "path": "assets/StudyMotif-CtSHOlAs.js",
+      "bytes": 1612,
+      "gzip_bytes": 633
+    },
+    {
+      "path": "assets/_plugin-vue_export-helper-BDNMzG2s.js",
+      "bytes": 84,
+      "gzip_bytes": 99
+    },
+    {
+      "path": "assets/api-CctdZhNW.js",
+      "bytes": 93334,
+      "gzip_bytes": 30903
+    },
+    {
+      "path": "assets/createVueComponent-DkW5SasL.js",
+      "bytes": 732,
+      "gzip_bytes": 414
+    },
+    {
+      "path": "assets/css-C0dTDIzM.js",
+      "bytes": 21852,
+      "gzip_bytes": 7822
+    },
+    {
+      "path": "assets/css-C2X7avuy.js",
+      "bytes": 11060,
+      "gzip_bytes": 4539
+    },
+    {
+      "path": "assets/css-Vuo2ezMx.js",
+      "bytes": 9282,
+      "gzip_bytes": 4219
+    },
+    {
+      "path": "assets/css-Wv38huFO.css",
+      "bytes": 162,
+      "gzip_bytes": 136
+    },
+    {
+      "path": "assets/css-ZSOkJyjJ.css",
+      "bytes": 19896,
+      "gzip_bytes": 2141
+    },
+    {
+      "path": "assets/css-cyJZB4WD.css",
+      "bytes": 7857,
+      "gzip_bytes": 1961
+    },
+    {
+      "path": "assets/devtools-EWN81iOl-BkA_wGVL.js",
+      "bytes": 6898,
+      "gzip_bytes": 2985
+    },
+    {
+      "path": "assets/filemate-mascot-A-dFkQrg.js",
+      "bytes": 60,
+      "gzip_bytes": 80
+    },
+    {
+      "path": "assets/index-DHiEpJAt.css",
+      "bytes": 68244,
+      "gzip_bytes": 11985
+    },
+    {
+      "path": "assets/index-IPSyzynm.js",
+      "bytes": 99954,
+      "gzip_bytes": 37032
+    },
+    {
+      "path": "assets/preload-helper-Czpn1I53.js",
+      "bytes": 1196,
+      "gzip_bytes": 675
+    },
+    {
+      "path": "assets/rolldown-runtime-DK3Fl9T5.js",
+      "bytes": 158,
+      "gzip_bytes": 154
+    },
+    {
+      "path": "assets/strings-DbSPS5Fs.js",
+      "bytes": 155,
+      "gzip_bytes": 153
+    },
+    {
+      "path": "assets/typescript-rk096N_P.js",
+      "bytes": 6558,
+      "gzip_bytes": 2850
+    },
+    {
+      "path": "assets/use-dialog-DOGMLXJZ.js",
+      "bytes": 4235,
+      "gzip_bytes": 1739
+    },
+    {
+      "path": "assets/use-global-config-kX3JD1xL.js",
+      "bytes": 32986,
+      "gzip_bytes": 11211
+    },
+    {
+      "path": "assets/vnode-B5ttVT14.js",
+      "bytes": 311,
+      "gzip_bytes": 216
+    },
+    {
+      "path": "assets/vue-runtime-Bkkp-_Qs.js",
+      "bytes": 84000,
+      "gzip_bytes": 32458
+    }
+  ],
+  "passed": true
+}
+

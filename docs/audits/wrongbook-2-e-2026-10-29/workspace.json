@@ -1,0 +1,661 @@
+{
+  "synthetic": true,
+  "checks": [
+    {
+      "name": "100/1000/10000 actual authenticated API query and search timings",
+      "passed": true
+    },
+    {
+      "name": "full library search, deep link beyond page one and bounded DOM",
+      "passed": true,
+      "evidence": {
+        "list_dom": 1,
+        "feedback_ms": 623.9326999999976
+      }
+    },
+    {
+      "name": "returning from another page restores the real content scroll container",
+      "passed": true
+    },
+    {
+      "name": "five widths and four real themes, contrast, long filename and 44px targets",
+      "passed": true,
+      "evidence": [
+        {
+          "width": 1440,
+          "theme": "blue-gray",
+          "ratio": 13.989695452482472,
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(240, 243, 248)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 1440,
+          "theme": "mist",
+          "ratio": 15.559952500501744,
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(255, 255, 255)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 1440,
+          "theme": "graphite",
+          "ratio": 14.014479024510564,
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(242, 243, 245)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 1440,
+          "theme": "midnight",
+          "ratio": 13.120741319554533,
+          "fg": "rgb(237, 243, 255)",
+          "bg": "rgb(27, 41, 64)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 1280,
+          "theme": "blue-gray",
+          "ratio": 13.989695452482472,
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(240, 243, 248)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 1280,
+          "theme": "mist",
+          "ratio": 15.559952500501744,
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(255, 255, 255)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 1280,
+          "theme": "graphite",
+          "ratio": 14.014479024510564,
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(242, 243, 245)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 1280,
+          "theme": "midnight",
+          "ratio": 13.120741319554533,
+          "fg": "rgb(237, 243, 255)",
+          "bg": "rgb(27, 41, 64)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 1024,
+          "theme": "blue-gray",
+          "ratio": 13.989695452482472,
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(240, 243, 248)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 1024,
+          "theme": "mist",
+          "ratio": 15.559952500501744,
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(255, 255, 255)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 1024,
+          "theme": "graphite",
+          "ratio": 14.014479024510564,
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(242, 243, 245)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 1024,
+          "theme": "midnight",
+          "ratio": 13.120741319554533,
+          "fg": "rgb(237, 243, 255)",
+          "bg": "rgb(27, 41, 64)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 768,
+          "theme": "blue-gray",
+          "ratio": 13.989695452482472,
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(240, 243, 248)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 768,
+          "theme": "mist",
+          "ratio": 15.559952500501744,
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(255, 255, 255)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 768,
+          "theme": "graphite",
+          "ratio": 14.014479024510564,
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(242, 243, 245)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 768,
+          "theme": "midnight",
+          "ratio": 13.120741319554533,
+          "fg": "rgb(237, 243, 255)",
+          "bg": "rgb(27, 41, 64)",
+          "size": 26,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 375,
+          "theme": "blue-gray",
+          "ratio": 13.989695452482472,
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(240, 243, 248)",
+          "size": 24,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 375,
+          "theme": "mist",
+          "ratio": 15.559952500501744,
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(255, 255, 255)",
+          "size": 24,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 375,
+          "theme": "graphite",
+          "ratio": 14.014479024510564,
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(242, 243, 245)",
+          "size": 24,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        },
+        {
+          "width": 375,
+          "theme": "midnight",
+          "ratio": 13.120741319554533,
+          "fg": "rgb(237, 243, 255)",
+          "bg": "rgb(27, 41, 64)",
+          "size": 24,
+          "overflow": false,
+          "codeHeight": 480,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ]
+        }
+      ]
+    },
+    {
+      "name": "source uses actual original text; history and schedule dialogs work by keyboard",
+      "passed": true
+    },
+    {
+      "name": "diagnosis persists and clearing retains no invented cause",
+      "passed": true
+    },
+    {
+      "name": "subjective NULL is pending, complete raw answer is durable",
+      "passed": true
+    },
+    {
+      "name": "lost response commits once and refresh recovers with zero extra POST",
+      "passed": true
+    },
+    {
+      "name": "409 retains the draft and does not call old judge",
+      "passed": true
+    },
+    {
+      "name": "focus hides reference before reveal; skip creates no attempt, resume verifies server",
+      "passed": true
+    },
+    {
+      "name": "network failure contains the error, keeps app navigation and allows retry",
+      "passed": true
+    },
+    {
+      "name": "today, learning artifact and graph submit through the real shared contract",
+      "passed": true,
+      "evidence": {
+        "entries": 3,
+        "legacy_posts": 0
+      }
+    },
+    {
+      "name": "real backup restore invalidates a late pre-restore response",
+      "passed": true,
+      "evidence": {
+        "real_signed_restore": true,
+        "late_response_ignored": true,
+        "entries": [
+          "workspace",
+          "artifact"
+        ]
+      }
+    },
+    {
+      "name": "second account cannot read the first account question or recover its batch",
+      "passed": true
+    },
+    {
+      "name": "reduced motion, 200 percent layout and keyboard reach the primary actions",
+      "passed": true
+    },
+    {
+      "name": "review fix: narrow focus is visible and accepts an answer",
+      "passed": true
+    },
+    {
+      "name": "review fix: missing receipt after reload permits original text and dont-know retry",
+      "passed": true
+    },
+    {
+      "name": "review fix: answer then diagnosis uses the current server revision",
+      "passed": true
+    },
+    {
+      "name": "review fix: artifact switch and refresh protect a mounted draft",
+      "passed": true
+    },
+    {
+      "name": "review fix: multiple mounted Today entries preserve both uncertain request keys",
+      "passed": true,
+      "evidence": {
+        "preserved_pending": 2
+      }
+    },
+    {
+      "name": "review fix: each new graph question draft requires fresh leave confirmation",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "perf": [
+    {
+      "count": 100,
+      "search": false,
+      "p50_ms": 50.0653999999995,
+      "p95_ms": 58.96219999999994
+    },
+    {
+      "count": 100,
+      "search": true,
+      "p50_ms": 44.840399999999136,
+      "p95_ms": 51.28070000000116
+    },
+    {
+      "count": 1000,
+      "search": false,
+      "p50_ms": 58.23489999999947,
+      "p95_ms": 61.611299999996845
+    },
+    {
+      "count": 1000,
+      "search": true,
+      "p50_ms": 66.85610000000088,
+      "p95_ms": 74.55840000000171
+    },
+    {
+      "count": 10000,
+      "search": false,
+      "p50_ms": 171.53390000000218,
+      "p95_ms": 181.47300000000178
+    },
+    {
+      "count": 10000,
+      "search": true,
+      "p50_ms": 298.36169999999765,
+      "p95_ms": 319.384399999999
+    }
+  ]
+}
