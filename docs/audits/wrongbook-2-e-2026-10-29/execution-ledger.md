@@ -1,0 +1,22 @@
+# SDD ledger — plan: docs/superpowers/plans/2026-10-29-wrongbook-release-acceptance.md
+Authorization: 2026-10-29 complete full wrongbook round without further stage confirmations; local only, no production release. Pre-flight: Task1 runtime results → Task2 scenario10; Task2 actual browser/restore results → Task3 release matrix; consistent. D ledger archived; no redo.
+Task 1: complete (commits e7d1b61..0b69171, tests: .venv/Scripts/python.exe -m pytest filemate/tests/wrongbook/test_analysis_service.py filemate/tests/wrongbook/test_analysis_privacy.py -q → Binary file /c/Users/胡希/.codex/worktrees/release-alpha3/FileMate-Project/.superpowers/sdd/2026-10-29-wrongbook-release-acceptance/task-1-tests.log matches)
+
+Task 1 evidence: official SQLite3.26 Windows binary; runtime-326-relative/result.json proves 35/36 SQL, rollback, NULL and .backup/.restore. Relative ASCII database arguments avoid the old Windows CLI Unicode argv limitation; no production Linux runtime claim.
+Task 2: 21/21 current workspace browser; 11/11 current learning browser; CLI journey 14/14; 169 wrongbook backend regressions. Search remount RED/GREEN fixed only behind V2; 409ms trace. Two source-references now reject duplicates.
+Task 2 known capacity issue E-P2-01: 10000 warm p95<=500ms; four concurrent requests exceed the unchanged 500ms reference (cached list693.71/search662.68ms). Both raw failed benchmarks retained; not declared passing. No new schema or concurrency SLA inferred. E release recommendation must be conditional.
+Task 2: complete (commits 0b69171..8d069fd, tests: .venv/Scripts/python.exe -m pytest filemate/tests/wrongbook/test_repository.py -q → 17 passed in 15.71s)
+
+Inherited D rulings (historical, exhaustive):
+Task 1: Ruling: Context增加非敏感credential_mode=server|browser，GET不携带密钥；后续POST必须保持同模式 — 浏览器BYOK固定DeepSeek，不能与服务器自定义Provider的预览身份混用 — 若调用方遗漏模式将拒绝旧摘要，需重新预览。
+Task 5: Ruling: 增量计划selection增加可选attempt_id/course_id，省略时选择本题最新真实作答且不带课程；由服务端重建上下文 — 预览必须绑定用户所选作答和单门课程，而原计划仅列出任务编辑字段 — 若调用方不传这些ID，计划仍可用但按题目自身来源生成。
+Task 5: Ruling: 相邻测试命令将wrongbook目录的文件连续排列，再运行父目录test_goal_planner.py — pytest9.1.1按节点对象身份匹配fixture，交错目录参数会重建Directory节点导致错误缺失fixture；产品合同与断言不变 — 若判断错误，全目录总门禁仍将暴露实际问题。
+Task 7: Ruling: 同步test_career.py和test_digital_human.py的现役schema断言及test_storage迁移列表／末项名到36 — Task2清单遗漏这两处现役消费者，全门禁实测暴露；只更新最新版本期望，旧迁移内容与历史合同不变 — 若旧运行时不兼容，仍须E级实测，不能据此发布。
+Final: Review: one fresh context plus first-read appendix; Critical0/Important1/Minor1. Important empty-filter stale writable record fixed with epoch invalidation; unit and actual Edge cancel/confirm/back verified. Minor zero-scale measurement plus archive8-row contract fixed, measurement pending final run. No repair re-review.
+Final: Ruling: preserve E-P2-01 as open four-concurrent capacity failure and deliver CONDITIONAL, rather than infer production readiness from single-user success — E acceptance explicitly records limitations and real production is outside this authorized local round; threshold and failed results stay unchanged — cost if wrong: four users at10000 rows may see roughly0.7s p95 rather than0.5s, so capacity work remains a release prerequisite.
+Final: Deferred minors: none after fixes; D duplicate-answer reference and E zero-scale omissions are resolved in engineering, final evidence still being collected.
+Task 3: complete (commits 8d069fd..dc6732e, tests: .venv/Scripts/python.exe -m scripts.acceptance.wrongbook_release_evidence → Audit archive consistent; this does not mean the open concurrency target passed.)
+
+Final evidence supersedes earlier pending notes: gate exit0; backend1720 passed/22 skipped/5 deselected, frontend278 passed. Fresh Edge workspace21/21, learning11/11, journey+CLI restore14/14. Final8 rows include0/100/1000/10000 list+search; all warm p95<=500ms;10000 four-concurrent list680.88/search668.18ms remain open E-P2-01. Both flag builds meet unchanged143360-byte gzip budget.
+Final package: candidate freshly extracted;642 source hashes plus all15 evidence digests passed. Integration probe exposed3 ignored audit logs; explicit tracking plus fail-closed packaging dependency guard fixed it. Incomplete packages reject before ZIP creation.24 pre-existing user test hashes preserved.
+Final disposition: Important1 and Minor1 fixed; no further re-review. Deferred minors: none. All three task executions complete; capacity P2 remains explicit, CONDITIONAL local engineering delivery. Final ZIP follows this documentation commit with actual HEAD and file hashes. No production change.
