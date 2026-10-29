@@ -99,7 +99,7 @@
     "filemate/tests/test_retrieval.py": "dcb5a02f2fd3c68e82e82e0a90b211dc3a6d76bdc205230b008d079c888b954c",
     "filemate/tests/test_security_boundaries.py": "e70b1940b2778820deaae13f49725b2a26fc4c9cad79f5cf40d6bd01bfcd799a"
   },
-  "source_revision_before_documentation": "ea3693c9836a9d2b0bb75974c5017c1b8d98b0a8",
+  "source_revision_before_documentation": "50e8b516b4f15a785ca3d5df08a8615bdde0f190",
   "source_hashes": {
     ".env.example": "902dba7e7fe0b2f503fc4376d851bdb1c19b509141f2f8e00b6d3a6554f36d8e",
     "filemate/__init__.py": "080166b45a46989cddb358a84831cf0de74304ac85ba7f305dc78353522e3966",
@@ -715,7 +715,7 @@
     "scripts/acceptance/wrongbook_release_evidence.py": "113418bc73ba8e395c1ee2b683db67a3e706db20ab8e44cc392d35d73eb47e75",
     "scripts/acceptance/wrongbook_release_fixture.py": "589ea95daa011570effc667931f068ce6ab7917ce956159b014c09ec07c81e3a",
     "scripts/acceptance/wrongbook_release_journey.py": "4eef591da6e98bd16f1480251739c085d4f4cc5de38a7fec91c8a4e7f87fc1b6",
-    "scripts/acceptance/wrongbook_release_package.py": "bb44a9d420ecbe4b32b76ba4e18699c4ffa86e4afbd8adc3a16f3ae78ea2012e",
+    "scripts/acceptance/wrongbook_release_package.py": "e36eba760b0b0b2328f472dde1c6aa459e30d34254245f5ad432c8e7cecf5fac",
     "scripts/acceptance/wrongbook_release_performance.py": "a1757cb3586caebcc278866071d845e765419bea49c7a8aa23e6e7d905ea60bf",
     "scripts/acceptance/wrongbook_release_runtime.py": "00681f1517a42a3001715750e7497308c4f0f4a80c5a2d5e921524806944e7c8",
     "scripts/acceptance/wrongbook_workspace.mjs": "157a9e31d14efc8408ac89cbc9e572b72749b5e4fb93f933b43d99c414d9cfc3",

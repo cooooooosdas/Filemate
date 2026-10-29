@@ -19,6 +19,11 @@ def package(destination: Path) -> dict:
         raise ValueError('a new _working archive path is required')
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     paths = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode('utf-8').split('\0')
+    report = json.loads(REPORT.read_text(encoding='utf-8'))
+    evidence_prefix = REPORT.parent.relative_to(ROOT).as_posix() + '/'
+    required = {evidence_prefix + name for name in report['evidence_sha256']}
+    if missing := required - set(paths):
+        raise ValueError(f'Archive evidence must be Git-tracked: {sorted(missing)}')
     files, excluded = {}, []
     destination.parent.mkdir(parents=True, exist_ok=True)
     forbidden = {'_working', '.git', '.superpowers', '.filemate-data', 'node_modules', '.venv', '__pycache__'}
@@ -36,8 +41,9 @@ def package(destination: Path) -> dict:
             content = path.read_bytes()
             files[relative] = hashlib.sha256(content).hexdigest()
             archive.writestr('FileMate-Project/' + relative, content)
-        report = json.loads(REPORT.read_text(encoding='utf-8'))
         assert all(files.get(name) == expected for name, expected in report['source_hashes'].items())
+        assert all(files.get(evidence_prefix + name) == expected
+                   for name, expected in report['evidence_sha256'].items())
         manifest = {
             'head': revision, 'status': report['status'], 'source_byte_policy': 'current Git-tracked bytes',
             'pre_existing_test_bytes_preserved': True, 'files_sha256': files, 'excluded': excluded,

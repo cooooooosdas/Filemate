@@ -1,0 +1,29 @@
+✖ clearing a confirmed empty selection removes the old writable question and ignores a late detail (6.3756ms)
+✔ after an answer refresh detail revision without losing receipt or unsaved diagnosis (2.2784ms)
+✔ late answer detail refresh cannot replace another selection (0.6084ms)
+✔ failed post-answer refresh preserves success and blocks stale revision writes until retry (0.477ms)
+✔ deep links select their actual id, and missing ids never fall back to first (0.5385ms)
+✔ deleting the final page returns to the final valid offset, including empty library (0.1618ms)
+✔ late detail and source responses cannot replace the selected question (0.5185ms)
+✔ detail and history failures can be retried independently (0.4754ms)
+✔ cleared diagnosis sends an empty list, conflict preserves the draft (0.6708ms)
+✔ schedule confirms exactly the previewed command; retry preserves key and token (0.6601ms)
+✔ saved writes followed by failed refresh are described as saved (0.9155ms)
+✔ capability failure blocks writing and switching identity discards old UI application (0.3471ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 11
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 155.5037
+
+✖ failing tests:
+
+test at filemate\web\tests\wrongbook-workspace.test.mjs:13:1
+✖ clearing a confirmed empty selection removes the old writable question and ignores a late detail (6.3756ms)
+  TypeError: c.clearSelection is not a function
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-workspace.test.mjs:18:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)
