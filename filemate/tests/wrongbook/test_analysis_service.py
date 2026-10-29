@@ -60,7 +60,7 @@ def test_one_call_and_no_automatic_repair(analysis_case, invalid):
     assert store._conn().execute('SELECT COUNT(*) FROM wrong_review_analyses').fetchone()[0] == 1
 
 
-@pytest.mark.parametrize('corrupt', ['answer', 'source', 'duplicates', 'unsupported_statistic', 'extra'])
+@pytest.mark.parametrize('corrupt', ['answer', 'source', 'duplicates', 'duplicate_answer', 'unsupported_statistic', 'extra'])
 def test_causes_require_literal_answer_and_whitelisted_source_refs(analysis_case, corrupt):
     store, clock, old = analysis_case
     sid = store._conn().execute('SELECT source_id FROM wrong_questions').fetchone()[0]
@@ -78,6 +78,8 @@ def test_causes_require_literal_answer_and_whitelisted_source_refs(analysis_case
         result['possible_causes'][0]['source_evidence_refs'] = ['fabricated-source']
     elif corrupt == 'duplicates':
         result['possible_causes'].append(copy.deepcopy(cause))
+    elif corrupt == 'duplicate_answer':
+        result['possible_causes'][0]['answer_evidence_refs'] *= 2
     elif corrupt == 'unsupported_statistic':
         result['possible_causes'][0]['hypothesis'] = '你的掌握率为90%，紧张概率40%'
     else:

@@ -150,6 +150,9 @@ def validate_output(raw: dict, context: dict) -> dict:
     answers = {a['attempt_id']: a['user_answer'] for a in [context['attempt'], *context['related_attempts']]}
     sources = {s['evidence_id'] for s in context['source_evidence']}
     for cause in result.possible_causes:
+        answer_refs = [(ref.attempt_id, ref.quote) for ref in cause.answer_evidence_refs]
+        if len(answer_refs) != len(set(answer_refs)):
+            raise ValueError('duplicate_answer_reference')
         for ref in cause.answer_evidence_refs:
             if not ref.quote.strip() or ref.attempt_id not in answers or ref.quote not in answers[ref.attempt_id]:
                 raise ValueError('invalid_answer_reference')
