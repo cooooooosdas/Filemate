@@ -18,6 +18,25 @@ def repository(fixture, store=None):
     return cls(store or fixture[0], clock=lambda: fixture[4][0])
 
 
+def test_sql_time_conversion_reuses_repeated_dates_without_changing_null_or_timezone(review_store, monkeypatch):
+    module = importlib.import_module('filemate.wrongbook.repository')
+    original = module.parse_time
+    values = ['2026-10-29T08:00:00+08:00', '2026-10-29T00:00:00Z', 'invalid', None]
+    calls = []
+
+    def measured(value):
+        calls.append(value)
+        return original(value)
+
+    monkeypatch.setattr(module, 'parse_time', measured)
+    connection = repository(review_store).time_connection()
+    connection.execute('CREATE TEMP TABLE repeated_review_dates(value)')
+    connection.executemany('INSERT INTO repeated_review_dates VALUES (?)', [(v,) for v in values] * 500)
+    actual = [row[0] for row in connection.execute('SELECT filemate_review_time(value) FROM repeated_review_dates')]
+    assert actual == [1793232000.0, 1793232000.0, None, None] * 500
+    assert len(calls) < 16, 'repeated dates must not enter Python datetime parsing once per row'
+
+
 def test_wrong_then_correction_preserves_original_answer_and_records(review_store):
     repo = repository(review_store)
     wrong = repo.submit(answer_payload(review_store))

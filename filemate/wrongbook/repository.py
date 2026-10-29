@@ -5,6 +5,7 @@ import uuid
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from functools import lru_cache
 from typing import Any
 
 from filemate.execution.data_actions import digest
@@ -233,6 +234,7 @@ class ReviewRepository:
         """Share the engine's strict parsing with SQL counts and bounded selection."""
         conn = self.storage._conn()
 
+        @lru_cache(maxsize=2048)
         def strict_time(value):
             parsed = parse_time(value)
             return (parsed - datetime(1970, 1, 1, tzinfo=timezone.utc)).total_seconds() if parsed else None

@@ -2,6 +2,14 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { routeViewKey, hasInterviewDraft, todayItemTarget } from '../src/navigation/route-state.ts'
 
+test('V2 review filter changes reuse the mounted workspace while legacy and explicit refresh still remount', () => {
+  const before = '/wrongbook?focus=one'
+  const after = '/wrongbook?q=stack&focus=two'
+  assert.equal(routeViewKey('/wrongbook', before, 0, true), routeViewKey('/wrongbook', after, 0, true))
+  assert.notEqual(routeViewKey('/wrongbook', before, 0, false), routeViewKey('/wrongbook', after, 0, false))
+  assert.notEqual(routeViewKey('/wrongbook', before, 0, true), routeViewKey('/wrongbook', before, 1, true))
+})
+
 test('interview session query synchronization preserves the running page', () => {
   assert.equal(routeViewKey('/interview', '/interview', 0), routeViewKey('/interview', '/interview?interview=one', 0))
   assert.notEqual(routeViewKey('/interview', '/interview', 0), routeViewKey('/interview', '/interview', 1))
