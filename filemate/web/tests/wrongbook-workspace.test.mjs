@@ -10,6 +10,20 @@ function setup(overrides = {}) {
   return { control: mod.createReviewWorkspaceController(api), calls }
 }
 
+test('clearing a confirmed empty selection removes the old writable question and ignores a late detail', async () => {
+  let release
+  const {control: c} = setup({getReviewDetail: id => id === 'late' ? new Promise(resolve => { release = resolve }) : Promise.resolve(detail(id))})
+  await c.initialize(); await c.select('first')
+  c.submission.setAnswer('unsubmitted draft'); c.state.diagnosis.note = 'unsaved note'
+  c.clearSelection()
+  assert.equal(c.state.detail, null); assert.equal(c.state.selected, '')
+  assert.equal(c.writable(), false); assert.equal(c.dirty(), false)
+  assert.equal(c.submission.state.answer, '')
+  const pending = c.select('late'); c.clearSelection(); release(detail('late')); await pending
+  assert.equal(c.state.detail, null); assert.equal(c.state.selected, '')
+  assert.equal(c.state.detailLoading, false)
+})
+
 test('after an answer refresh detail revision without losing receipt or unsaved diagnosis',async()=>{
  let revision=1;const expected=[]
  const {control:c}=setup({getReviewDetail:async id=>({...detail(id),revision}),submitReviewAnswer:async()=>{revision++;return {attempt_id:'saved'}},setReviewDiagnosis:async(id,b)=>{expected.push(b.expected_revision);return {}}})

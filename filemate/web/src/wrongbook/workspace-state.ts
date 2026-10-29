@@ -51,10 +51,15 @@ export function createReviewWorkspaceController(api: WorkspaceApi, observe: <T e
     } catch (error) { if (alive(e) && l === listEpoch) state.listError = errorText(error); return false }
     finally { if (alive(e) && l === listEpoch) state.loading = false }
   }
-  async function select(id: string) {
-    const e = epoch, d = ++detailEpoch; ++sourceEpoch; ++historyEpoch
-    state.selected = id; state.detail = null; state.detailLoading = true; state.detailError = ''; state.detailNeedsRefresh = false; state.source = null; state.sourceError = ''; state.historyItems = []; state.historyError = ''; state.historyLoading = false; state.sourceLoading = false
+  function clearSelection() {
+    ++detailEpoch; ++sourceEpoch; ++historyEpoch
+    state.selected = ''; state.detail = null; state.detailLoading = false; state.detailError = ''; state.detailNeedsRefresh = false; state.source = null; state.sourceError = ''; state.historyItems = []; state.historyError = ''; state.historyLoading = false; state.sourceLoading = false
     state.preview = null; pendingSchedule = null; pendingDiagnosis = null; state.writeError = ''; state.message = ''; state.diagnosis = blankDiagnosis(); diagnosisBaseline = ''; submission.resetIdentity(state.scope)
+  }
+  async function select(id: string) {
+    clearSelection()
+    const e = epoch, d = detailEpoch
+    state.selected = id; state.detailLoading = true
     try {
       const detail = await api.getReviewDetail(id)
       if (!alive(e, d)) return false
@@ -138,7 +143,7 @@ export function createReviewWorkspaceController(api: WorkspaceApi, observe: <T e
     finally { if (alive(e, d)) state.writing = false }
   }
   function resetIdentity(scope: string | null) { ++epoch; ++detailEpoch; ++listEpoch; state.scope = scope; state.capability = null; state.items = []; state.detail = null; state.selected = ''; state.historyItems = []; state.source = null; state.diagnosis = blankDiagnosis(); diagnosisBaseline = ''; state.preview = null; state.writing = false; state.loading = false; state.detailLoading = false; pendingSchedule = null; pendingDiagnosis = null; submission.resetIdentity(scope) }
-  return { state, submission, initialize, loadPage, select, history, loadSource, saveDiagnosis, previewSchedule, confirmSchedule, resetIdentity, writable, refreshAfterAnswer,
+  return { state, submission, initialize, loadPage, select, clearSelection, history, loadSource, saveDiagnosis, previewSchedule, confirmSchedule, resetIdentity, writable, refreshAfterAnswer,
     diagnosisDirty: () => !!state.detail && diagnosisBaseline !== stableReviewJSON(state.diagnosis),
     cancelPreview() { if (!state.writing && !state.writeError.includes('待核验')) { state.preview = null; pendingSchedule = null } },
     dirty: () => submission.dirty() || state.writing || !!state.preview || !!pendingDiagnosis || !!state.detail && diagnosisBaseline !== stableReviewJSON(state.diagnosis),

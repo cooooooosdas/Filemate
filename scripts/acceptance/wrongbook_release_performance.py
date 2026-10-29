@@ -17,7 +17,7 @@ async def measure(base: str, origin: str, manifest: Path, output: Path) -> dict:
     fixture = json.loads(manifest.read_text(encoding='utf-8'))
     assert fixture['synthetic'] and not output.exists()
     rows = []
-    for user in sorted((u for u in fixture['users'] if u['wrong_count']),
+    for user in sorted(fixture['users'],
                        key=lambda u: u['wrong_count']):
         async with httpx.AsyncClient(base_url=base, timeout=30) as client:
             response = await client.post('/api/auth/login',
@@ -36,7 +36,7 @@ async def measure(base: str, origin: str, manifest: Path, output: Path) -> dict:
                 assert response.status_code == 200
                 data = response.json()['data']
                 assert len(data['items']) <= 30
-                assert data['total'] == (1 if search else subject['wrong_count'])
+                assert data['total'] == (int(bool(subject['wrong_count'])) if search else subject['wrong_count'])
                 return (time.perf_counter() - start) * 1000
 
             for search in (False, True):
