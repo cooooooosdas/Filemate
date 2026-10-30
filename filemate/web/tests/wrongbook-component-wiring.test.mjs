@@ -116,3 +116,19 @@ test('departing course workspace must not reinterpret the destination query or p
  route.path='/wrongbook';route.query={focus:'synthetic-wrong-00001'};route.fullPath='/wrongbook?focus=synthetic-wrong-00001'
  await vue.nextTick();await new Promise(r=>setImmediate(r));assert.equal(prompted,0);assert.equal(opened,0);assert.equal(replaced,0);x.scope.stop()
 })
+
+test('post-save delayed background failure never unmounts the next real focus draft',async()=>{
+ const {createReviewWorkspaceController}=await import('../src/wrongbook/workspace-state.ts')
+ const {createFocusReviewController}=await import('../src/wrongbook/focus-state.ts')
+ const {createReviewSubmission,memoryReviewStorage}=await import('../src/wrongbook/submission.ts')
+ const {createReviewPreferences}=await import('../src/wrongbook/browse-state.ts')
+ let fail=false,release
+ const scope='a'.repeat(64),ref={wrong_id:'first',artifact_id:'a',question_index:0,question_digest:'d'.repeat(64),source_id:'s',revision:1,next_review_at:'2020-01-01T00:00:00Z'}
+ const api={getReviewCapabilities:async()=>{if(fail)throw Error('offline');return{write_enabled:true}},getReviewBrowserScope:async()=>{if(fail)throw Error('offline');return scope},getReviewSummary:()=>fail?new Promise(r=>{release=r}):Promise.resolve({total:2}),getReviewDetail:async id=>({...ref,wrong_id:id,question:{type:'fill',question:'独立回答'},read_only_snapshot:false}),getReviewAttempts:async()=>({items:[]})}
+ const storage=memoryReviewStorage(),observe=v=>vue.reactive(v),workspace=createReviewWorkspaceController(api,observe,storage)
+ await workspace.initialize();const submission=createReviewSubmission(api,{scope,storage,observe}),focus=createFocusReviewController(api,submission,createReviewPreferences(storage,scope),observe)
+ await focus.startChecked([ref,{...ref,wrong_id:'second'}])
+ const effect=vue.effectScope();effect.run(()=>vue.watch(()=>[workspace.state.capability,workspace.state.scope],()=>{if(!workspace.state.capability||workspace.state.scope!==scope)focus.dispose()},{flush:'sync'}))
+ fail=true;const refreshing=(workspace.refreshSummary||workspace.initialize)();await focus.open(1);submission.setAnswer('下一题尚未提交的正文');release({total:3});await refreshing
+ assert.equal(submission.state.answer,'下一题尚未提交的正文');assert.equal(workspace.state.scope,scope);assert.equal(workspace.state.capability.write_enabled,true);effect.stop();focus.dispose();workspace.dispose()
+})

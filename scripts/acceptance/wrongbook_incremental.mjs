@@ -69,5 +69,15 @@ try{
  await check('authenticated account boundary does not expose saved attempt from another workspace',async()=>{
   const owner=fixture.users[0],empty=fixture.users.find(u=>!u.wrong_count),c=await browser.newContext();await login(c,empty);const r=await c.request.get(api+'/wrongbook/v2/'+owner.last.wrong_id);assert.equal(r.status(),404);await c.close();return{status:404}
  })
+ await check('post-save delayed summary failure preserves next question draft without identity refresh',async()=>{
+  await open('?sort=recommended');await preview();await b('核验并开始本次复习').click();await page.locator('.focus-review .review-question h2').waitFor()
+  let release,summaryCalls=0,capabilityCalls=0
+  const gate=new Promise(r=>{release=r})
+  await page.route('**/wrongbook/v2/capabilities',r=>{capabilityCalls++;return r.abort('internetdisconnected')})
+  await page.route('**/wrongbook/v2/summary',async r=>{summaryCalls++;await gate;return r.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'synthetic summary unavailable'})})})
+  await page.getByLabel('你的回答',{exact:true}).fill('后进先出');await b('提交回答').click();await page.locator('.review-receipt').waitFor();await page.waitForFunction(()=>!Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='下一题')?.disabled);await b('下一题').click();await page.getByText(/第 2 \/ 3 题/).waitFor()
+  await page.getByLabel('你的回答',{exact:true}).fill('下一题未提交的正文要保留');release();await page.getByText('复习概览暂未更新，已保存作答与当前输入保留。',{exact:false}).waitFor();assert.equal(await page.getByLabel('你的回答',{exact:true}).inputValue(),'下一题未提交的正文要保留');assert.equal(capabilityCalls,0);assert.ok(summaryCalls>=1)
+  await page.unroute('**/wrongbook/v2/capabilities');await page.unroute('**/wrongbook/v2/summary');return{capabilityCalls,summaryCalls,draft_preserved:true}
+ })
  assert.equal(checks.filter(c=>!c.passed).length,0,JSON.stringify(checks.filter(c=>!c.passed)));assert.deepEqual(errors,[])
 }finally{fs.writeFileSync(path.join(out,'browser-results.json'),JSON.stringify({synthetic:true,checks,errors},null,2));await browser.close()}

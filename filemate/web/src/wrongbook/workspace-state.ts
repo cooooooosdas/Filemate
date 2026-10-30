@@ -15,14 +15,14 @@ export type WorkspaceApi = {
 }
 export function createReviewWorkspaceController(api: WorkspaceApi, observe: <T extends object>(s: T) => T = s => s, storage?: ReviewStorage) {
   const blankDiagnosis = (): Diagnosis => ({ error_causes: [], primary_cause: null, custom_tags: [], note: '' })
-  const state = observe({ scope: null as string | null, capability: null as ReviewCapabilities | null, capabilityError: '', summary: null as ReviewSummary | null,
+  const state = observe({ scope: null as string | null, capability: null as ReviewCapabilities | null, capabilityError: '', summary: null as ReviewSummary | null, summaryError: '',
     items: [] as ReviewListItem[], total: 0, offset: 0, hasMore: false, filters: {} as ReviewFilter, loading: false, listError: '',
     selected: '', detail: null as ReviewDetail | null, detailLoading: false, detailError: '', detailNeedsRefresh: false,
     historyKind: 'attempts' as 'attempts' | 'events', historyItems: [] as (ReviewAttempt | ReviewEvent)[], historyTotal: 0, historyOffset: 0, historyLoading: false, historyError: '',
     source: null as unknown, sourceLoading: false, sourceError: '', diagnosis: blankDiagnosis(), preview: null as ReviewPreview | null,
     writing: false, writeError: '', message: '' })
   const submission = createReviewSubmission(api, { storage, observe })
-  let epoch = 0, listEpoch = 0, detailEpoch = 0, historyEpoch = 0, sourceEpoch = 0, disposed = false
+  let epoch = 0, listEpoch = 0, detailEpoch = 0, historyEpoch = 0, sourceEpoch = 0, summaryEpoch = 0, disposed = false
   let diagnosisBaseline = '', pendingDiagnosis: ReviewDiagnosis | null = null, pendingSchedule: ReviewSchedule | null = null
   const alive = (e: number, d?: number) => !disposed && e === epoch && (d === undefined || d === detailEpoch)
   const errorText = (e: unknown) => e instanceof Error ? e.message : (e as { status?: number })?.status === 404 ? '此题不存在或已不可用。' : '请求失败，请重试。'
@@ -38,6 +38,17 @@ export function createReviewWorkspaceController(api: WorkspaceApi, observe: <T e
     state.scope = nextScope
     if (summary.status === 'fulfilled') state.summary = summary.value
     return true
+  }
+  async function refreshSummary() {
+    const e = epoch, request = ++summaryEpoch; state.summaryError = ''
+    try {
+      const summary = await api.getReviewSummary()
+      if (!alive(e) || request !== summaryEpoch) return false
+      state.summary = summary; return true
+    } catch {
+      if (alive(e) && request === summaryEpoch) state.summaryError = '复习概览暂未更新，已保存作答与当前输入保留。'
+      return false
+    }
   }
   async function loadPage(filters: ReviewFilter, offset = 0) {
     const e = epoch, l = ++listEpoch; state.filters = { ...filters }; state.offset = offset; state.loading = true; state.listError = ''
@@ -142,8 +153,8 @@ export function createReviewWorkspaceController(api: WorkspaceApi, observe: <T e
     catch (error) { if (alive(e, d)) { const status = (error as { status?: number }).status; if (status === 409 || status === 410 || status === 422) { pendingSchedule = null; state.preview = null; state.writeError = '预览已失效，请刷新题目后重新预览。' } else state.writeError = '确认结果待核验，请原样重试；不会重复调整排期。' } return false }
     finally { if (alive(e, d)) state.writing = false }
   }
-  function resetIdentity(scope: string | null) { ++epoch; ++detailEpoch; ++listEpoch; state.scope = scope; state.capability = null; state.items = []; state.detail = null; state.selected = ''; state.historyItems = []; state.source = null; state.diagnosis = blankDiagnosis(); diagnosisBaseline = ''; state.preview = null; state.writing = false; state.loading = false; state.detailLoading = false; pendingSchedule = null; pendingDiagnosis = null; submission.resetIdentity(scope) }
-  return { state, submission, initialize, loadPage, select, clearSelection, history, loadSource, saveDiagnosis, previewSchedule, confirmSchedule, resetIdentity, writable, refreshAfterAnswer,
+  function resetIdentity(scope: string | null) { ++epoch; ++detailEpoch; ++listEpoch; state.scope = scope; state.capability = null; state.summary = null; state.summaryError = ''; state.items = []; state.detail = null; state.selected = ''; state.historyItems = []; state.source = null; state.diagnosis = blankDiagnosis(); diagnosisBaseline = ''; state.preview = null; state.writing = false; state.loading = false; state.detailLoading = false; pendingSchedule = null; pendingDiagnosis = null; submission.resetIdentity(scope) }
+  return { state, submission, initialize, refreshSummary, loadPage, select, clearSelection, history, loadSource, saveDiagnosis, previewSchedule, confirmSchedule, resetIdentity, writable, refreshAfterAnswer,
     diagnosisDirty: () => !!state.detail && diagnosisBaseline !== stableReviewJSON(state.diagnosis),
     cancelPreview() { if (!state.writing && !state.writeError.includes('待核验')) { state.preview = null; pendingSchedule = null } },
     dirty: () => submission.dirty() || state.writing || !!state.preview || !!pendingDiagnosis || !!state.detail && diagnosisBaseline !== stableReviewJSON(state.diagnosis),

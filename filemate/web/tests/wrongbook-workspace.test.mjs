@@ -10,6 +10,17 @@ function setup(overrides = {}) {
   return { control: mod.createReviewWorkspaceController(api), calls }
 }
 
+test('summary-only refresh failure retains identity, capability and existing facts',async()=>{
+ let fail=false,scopes=0,capabilities=0
+ const {control:c}=setup({getReviewBrowserScope:async()=>{scopes++;return'a'.repeat(64)},getReviewCapabilities:async()=>{capabilities++;return{write_enabled:true}},getReviewSummary:async()=>{if(fail)throw Error('offline');return{total:1}}})
+ await c.initialize();fail=true;assert.equal(await c.refreshSummary(),false)
+ assert.equal(scopes,1);assert.equal(capabilities,1);assert.equal(c.state.scope,'a'.repeat(64));assert.equal(c.state.capability.write_enabled,true);assert.equal(c.state.summary.total,1);assert.match(c.state.summaryError,/概览.*未更新/)
+})
+test('old or cross-identity summary response cannot replace newer facts',async()=>{
+ let release;const {control:c}=setup({getReviewSummary:()=>new Promise(r=>{release=r})})
+ const pending=c.refreshSummary();c.resetIdentity(null);release({total:999});assert.equal(await pending,false);assert.equal(c.state.summary,null)
+})
+
 test('clearing a confirmed empty selection removes the old writable question and ignores a late detail', async () => {
   let release
   const {control: c} = setup({getReviewDetail: id => id === 'late' ? new Promise(resolve => { release = resolve }) : Promise.resolve(detail(id))})
