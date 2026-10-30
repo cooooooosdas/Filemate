@@ -3,8 +3,8 @@
   "recorded_at": "2026-10-30T00:19:09.393896+00:00",
   "scope": "WrongReview 2.0 incremental B local engineering candidate",
   "status": "CONDITIONAL PASS",
-  "git_observed_head": "a604b7c63872e7baa9bcd377ebb9f72105456058",
-  "source_scope": "Current working tree, including uncommitted new lifecycle test and 24 preserved pre-existing modified tests; not a claim of a clean HEAD build.",
+  "git_observed_head": "0b7b8328d43a792ab8ddfb158605c33195208ee5",
+  "source_scope": "Current working tree, including 24 preserved pre-existing modified tests; new lifecycle test is committed. Not a claim of a clean HEAD build.",
   "synthetic": true,
   "production_deployed": false,
   "new_migrations": false,
@@ -895,6 +895,18 @@
     "unique-time-probe.py.txt": {
       "before_lf_sha256": "fa1272aef82b11d3171b3540542c0a2c551c5a778022a633aa1dda27c0f8099b",
       "archived_sha256": "b420534cdbc88225a096eaa674c2557d3b4b5abc67d6b35b8b31e5b6610b7629"
+    },
+    "execution-ledger.md": {
+      "before_lf_sha256": "ebe1173e2e25c46b7041d308222db7a1d7bb3921d3161b0dd79e85043a6b18e1",
+      "archived_sha256": "fb1a5110e10d648510ba0f950632f139bfa917968fb235048f646593ea024743"
+    },
+    "task4-done.log": {
+      "before_lf_sha256": "4c1f17a4e612f5d2405a9e706302718177d458cfe988150e4d7824010e960146",
+      "archived_sha256": "3fdf5227ae0284e586ae31eb5f69bcdc6e66496581c2fb59db37b491220a36e5"
+    },
+    "compatibility-runtime.log": {
+      "before_lf_sha256": "f7044971f4f335abadf595b571405d2f7059aeedd8d5ea8f11b7933f3df84c9d",
+      "archived_sha256": "83371fa440028cc32941c1a5a4f559215e39b4c487da82c59503b7b990d72508"
     }
   },
   "evidence_sha256": {
@@ -904,7 +916,7 @@
     "after-profile.txt": "a62052ddfbe1581571780d7bb3709179d4b37b9d616fbe6219e654ab760239dd",
     "baseline-http-performance.json": "d9f3851acda151072a68c8975c517a61d933fb14e6cb0899d435ae3d007af7b7",
     "compatibility-runtime.log": "83371fa440028cc32941c1a5a4f559215e39b4c487da82c59503b7b990d72508",
-    "execution-ledger.md": "e627af3a38b3d1589d5c4e1f2af962e09323362d13162751df4e15913f838d20",
+    "execution-ledger.md": "fb1a5110e10d648510ba0f950632f139bfa917968fb235048f646593ea024743",
     "flow-proof.json": "ff672cfc3ef486e5f7677605d0449d2f448de403cbbab028c3a84c2b539eb53d",
     "full-gate-exit.txt": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
     "full-gate.log": "bc81ef3129a3208170a50075c68350d5457b26222fc185bf67f6464eb0824a42",
@@ -925,8 +937,26 @@
     "task3-client-red.log": "378e371c05d939519ba5042d27ff22ebec4bd03af85e73a0b6bdbbef49b8d6a1",
     "task3-green.log": "29e4ae8aaca07e23f0979d77b3762739442a5f816b8768dfcc7e449a5188d7c8",
     "task3-red.log": "b955aa23eba1db27baadbd0c287bf20cc491c42e20de330e58789afe2c2ba0c5",
+    "task4-done.log": "3fdf5227ae0284e586ae31eb5f69bcdc6e66496581c2fb59db37b491220a36e5",
     "task4-flow.log": "1809a9a4180b2b2657227ed716da2d193bdacae066f609cceace66c71f1a52cb",
     "unique-time-capacity.json": "15df4138c57b7801414989a2e87780b9e1bf89ed56196bcf365a7ee75ba50bea",
     "unique-time-probe.py.txt": "b420534cdbc88225a096eaa674c2557d3b4b5abc67d6b35b8b31e5b6610b7629"
+  },
+  "full_gate_execution_source_note": "At gate time the lifecycle test was untracked. Source bytes still equal the 649-file manifest; subsequent changes only document and archive evidence.",
+  "post_commit_lifecycle_test": {
+    "passed": 1,
+    "warnings": 1,
+    "seconds": 5.35
+  },
+  "execution": {
+    "tasks_complete": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "ruling_count": 15,
+    "deferred_minors": [],
+    "push_or_deploy": false
   }
 }
