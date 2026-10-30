@@ -1,0 +1,43 @@
+         518395 function calls in 1.046 seconds
+
+   Ordered by: cumulative time
+   List reduced from 124 to 35 due to restriction <35>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+       10    0.000    0.000    1.046    0.105 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:272(page)
+       10    0.004    0.000    1.031    0.103 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:277(_snapshot_page)
+       90    0.789    0.009    0.789    0.009 {method 'execute' of 'sqlite3.Connection' objects}
+       10    0.084    0.008    0.367    0.037 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:145(_time_relation)
+      165    0.000    0.000    0.037    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\__init__.py:183(dumps)
+      165    0.000    0.000    0.036    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\encoder.py:183(encode)
+      165    0.036    0.000    0.036    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\encoder.py:205(iterencode)
+       40    0.000    0.000    0.035    0.001 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:75(_has_json1)
+    50120    0.019    0.000    0.034    0.000 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\engine.py:12(parse_time)
+   100090    0.027    0.000    0.027    0.000 {method 'astimezone' of 'datetime.datetime' objects}
+       20    0.000    0.000    0.014    0.001 {built-in method builtins.next}
+       20    0.000    0.000    0.014    0.001 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\execution\storage.py:777(read_snapshot)
+    49960    0.012    0.000    0.012    0.000 {method 'total_seconds' of 'datetime.timedelta' objects}
+    50120    0.009    0.000    0.009    0.000 {built-in method fromisoformat}
+       10    0.000    0.000    0.008    0.001 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\contextlib.py:132(__enter__)
+    49960    0.008    0.000    0.008    0.000 {method 'upper' of 'str' objects}
+    49960    0.008    0.000    0.008    0.000 {method 'hex' of 'bytes' objects}
+    50135    0.008    0.000    0.008    0.000 {method 'encode' of 'str' objects}
+    49960    0.006    0.000    0.006    0.000 {method 'date' of 'datetime.datetime' objects}
+       10    0.000    0.000    0.006    0.001 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\contextlib.py:141(__exit__)
+       10    0.000    0.000    0.006    0.001 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\execution\storage.py:763(close)
+       10    0.006    0.001    0.006    0.001 {method 'close' of 'sqlite3.Connection' objects}
+    49960    0.006    0.000    0.006    0.000 {method 'toordinal' of 'datetime.date' objects}
+      930    0.001    0.000    0.005    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\__init__.py:299(loads)
+       10    0.000    0.000    0.005    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\pathlib.py:1228(resolve)
+      930    0.001    0.000    0.005    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\decoder.py:333(decode)
+       10    0.004    0.000    0.004    0.000 {method 'fetchall' of 'sqlite3.Cursor' objects}
+       10    0.000    0.000    0.004    0.000 <frozen ntpath>:664(realpath)
+       20    0.003    0.000    0.003    0.000 {built-in method nt._getfinalpathname}
+       20    0.003    0.000    0.003    0.000 {method 'fetchone' of 'sqlite3.Cursor' objects}
+      930    0.003    0.000    0.003    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\decoder.py:344(raw_decode)
+       10    0.002    0.000    0.002    0.000 {built-in method _sqlite3.connect}
+      610    0.000    0.000    0.002    0.000 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:393(_list)
+      155    0.000    0.000    0.002    0.000 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\execution\data_actions.py:31(digest)
+      310    0.000    0.000    0.001    0.000 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:67(_object)
+
+

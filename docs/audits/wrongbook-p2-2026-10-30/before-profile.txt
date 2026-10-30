@@ -1,0 +1,33 @@
+         483878 function calls in 0.413 seconds
+
+   Ordered by: cumulative time
+   List reduced from 131 to 25 due to restriction <25>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.413    0.413 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:236(page)
+        1    0.001    0.001    0.408    0.408 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:241(_snapshot_page)
+        7    0.233    0.033    0.404    0.058 {method 'execute' of 'sqlite3.Connection' objects}
+    40027    0.029    0.000    0.090    0.000 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\insights.py:16(review_day)
+    39964    0.041    0.000    0.081    0.000 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\repository.py:237(strict_time)
+    80051    0.031    0.000    0.060    0.000 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\engine.py:12(parse_time)
+   120076    0.033    0.000    0.033    0.000 {method 'astimezone' of 'datetime.datetime' objects}
+    80051    0.016    0.000    0.016    0.000 {built-in method fromisoformat}
+    39964    0.011    0.000    0.011    0.000 {method 'total_seconds' of 'datetime.timedelta' objects}
+        1    0.000    0.000    0.007    0.007 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:188(_where)
+        3    0.000    0.000    0.007    0.002 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:75(_has_json1)
+        1    0.000    0.000    0.007    0.007 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:101(_history_expression)
+    40025    0.006    0.000    0.006    0.000 {method 'date' of 'datetime.datetime' objects}
+        2    0.000    0.000    0.005    0.003 {built-in method builtins.next}
+        2    0.000    0.000    0.005    0.003 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\execution\storage.py:777(read_snapshot)
+    40025    0.005    0.000    0.005    0.000 {method 'toordinal' of 'datetime.date' objects}
+        1    0.000    0.000    0.004    0.004 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\contextlib.py:132(__enter__)
+        1    0.000    0.000    0.002    0.002 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:136(_configure)
+        1    0.001    0.001    0.002    0.002 {built-in method _sqlite3.connect}
+        1    0.000    0.000    0.002    0.002 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\repository.py:233(time_connection)
+        1    0.001    0.001    0.001    0.001 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\execution\storage.py:744(_conn)
+        1    0.000    0.000    0.001    0.001 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\contextlib.py:141(__exit__)
+        1    0.000    0.000    0.001    0.001 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\execution\storage.py:763(close)
+        1    0.001    0.001    0.001    0.001 {method 'close' of 'sqlite3.Connection' objects}
+      180    0.000    0.000    0.001    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\__init__.py:299(loads)
+
+

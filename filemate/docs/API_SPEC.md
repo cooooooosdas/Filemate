@@ -1280,6 +1280,8 @@ C级浏览器验收使用隔离合成账号与真实API。备份恢复测试会�
 
 本次所有page响应固定同一个服务端UTC `as_of`，旧无时区时间按UTC解释；客户端不得自传时钟。日期换算仍复用严格Python引擎；JSON1原生校验与无JSON1兼容路径均拒绝损坏/非有限JSON。按不同到期字符串在当前快照中换算后关联，避免每行多次Python回调，无跨账号结果缓存。无新增迁移或模型调用；可见入口仍属后续C级。
 
+2026-10-30 P2 容量修复：具备 JSON1 标量、聚合及表函数时，在同一只读快照内一次聚合不同的 TEXT 日期，再批量执行严格日期解析；使用单个绑定参数构建原生查询关系，不拉取全库题干／答案。日期键编码为 UTF-8 十六进制，避免旧 SQLite JSON1 截断内嵌 NUL；BLOB 日期不与等字节的 TEXT 日期混淆。普通 due 排序保留无法解析日期的行及原 NULL 排序，推荐与预览继续排除无效日期。开始前核验只换算所请求的至多20题。没有 JSON1 时沿用原读取分支；其大规模容量不能由 JSON1 分支的测试替代。所有响应字段、排序规则、筛选、开关、幂等、写入和数据迁移合同保持原义。
+
 `GET /wrongbook/v2/session-preview`：复用page筛选（不接受limit/offset），另需 `available_minutes=0..1440`，可选 `minutes_per_question=1..60`，默认4。时长必须整数文本，拒绝小数/布尔/重复或未知参数。只在当前筛选内选择可复习到期题，默认due顺序，recommended显式启用。最多20题，预算不足一题时返回空选择，仍给真实全范围候选数；预估仅指本次短练，不替换今日复盘的10—15分钟建议。
 
 响应：`status=preview_only`、`scope=filtered_eligible_due`、`as_of/day_zone/filters`、`items`、`eligible_count/selected_count/deferred_count`、`estimated_minutes/available_minutes/minutes_per_question/selection_limit`、`rule_version=review2-session-v1`、`priority_rule_version`、`estimate_note/warning`。每项只含简短题干、知识点、优先级解释、估时与 `ref={wrong_id,artifact_id,source_id,question_index,question_digest,revision,next_review_at}`；不返回原答或参考答案。

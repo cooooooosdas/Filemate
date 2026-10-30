@@ -74,7 +74,7 @@ def _object(raw):
 
 def _has_json1(conn: sqlite3.Connection) -> bool:
     try:
-        conn.execute("SELECT json_extract('{}','$.stem')")
+        conn.execute("SELECT json_extract('{}','$.stem') FROM json_each('[0]')")
     except sqlite3.OperationalError:
         return False
     return True
@@ -126,6 +126,47 @@ def _metadata_expression(conn: sqlite3.Connection) -> str:
         return 'review_metadata(a.metadata)'
     return """CASE WHEN a.metadata IS NULL OR a.metadata='' THEN 1
         WHEN json_valid(a.metadata) THEN json_type(a.metadata)='object' ELSE 0 END"""
+
+
+def _text_conditions(filters: ReviewFilter, conn: sqlite3.Connection) -> tuple[list[str], list]:
+    conditions, params = [], []
+    for field in ('q', 'knowledge_q'):
+        value = getattr(filters, field)
+        if value:
+            terms = ["COALESCE(s.original_name,'')", 'w.knowledge_label', _stem_expression(conn)] if field == 'q' else ['w.knowledge_label']
+            conditions.append('(' + ' OR '.join(f'instr(lower({term}),lower(?))>0' for term in terms) + ')')
+            params.extend([value] * len(terms))
+    if filters.source_id:
+        conditions.append('w.source_id=?')
+        params.append(filters.source_id)
+    return conditions, params
+
+
+def _time_relation(conn: sqlite3.Connection, wrong_ids: list[str] | None, filters: ReviewFilter) -> str:
+    """Convert distinct dates once within the caller's current read snapshot."""
+    sql = 'SELECT w.next_review_at FROM wrong_questions w'
+    if filters.q:
+        sql += ' LEFT JOIN sources s ON s.source_id=w.source_id'
+    conditions, params = _text_conditions(filters, conn)
+    conditions.insert(0, "typeof(w.next_review_at)='text'")
+    if wrong_ids is not None:
+        conditions.append('w.wrong_id IN (' + ','.join('?' for _ in wrong_ids) + ')')
+        params.extend(wrong_ids)
+    raw_dates = conn.execute('SELECT json_group_array(next_review_at) FROM (' + sql + ' WHERE ' +
+                             ' AND '.join(conditions) + ' GROUP BY w.next_review_at)', params).fetchone()[0]
+    epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
+    dates = {}
+    for raw in json.loads(raw_dates):
+        parsed = parse_time(raw)
+        if parsed is None:
+            continue
+        try:
+            day = parsed.astimezone(LOCAL_ZONE).date().toordinal()
+        except (ValueError, OverflowError):
+            day = None
+        # Older JSON1 decoders truncate embedded NUL characters in object keys.
+        dates[raw.encode('utf-8').hex().upper()] = [(parsed - epoch).total_seconds(), day]
+    return json.dumps(dates, ensure_ascii=True, allow_nan=False, separators=(',', ':'))
 
 
 class ReviewQueries:
@@ -207,14 +248,9 @@ class ReviewQueries:
                 'legacy_completed': legacy_done, 'paused': "w.schedule_status='paused'", 'history': f'{history}=1', 'invalid': bad}[status])
         if filters.reviewable_only:
             conditions.extend(["w.schedule_status='active'", f'NOT {legacy_done}', f'{history}=0', f'NOT {bad}'])
-        for field in ('q', 'knowledge_q'):
-            value = getattr(filters, field)
-            if value:
-                terms = [_stem_expression(conn), 'w.knowledge_label', "COALESCE(s.original_name,'')"] if field == 'q' else ['w.knowledge_label']
-                conditions.append('(' + ' OR '.join(f'instr(lower({term}),lower(?))>0' for term in terms) + ')')
-                params.extend([value] * len(terms))
-        if filters.source_id:
-            conditions.append('w.source_id=?'); params.append(filters.source_id)
+        text_conditions, text_params = _text_conditions(filters, conn)
+        conditions.extend(text_conditions)
+        params.extend(text_params)
         if filters.course_id:
             pairs = self._course_pairs(read, filters.course_id)
             conn.create_function('review_course_match', 2, lambda aid, index: int((aid, index) in pairs), deterministic=True)
@@ -245,16 +281,29 @@ class ReviewQueries:
         recommended = filters.sort == 'recommended'
         if recommended or eligible_only:
             filters = filters.model_copy(update={'reviewable_only': True})
+        if wrong_ids is not None and not 1 <= len(wrong_ids) <= 20:
+            raise ValueError('核验题目数量无效')
         conn, repo = self._configure(read, as_of)
         prefix, time_join = '', ''
+        time_params = []
         when, day = 'filemate_review_time(w.next_review_at)', 'review_local_day(w.next_review_at)'
-        if recommended or eligible_only:
-            # Grouping prevents SQLite from calling Python once per row for repeated dates.
-            prefix = """WITH review_times AS (SELECT next_review_at AS raw,
-                filemate_review_time(next_review_at) AS due,
-                review_local_day(next_review_at) AS local_day FROM wrong_questions GROUP BY next_review_at) """
-            time_join = ' JOIN review_times rt ON rt.raw IS w.next_review_at'
-            when, day = 'rt.due', 'rt.local_day'
+        if recommended or eligible_only or filters.sort == 'due':
+            key_match = 'rt.raw IS w.next_review_at'
+            if _has_json1(conn):
+                # TEXT affinity and grouping let SQLite index this snapshot-local relation.
+                prefix = """WITH review_times AS (SELECT CAST(key AS TEXT) AS raw,
+                    json_extract(value,'$[0]') AS due, json_extract(value,'$[1]') AS local_day
+                    FROM json_each(?) GROUP BY key) """
+                time_params = [_time_relation(conn, wrong_ids, filters)]
+                key_match = "typeof(w.next_review_at)='text' AND rt.raw IS hex(w.next_review_at)"
+            elif recommended or eligible_only:
+                prefix = """WITH review_times AS (SELECT next_review_at AS raw,
+                    filemate_review_time(next_review_at) AS due,
+                    review_local_day(next_review_at) AS local_day FROM wrong_questions GROUP BY next_review_at) """
+            if prefix:
+                join = 'JOIN' if recommended or eligible_only else 'LEFT JOIN'
+                time_join = f' {join} review_times rt ON {key_match}'
+                when, day = 'rt.due', 'rt.local_day'
         where, params = self._where(read, filters, conn, repo, when=when)
         if recommended or eligible_only:
             where += f""" AND {when}<=?
@@ -265,12 +314,10 @@ class ReviewQueries:
                 AND (w.source_id IS NULL OR s.source_id IS NOT NULL)"""
             params.append(as_of.timestamp())
         if wrong_ids is not None:
-            if not 1 <= len(wrong_ids) <= 20:
-                raise ValueError('核验题目数量无效')
             where += ' AND w.wrong_id IN (' + ','.join('?' for _ in wrong_ids) + ')'
             params.extend(wrong_ids)
         base = ' FROM wrong_questions w' + time_join + ' LEFT JOIN artifacts a ON a.artifact_id=w.artifact_id LEFT JOIN sources s ON s.source_id=w.source_id WHERE ' + where
-        total = conn.execute(prefix + 'SELECT COUNT(*)' + base, params).fetchone()[0]
+        total = conn.execute(prefix + 'SELECT COUNT(*)' + base, [*time_params, *params]).fetchone()[0]
         projection, sort_params = '', []
         if recommended:
             projection = f""", MIN({MAX_OVERDUE_DAYS}, MAX(0, ?-{day}))*{OVERDUE_WEIGHT}
@@ -283,7 +330,7 @@ class ReviewQueries:
                     'created': 'filemate_review_time(w.created_at)', 'errors': 'w.error_count'}[filters.sort]
             order = f'{sort} {filters.direction},w.wrong_id {filters.direction}'
         rows = conn.execute(prefix + 'SELECT w.*,s.original_name AS source_name,a.metadata AS artifact_metadata' + projection + base +
-            f' ORDER BY {order} LIMIT ? OFFSET ?', [*sort_params, *params, limit, offset]).fetchall()
+            f' ORDER BY {order} LIMIT ? OFFSET ?', [*time_params, *sort_params, *params, limit, offset]).fetchall()
         items = []
         for raw in rows:
             row = dict(raw)
