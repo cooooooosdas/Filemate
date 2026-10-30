@@ -1,4 +1,4 @@
-import type { ReviewAttempt, ReviewDetail, ReviewFilter, ReviewListItem, ReviewPage, ReviewRef } from '../types/wrongbook.ts'
+import type { ReviewAttempt, ReviewDetail, ReviewFilter, ReviewListItem, ReviewPage, ReviewRef, ReviewSessionRef } from '../types/wrongbook.ts'
 import type { createReviewSubmission } from './submission.ts'
 import type { createReviewPreferences, ReviewBatch } from './browse-state.ts'
 
@@ -55,6 +55,15 @@ export function createFocusReviewController(api: FocusApi, submission: ReturnTyp
     } catch { if (fresh(e)) state.error = '暂时无法建立批次，请重试。'; return false }
     finally { if (fresh(e)) state.loading = false }
   }
+  async function startChecked(refs: ReviewSessionRef[]) {
+    if (disposed || !identityValid || state.loading || submission.state.busy || submission.dirty() || !Array.isArray(refs) || !refs.length || refs.length > 20) return false
+    const validId = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 128 && !/[\u0000-\u001f]/.test(v)
+    if (new Set(refs.map(r => r?.wrong_id)).size !== refs.length || refs.some(r => !r || !validId(r.wrong_id) || !validId(r.artifact_id) || !(r.source_id === null || validId(r.source_id)) || !Number.isInteger(r.question_index) || r.question_index < 0 || r.question_index > 100000 || !/^[a-f0-9]{64}$/.test(r.question_digest) || !Number.isInteger(r.revision) || r.revision < 0 || typeof r.next_review_at !== 'string' || !Number.isFinite(Date.parse(r.next_review_at)))) return false
+    ++epoch; current = null; state.completed = {}; state.skipped = []; state.position = 0; state.expired = false; state.finished = false; state.message = ''; state.error = ''
+    state.items = refs.map(({ wrong_id, artifact_id, question_index, question_digest }) => ({ wrong_id, artifact_id, question_index, question_digest }))
+    created = new Date().toISOString(); persist()
+    return open(0)
+  }
   async function resume() {
     const b = preferences.getBatch(); if (!b || disposed || !identityValid) return false
     const age = Date.now() - Date.parse(b.created_at)
@@ -73,7 +82,7 @@ export function createFocusReviewController(api: FocusApi, submission: ReturnTyp
     return open(state.position + 1)
   }
   function resetIdentity(scope: string | null) { ++epoch; identityValid = false; current = null; state.items = []; state.completed = {}; state.skipped = []; state.loading = false; state.finished = false; state.unavailable = false; state.error = ''; submission.resetIdentity(scope) }
-  return { state, start, resume, open, recordSaved, skip: () => advance(true), next: () => advance(false), exit() { ++epoch; current = null; persist() }, resetIdentity,
+  return { state, start, startChecked, resume, open, recordSaved, skip: () => advance(true), next: () => advance(false), exit() { ++epoch; current = null; persist() }, resetIdentity,
     question() { if (!current) return null; if (submission.state.answerRevealed || submission.state.receipt) return current.question; const { type, question_type, stem, question, options, code } = current.question; return { type, question_type, stem, question, options, code } },
     dispose() { ++epoch; current = null; disposed = true; submission.dispose() } }
 }

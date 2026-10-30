@@ -5,6 +5,25 @@ import { parse, compileScript } from '@vue/compiler-sfc'
 import ts from 'typescript'
 import * as vue from 'vue'
 
+test('session planner invalidates preview on budget and applied filter changes',async()=>{
+ let invalidations=0
+ const c={state:vue.reactive({preview:null,loading:false,checking:false,error:''}),invalidate(){invalidations++},dispose(){}}
+ const x=await setup('components/wrongbook/ReviewSessionPlanner.vue',{filters:{sort:'due'},scope:'a'.repeat(64)},{'../../wrongbook/session-state':{createReviewSessionController:()=>c}})
+ x.state.minutes.value=30;await vue.nextTick();assert.equal(invalidations,1)
+ x.props.filters={sort:'recommended'};await vue.nextTick();assert.equal(invalidations,2);x.scope.stop()
+})
+
+test('mounted focus resumes only, or consumes exact checked references, never auto-starts another page',async()=>{
+ for(const initialRefs of [undefined,[{wrong_id:'chosen'}]]){
+  let resumed=0,started=0,received
+  const c={state:vue.reactive({items:[],loading:false}),resume:async()=>{resumed++;return false},start:async()=>{started++},startChecked:async refs=>{received=refs},question:()=>null,dispose(){}}
+  const deps={'../../wrongbook/focus-state':{createFocusReviewController:()=>c},'../../wrongbook/submission':{createReviewSubmission:()=>({state:{}}),browserReviewStorage:()=>({})},'../../wrongbook/browse-state':{createReviewPreferences:()=>({})}}
+  const x=await setup('components/wrongbook/FocusReview.vue',{scope:'a'.repeat(64),filters:{},enabled:true,initialRefs},deps)
+  for(const fn of x.mounted)await fn()
+  assert.equal(started,0);assert.equal(resumed,initialRefs?0:1);assert.deepEqual(received,initialRefs);x.scope.stop()
+ }
+})
+
 async function setup(file,props={},deps={}){
  const mounted=[],listeners=new Map(),scope=vue.effectScope()
  const source=await readFile(new URL('../src/'+file,import.meta.url),'utf8')

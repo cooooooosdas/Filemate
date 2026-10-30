@@ -6,6 +6,7 @@ const mod = await import('../src/wrongbook/focus-state.ts').catch(() => ({}))
 const ref = {wrong_id:'w',artifact_id:'a',question_index:0,question_digest:'a'.repeat(64)}
 const question = {type:'fill',question:'顺序？',answer:'SECRET',explanation:'SECRET EXPLANATION'}
 const detail = {...ref,question,read_only_snapshot:false,data_error:false,schedule_status:'active',legacy_mastered:false}
+const checked = {...ref,source_id:'s',revision:1,next_review_at:'2026-10-25T00:00:00Z'}
 function setup({storage=memoryReviewStorage(),...overrides}={}) {
  assert.equal(typeof mod.createFocusReviewController,'function'); let posts=0;const limits=[]
  const api={getReviewPage:async p=>{limits.push(p.limit);return {items:[ref]}},getReviewDetail:async()=>detail,getReviewAttempts:async()=>({items:posts?[{attempt_id:'saved',artifact_id:'a',question_index:0}]:[],has_more:false}),submitReviewAnswer:async()=>{posts++;return {attempt_id:'saved',is_correct:null}},getReviewReceipt:async()=>({attempt_id:'saved'}),...overrides}
@@ -47,4 +48,16 @@ test('receipt reference survives refresh while server verification is still in f
  x.c.dispose();release({items:[{attempt_id:'saved',artifact_id:'a',question_index:0}]});await verifying
  const y=setup({storage,getReviewAttempts:async()=>({items:[{attempt_id:'saved',artifact_id:'a',question_index:0}]})})
  await y.c.resume();assert.equal(y.c.state.completed.w,'saved');assert.equal(y.posts(),0)
+})
+
+test('checked selection starts exact references without querying another page',async()=>{
+ const x=setup();assert.equal(await x.c.startChecked([checked]),true);assert.deepEqual(x.limits,[]);assert.equal(x.c.state.items[0].wrong_id,'w');assert.equal(x.posts(),0)
+ x.submission.setAnswer('unsaved');assert.equal(await x.c.startChecked([{...checked,wrong_id:'other'}]),false);assert.equal(x.c.state.items[0].wrong_id,'w');assert.equal(x.submission.state.answer,'unsaved')
+})
+test('checked selection rejects duplicate, oversized and invalid references',async()=>{
+ const x=setup();for(const refs of [[],[checked,checked],Array.from({length:21},(_,i)=>({...checked,wrong_id:String(i)})),[{...checked,revision:-1}],[{...checked,question_digest:'invalid'}]])assert.equal(await x.c.startChecked(refs),false)
+ assert.equal(x.c.state.items.length,0);assert.deepEqual(x.limits,[])
+})
+test('checked selection retains unavailable references rather than substituting',async()=>{
+ const x=setup({getReviewDetail:async()=>({...detail,question_digest:'b'.repeat(64)})});assert.equal(await x.c.startChecked([checked]),false);assert.equal(x.c.state.unavailable,true);assert.equal(x.c.state.items[0].wrong_id,'w');assert.deepEqual(x.limits,[])
 })
