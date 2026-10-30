@@ -1,0 +1,615 @@
+{
+  "synthetic": true,
+  "checks": [
+    {
+      "name": "recommended explicit choice, due default, bounded list and reasons",
+      "passed": true,
+      "evidence": {
+        "url": "http://127.0.0.1:5208/wrongbook?status=all&sort=recommended&direction=asc",
+        "count": 30
+      }
+    },
+    {
+      "name": "zero budget, input invalidation, no writes and exact checked handoff",
+      "passed": true,
+      "evidence": {
+        "selected": 3,
+        "first": "synthetic-wrong-00011"
+      }
+    },
+    {
+      "name": "save once, refresh original batch, verify receipt and advance",
+      "passed": true,
+      "evidence": {
+        "writes": 1,
+        "resumed": true
+      }
+    },
+    {
+      "name": "unsaved draft survives cancelled navigation to checked new batch",
+      "passed": true,
+      "evidence": {
+        "draft_preserved": true
+      }
+    },
+    {
+      "name": "409 clears preview, network failure preserves selection for explicit retry",
+      "passed": true,
+      "evidence": {
+        "conflict_repreview": true,
+        "offline_retained": true
+      }
+    },
+    {
+      "name": "late preview after budget change cannot revive obsolete selection",
+      "passed": true,
+      "evidence": {
+        "stale_rejected": true
+      }
+    },
+    {
+      "name": "five specified widths x four themes: long content, contrast and task first",
+      "passed": true,
+      "evidence": [
+        {
+          "width": 1920,
+          "theme": "blue-gray",
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(240, 243, 248)",
+          "font": 26,
+          "overflow": false,
+          "questionY": 679.28125,
+          "headingVisible": true,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 13.989695452482472
+        },
+        {
+          "width": 1920,
+          "theme": "mist",
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(255, 255, 255)",
+          "font": 26,
+          "overflow": false,
+          "questionY": 679.28125,
+          "headingVisible": true,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 15.559952500501744
+        },
+        {
+          "width": 1920,
+          "theme": "graphite",
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(242, 243, 245)",
+          "font": 26,
+          "overflow": false,
+          "questionY": 679.28125,
+          "headingVisible": true,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 14.014479024510564
+        },
+        {
+          "width": 1920,
+          "theme": "midnight",
+          "fg": "rgb(237, 243, 255)",
+          "bg": "rgb(27, 41, 64)",
+          "font": 26,
+          "overflow": false,
+          "questionY": 679.28125,
+          "headingVisible": true,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 13.120741319554533
+        },
+        {
+          "width": 1366,
+          "theme": "blue-gray",
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(240, 243, 248)",
+          "font": 26,
+          "overflow": false,
+          "questionY": 679.28125,
+          "headingVisible": true,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 13.989695452482472
+        },
+        {
+          "width": 1366,
+          "theme": "mist",
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(255, 255, 255)",
+          "font": 26,
+          "overflow": false,
+          "questionY": 679.28125,
+          "headingVisible": true,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 15.559952500501744
+        },
+        {
+          "width": 1366,
+          "theme": "graphite",
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(242, 243, 245)",
+          "font": 26,
+          "overflow": false,
+          "questionY": 679.28125,
+          "headingVisible": true,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 14.014479024510564
+        },
+        {
+          "width": 1366,
+          "theme": "midnight",
+          "fg": "rgb(237, 243, 255)",
+          "bg": "rgb(27, 41, 64)",
+          "font": 26,
+          "overflow": false,
+          "questionY": 679.28125,
+          "headingVisible": true,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 13.120741319554533
+        },
+        {
+          "width": 1024,
+          "theme": "blue-gray",
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(240, 243, 248)",
+          "font": 26,
+          "overflow": false,
+          "questionY": 309.828125,
+          "headingVisible": false,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 13.989695452482472
+        },
+        {
+          "width": 1024,
+          "theme": "mist",
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(255, 255, 255)",
+          "font": 26,
+          "overflow": false,
+          "questionY": 309.828125,
+          "headingVisible": false,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 15.559952500501744
+        },
+        {
+          "width": 1024,
+          "theme": "graphite",
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(242, 243, 245)",
+          "font": 26,
+          "overflow": false,
+          "questionY": 309.828125,
+          "headingVisible": false,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 14.014479024510564
+        },
+        {
+          "width": 1024,
+          "theme": "midnight",
+          "fg": "rgb(237, 243, 255)",
+          "bg": "rgb(27, 41, 64)",
+          "font": 26,
+          "overflow": false,
+          "questionY": 309.828125,
+          "headingVisible": false,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 13.120741319554533
+        },
+        {
+          "width": 390,
+          "theme": "blue-gray",
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(240, 243, 248)",
+          "font": 24,
+          "overflow": false,
+          "questionY": 302.21875,
+          "headingVisible": false,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 13.989695452482472
+        },
+        {
+          "width": 390,
+          "theme": "mist",
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(255, 255, 255)",
+          "font": 24,
+          "overflow": false,
+          "questionY": 302.21875,
+          "headingVisible": false,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 15.559952500501744
+        },
+        {
+          "width": 390,
+          "theme": "graphite",
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(242, 243, 245)",
+          "font": 24,
+          "overflow": false,
+          "questionY": 302.21875,
+          "headingVisible": false,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 14.014479024510564
+        },
+        {
+          "width": 390,
+          "theme": "midnight",
+          "fg": "rgb(237, 243, 255)",
+          "bg": "rgb(27, 41, 64)",
+          "font": 24,
+          "overflow": false,
+          "questionY": 302.21875,
+          "headingVisible": false,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 13.120741319554533
+        },
+        {
+          "width": 375,
+          "theme": "blue-gray",
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(240, 243, 248)",
+          "font": 24,
+          "overflow": false,
+          "questionY": 302.21875,
+          "headingVisible": false,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 13.989695452482472
+        },
+        {
+          "width": 375,
+          "theme": "mist",
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(255, 255, 255)",
+          "font": 24,
+          "overflow": false,
+          "questionY": 302.21875,
+          "headingVisible": false,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 15.559952500501744
+        },
+        {
+          "width": 375,
+          "theme": "graphite",
+          "fg": "rgb(22, 36, 59)",
+          "bg": "rgb(242, 243, 245)",
+          "font": 24,
+          "overflow": false,
+          "questionY": 302.21875,
+          "headingVisible": false,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 14.014479024510564
+        },
+        {
+          "width": 375,
+          "theme": "midnight",
+          "fg": "rgb(237, 243, 255)",
+          "bg": "rgb(27, 41, 64)",
+          "font": 24,
+          "overflow": false,
+          "questionY": 302.21875,
+          "headingVisible": false,
+          "targets": [
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875,
+            44.390625,
+            44.390625,
+            50.046875,
+            50.046875,
+            50.046875,
+            50.046875
+          ],
+          "contrast": 13.120741319554533
+        }
+      ]
+    },
+    {
+      "name": "keyboard and reduced motion, no auto batch for new account, empty preview",
+      "passed": true,
+      "evidence": {
+        "keyboard": true,
+        "reduced_motion": true,
+        "empty": true
+      }
+    },
+    {
+      "name": "authenticated account boundary does not expose saved attempt from another workspace",
+      "passed": true,
+      "evidence": {
+        "status": 404
+      }
+    },
+    {
+      "name": "post-save delayed summary failure preserves next question draft without identity refresh",
+      "passed": true,
+      "evidence": {
+        "capabilityCalls": 0,
+        "summaryCalls": 1,
+        "draft_preserved": true
+      }
+    }
+  ],
+  "errors": []
+}

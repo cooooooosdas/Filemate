@@ -1,0 +1,58 @@
+{
+  "synthetic": true,
+  "checks": [
+    {
+      "name": "recommended explicit choice, due default, bounded list and reasons",
+      "passed": false,
+      "error": "TimeoutError: locator.inputValue: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('排序', { exact: true })\u001b[22m\n"
+    },
+    {
+      "name": "zero budget, input invalidation, no writes and exact checked handoff",
+      "passed": true,
+      "evidence": {
+        "selected": 3,
+        "first": "synthetic-wrong-00001"
+      }
+    },
+    {
+      "name": "save once, refresh original batch, verify receipt and advance",
+      "passed": false,
+      "error": "TimeoutError: locator.fill: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('你的回答', { exact: true })\u001b[22m\n"
+    },
+    {
+      "name": "unsaved draft survives cancelled navigation to checked new batch",
+      "passed": false,
+      "error": "TimeoutError: locator.fill: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('你的回答', { exact: true })\u001b[22m\n"
+    },
+    {
+      "name": "409 clears preview, network failure preserves selection for explicit retry",
+      "passed": false,
+      "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n1 !== 0\n"
+    },
+    {
+      "name": "late preview after budget change cannot revive obsolete selection",
+      "passed": true,
+      "evidence": {
+        "stale_rejected": true
+      }
+    },
+    {
+      "name": "five specified widths x four themes: long content, contrast and task first",
+      "passed": false,
+      "error": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.review-catalog') to be visible\u001b[22m\n\u001b[2m    31 × locator resolved to hidden <aside aria-label=\"错题目录\" class=\"review-catalog\">…</aside>\u001b[22m\n"
+    },
+    {
+      "name": "keyboard and reduced motion, no auto batch for new account, empty preview",
+      "passed": false,
+      "error": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.review-question h2') to be visible\u001b[22m\n\u001b[2m    30 × locator resolved to hidden <h2 tabindex=\"-1\">合成复盘00007：栈遵循什么顺序？</h2>\u001b[22m\n"
+    },
+    {
+      "name": "authenticated account boundary does not expose saved attempt from another workspace",
+      "passed": true,
+      "evidence": {
+        "status": 404
+      }
+    }
+  ],
+  "errors": []
+}

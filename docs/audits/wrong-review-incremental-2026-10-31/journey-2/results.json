@@ -1,0 +1,94 @@
+{
+  "synthetic": true,
+  "checks": [
+    {
+      "name": "01 wrong answer creates durable independent attempt",
+      "passed": true,
+      "evidence": {
+        "wrong_id": "cf99e983f925461faae5e6847b480dce",
+        "attempt_id": "27eaeab83191466db199e70c7cfa3b75"
+      }
+    },
+    {
+      "name": "02 original answer, question analysis and source remain readable",
+      "passed": true,
+      "evidence": {
+        "source_id": "21f0bd88c7cf495fb315de8a84626bb6"
+      }
+    },
+    {
+      "name": "03 diagnosis and second independent answer persist",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "04 due correct answer updates conservative rule and date",
+      "passed": true,
+      "evidence": {
+        "rule": "review-interval-v2",
+        "status": "provisional",
+        "next_review_at": "2026-10-31T16:50:16+00:00"
+      }
+    },
+    {
+      "name": "05 wrong again preserves all attempts and replans",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "06 Today and review state agree after due completion",
+      "passed": true,
+      "evidence": {
+        "pending_before": 1,
+        "pending_after": 0
+      }
+    },
+    {
+      "name": "07 precise real course and node references exist",
+      "passed": true,
+      "evidence": {
+        "course_id": "c5d1e6cc-810b-4f71-9fea-67b22c817b21",
+        "concept_id": "e13d2986-2fdf-4fa6-97bb-7a23e772a791"
+      }
+    },
+    {
+      "name": "08 unavailable provider persists failure and leaves base practice usable",
+      "passed": true,
+      "evidence": {
+        "analysis_status": "failed"
+      }
+    },
+    {
+      "name": "09 process restart and fresh login preserve answers and analysis",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "10 actual SQLite326 reads legacy and current migrated data",
+      "passed": true,
+      "evidence": {
+        "compatibility": "C:\\Users\\胡希\\.codex\\worktrees\\release-alpha3\\FileMate-Project\\_working\\wrongbook-incremental-closeout-20261030\\sqlite326-2\\result.json"
+      }
+    },
+    {
+      "name": "whole managed backup verifies and restores to a new root",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "backup CLI rejects repeated creation and restore without overwriting",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "whole recovery preserves wrongbook versions, failed AI and source content",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "restored account isolation rejects another account wrong record",
+      "passed": true,
+      "evidence": {}
+    }
+  ]
+}
