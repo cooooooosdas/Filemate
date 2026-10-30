@@ -1,0 +1,38 @@
+✔ session planner invalidates preview on budget and applied filter changes (84.129ms)
+✔ mounted focus resumes only, or consumes exact checked references, never auto-starts another page (39.6749ms)
+✔ new-answer revision clears old previews but preserves the real editable task draft (96.8234ms)
+✔ mounted learning hub preserves manual diagnosis and focuses its actual confirmation region (25.704ms)
+✔ the hub cannot start undo while evidence is still loading (30.9949ms)
+✔ mounted question allows exact input recovery after refresh but locks an in-memory unknown request (16.137ms)
+✔ historical analysis renders its own quote even when the current context has different text (15.1425ms)
+✔ learning artifact switching and refresh both protect its real answer draft (65.1721ms)
+✔ mounted review entries invalidate before reopening after a restore or expired identity (10.4199ms)
+✔ graph leave permission is reset by the actual review answer, not the removed legacy input (25.0932ms)
+✖ departing course workspace must not reinterpret the destination query or prompt again (44.4506ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 10
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 938.4571
+
+✖ failing tests:
+
+test at tests\wrongbook-component-wiring.test.mjs:109:1
+✖ departing course workspace must not reinterpret the destination query or prompt again (44.4506ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-component-wiring.test.mjs:117:68)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

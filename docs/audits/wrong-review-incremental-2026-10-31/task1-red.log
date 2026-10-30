@@ -1,0 +1,282 @@
+✖ recommended survives URL and preference round trips while due stays default (2.5197ms)
+✖ preview sends applied filters and integer budget; no page traversal or writing (0.2289ms)
+✖ invalid budget never reaches API (0.1542ms)
+✖ zero budget is valid but empty server selection cannot start (0.1153ms)
+✖ newer preview wins and stale preview cannot restore old filters (0.1446ms)
+✖ budget or identity invalidation rejects a late successful check (0.1486ms)
+✖ 409 requires a fresh preview and never falls back to different questions (0.1881ms)
+✖ network check failure preserves preview and allows explicit retry (0.1413ms)
+✖ partial or changed check results cannot replace the preview (0.2274ms)
+✖ double check does not dispatch another request (0.2087ms)
+✖ disposing rejects late preview and all later operations (0.1296ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 0
+ℹ fail 11
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 152.1948
+
+✖ failing tests:
+
+test at tests\wrongbook-session-state.test.mjs:14:1
+✖ recommended survives URL and preference round trips while due stays default (2.5197ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'due'
+  - 'recommended'
+  
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:17:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'due',
+    expected: 'recommended',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\wrongbook-session-state.test.mjs:20:1
+✖ preview sends applied filters and integer budget; no page traversal or writing (0.2289ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at setup (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:9:10)
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:21:24)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\wrongbook-session-state.test.mjs:28:1
+✖ invalid budget never reaches API (0.1542ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at setup (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:9:10)
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:29:24)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\wrongbook-session-state.test.mjs:34:1
+✖ zero budget is valid but empty server selection cannot start (0.1153ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at setup (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:9:10)
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:35:24)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\wrongbook-session-state.test.mjs:40:1
+✖ newer preview wins and stale preview cannot restore old filters (0.1446ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at setup (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:9:10)
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:42:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\wrongbook-session-state.test.mjs:46:1
+✖ budget or identity invalidation rejects a late successful check (0.1486ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at setup (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:9:10)
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:48:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\wrongbook-session-state.test.mjs:52:1
+✖ 409 requires a fresh preview and never falls back to different questions (0.1881ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at setup (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:9:10)
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:53:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\wrongbook-session-state.test.mjs:57:1
+✖ network check failure preserves preview and allows explicit retry (0.1413ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at setup (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:9:10)
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:59:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\wrongbook-session-state.test.mjs:63:1
+✖ partial or changed check results cannot replace the preview (0.2274ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at setup (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:9:10)
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:65:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\wrongbook-session-state.test.mjs:69:1
+✖ double check does not dispatch another request (0.2087ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at setup (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:9:10)
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:71:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\wrongbook-session-state.test.mjs:75:1
+✖ disposing rejects late preview and all later operations (0.1296ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at setup (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:9:10)
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:77:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

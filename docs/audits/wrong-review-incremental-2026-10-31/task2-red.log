@@ -1,0 +1,77 @@
+✖ session planner invalidates preview on budget and applied filter changes (2.7032ms)
+✔ new-answer revision clears old previews but preserves the real editable task draft (135.2875ms)
+✔ mounted learning hub preserves manual diagnosis and focuses its actual confirmation region (18.4054ms)
+✔ the hub cannot start undo while evidence is still loading (11.7796ms)
+✔ mounted question allows exact input recovery after refresh but locks an in-memory unknown request (8.0265ms)
+✔ historical analysis renders its own quote even when the current context has different text (7.4757ms)
+✔ learning artifact switching and refresh both protect its real answer draft (41.3897ms)
+✔ mounted review entries invalidate before reopening after a restore or expired identity (12.8579ms)
+✔ graph leave permission is reset by the actual review answer, not the removed legacy input (13.9779ms)
+✔ default ten, upper twenty, empty queue; start and skip create no attempt (6.4224ms)
+✔ independent display has no reference or history; reveal remains assisted (1.356ms)
+✔ resume verifies saved attempt against server, never trusts edited local completion (0.8015ms)
+✔ changed digest, deleted question and paused question are unavailable without substitution (0.2999ms)
+✔ seven day expiry and identity reset never replay requests (0.5219ms)
+✔ pending save recovery queries receipt; it never automatically submits (0.8933ms)
+✔ receipt reference survives refresh while server verification is still in flight (0.6706ms)
+✖ checked selection starts exact references without querying another page (0.2388ms)
+✖ checked selection rejects duplicate, oversized and invalid references (0.1769ms)
+✖ checked selection retains unavailable references rather than substituting (0.169ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 15
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1103.2892
+
+✖ failing tests:
+
+test at tests\wrongbook-component-wiring.test.mjs:8:1
+✖ session planner invalidates preview on budget and applied filter changes (2.7032ms)
+  Error: ENOENT: no such file or directory, open 'C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\web\src\components\wrongbook\ReviewSessionPlanner.vue'
+      at async open (node:internal/fs/promises:640:25)
+      at async readFile (node:internal/fs/promises:1287:14)
+      at async setup (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-component-wiring.test.mjs:18:15)
+      at async TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-component-wiring.test.mjs:11:10)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    errno: -4058,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: 'C:\\Users\\胡希\\.codex\\worktrees\\release-alpha3\\FileMate-Project\\filemate\\web\\src\\components\\wrongbook\\ReviewSessionPlanner.vue'
+  }
+
+test at tests\wrongbook-focus.test.mjs:53:1
+✖ checked selection starts exact references without querying another page (0.2388ms)
+  TypeError: x.c.startChecked is not a function
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-focus.test.mjs:54:41)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at tests\wrongbook-focus.test.mjs:57:1
+✖ checked selection rejects duplicate, oversized and invalid references (0.1769ms)
+  TypeError: x.c.startChecked is not a function
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-focus.test.mjs:58:215)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at tests\wrongbook-focus.test.mjs:61:1
+✖ checked selection retains unavailable references rather than substituting (0.169ms)
+  TypeError: x.c.startChecked is not a function
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-focus.test.mjs:62:112)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)

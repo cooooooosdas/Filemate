@@ -1,0 +1,147 @@
+
+> filemate-web@1.3.0-alpha.4 build
+> vue-tsc -b && vite build --outDir ../../_working/wrongbook-incremental-closeout-20261030/dist-enabled
+
+vite v8.1.5 building client environment for production...
+[2K
+transforming...✓ 9534 modules transformed.
+
+(!) outDir C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\_working\wrongbook-incremental-closeout-20261030\dist-enabled is not inside project root and will not be emptied.
+Use --emptyOutDir to override.
+
+rendering chunks...
+computing gzip size...
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/index.html                                                   2.08 kB │ gzip:     0.69 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/.vite/manifest.json                                         30.32 kB │ gzip:     3.72 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/vision.worker-Dh4q88Q4.js                           154.67 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/editor.worker-CA3FUfdm.js                           303.31 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/interview-vision/wasm/vision_wasm_nosimd_internal.js       323.18 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/interview-vision/wasm/vision_wasm_internal.js              323.37 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/interview-vision/wasm/vision_wasm_module_internal.js       323.41 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/filemate-brand-lockup-BcWjLiS0.png                  491.61 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/filemate-mascot-Cfg9QGSb.png                      1,250.00 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/filemate-mascot-expressions-Cl3pWeZH.png          2,082.93 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/interview-vision/wasm/vision_wasm_nosimd_internal.wasm  10,960.24 kB │ gzip: 3,370.57 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/interview-vision/wasm/vision_wasm_internal.wasm         11,756.95 kB │ gzip: 3,478.91 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/interview-vision/wasm/vision_wasm_module_internal.wasm  11,756.97 kB │ gzip: 3,478.92 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/ReviewEntry-CJEiY9aY.css                              0.07 kB │ gzip:     0.09 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/css-Wv38huFO.css                                      0.16 kB │ gzip:     0.13 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/AnalysisWarnings-DS0S8JPx.css                         0.36 kB │ gzip:     0.24 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/PrivacyBoundaryNotice-C9wpkTYH.css                    0.51 kB │ gzip:     0.27 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Semester-BcqoZWZ7.css                                 0.68 kB │ gzip:     0.31 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/DataState-Ckv2eQFr.css                                0.88 kB │ gzip:     0.44 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/css-BAyktVMS.css                                      0.92 kB │ gzip:     0.32 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/WorkflowSteps-ChQRBw1q.css                            1.60 kB │ gzip:     0.58 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/SkillTree-CfNWxoEC.css                                2.00 kB │ gzip:     0.68 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/LLMSettingsPanel-DwNh7LmR.css                         2.44 kB │ gzip:     0.78 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/portfolio-BM6xUUh9.css                                2.65 kB │ gzip:     0.87 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/useCompanion-DokFHhbs.css                             3.01 kB │ gzip:     0.98 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/History-FS33AHlP.css                                  4.69 kB │ gzip:     1.25 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/StudyPlan-CYs7Yhnn.css                                6.90 kB │ gzip:     1.70 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Schedule-zQTYHzDk.css                                 6.99 kB │ gzip:     1.59 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/FileReview-Cm837NaN.css                               7.43 kB │ gzip:     1.69 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Import-BOQmAHHi.css                                   7.82 kB │ gzip:     1.94 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/css-cyJZB4WD.css                                      7.85 kB │ gzip:     1.96 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Today-BQ3zplBQ.css                                    8.60 kB │ gzip:     1.87 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Growth-aonNT5Ww.css                                   9.25 kB │ gzip:     1.99 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Career-DXwKAyj8.css                                   9.34 kB │ gzip:     1.95 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Auth-DWBnc5_4.css                                     9.57 kB │ gzip:     2.10 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/review-workspace-HUMILCVL.css                        10.19 kB │ gzip:     2.57 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/TrustCenter-DRR5zCjr.css                             10.56 kB │ gzip:     2.34 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Programming-Bad0nmmd.css                             11.43 kB │ gzip:     2.45 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/DigitalHuman-WR_p7y0J.css                            11.55 kB │ gzip:     2.69 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/GoalPlanner-UvJt8Oif.css                             13.90 kB │ gzip:     3.22 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Home-C_o_aHCT.css                                    15.37 kB │ gzip:     3.30 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Knowledge-CWz9kBMY.css                               15.45 kB │ gzip:     2.91 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/css-SCyShdbC.css                                     15.89 kB │ gzip:     2.70 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/KnowledgeGraph-Dd7EbUDP.css                          16.03 kB │ gzip:     3.01 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/LearningWorkspace-lSUt7ylf.css                       19.41 kB │ gzip:     3.58 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/InterviewBank-D0JFxvDe.css                           19.61 kB │ gzip:     3.67 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/css-ZSOkJyjJ.css                                     19.89 kB │ gzip:     2.13 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/CourseWorkspace-Fn_liYmy.css                         20.86 kB │ gzip:     4.37 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/css-8JXovod0.css                                     35.67 kB │ gzip:     5.06 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Interview-nqVyAFjj.css                               47.92 kB │ gzip:     8.05 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/index-DHiEpJAt.css                                   68.24 kB │ gzip:    11.99 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/editor-DjpsE8to.css                                  99.09 kB │ gzip:    14.20 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/filemate-mascot-A-dFkQrg.js                           0.06 kB │ gzip:     0.08 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/filemate-mascot-expressions-DZNEbW1k.js               0.07 kB │ gzip:     0.09 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/_plugin-vue_export-helper-BDNMzG2s.js                 0.08 kB │ gzip:     0.09 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/editor.worker-BV5Z7Ck_.js                             0.10 kB │ gzip:     0.11 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/download-dialog-Dx947zAf.js                           0.11 kB │ gzip:     0.10 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/IconMinus-C4qolS4E.js                                 0.13 kB │ gzip:     0.14 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/strings-DbSPS5Fs.js                                   0.15 kB │ gzip:     0.15 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/rolldown-runtime-DK3Fl9T5.js                          0.15 kB │ gzip:     0.15 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/IconPlus-8BZh_V3v.js                                  0.17 kB │ gzip:     0.16 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/IconArrowUpRight-DMuczBQB.js                          0.19 kB │ gzip:     0.17 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/IconCode-CIILjtN6.js                                  0.22 kB │ gzip:     0.17 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/IconRefresh-CgbxpC7p.js                               0.23 kB │ gzip:     0.19 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/IconEye-C6q1KKcK.js                                   0.26 kB │ gzip:     0.21 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/vnode-B5ttVT14.js                                     0.31 kB │ gzip:     0.21 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/IconMessageCircle-xlWwalQS.js                         0.31 kB │ gzip:     0.25 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/IconFileText-Dq7yJC-Z.js                              0.36 kB │ gzip:     0.22 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/fileStore-ch2AuwYe.js                                 0.57 kB │ gzip:     0.33 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/createVueComponent-DkW5SasL.js                        0.73 kB │ gzip:     0.41 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/AnalysisWarnings-BV-OZdAY.js                          0.90 kB │ gzip:     0.61 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/DataState-DRQJaP1d.js                                 0.93 kB │ gzip:     0.57 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/register-C8c3ovxp.js                                  1.02 kB │ gzip:     0.52 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/WorkflowSteps-BD1HG4YL.js                             1.08 kB │ gzip:     0.74 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/css-tZ_8BgUV.js                                       1.10 kB │ gzip:     0.55 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/preload-helper-Czpn1I53.js                            1.19 kB │ gzip:     0.67 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Wrongbook-DMKBncMJ.js                                 1.30 kB │ gzip:     0.70 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/PrivacyBoundaryNotice-BcxwO8xp.js                     1.46 kB │ gzip:     0.94 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/StudyMotif-CtSHOlAs.js                                1.61 kB │ gzip:     0.63 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/ReviewEntry-BV2vLcqJ.js                               1.93 kB │ gzip:     1.03 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/entry-state-BRkY-SuP.js                               2.34 kB │ gzip:     1.33 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/useCompanion-Co3HAik3.js                              3.34 kB │ gzip:     1.85 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/use-dialog-DKhBn8af.js                                4.23 kB │ gzip:     1.73 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/review-workspace-D2v88D7t.js                          4.24 kB │ gzip:     2.02 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/cpp-C7h46wYY.js                                       4.74 kB │ gzip:     2.02 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/LLMSettingsPanel-BY2nsKJ-.js                          5.29 kB │ gzip:     2.47 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/natural-speech-B8WHIvQH.js                            5.68 kB │ gzip:     2.34 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/typescript-rk096N_P.js                                6.55 kB │ gzip:     2.86 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/devtools-EWN81iOl-BkA_wGVL.js                         6.89 kB │ gzip:     3.00 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/SkillTree-Cn-eQYgD.js                                 7.77 kB │ gzip:     3.49 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Resume-D7RfSY7s.js                                    8.84 kB │ gzip:     3.59 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Semester-C_Q9c8Qw.js                                  9.11 kB │ gzip:     3.68 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/css-Vuo2ezMx.js                                       9.28 kB │ gzip:     4.23 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/StudyPlan-BYLVILNn.js                                 9.56 kB │ gzip:     4.45 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Import-ZFvWciGv.js                                    9.80 kB │ gzip:     4.44 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/presentation-BBWIkIw-.js                             10.00 kB │ gzip:     4.26 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Today-Exlt9dbj.js                                    10.30 kB │ gzip:     4.47 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/History-DeuVMBZs.js                                  10.41 kB │ gzip:     4.34 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/css-DRdtSl5p.js                                      11.06 kB │ gzip:     4.54 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Home-IrYTKWJd.js                                     11.41 kB │ gzip:     4.81 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/FileReview-D3GKBCNz.js                               11.64 kB │ gzip:     4.66 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Auth-D_NvmtzL.js                                     13.24 kB │ gzip:     5.29 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/GoalPlanner-Ddmo1sHL.js                              14.93 kB │ gzip:     5.90 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/TrustCenter-CWsAi7lS.js                              17.22 kB │ gzip:     6.71 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/DigitalHuman-BI78jSyq.js                             18.53 kB │ gzip:     7.49 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Growth-DkC3LqWY.js                                   19.35 kB │ gzip:     7.39 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/css-CCoMkWCu.js                                      21.85 kB │ gzip:     7.86 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/LearningWorkspace-Bo5Nc1u5.js                        23.23 kB │ gzip:     8.80 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/ReviewLearningHub-RuBbKi5f.js                        24.82 kB │ gzip:     9.22 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/css-CYK30hz5.js                                      26.89 kB │ gzip:     9.44 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Programming-DphFEWAP.js                              26.92 kB │ gzip:     9.84 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Knowledge-qftst9Q1.js                                27.84 kB │ gzip:    11.47 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/KnowledgeGraph-BaL5v5bx.js                           28.44 kB │ gzip:    10.69 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/use-global-config-BhfAbp-E.js                        32.62 kB │ gzip:    11.18 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Career-DbG7WcoQ.js                                   32.69 kB │ gzip:    10.96 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/ReviewWorkspace-gz-lzMom.js                          48.44 kB │ gzip:    16.60 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/review-state-D-Upo661.js                             59.08 kB │ gzip:    21.10 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Schedule-BVhQllC7.js                                 60.00 kB │ gzip:    22.41 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/InterviewBank-Ch5FqFvV.js                            68.39 kB │ gzip:    22.50 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/vue-runtime-Bkkp-_Qs.js                              84.00 kB │ gzip:    32.83 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/api-CLZWRu0F.js                                      93.31 kB │ gzip:    31.11 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/index-ChV0xScU.js                                   100.02 kB │ gzip:    37.36 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/CourseWorkspace-BHpiTFUa.js                         107.24 kB │ gzip:    35.12 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/css-djmVuiYf.js                                     133.09 kB │ gzip:    44.87 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/Interview-C-IqqXir.js                               137.62 kB │ gzip:    47.18 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/installCanvasRenderer-DQ5nkOUm.js                   440.53 kB │ gzip:   148.88 kB
+../../_working/wrongbook-incremental-closeout-20261030/dist-enabled/assets/editor.api-aORaVU5-.js                            2,705.31 kB │ gzip:   694.13 kB
+
+✓ built in 4.30s
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.

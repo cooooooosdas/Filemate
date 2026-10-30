@@ -1,0 +1,142 @@
+
+> filemate-web@1.3.0-alpha.4 build
+> vue-tsc -b && vite build
+
+vite v8.1.5 building client environment for production...
+[2K
+transforming...✓ 9512 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                   2.08 kB │ gzip:     0.69 kB
+dist/.vite/manifest.json                                         29.67 kB │ gzip:     3.64 kB
+dist/assets/vision.worker-Dh4q88Q4.js                           154.67 kB
+dist/assets/editor.worker-CA3FUfdm.js                           303.31 kB
+dist/interview-vision/wasm/vision_wasm_nosimd_internal.js       323.18 kB
+dist/interview-vision/wasm/vision_wasm_internal.js              323.37 kB
+dist/interview-vision/wasm/vision_wasm_module_internal.js       323.41 kB
+dist/assets/filemate-brand-lockup-BcWjLiS0.png                  491.61 kB
+dist/assets/filemate-mascot-Cfg9QGSb.png                      1,250.00 kB
+dist/assets/filemate-mascot-expressions-Cl3pWeZH.png          2,082.93 kB
+dist/interview-vision/wasm/vision_wasm_nosimd_internal.wasm  10,960.24 kB │ gzip: 3,370.57 kB
+dist/interview-vision/wasm/vision_wasm_internal.wasm         11,756.95 kB │ gzip: 3,478.91 kB
+dist/interview-vision/wasm/vision_wasm_module_internal.wasm  11,756.97 kB │ gzip: 3,478.92 kB
+dist/assets/ReviewEntry-CJEiY9aY.css                              0.07 kB │ gzip:     0.09 kB
+dist/assets/css-Wv38huFO.css                                      0.16 kB │ gzip:     0.13 kB
+dist/assets/AnalysisWarnings-DS0S8JPx.css                         0.36 kB │ gzip:     0.24 kB
+dist/assets/PrivacyBoundaryNotice-C9wpkTYH.css                    0.51 kB │ gzip:     0.27 kB
+dist/assets/Semester-BcqoZWZ7.css                                 0.68 kB │ gzip:     0.31 kB
+dist/assets/DataState-Ckv2eQFr.css                                0.88 kB │ gzip:     0.44 kB
+dist/assets/css-BAyktVMS.css                                      0.92 kB │ gzip:     0.32 kB
+dist/assets/WorkflowSteps-ChQRBw1q.css                            1.60 kB │ gzip:     0.58 kB
+dist/assets/SkillTree-CfNWxoEC.css                                2.00 kB │ gzip:     0.68 kB
+dist/assets/LLMSettingsPanel-DwNh7LmR.css                         2.44 kB │ gzip:     0.78 kB
+dist/assets/portfolio-BM6xUUh9.css                                2.65 kB │ gzip:     0.87 kB
+dist/assets/useCompanion-DokFHhbs.css                             3.01 kB │ gzip:     0.98 kB
+dist/assets/History-FS33AHlP.css                                  4.69 kB │ gzip:     1.25 kB
+dist/assets/LegacyWrongbook-BunzhRt_.css                          5.86 kB │ gzip:     1.36 kB
+dist/assets/StudyPlan-CYs7Yhnn.css                                6.90 kB │ gzip:     1.70 kB
+dist/assets/Schedule-zQTYHzDk.css                                 6.99 kB │ gzip:     1.59 kB
+dist/assets/FileReview-Cm837NaN.css                               7.43 kB │ gzip:     1.69 kB
+dist/assets/Import-BOQmAHHi.css                                   7.82 kB │ gzip:     1.94 kB
+dist/assets/css-cyJZB4WD.css                                      7.85 kB │ gzip:     1.96 kB
+dist/assets/Today-BQ3zplBQ.css                                    8.60 kB │ gzip:     1.87 kB
+dist/assets/Growth-aonNT5Ww.css                                   9.25 kB │ gzip:     1.99 kB
+dist/assets/Career-DXwKAyj8.css                                   9.34 kB │ gzip:     1.95 kB
+dist/assets/Auth-DWBnc5_4.css                                     9.57 kB │ gzip:     2.10 kB
+dist/assets/review-workspace-HUMILCVL.css                        10.19 kB │ gzip:     2.57 kB
+dist/assets/TrustCenter-DRR5zCjr.css                             10.56 kB │ gzip:     2.34 kB
+dist/assets/Programming-Bad0nmmd.css                             11.43 kB │ gzip:     2.45 kB
+dist/assets/DigitalHuman-WR_p7y0J.css                            11.55 kB │ gzip:     2.69 kB
+dist/assets/GoalPlanner-UvJt8Oif.css                             13.90 kB │ gzip:     3.22 kB
+dist/assets/Home-C_o_aHCT.css                                    15.37 kB │ gzip:     3.30 kB
+dist/assets/Knowledge-CWz9kBMY.css                               15.45 kB │ gzip:     2.91 kB
+dist/assets/css-SCyShdbC.css                                     15.89 kB │ gzip:     2.70 kB
+dist/assets/KnowledgeGraph-Dd7EbUDP.css                          16.03 kB │ gzip:     3.01 kB
+dist/assets/LearningWorkspace-lSUt7ylf.css                       19.41 kB │ gzip:     3.58 kB
+dist/assets/InterviewBank-D0JFxvDe.css                           19.61 kB │ gzip:     3.67 kB
+dist/assets/css-ZSOkJyjJ.css                                     19.89 kB │ gzip:     2.13 kB
+dist/assets/CourseWorkspace-Fn_liYmy.css                         20.86 kB │ gzip:     4.37 kB
+dist/assets/css-8JXovod0.css                                     35.67 kB │ gzip:     5.06 kB
+dist/assets/Interview-nqVyAFjj.css                               47.92 kB │ gzip:     8.05 kB
+dist/assets/index-DHiEpJAt.css                                   68.24 kB │ gzip:    11.99 kB
+dist/assets/editor-DjpsE8to.css                                  99.09 kB │ gzip:    14.20 kB
+dist/assets/filemate-mascot-A-dFkQrg.js                           0.06 kB │ gzip:     0.08 kB
+dist/assets/filemate-mascot-expressions-DZNEbW1k.js               0.07 kB │ gzip:     0.09 kB
+dist/assets/_plugin-vue_export-helper-BDNMzG2s.js                 0.08 kB │ gzip:     0.09 kB
+dist/assets/editor.worker-BV5Z7Ck_.js                             0.10 kB │ gzip:     0.11 kB
+dist/assets/download-dialog-CCrqT9Gv.js                           0.11 kB │ gzip:     0.10 kB
+dist/assets/IconMinus-C4qolS4E.js                                 0.13 kB │ gzip:     0.14 kB
+dist/assets/strings-DbSPS5Fs.js                                   0.15 kB │ gzip:     0.15 kB
+dist/assets/rolldown-runtime-DK3Fl9T5.js                          0.15 kB │ gzip:     0.15 kB
+dist/assets/IconPlus-8BZh_V3v.js                                  0.17 kB │ gzip:     0.16 kB
+dist/assets/IconArrowUpRight-DMuczBQB.js                          0.19 kB │ gzip:     0.17 kB
+dist/assets/IconCode-CIILjtN6.js                                  0.22 kB │ gzip:     0.17 kB
+dist/assets/IconRefresh-CgbxpC7p.js                               0.23 kB │ gzip:     0.19 kB
+dist/assets/IconEye-C6q1KKcK.js                                   0.26 kB │ gzip:     0.21 kB
+dist/assets/vnode-B5ttVT14.js                                     0.31 kB │ gzip:     0.21 kB
+dist/assets/IconMessageCircle-xlWwalQS.js                         0.31 kB │ gzip:     0.25 kB
+dist/assets/IconFileText-Dq7yJC-Z.js                              0.36 kB │ gzip:     0.22 kB
+dist/assets/fileStore-Cx7meck6.js                                 0.57 kB │ gzip:     0.33 kB
+dist/assets/createVueComponent-DkW5SasL.js                        0.73 kB │ gzip:     0.41 kB
+dist/assets/AnalysisWarnings-BV-OZdAY.js                          0.90 kB │ gzip:     0.61 kB
+dist/assets/DataState-DRQJaP1d.js                                 0.93 kB │ gzip:     0.57 kB
+dist/assets/register-C8c3ovxp.js                                  1.02 kB │ gzip:     0.52 kB
+dist/assets/WorkflowSteps-BD1HG4YL.js                             1.08 kB │ gzip:     0.74 kB
+dist/assets/css-Cbiyubdw.js                                       1.10 kB │ gzip:     0.55 kB
+dist/assets/preload-helper-Czpn1I53.js                            1.19 kB │ gzip:     0.67 kB
+dist/assets/Wrongbook-BTGzZCXw.js                                 1.23 kB │ gzip:     0.66 kB
+dist/assets/PrivacyBoundaryNotice-esBio9p5.js                     1.46 kB │ gzip:     0.94 kB
+dist/assets/StudyMotif-CtSHOlAs.js                                1.61 kB │ gzip:     0.63 kB
+dist/assets/ReviewEntry-BP5ODRC6.js                               1.90 kB │ gzip:     1.01 kB
+dist/assets/review-api-DZzo9pDb.js                                3.02 kB │ gzip:     1.04 kB
+dist/assets/useCompanion-Co3HAik3.js                              3.34 kB │ gzip:     1.85 kB
+dist/assets/use-dialog-DOGMLXJZ.js                                4.23 kB │ gzip:     1.74 kB
+dist/assets/cpp-C7h46wYY.js                                       4.74 kB │ gzip:     2.02 kB
+dist/assets/LLMSettingsPanel-O1CKRfRp.js                          5.29 kB │ gzip:     2.47 kB
+dist/assets/natural-speech-B8WHIvQH.js                            5.68 kB │ gzip:     2.34 kB
+dist/assets/typescript-rk096N_P.js                                6.55 kB │ gzip:     2.86 kB
+dist/assets/devtools-EWN81iOl-BkA_wGVL.js                         6.89 kB │ gzip:     3.00 kB
+dist/assets/SkillTree-CiVbsV-v.js                                 7.77 kB │ gzip:     3.48 kB
+dist/assets/LegacyWrongbook-BahyKthr.js                           8.59 kB │ gzip:     3.97 kB
+dist/assets/Resume-DR6Rl8It.js                                    8.84 kB │ gzip:     3.59 kB
+dist/assets/Semester-CJNCuGYS.js                                  9.11 kB │ gzip:     3.68 kB
+dist/assets/css-Vuo2ezMx.js                                       9.28 kB │ gzip:     4.23 kB
+dist/assets/StudyPlan-BsgA9gTg.js                                 9.56 kB │ gzip:     4.45 kB
+dist/assets/Import-BfPSFv_E.js                                    9.80 kB │ gzip:     4.44 kB
+dist/assets/Today-BgNBv5Ox.js                                    10.30 kB │ gzip:     4.47 kB
+dist/assets/History-BfHNm6Ao.js                                  10.41 kB │ gzip:     4.34 kB
+dist/assets/css-C2X7avuy.js                                      11.06 kB │ gzip:     4.54 kB
+dist/assets/Home-DvkIMpIo.js                                     11.41 kB │ gzip:     4.81 kB
+dist/assets/FileReview-B1WRgkdO.js                               11.64 kB │ gzip:     4.66 kB
+dist/assets/review-workspace-BN3zKa0J.js                         12.09 kB │ gzip:     5.20 kB
+dist/assets/Auth-CMBSJub6.js                                     13.24 kB │ gzip:     5.29 kB
+dist/assets/GoalPlanner-CcVCgFH2.js                              14.93 kB │ gzip:     5.90 kB
+dist/assets/TrustCenter-DL40Ap0Z.js                              17.22 kB │ gzip:     6.71 kB
+dist/assets/DigitalHuman-05FteH85.js                             18.53 kB │ gzip:     7.49 kB
+dist/assets/Growth-uPXlMqes.js                                   19.35 kB │ gzip:     7.39 kB
+dist/assets/css-C0dTDIzM.js                                      21.85 kB │ gzip:     7.86 kB
+dist/assets/LearningWorkspace-qdaiFeaB.js                        23.23 kB │ gzip:     8.80 kB
+dist/assets/css-DAsArgfZ.js                                      26.89 kB │ gzip:     9.44 kB
+dist/assets/Programming-DUdBCgVd.js                              26.92 kB │ gzip:     9.84 kB
+dist/assets/Knowledge-CvvMgnLb.js                                27.84 kB │ gzip:    11.47 kB
+dist/assets/KnowledgeGraph-CfJZu22l.js                           28.40 kB │ gzip:    10.67 kB
+dist/assets/Career-DCZBN_jY.js                                   32.69 kB │ gzip:    10.97 kB
+dist/assets/use-global-config-kX3JD1xL.js                        32.98 kB │ gzip:    11.24 kB
+dist/assets/review-state-D-Upo661.js                             59.08 kB │ gzip:    21.10 kB
+dist/assets/Schedule-BcWoFmB1.js                                 60.00 kB │ gzip:    22.41 kB
+dist/assets/InterviewBank-BLg-rOp1.js                            68.39 kB │ gzip:    22.50 kB
+dist/assets/vue-runtime-Bkkp-_Qs.js                              84.00 kB │ gzip:    32.83 kB
+dist/assets/api-CbVy7UsX.js                                      93.33 kB │ gzip:    31.12 kB
+dist/assets/index-DgmHGuqH.js                                    99.92 kB │ gzip:    37.29 kB
+dist/assets/CourseWorkspace-RddJRGvN.js                         107.19 kB │ gzip:    35.09 kB
+dist/assets/css-D54OyWLv.js                                     133.09 kB │ gzip:    44.87 kB
+dist/assets/Interview-CDZ0eL_r.js                               137.62 kB │ gzip:    47.17 kB
+dist/assets/installCanvasRenderer-DQ5nkOUm.js                   440.53 kB │ gzip:   148.88 kB
+dist/assets/editor.api-aORaVU5-.js                            2,705.31 kB │ gzip:   694.13 kB
+
+✓ built in 7.07s
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.

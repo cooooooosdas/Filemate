@@ -21,6 +21,11 @@ def package(destination: Path) -> dict:
     if not destination.is_relative_to((ROOT / '_working').resolve()) or destination.exists():
         raise ValueError('requires a new archive path below project _working')
     paths = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode('utf-8').split('\0')
+    evidence_prefix = ARCHIVE.relative_to(ROOT).as_posix() + '/'
+    required = {evidence_prefix + name for name in frozen['evidence_sha256']}
+    required.add(evidence_prefix + 'verification.json')
+    if missing := required - set(paths):
+        raise ValueError(f'evidence must be tracked before packaging: {sorted(missing)}')
     forbidden = {'_working', '.git', '.superpowers', '.filemate-data', 'node_modules', '.venv', '__pycache__'}
     hashes, excluded = {}, []
     destination.parent.mkdir(parents=True, exist_ok=True)

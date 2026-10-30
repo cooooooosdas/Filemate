@@ -1,0 +1,67 @@
+✔ recommended survives URL and preference round trips while due stays default (1.16ms)
+✔ preview sends applied filters and integer budget; no page traversal or writing (1.2006ms)
+✔ invalid budget never reaches API (0.3443ms)
+✔ zero budget is valid but empty server selection cannot start (0.2721ms)
+✔ newer preview wins and stale preview cannot restore old filters (0.2625ms)
+✔ budget or identity invalidation rejects a late successful check (0.1853ms)
+✔ 409 requires a fresh preview and never falls back to different questions (0.314ms)
+✖ shared HTTP client normalized 409 also invalidates preview (2.4296ms)
+✔ network check failure preserves preview and allows explicit retry (0.3722ms)
+✔ partial or changed check results cannot replace the preview (0.3309ms)
+✔ double check does not dispatch another request (0.1823ms)
+✔ disposing rejects late preview and all later operations (0.1773ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 11
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 186.1612
+
+✖ failing tests:
+
+test at tests\wrongbook-session-state.test.mjs:58:1
+✖ shared HTTP client normalized 409 also invalidates preview (2.4296ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + {
+  +   available_minutes: 12,
+  +   eligible_count: 50,
+  +   filters: {
+  +     sort: 'recommended'
+  +   },
+  +   items: [
+  +     {
+  +       priority: {
+  +         reason: '已到期',
+  +         rule_version: 'review2-priority-v1'
+  +       },
+  +       ref: {
+  +         artifact_id: 'a',
+  +         next_review_at: '2026-10-25T00:00:00Z',
+  +         question_digest: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  +         question_index: 0,
+  +         revision: 1,
+  +         source_id: 's',
+  +         wrong_id: 'w'
+  +       },
+  +       stem: '栈的顺序'
+  +     }
+  +   ],
+  +   selected_count: 1,
+  +   status: 'preview_only'
+  + }
+  - null
+  
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-session-state.test.mjs:61:10)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { status: 'preview_only', filters: { sort: 'recommended' }, items: [ [Object] ], selected_count: 1, eligible_count: 50, available_minutes: 12 },
+    expected: null,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
