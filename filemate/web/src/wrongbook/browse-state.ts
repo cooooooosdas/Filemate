@@ -13,7 +13,7 @@ export function readReviewBrowse(query: Record<string, unknown>): ReviewBrowse {
   const scalar = (key: string, max = 128) => { const v = query[key]; if (v == null || v === '') return ''; if (typeof v !== 'string' || v.length > max || /[\u0000-\u001f]/.test(v)) { invalid = true; return '' }; return v }
   const filters: ReviewFilter = { status: 'all', sort: 'due', direction: 'asc' }
   for (const key of ['q', 'source_id', 'course_id', 'knowledge_q'] as const) { const v = scalar(key, key === 'q' ? 160 : key === 'knowledge_q' ? 120 : 128); if (v) filters[key] = v }
-  const choices = { status: statuses, sort: ['due', 'updated', 'errors', 'created'], direction: ['asc', 'desc'], cause: ['unconfirmed', ...reviewCauses.map(c => c.value)] }
+  const choices = { status: statuses, sort: ['due', 'updated', 'errors', 'created', 'recommended'], direction: ['asc', 'desc'], cause: ['unconfirmed', ...reviewCauses.map(c => c.value)] }
   for (const [key, values] of Object.entries(choices)) {
     if (query[key] != null) { const v = scalar(key); if (values.includes(v)) Object.assign(filters, { [key]: v }); else invalid = true }
   }
