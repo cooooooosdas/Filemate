@@ -66,11 +66,11 @@
 
 核验JSON为严格对象`{refs:[...]}`，1—20条，不接受重复wrong_id。任一身份不符/不存在/版本变化/排期变化/失去资格均409统一安全提示，无部分开始；成功返回status=ready和原refs及server as_of，无数据库写入。真正作答仍由既有attempt端点独立处理。
 
-- [ ] 写预览类型/边界/预算/有界/全范围测试；核验前后无任务、作答、事件变化；预览后暂停、源删除、题目替换、revision变化、跨空间均拒绝；先测RED。
-- [ ] 实现只读服务，复用同一read_snapshot内筛选/推荐逻辑，禁止从第一页拼全库；开始前比对当前题集原始题目摘要。重复预览/核验保持只读。
-- [ ] 注册静态路由在`/{wrong_id}`之前；GET白名单允许新增预算字段且拒绝重复/未知键；POST严格类型/体积/数量，不引入模型凭据入口；V2关闭503，其余历史路由不变。
-- [ ] 补类型和服务端调用函数getReviewSessionPreview/checkReviewSession，不挂载UI；测试请求路径/参数/方法、共用客户端、无密钥头。
-- [ ] 运行`.venv/Scripts/python.exe -m pytest filemate/tests/wrongbook/test_session_preview.py -q`与前端该合同测试，Expected：通过。同步API_SPEC/README，提交`feat(wrongbook): 提供本次复习预览与只读核验`。
+- [x] 写预览类型/边界/预算/有界/全范围测试；核验前后无任务、作答、事件变化；预览后暂停、源删除、题目替换、revision变化、跨空间均拒绝；先测RED。
+- [x] 实现只读服务，复用同一read_snapshot内筛选/推荐逻辑，禁止从第一页拼全库；开始前比对当前题集原始题目摘要。重复预览/核验保持只读。
+- [x] 注册静态路由在`/{wrong_id}`之前；GET白名单允许新增预算字段且拒绝重复/未知键；POST严格类型/体积/数量，不引入模型凭据入口；V2关闭503，其余历史路由不变。
+- [x] 补类型和服务端调用函数getReviewSessionPreview/checkReviewSession，不挂载UI；测试请求路径/参数/方法、共用客户端、无密钥头。
+- [x] 运行`.venv/Scripts/python.exe -m pytest filemate/tests/wrongbook/test_session_preview.py -q`与前端该合同测试，Expected：通过。同步API_SPEC/README，提交`feat(wrongbook): 提供本次复习预览与只读核验`。
 
 ## Task 4: B级串联验收、故障与交付
 
@@ -78,8 +78,10 @@
 
 **Interfaces:** 前三任务的真实只读HTTP和现役attempt/schedule/today合同。
 
-- [ ] 编写同一合成身份串联测试：收录真实错答→推荐/时长预览→核验→同键重放作答仅一次→状态更新→今日队列→新客户端刷新读取；无效输入/数据库故障/另一身份均不泄漏或修改状态。
-- [ ] 运行该文件与全wrongbook目录，Expected：通过；补API损坏记录降级和题集版本冲突，不把AI候选当客观判定。
-- [ ] 执行`scripts/verify.ps1 -IsolateFrontend`，Expected：退出0；所有跳过和未执行项明示。新运行性能四规模/列表搜索/四并发，原样保留超标结果；未达标不关闭P2。
-- [ ] 一次新上下文审阅本B增量，Important一轮RED/GREEN修复，不派重复复审；Minor按规则记录。
-- [ ] 保存本轮新源码摘要及证据，不重写上轮E冻结清单；更新索引/README/API与B交付，区分已实现后台合同、未挂载的C入口和真实研究依赖；本地提交归档，不推送或部署。
+- [x] 编写同一合成身份串联测试：收录真实错答→推荐/时长预览→核验→同键重放作答仅一次→状态更新→今日队列→新客户端刷新读取；无效输入/数据库故障/另一身份均不泄漏或修改状态。
+- [x] 运行该文件与全wrongbook目录，Expected：通过；补API损坏记录降级和题集版本冲突，不把AI候选当客观判定。
+- [x] 执行`scripts/verify.ps1 -IsolateFrontend`，Expected：退出0；所有跳过和未执行项明示。新运行性能四规模/列表搜索/四并发，原样保留超标结果；未达标不关闭P2。
+- [x] 一次新上下文审阅本B增量，Important一轮RED/GREEN修复，不派重复复审；Minor按规则记录。
+- [x] 保存本轮新源码摘要及证据，不重写上轮E冻结清单；更新索引/README/API与B交付，区分已实现后台合同、未挂载的C入口和真实研究依赖；本地提交归档，不推送或部署。
+
+验收结论：本轮工程候选 CONDITIONAL PASS；常规 HTTP 达标，高差异时间 P2 未关闭。用户尚未验收 B，不进入 C 或部署。详见 WRONG_REVIEW_INCREMENTAL_B_DELIVERY.md。

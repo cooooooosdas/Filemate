@@ -1,0 +1,39 @@
+import cProfile
+import io
+import json
+import math
+from pathlib import Path
+import pstats
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+root = Path.cwd()
+sys.path.insert(0, str(root))
+from filemate.execution.storage import SQLiteStorage
+from filemate.wrongbook.queries import ReviewFilter, ReviewQueries
+
+out = root / '_working/review2-incremental-b-20261030'
+manifest = json.loads((out/'baseline-http-fixture/manifest.json').read_text(encoding='utf-8'))
+user = max(manifest['users'], key=lambda row: row['wrong_count'])
+store = SQLiteStorage(Path(manifest['data_root'])/'users'/user['workspace']/'filemate.db')
+read = ReviewQueries(store)
+filters = ReviewFilter(sort='recommended')
+profile = cProfile.Profile()
+profile.runcall(read.page, filters)
+stream = io.StringIO()
+pstats.Stats(profile, stream=stream).sort_stats('cumulative').print_stats(20)
+(out/(sys.argv[1]+'-profile.txt')).write_text(stream.getvalue(), encoding='utf-8')
+def query(_):
+    start = time.perf_counter()
+    page = read.page(filters)
+    assert len(page['items']) <= 30 and page['total'] == 9995
+    return round((time.perf_counter()-start)*1000, 2)
+with ThreadPoolExecutor(max_workers=4) as pool:
+    samples = sorted(pool.map(query, range(20)))
+store.close()
+report = {'synthetic': True, 'count': user['wrong_count'], 'concurrency': 4, 'target_p95_ms': 500,
+    'samples_ms': samples, 'p95_ms': samples[math.ceil(len(samples)*.95)-1]}
+(out/(sys.argv[1]+'-capacity.json')).write_text(json.dumps(report), encoding='utf-8')
+print(json.dumps(report))
+assert report['p95_ms'] <= 500, 'recommended_4_concurrent_exceeds_original_500ms_target'

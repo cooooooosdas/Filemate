@@ -1,6 +1,6 @@
 # FileMate 当前交付资源索引
 
-2026-10-30 用户已验收错题增量A级，正在按[B级实施计划](superpowers/plans/2026-10-30-wrong-review-incremental-b.md)推进可信推荐与本次复习预览。保留默认到期排序，后台合同先行；C级可见入口、完整B验收与发布尚未完成。历史E证据保持原冻结内容，本轮不新增迁移、不部署。
+2026-10-30 错题增量B工程候选已本地保存，见[B级交付](WRONG_REVIEW_INCREMENTAL_B_DELIVERY.md)：可信推荐、本次复习预览与只读核验完成，默认到期排序保留；全项目1790后端／281前端通过，独立审阅无新增重要缺陷。总体CONDITIONAL PASS，高差异到期时间万题四并发P2仍保留；B待用户验收，C可见入口未挂载，不推送部署、不新增迁移。历史E证据保持原冻结语境。
 
 2026-10-29错题复盘2.0当前交付：[A—E总装与E报告](WRONGBOOK_2_0_E_DELIVERY.md)、[最终验证清单](audits/wrongbook-2-e-2026-10-29/verification.json)、[独立审阅](audits/wrongbook-2-e-2026-10-29/review.md)。本轮工程及验收完成，条件通过；十个流程和恢复已测，四并发万条库P2容量保留，未推送部署。
 

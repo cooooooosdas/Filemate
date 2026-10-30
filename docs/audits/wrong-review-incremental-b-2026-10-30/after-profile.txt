@@ -1,0 +1,43 @@
+         18497 function calls in 0.372 seconds
+
+   Ordered by: cumulative time
+   List reduced from 118 to 35 due to restriction <35>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+       10    0.000    0.000    0.372    0.037 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:236(page)
+       10    0.002    0.000    0.357    0.036 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:241(_snapshot_page)
+       65    0.347    0.005    0.347    0.005 {method 'execute' of 'sqlite3.Connection' objects}
+       10    0.000    0.000    0.020    0.002 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:188(_where)
+       25    0.000    0.000    0.020    0.001 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:75(_has_json1)
+       10    0.000    0.000    0.020    0.002 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:101(_history_expression)
+       20    0.000    0.000    0.015    0.001 {built-in method builtins.next}
+       20    0.000    0.000    0.015    0.001 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\execution\storage.py:777(read_snapshot)
+       10    0.000    0.000    0.010    0.001 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\contextlib.py:132(__enter__)
+       10    0.000    0.000    0.005    0.001 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\contextlib.py:141(__exit__)
+       10    0.000    0.000    0.005    0.000 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\execution\storage.py:763(close)
+       10    0.005    0.000    0.005    0.000 {method 'close' of 'sqlite3.Connection' objects}
+       10    0.004    0.000    0.005    0.000 {built-in method _sqlite3.connect}
+       10    0.000    0.000    0.004    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\pathlib.py:1228(resolve)
+       10    0.000    0.000    0.004    0.000 <frozen ntpath>:664(realpath)
+       20    0.003    0.000    0.003    0.000 {built-in method nt._getfinalpathname}
+      920    0.001    0.000    0.003    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\__init__.py:299(loads)
+      920    0.001    0.000    0.002    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\decoder.py:333(decode)
+      610    0.000    0.000    0.002    0.000 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:346(_list)
+      155    0.000    0.000    0.002    0.000 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\execution\data_actions.py:31(digest)
+      310    0.000    0.000    0.001    0.000 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:67(_object)
+       10    0.001    0.000    0.001    0.000 {method 'fetchall' of 'sqlite3.Cursor' objects}
+      155    0.000    0.000    0.001    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\__init__.py:183(dumps)
+      155    0.000    0.000    0.001    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\encoder.py:183(encode)
+       10    0.000    0.000    0.001    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\pathlib.py:835(stat)
+      155    0.001    0.000    0.001    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\encoder.py:205(iterencode)
+       10    0.000    0.000    0.000    0.000 {built-in method nt.stat}
+       10    0.000    0.000    0.000    0.000 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:136(_configure)
+      920    0.000    0.000    0.000    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\decoder.py:344(raw_decode)
+     1840    0.000    0.000    0.000    0.000 {method 'match' of 're.Pattern' objects}
+       60    0.000    0.000    0.000    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\functools.py:521(decorating_function)
+       20    0.000    0.000    0.000    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\pathlib.py:447(__fspath__)
+       30    0.000    0.000    0.000    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\pathlib.py:437(__str__)
+       60    0.000    0.000    0.000    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\functools.py:35(update_wrapper)
+       10    0.000    0.000    0.000    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\pathlib.py:464(as_uri)
+
+

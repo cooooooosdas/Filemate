@@ -1,0 +1,310 @@
+......................FFFFFFFFFFF                                        [100%]
+================================== FAILURES ===================================
+_______________ test_recommendation_search_works_without_json1 ________________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x000001999700FAA0>, 'c74b630483324c54ba23e56d1d2adcab', 'b1255e4...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001999700FC50>
+
+    def test_recommendation_search_works_without_json1(review_store, monkeypatch):
+        _store, read = seed_due(review_store, 65)
+        module = importlib.import_module('filemate.wrongbook.queries')
+>       monkeypatch.setattr(module, '_has_json1', lambda conn: False)
+E       AttributeError: <module 'filemate.wrongbook.queries' from 'C:\\Users\\胡希\\.codex\\worktrees\\release-alpha3\\FileMate-Project\\filemate\\wrongbook\\queries.py'> has no attribute '_has_json1'
+
+filemate\tests\wrongbook\test_insights.py:131: AttributeError
+_ test_json1_and_legacy_validation_agree[{"stem":"\u6709\u6548\u9898\u76ee"}-[]-[]-{}-1] _
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x000001999700C050>, '36fd3ee5f1ca4197a55fb4122fe2fe3b', '642db23...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001999700E210>
+question = '{"stem":"有效题目"}', causes = '[]', tags = '[]', metadata = '{}'
+expected = 1
+
+    @pytest.mark.parametrize('question,causes,tags,metadata,expected', [
+        ('{"stem":"有效题目"}', '[]', '[]', '{}', 1),
+        (' { } ', '[]', '[]', '{}', 0), ('[]', '[]', '[]', '{}', 0),
+        ('broken', '[]', '[]', '{}', 0), ('{"stem":"有效题目"}', 'null', '[]', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', 'null', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":true}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":"false"}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":[]}', 1),
+        ('{"stem":"有效题目","invalid":NaN}', '[]', '[]', '{}', 0),
+    ])
+    def test_json1_and_legacy_validation_agree(review_store, monkeypatch, question, causes, tags, metadata, expected):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET question=?,error_causes=?,custom_tags=?', (question, causes, tags))
+            conn.execute('UPDATE artifacts SET metadata=?', (metadata,))
+        module = importlib.import_module('filemate.wrongbook.queries')
+        for available in (True, False):
+>           monkeypatch.setattr(module, '_has_json1', lambda conn, available=available: available)
+E           AttributeError: <module 'filemate.wrongbook.queries' from 'C:\\Users\\胡希\\.codex\\worktrees\\release-alpha3\\FileMate-Project\\filemate\\wrongbook\\queries.py'> has no attribute '_has_json1'
+
+filemate\tests\wrongbook\test_insights.py:153: AttributeError
+__________ test_json1_and_legacy_validation_agree[ { } -[]-[]-{}-0] ___________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x000001999700C110>, '5b777add029a446c9bcb39b9f96f23f6', '4c5d70d...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001999700E300>
+question = ' { } ', causes = '[]', tags = '[]', metadata = '{}', expected = 0
+
+    @pytest.mark.parametrize('question,causes,tags,metadata,expected', [
+        ('{"stem":"有效题目"}', '[]', '[]', '{}', 1),
+        (' { } ', '[]', '[]', '{}', 0), ('[]', '[]', '[]', '{}', 0),
+        ('broken', '[]', '[]', '{}', 0), ('{"stem":"有效题目"}', 'null', '[]', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', 'null', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":true}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":"false"}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":[]}', 1),
+        ('{"stem":"有效题目","invalid":NaN}', '[]', '[]', '{}', 0),
+    ])
+    def test_json1_and_legacy_validation_agree(review_store, monkeypatch, question, causes, tags, metadata, expected):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET question=?,error_causes=?,custom_tags=?', (question, causes, tags))
+            conn.execute('UPDATE artifacts SET metadata=?', (metadata,))
+        module = importlib.import_module('filemate.wrongbook.queries')
+        for available in (True, False):
+>           monkeypatch.setattr(module, '_has_json1', lambda conn, available=available: available)
+E           AttributeError: <module 'filemate.wrongbook.queries' from 'C:\\Users\\胡希\\.codex\\worktrees\\release-alpha3\\FileMate-Project\\filemate\\wrongbook\\queries.py'> has no attribute '_has_json1'
+
+filemate\tests\wrongbook\test_insights.py:153: AttributeError
+____________ test_json1_and_legacy_validation_agree[[]-[]-[]-{}-0] ____________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x000001999700C740>, 'fac29a21b6304722adb5d7f48824fd0d', '4d27445...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001999700DE50>
+question = '[]', causes = '[]', tags = '[]', metadata = '{}', expected = 0
+
+    @pytest.mark.parametrize('question,causes,tags,metadata,expected', [
+        ('{"stem":"有效题目"}', '[]', '[]', '{}', 1),
+        (' { } ', '[]', '[]', '{}', 0), ('[]', '[]', '[]', '{}', 0),
+        ('broken', '[]', '[]', '{}', 0), ('{"stem":"有效题目"}', 'null', '[]', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', 'null', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":true}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":"false"}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":[]}', 1),
+        ('{"stem":"有效题目","invalid":NaN}', '[]', '[]', '{}', 0),
+    ])
+    def test_json1_and_legacy_validation_agree(review_store, monkeypatch, question, causes, tags, metadata, expected):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET question=?,error_causes=?,custom_tags=?', (question, causes, tags))
+            conn.execute('UPDATE artifacts SET metadata=?', (metadata,))
+        module = importlib.import_module('filemate.wrongbook.queries')
+        for available in (True, False):
+>           monkeypatch.setattr(module, '_has_json1', lambda conn, available=available: available)
+E           AttributeError: <module 'filemate.wrongbook.queries' from 'C:\\Users\\胡希\\.codex\\worktrees\\release-alpha3\\FileMate-Project\\filemate\\wrongbook\\queries.py'> has no attribute '_has_json1'
+
+filemate\tests\wrongbook\test_insights.py:153: AttributeError
+__________ test_json1_and_legacy_validation_agree[broken-[]-[]-{}-0] __________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x000001999700C1D0>, 'a5d2e9f1823148d4abf8cd828f42a024', '9d1f1de...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001999700D160>
+question = 'broken', causes = '[]', tags = '[]', metadata = '{}', expected = 0
+
+    @pytest.mark.parametrize('question,causes,tags,metadata,expected', [
+        ('{"stem":"有效题目"}', '[]', '[]', '{}', 1),
+        (' { } ', '[]', '[]', '{}', 0), ('[]', '[]', '[]', '{}', 0),
+        ('broken', '[]', '[]', '{}', 0), ('{"stem":"有效题目"}', 'null', '[]', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', 'null', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":true}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":"false"}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":[]}', 1),
+        ('{"stem":"有效题目","invalid":NaN}', '[]', '[]', '{}', 0),
+    ])
+    def test_json1_and_legacy_validation_agree(review_store, monkeypatch, question, causes, tags, metadata, expected):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET question=?,error_causes=?,custom_tags=?', (question, causes, tags))
+            conn.execute('UPDATE artifacts SET metadata=?', (metadata,))
+        module = importlib.import_module('filemate.wrongbook.queries')
+        for available in (True, False):
+>           monkeypatch.setattr(module, '_has_json1', lambda conn, available=available: available)
+E           AttributeError: <module 'filemate.wrongbook.queries' from 'C:\\Users\\胡希\\.codex\\worktrees\\release-alpha3\\FileMate-Project\\filemate\\wrongbook\\queries.py'> has no attribute '_has_json1'
+
+filemate\tests\wrongbook\test_insights.py:153: AttributeError
+_ test_json1_and_legacy_validation_agree[{"stem":"\u6709\u6548\u9898\u76ee"}-null-[]-{}-0] _
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x000001999700F5C0>, '38a73e1d3808403f959d803c6ba584b2', '9dbc716...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001999700CF80>
+question = '{"stem":"有效题目"}', causes = 'null', tags = '[]', metadata = '{}'
+expected = 0
+
+    @pytest.mark.parametrize('question,causes,tags,metadata,expected', [
+        ('{"stem":"有效题目"}', '[]', '[]', '{}', 1),
+        (' { } ', '[]', '[]', '{}', 0), ('[]', '[]', '[]', '{}', 0),
+        ('broken', '[]', '[]', '{}', 0), ('{"stem":"有效题目"}', 'null', '[]', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', 'null', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":true}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":"false"}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":[]}', 1),
+        ('{"stem":"有效题目","invalid":NaN}', '[]', '[]', '{}', 0),
+    ])
+    def test_json1_and_legacy_validation_agree(review_store, monkeypatch, question, causes, tags, metadata, expected):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET question=?,error_causes=?,custom_tags=?', (question, causes, tags))
+            conn.execute('UPDATE artifacts SET metadata=?', (metadata,))
+        module = importlib.import_module('filemate.wrongbook.queries')
+        for available in (True, False):
+>           monkeypatch.setattr(module, '_has_json1', lambda conn, available=available: available)
+E           AttributeError: <module 'filemate.wrongbook.queries' from 'C:\\Users\\胡希\\.codex\\worktrees\\release-alpha3\\FileMate-Project\\filemate\\wrongbook\\queries.py'> has no attribute '_has_json1'
+
+filemate\tests\wrongbook\test_insights.py:153: AttributeError
+_ test_json1_and_legacy_validation_agree[{"stem":"\u6709\u6548\u9898\u76ee"}-[]-null-{}-0] _
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x0000019996FCBFB0>, '2b55e71cc4f947b8a1f0f96f92a674c4', 'a64d7f4...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001999700E450>
+question = '{"stem":"有效题目"}', causes = '[]', tags = 'null', metadata = '{}'
+expected = 0
+
+    @pytest.mark.parametrize('question,causes,tags,metadata,expected', [
+        ('{"stem":"有效题目"}', '[]', '[]', '{}', 1),
+        (' { } ', '[]', '[]', '{}', 0), ('[]', '[]', '[]', '{}', 0),
+        ('broken', '[]', '[]', '{}', 0), ('{"stem":"有效题目"}', 'null', '[]', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', 'null', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":true}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":"false"}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":[]}', 1),
+        ('{"stem":"有效题目","invalid":NaN}', '[]', '[]', '{}', 0),
+    ])
+    def test_json1_and_legacy_validation_agree(review_store, monkeypatch, question, causes, tags, metadata, expected):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET question=?,error_causes=?,custom_tags=?', (question, causes, tags))
+            conn.execute('UPDATE artifacts SET metadata=?', (metadata,))
+        module = importlib.import_module('filemate.wrongbook.queries')
+        for available in (True, False):
+>           monkeypatch.setattr(module, '_has_json1', lambda conn, available=available: available)
+E           AttributeError: <module 'filemate.wrongbook.queries' from 'C:\\Users\\胡希\\.codex\\worktrees\\release-alpha3\\FileMate-Project\\filemate\\wrongbook\\queries.py'> has no attribute '_has_json1'
+
+filemate\tests\wrongbook\test_insights.py:153: AttributeError
+_ test_json1_and_legacy_validation_agree[{"stem":"\u6709\u6548\u9898\u76ee"}-[]-[]-{"read_only_snapshot":true}-0] _
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x0000019996FCA510>, '01f661fc146e4dcf8543eb3dc78355ef', '5516f59...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019996FCB4D0>
+question = '{"stem":"有效题目"}', causes = '[]', tags = '[]'
+metadata = '{"read_only_snapshot":true}', expected = 0
+
+    @pytest.mark.parametrize('question,causes,tags,metadata,expected', [
+        ('{"stem":"有效题目"}', '[]', '[]', '{}', 1),
+        (' { } ', '[]', '[]', '{}', 0), ('[]', '[]', '[]', '{}', 0),
+        ('broken', '[]', '[]', '{}', 0), ('{"stem":"有效题目"}', 'null', '[]', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', 'null', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":true}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":"false"}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":[]}', 1),
+        ('{"stem":"有效题目","invalid":NaN}', '[]', '[]', '{}', 0),
+    ])
+    def test_json1_and_legacy_validation_agree(review_store, monkeypatch, question, causes, tags, metadata, expected):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET question=?,error_causes=?,custom_tags=?', (question, causes, tags))
+            conn.execute('UPDATE artifacts SET metadata=?', (metadata,))
+        module = importlib.import_module('filemate.wrongbook.queries')
+        for available in (True, False):
+>           monkeypatch.setattr(module, '_has_json1', lambda conn, available=available: available)
+E           AttributeError: <module 'filemate.wrongbook.queries' from 'C:\\Users\\胡希\\.codex\\worktrees\\release-alpha3\\FileMate-Project\\filemate\\wrongbook\\queries.py'> has no attribute '_has_json1'
+
+filemate\tests\wrongbook\test_insights.py:153: AttributeError
+_ test_json1_and_legacy_validation_agree[{"stem":"\u6709\u6548\u9898\u76ee"}-[]-[]-{"read_only_snapshot":"false"}-0] _
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x0000019996FCBD40>, '1d9c3ee700eb49e4aa00d0b0cafdc197', '64bffe7...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019996FCA990>
+question = '{"stem":"有效题目"}', causes = '[]', tags = '[]'
+metadata = '{"read_only_snapshot":"false"}', expected = 0
+
+    @pytest.mark.parametrize('question,causes,tags,metadata,expected', [
+        ('{"stem":"有效题目"}', '[]', '[]', '{}', 1),
+        (' { } ', '[]', '[]', '{}', 0), ('[]', '[]', '[]', '{}', 0),
+        ('broken', '[]', '[]', '{}', 0), ('{"stem":"有效题目"}', 'null', '[]', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', 'null', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":true}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":"false"}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":[]}', 1),
+        ('{"stem":"有效题目","invalid":NaN}', '[]', '[]', '{}', 0),
+    ])
+    def test_json1_and_legacy_validation_agree(review_store, monkeypatch, question, causes, tags, metadata, expected):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET question=?,error_causes=?,custom_tags=?', (question, causes, tags))
+            conn.execute('UPDATE artifacts SET metadata=?', (metadata,))
+        module = importlib.import_module('filemate.wrongbook.queries')
+        for available in (True, False):
+>           monkeypatch.setattr(module, '_has_json1', lambda conn, available=available: available)
+E           AttributeError: <module 'filemate.wrongbook.queries' from 'C:\\Users\\胡希\\.codex\\worktrees\\release-alpha3\\FileMate-Project\\filemate\\wrongbook\\queries.py'> has no attribute '_has_json1'
+
+filemate\tests\wrongbook\test_insights.py:153: AttributeError
+_ test_json1_and_legacy_validation_agree[{"stem":"\u6709\u6548\u9898\u76ee"}-[]-[]-{"read_only_snapshot":[]}-1] _
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x00000199970B1670>, '0fe5799f6de14c2d957e90cc94a78d12', 'e91c522...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019996FCB7D0>
+question = '{"stem":"有效题目"}', causes = '[]', tags = '[]'
+metadata = '{"read_only_snapshot":[]}', expected = 1
+
+    @pytest.mark.parametrize('question,causes,tags,metadata,expected', [
+        ('{"stem":"有效题目"}', '[]', '[]', '{}', 1),
+        (' { } ', '[]', '[]', '{}', 0), ('[]', '[]', '[]', '{}', 0),
+        ('broken', '[]', '[]', '{}', 0), ('{"stem":"有效题目"}', 'null', '[]', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', 'null', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":true}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":"false"}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":[]}', 1),
+        ('{"stem":"有效题目","invalid":NaN}', '[]', '[]', '{}', 0),
+    ])
+    def test_json1_and_legacy_validation_agree(review_store, monkeypatch, question, causes, tags, metadata, expected):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET question=?,error_causes=?,custom_tags=?', (question, causes, tags))
+            conn.execute('UPDATE artifacts SET metadata=?', (metadata,))
+        module = importlib.import_module('filemate.wrongbook.queries')
+        for available in (True, False):
+>           monkeypatch.setattr(module, '_has_json1', lambda conn, available=available: available)
+E           AttributeError: <module 'filemate.wrongbook.queries' from 'C:\\Users\\胡希\\.codex\\worktrees\\release-alpha3\\FileMate-Project\\filemate\\wrongbook\\queries.py'> has no attribute '_has_json1'
+
+filemate\tests\wrongbook\test_insights.py:153: AttributeError
+_ test_json1_and_legacy_validation_agree[{"stem":"\u6709\u6548\u9898\u76ee","invalid":NaN}-[]-[]-{}-0] _
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x00000199970B02C0>, '7e048d7afd5a492ebb056456a620148f', '2e79aa5...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000199970B2240>
+question = '{"stem":"有效题目","invalid":NaN}', causes = '[]', tags = '[]'
+metadata = '{}', expected = 0
+
+    @pytest.mark.parametrize('question,causes,tags,metadata,expected', [
+        ('{"stem":"有效题目"}', '[]', '[]', '{}', 1),
+        (' { } ', '[]', '[]', '{}', 0), ('[]', '[]', '[]', '{}', 0),
+        ('broken', '[]', '[]', '{}', 0), ('{"stem":"有效题目"}', 'null', '[]', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', 'null', '{}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":true}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":"false"}', 0),
+        ('{"stem":"有效题目"}', '[]', '[]', '{"read_only_snapshot":[]}', 1),
+        ('{"stem":"有效题目","invalid":NaN}', '[]', '[]', '{}', 0),
+    ])
+    def test_json1_and_legacy_validation_agree(review_store, monkeypatch, question, causes, tags, metadata, expected):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET question=?,error_causes=?,custom_tags=?', (question, causes, tags))
+            conn.execute('UPDATE artifacts SET metadata=?', (metadata,))
+        module = importlib.import_module('filemate.wrongbook.queries')
+        for available in (True, False):
+>           monkeypatch.setattr(module, '_has_json1', lambda conn, available=available: available)
+E           AttributeError: <module 'filemate.wrongbook.queries' from 'C:\\Users\\胡希\\.codex\\worktrees\\release-alpha3\\FileMate-Project\\filemate\\wrongbook\\queries.py'> has no attribute '_has_json1'
+
+filemate\tests\wrongbook\test_insights.py:153: AttributeError
+============================== warnings summary ===============================
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED filemate/tests/wrongbook/test_insights.py::test_recommendation_search_works_without_json1
+FAILED filemate/tests/wrongbook/test_insights.py::test_json1_and_legacy_validation_agree[{"stem":"\u6709\u6548\u9898\u76ee"}-[]-[]-{}-1]
+FAILED filemate/tests/wrongbook/test_insights.py::test_json1_and_legacy_validation_agree[ { } -[]-[]-{}-0]
+FAILED filemate/tests/wrongbook/test_insights.py::test_json1_and_legacy_validation_agree[[]-[]-[]-{}-0]
+FAILED filemate/tests/wrongbook/test_insights.py::test_json1_and_legacy_validation_agree[broken-[]-[]-{}-0]
+FAILED filemate/tests/wrongbook/test_insights.py::test_json1_and_legacy_validation_agree[{"stem":"\u6709\u6548\u9898\u76ee"}-null-[]-{}-0]
+FAILED filemate/tests/wrongbook/test_insights.py::test_json1_and_legacy_validation_agree[{"stem":"\u6709\u6548\u9898\u76ee"}-[]-null-{}-0]
+FAILED filemate/tests/wrongbook/test_insights.py::test_json1_and_legacy_validation_agree[{"stem":"\u6709\u6548\u9898\u76ee"}-[]-[]-{"read_only_snapshot":true}-0]
+FAILED filemate/tests/wrongbook/test_insights.py::test_json1_and_legacy_validation_agree[{"stem":"\u6709\u6548\u9898\u76ee"}-[]-[]-{"read_only_snapshot":"false"}-0]
+FAILED filemate/tests/wrongbook/test_insights.py::test_json1_and_legacy_validation_agree[{"stem":"\u6709\u6548\u9898\u76ee"}-[]-[]-{"read_only_snapshot":[]}-1]
+FAILED filemate/tests/wrongbook/test_insights.py::test_json1_and_legacy_validation_agree[{"stem":"\u6709\u6548\u9898\u76ee","invalid":NaN}-[]-[]-{}-0]
+11 failed, 22 passed, 1 warning in 6.80s
