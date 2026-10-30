@@ -37,7 +37,8 @@ export function createReviewSessionController(api: SessionApi, observe: <T exten
       return result
     } catch (error) {
       if (!fresh(e)) return null
-      if ((error as { response?: { status?: number } })?.response?.status === 409) {
+      const failure = error as { status?: number; response?: { status?: number } }
+      if ((failure?.status ?? failure?.response?.status) === 409) {
         state.preview = null; state.error = '题目或复习状态已变化，请重新生成预览。'
       } else state.error = '暂时无法核验题目；预览已保留，请重试核验。'
       return null

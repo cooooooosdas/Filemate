@@ -112,7 +112,7 @@ async function initialize() {
   finally { if (!disposed && generation === bootstrap) booting.value = false }
 }
 function syncUrl() {
-  if (!ready || disposed) return
+  if (!ready || disposed || route.path !== '/knowledge-graph') return
   const query = courseBrowseQuery(state.browse)
   if (JSON.stringify(query) !== JSON.stringify(route.query)) void router.replace({ query })
   if (state.browse.courseId) preferences?.set(state.browse.courseId, width.value < 640, state.browse.view)
@@ -136,7 +136,7 @@ function expired() { learning.value?.invalidate(); panels.invalidate(); ++bootst
 function motion() { reducedMotion.value = !!media?.matches }
 watch(() => state.browse, syncUrl)
 watch(() => route.fullPath, async () => {
-  if (!ready || route.query.graph_scope === 'source') return
+  if (!ready || disposed || route.path !== '/knowledge-graph' || route.query.graph_scope === 'source') return
   const next = readCourseBrowse(route.query, preferences?.get(String(route.query.course || ''), width.value < 640) || null, width.value < 640)
   if (JSON.stringify(courseBrowseQuery(next)) !== JSON.stringify(courseBrowseQuery(state.browse))) { if ((next.courseId !== state.browse.courseId || next.nodeId !== state.browse.nodeId) && !await canLeave()) { await router.replace({ query: courseBrowseQuery(state.browse) }); return }; if (next.courseId !== state.browse.courseId) panels.invalidate(); searchText.value = ''; await controller.open(next) }
 })

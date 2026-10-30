@@ -54,6 +54,12 @@ test('409 requires a fresh preview and never falls back to different questions',
   await c.load({}, 12); assert.equal(await c.check(), null)
   assert.equal(c.state.preview, null); assert.match(c.state.error, /重新.*预览/)
 })
+
+test('shared HTTP client normalized 409 also invalidates preview', async () => {
+  const { c } = setup({ checkReviewSession: async () => { throw Object.assign(Error('changed'), { status: 409, code: 'conflict' }) } })
+  await c.load({}, 12); assert.equal(await c.check(), null)
+  assert.equal(c.state.preview, null); assert.match(c.state.error, /重新.*预览/)
+})
 test('network check failure preserves preview and allows explicit retry', async () => {
   let fail = true
   const { c } = setup({ checkReviewSession: async () => { if (fail) throw Error('offline'); return ready() } })

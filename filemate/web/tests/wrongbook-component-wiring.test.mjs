@@ -105,3 +105,14 @@ test('graph leave permission is reset by the actual review answer, not the remov
  review.submission.state.answer='draft A';await x.state.choose({});await vue.nextTick();review.submission.state.answer='draft B';await vue.nextTick();await x.state.choose({})
  assert.equal(confirmations,2);x.scope.stop()
 })
+
+test('departing course workspace must not reinterpret the destination query or prompt again',async()=>{
+ const browse=await import('../src/course-graph/browse-state.ts'),panels=await import('../src/course-graph/workspace-panels.ts')
+ const route=vue.reactive({path:'/knowledge-graph',fullPath:'/knowledge-graph?course=c',query:{course:'c',graph_scope:'course'}})
+ let opened=0,prompted=0,replaced=0
+ const c={state:vue.reactive({browse:browse.readCourseBrowse(route.query)}),open:async()=>{opened++}}
+ const x=await setup('components/course-graph/CourseWorkspace.vue',{sources:[]},{'vue-router':{useRoute:()=>route,useRouter:()=>({replace:async()=>{replaced++}})},'../../course-graph/workspace-state':{createCourseWorkspaceController:()=>c},'../../course-graph/browse-state':browse,'../../course-graph/workspace-panels':panels})
+ x.state.ready=true;x.state.learning.value={canLeave:async()=>{prompted++;return false}}
+ route.path='/wrongbook';route.query={focus:'synthetic-wrong-00001'};route.fullPath='/wrongbook?focus=synthetic-wrong-00001'
+ await vue.nextTick();await new Promise(r=>setImmediate(r));assert.equal(prompted,0);assert.equal(opened,0);assert.equal(replaced,0);x.scope.stop()
+})
