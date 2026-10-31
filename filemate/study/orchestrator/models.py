@@ -53,3 +53,34 @@ def aware(value: datetime) -> datetime:
     if value.tzinfo is None:
         raise ValueError('clock_must_be_aware')
     return value.astimezone(timezone.utc)
+
+
+class TaskView(BaseModel):
+    task_id: str
+    kind: str
+    title: str
+    source_id: str | None = None
+    goal_id: str
+    course_id: str | None = None
+    due_date: str | None = None
+    estimated_minutes: int | None = None
+    estimate_source: str | None = None
+    status: str = 'pending'
+    reason: str
+    priority: int = 0
+    rule_version: str = 'learning-orchestrator-rules-v1'
+    evidence_refs: list[dict[str, Any]] = Field(default_factory=list)
+    origin_refs: list[dict[str, Any]] = Field(default_factory=list)
+    completion_ref: dict[str, Any] | None = None
+    action_key: str | None = None
+    route: str
+    eligibility: str = 'eligible'
+    recorded_errors: int = 0
+
+
+class TaskProjection(BaseModel):
+    tasks: list[TaskView]
+    completed: list[TaskView]
+    unavailable: list[dict[str, Any]]
+    overlaps: list[dict[str, Any]]
+    coverage: dict[str, Any]
