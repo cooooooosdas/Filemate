@@ -5,8 +5,23 @@ from datetime import datetime
 from filemate.execution.data_actions import digest
 from filemate.wrongbook.queries import ReviewFilter, ReviewQueries
 
-from .models import Clock, EvidenceSnapshot, LOCAL_ZONE, OrchestratorError, ScopeRequest, aware, utc_now
-from .snapshot_queries import coverage, object_json, read_evidence, read_plans, read_semester, safe_task
+from .models import (
+    LOCAL_ZONE,
+    Clock,
+    EvidenceSnapshot,
+    OrchestratorError,
+    ScopeRequest,
+    aware,
+    utc_now,
+)
+from .snapshot_queries import (
+    coverage,
+    object_json,
+    read_evidence,
+    read_plans,
+    read_semester,
+    safe_task,
+)
 
 
 class SnapshotReader:

@@ -32,7 +32,7 @@ def test_goal_without_scope_has_no_global_evidence(world):
 def test_scope_membership_and_foreign_ids(world):
     models = module('models')
     reader = module('snapshot').SnapshotReader(world['store'])
-    for values in [dict(goal_id='unknown'), dict(goal_id=world['goal'], course_id=world['courses'][1], source_ids=[world['sources'][0]]), dict(goal_id=world['goal'], source_ids=[world['sources'][1]])]:
+    for values in [{'goal_id': 'unknown'}, {'goal_id': world['goal'], 'course_id': world['courses'][1], 'source_ids': [world['sources'][0]]}, {'goal_id': world['goal'], 'source_ids': [world['sources'][1]]}]:
         with pytest.raises(models.OrchestratorError):
             reader.read(models.ScopeRequest(**values))
 

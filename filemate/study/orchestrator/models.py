@@ -84,3 +84,36 @@ class TaskProjection(BaseModel):
     unavailable: list[dict[str, Any]]
     overlaps: list[dict[str, Any]]
     coverage: dict[str, Any]
+
+
+TaskId = Annotated[str, Field(min_length=1, max_length=512)]
+Minutes = Annotated[int, Field(strict=True, ge=1, le=240)]
+
+
+class ScheduleOptions(StrictRequest):
+    available_minutes: int = Field(ge=0, le=1440)
+    item_order: list[TaskId] = Field(default_factory=list, max_length=200)
+    pinned_ids: list[TaskId] = Field(default_factory=list, max_length=20)
+    excluded_ids: list[TaskId] = Field(default_factory=list, max_length=200)
+    minute_overrides: dict[TaskId, Minutes] = Field(default_factory=dict, max_length=200)
+
+    @model_validator(mode='after')
+    def valid_order(self):
+        for items in (self.item_order, self.pinned_ids, self.excluded_ids):
+            if len(items) != len(set(items)):
+                raise ValueError('duplicate_task_ids')
+        if not set(self.pinned_ids) <= set(self.item_order) or set(self.pinned_ids) & set(self.excluded_ids):
+            raise ValueError('invalid_pinned_order')
+        return self
+
+
+class ScheduleResult(BaseModel):
+    rule_version: str
+    selected: list[TaskView]
+    deferred: list[dict[str, Any]]
+    deferred_count: int
+    deferred_counts: dict[str, int]
+    deferred_truncated: bool
+    completed: list[TaskView]
+    coverage: dict[str, Any]
+    estimated_minutes: int
