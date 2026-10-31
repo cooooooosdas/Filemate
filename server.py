@@ -1753,6 +1753,10 @@ from filemate.wrongbook.learning_api import create_router as _review_learning_ro
 
 app.include_router(_review_learning_router(lambda: _storage))
 
+from filemate.study.orchestrator.api import create_router as _orchestrator_router
+
+app.include_router(_orchestrator_router(lambda: _storage))
+
 
 def _require_graph_enabled() -> None:
     if os.getenv("FILEMATE_ENABLE_KNOWLEDGE_GRAPH", "1") == "0":

@@ -51,7 +51,7 @@ def load(conn, identifier, kind):
     try:
         content = json.loads(row['content'])
         if not isinstance(content, dict):
-            raise ValueError()
+            raise TypeError()
         return content
     except (ValueError, TypeError):
         raise OrchestratorError('saved_schedule_invalid') from None

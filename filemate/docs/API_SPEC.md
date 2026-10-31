@@ -1289,3 +1289,21 @@ C级浏览器验收使用隔离合成账号与真实API。备份恢复测试会�
 `POST /wrongbook/v2/session-check`：JSON严格为 `{refs:[...], filters?:{...}}`，refs为1—20项且wrong_id不得重复，字段同上，类型严格；总请求体上限64KiB，不接受URL查询参数。应回传预览的filters，以复核课程/资料/搜索等上下文。服务端在同一只读快照和同一as_of内核对资格、来源、当前题集原始摘要、排期与修订号，任一不符/已删除/另一身份均统一409“请重新生成预览”，不部分开始。成功仅返回 `status=ready/refs/as_of/rule_version`，不创建任务、attempt、event或锁。ready是瞬时核验，不是预留或评分承诺；真正作答仍走既有attempt端点并重新验证当前题目和状态。
 
 两个新端点均受现有 `FILEMATE_ENABLE_WRONGBOOK_V2=1` 控制，关闭503，原历史查询保持可用；沿用认证、Origin保护、统一错误及no-store。数据库异常503不暴露内部位置。无新增环境变量、迁移、持久任务或模型凭据外发。B交付后台与类型化客户端；2026-10-31 C级已接入显式推荐选项、本次时长预览及核验后开始，默认到期排序不变。筛选、预算或身份变化会失效旧预览；核验冲突要求重新预览，网络失败保留选择供明确重试。刷新只恢复原批次，无批次不自动另选十题。
+# Learning Orchestrator 2.0 B · 开发候选
+
+统一前缀 `/api/learning/orchestrator`，复用现役账号／游客学习空间、origin与认证中间件。`FILEMATE_ENABLE_LEARNING_ORCHESTRATOR=0` 默认关闭；关闭后 capabilities/today/operations 只读保留。零模型调用、零schema迁移，不替代原领域作答和任务完成接口。
+
+| 方法与后缀 | 输入 / 输出 |
+|---|---|
+| GET `/capabilities` | enabled、rule_version、limits |
+| POST `/snapshot` | ScopeRequest → snapshot、projection；只读 |
+| POST `/preview` | scope、expected_evidence_revision、options → 依据/安排/延期/替换影响、15分钟令牌 |
+| POST `/confirm` | 同预览正文＋confirmation_token、request_key、confirmed=true → OperationReceipt |
+| GET `/today` | 当前上海自然日 DayView；未确认不造任务，变化后返回 stale |
+| GET `/operations/{request_key}` | 本空间不可变操作回执；撤销后原回执标 undone |
+| POST `/operations/{operation_id}/undo-preview` | 严格空对象 → UndoPreview |
+| POST `/operations/{operation_id}/undo-confirm` | confirmation_token、request_key、confirmed=true → 回执；保留后来完成的学习记录 |
+
+ScopeRequest：goal_id必填，course_id可选，source_ids最多20个不重复来源。必须是本空间目标与课程的有效来源；无范围目标只返回目标自身，不读取全空间。options：available_minutes严格整数0–1440，item_order/excluded_ids各最多200、pinned_ids最多20且属于手动顺序，minute_overrides最多200项且各1–240分钟；所有引用须来自当前快照。估时明确标记 domain_estimate/rule_default/user_estimate，不表示实际耗时或能力。候选最多200、选中最多20，延期详情最多100并保留总数与截断说明。
+
+拒绝未知/重复查询参数、重复JSON键、额外字段与非严格类型。统一success/data/error、no-store；401认证失效、404资源不存在、409修订/令牌冲突、422参数无效、429每日额度、503数据暂不可用，错误不回显SQL/原文/路径。每空间每天最多100次新确认，最多100个未使用预览；成功重放、读取、每操作一次的撤销不重复消耗确认额度。请求键16–80位字母数字下划线连字符；更改正文重放拒绝。恢复后旧令牌失效，需重新预览。两类安排/操作Artifact受通用编辑保护，仅保存范围和引用，不存原答、题干或面试评分。B阶段不挂载新页面，生产兼容与验收见阶段交付报告。
