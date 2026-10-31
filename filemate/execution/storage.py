@@ -1535,10 +1535,15 @@ class SQLiteStorage:
         """保存由资料派生的 AI 产物。"""
         if not artifact_type.strip():
             raise ValueError("artifact_type 不能为空")
+        protected = {'learning_orchestration_day', 'learning_orchestration_operation'}
+        if artifact_type in protected:
+            raise ValueError('学习安排及操作回执只能通过确认命令写入')
         artifact_id = artifact_id or uuid.uuid4().hex
         now = _now_iso()
         with self._write_lock:
             existing = self.get_artifact(artifact_id)
+            if existing and existing['artifact_type'] in protected:
+                raise ValueError('学习安排及操作回执不能通过通用保存接口覆盖')
             if existing and isinstance(existing.get("metadata"), dict) and existing["metadata"].get("read_only_snapshot"):
                 raise ValueError("历史题集是只读证据，不能修改")
             if existing and existing["artifact_type"] == "questions" and (
@@ -1610,6 +1615,8 @@ class SQLiteStorage:
                 if artifact is None:
                     connection.rollback()
                     return None
+                if artifact['artifact_type'] in {'learning_orchestration_day', 'learning_orchestration_operation'}:
+                    raise ValueError('学习安排及操作回执不能通过通用编辑接口修改')
                 metadata = artifact.get("metadata")
                 metadata = dict(metadata) if isinstance(metadata, dict) else {}
                 if metadata.get("read_only_snapshot"):

@@ -4,7 +4,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 Clock = Callable[[], datetime]
 LOCAL_ZONE = timezone(timedelta(hours=8))
@@ -117,3 +117,69 @@ class ScheduleResult(BaseModel):
     completed: list[TaskView]
     coverage: dict[str, Any]
     estimated_minutes: int
+
+
+class PreviewRequest(StrictRequest):
+    scope: ScopeRequest
+    expected_evidence_revision: str = Field(pattern=r'^[a-f0-9]{64}$')
+    options: ScheduleOptions
+
+
+class Confirmation(StrictRequest):
+    confirmation_token: str = Field(pattern=r'^[a-f0-9]{64}$')
+    request_key: str = Field(pattern=r'^[a-zA-Z0-9_-]{16,80}$')
+    confirmed: bool
+
+    @field_validator('confirmed')
+    @classmethod
+    def explicit_confirmation(cls, value):
+        if value is not True:
+            raise ValueError('explicit_confirmation_required')
+        return value
+
+
+class ConfirmRequest(PreviewRequest, Confirmation):
+    pass
+
+
+class UndoConfirmRequest(Confirmation):
+    pass
+
+
+class SchedulePreview(ScheduleResult):
+    scope: ScopeRequest
+    study_date: str
+    as_of: datetime
+    evidence_revision: str
+    day_revision: int
+    changes: dict[str, Any]
+    confirmation_token: str
+    expires_in_seconds: int = 900
+
+
+class UndoPreview(BaseModel):
+    operation_id: str
+    study_date: str
+    day_revision: int
+    confirmation_token: str
+    expires_in_seconds: int = 900
+
+
+class OperationReceipt(BaseModel):
+    operation_id: str
+    request_key: str
+    study_date: str
+    revision: int
+    status: str
+    affected: dict[str, int] = Field(default_factory=lambda: {'daily_schedules': 1})
+
+
+class DayView(BaseModel):
+    study_date: str
+    revision: int = 0
+    status: str
+    scope: ScopeRequest | None = None
+    options: ScheduleOptions | None = None
+    selected: list[TaskView] = Field(default_factory=list)
+    completed: list[TaskView] = Field(default_factory=list)
+    stale_refs: list[str] = Field(default_factory=list)
