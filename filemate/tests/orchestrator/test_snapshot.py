@@ -75,3 +75,32 @@ def test_verified_attempt_refs_without_answers(world):
     assert len(result.facts['attempts']) == 1
     assert 'attempt_id' in result.facts['attempts'][0]
     assert result.coverage['graph']['total'] == 0
+
+
+def test_only_explicit_goal_interviews_without_model_scores(world):
+    store = world['store']
+    own = None
+    for gid in (world['goal'], 'foreign-goal'):
+        run = store.create_agent_run(task_type='interview', goal='原创合成面试', selected_agents=[],
+                                     context_refs={'goal_id': gid, 'source_id': world['sources'][0]})
+        session = store.create_interview(target_role='学生训练', scenario='technical', difficulty='easy',
+                                         questions=['原创问题'], agent_run_id=run['run_id'])
+        if gid == world['goal']:
+            own = session['interview_id']
+    result = snapshot(world)
+    assert [i['interview_id'] for i in result.facts['interviews']] == [own]
+    assert 'score' not in json.dumps(result.facts['interviews'])
+    assert result.coverage['interviews']['returned'] == 1
+
+
+def test_shared_source_requires_explicit_course_and_reports_source_basis(world):
+    from filemate.course_graph.repository import CourseGraphRepository
+    repo = CourseGraphRepository(world['store'])
+    revision = world['store']._conn().execute('SELECT revision FROM kg_courses WHERE course_id=?', (world['courses'][1],)).fetchone()[0]
+    repo.attach_sources(world['courses'][1], [world['sources'][0]], None, revision)
+    reader = module('snapshot').SnapshotReader(world['store'], clock=lambda: world['now'][0])
+    with pytest.raises(module('models').OrchestratorError, match='explicit_course_required'):
+        reader.read(module('models').ScopeRequest(goal_id=world['goal']))
+    result = reader.read(scope(world))
+    assert result.coverage['shared_source_ids'] == [world['sources'][0]]
+    assert result.coverage['practice_scope_basis'] == 'source_records_not_course_mastery'

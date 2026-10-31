@@ -33,6 +33,12 @@ def project_tasks(snapshot: EvidenceSnapshot) -> TaskProjection:
             return
         if task.action_key:
             actions[task.action_key] = task
+        if task.kind == 'review':
+            task.reason = f'下次复习：{task.due_date}；错题记录累计错误{task.recorded_errors}次。估时来自规则，不代表能力评分。'
+        elif task.kind == 'goal':
+            task.reason = f'当前目标保存的待办；原截止日期：{task.due_date or "未设置"}。估时为建议，完成不等于掌握。'
+        else:
+            task.reason = f'原{task.kind}任务；日期：{task.due_date or "未设置"}，完成状态由原功能保存。'
         (completed if task.status == 'completed' else pending).append(task)
 
     def view(tid, kind, title, origin, route, **values):
@@ -107,6 +113,35 @@ def project_tasks(snapshot: EvidenceSnapshot) -> TaskProjection:
                  status='completed' if done else 'pending', completion_ref=ref if done else None))
     if facts['reviews'] and facts['plans']:
         overlaps.append({'kinds': ['review', 'plan'], 'reason': 'composite_day_not_deduplicated'})
+    by_id = {t.task_id: t for t in pending + completed}
+    concepts, links = {}, facts.get('plan_links', [])
+    for link in links:
+        tid = f"plan:{link['plan_id']}:{link['day_index']}"
+        concepts.setdefault(link['concept_id'], set()).add(tid)
+    for link in links:
+        tid = f"plan:{link['plan_id']}:{link['day_index']}"
+        task = by_id.get(tid)
+        if task is None:
+            continue
+        task.dependency_coverage = 'verified'
+        if snapshot.coverage.get('graph', {}).get('truncated') or snapshot.coverage.get('plan_links', {}).get('truncated'):
+            task.dependency_coverage = 'incomplete'
+            task.eligibility = 'prerequisite_coverage_incomplete'
+        for entry in facts['graph']:
+            relation = entry.get('relation')
+            if not relation or relation['type'] not in ('prerequisite', 'depends_on'):
+                continue
+            parent, child = relation['from_id'], relation['to_id']
+            if relation['type'] == 'depends_on':
+                parent, child = child, parent
+            if child != link['concept_id']:
+                continue
+            candidates = concepts.get(parent, set())
+            if len(candidates) != 1 or next(iter(candidates)) not in by_id:
+                task.eligibility = 'prerequisite_unavailable'
+                task.dependency_coverage = 'incomplete'
+            else:
+                task.dependency_ids = sorted(set(task.dependency_ids) | candidates)
     return TaskProjection(tasks=pending, completed=completed, unavailable=unavailable[:100], overlaps=overlaps,
                           coverage={'candidate_origins': total, 'returned': len(pending) + len(completed),
                                     'truncated': total > len(pending) + len(completed), 'evidence': snapshot.coverage})

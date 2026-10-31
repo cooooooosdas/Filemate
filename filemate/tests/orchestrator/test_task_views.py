@@ -65,3 +65,26 @@ def test_task_routes_resolve_original_resource(world):
     task = result.tasks[0]
     assert task.route.startswith('/goals?') and world['goal'] in task.route
     assert task.estimated_minutes == 15 and task.estimate_source == 'rule_default'
+
+
+def test_confirmed_graph_plan_dependencies_are_projected(world):
+    snap = snapshot(world)
+    snap.facts['plans'] = [{'plan_id': 'graph-plan', 'source_id': world['sources'][0], 'status': 'active', 'exam_date': '2026-11-05', 'days': [
+        {'day_index': i, 'day': i + 1, 'date': '2026-10-31', 'duration_minutes': 10, 'completed': False} for i in range(2)]}]
+    snap.facts['plan_links'] = [{'plan_id': 'graph-plan', 'day_index': i, 'concept_id': f'c{i}'} for i in range(2)]
+    snap.facts['graph'] = [{'relation': {'from_id': 'c0', 'to_id': 'c1', 'type': 'prerequisite'}}]
+    projected = module('task_views').project_tasks(snap)
+    target = next(t for t in projected.tasks if t.task_id == 'plan:graph-plan:1')
+    assert target.dependency_ids == ['plan:graph-plan:0']
+
+
+def test_real_saved_plan_uses_daily_plan_and_zero_based_completion(world):
+    store = world['store']
+    plan = {'title': '原创合成学习计划', 'exam_date': '2026-11-05', 'daily_minutes': 15, 'goal': '复习',
+            'daily_plan': [{'date': '2026-10-31', 'focus': '栈', 'duration_minutes': 15, 'tasks': ['阅读并练习']}]}
+    aid = store.save_artifact(source_id=world['sources'][0], artifact_type='study_plan', content=plan)
+    saved = store.create_study_plan(artifact_id=aid, source_id=world['sources'][0], plan=plan)
+    tid = f"plan:{saved['plan_id']}:0"
+    assert any(t.task_id == tid for t in project(world).tasks)
+    store.set_study_plan_day(saved['plan_id'], 0, completed=True)
+    assert any(t.task_id == tid for t in project(world).completed)

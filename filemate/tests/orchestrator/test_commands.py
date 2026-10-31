@@ -30,6 +30,19 @@ def test_preview_only_persists_token_not_tasks(world):
     assert store._conn().execute('SELECT COUNT(*) FROM data_action_previews').fetchone()[0] == 1
 
 
+def test_today_preserves_confirmed_user_time_estimate(world):
+    models = module('models')
+    tid = f"goal:{world['goal']}:review-source"
+    request = models.PreviewRequest(scope=scope(world), expected_evidence_revision=snapshot(world).evidence_revision,
+        options=models.ScheduleOptions(available_minutes=30, minute_overrides={tid: 7}))
+    preview = command(world).preview(request)
+    command(world).confirm(models.ConfirmRequest(**request.model_dump(), confirmation_token=preview.confirmation_token,
+        request_key='synthetic-override-confirm', confirmed=True))
+    day = module('repository').OrchestratorRepository(world['store'], clock=lambda: world['now'][0]).today(date(2026, 10, 31))
+    saved = next(t for t in day.selected if t.task_id == tid)
+    assert (saved.estimated_minutes, saved.estimate_source) == (7, 'user_estimate')
+
+
 def test_confirm_replay_and_changed_body(world):
     request = prepared(world)
     cmd = command(world)
@@ -133,3 +146,24 @@ def test_receipt_replay_next_day_does_not_apply_again(world):
     first = command(world).confirm(request)
     world['now'][0] += timedelta(days=1)
     assert command(world).confirm(request) == first
+
+
+def test_generic_save_cannot_win_retyping_race(world, monkeypatch):
+    from filemate.execution.storage import SQLiteStorage
+    store = world['store']
+    other = SQLiteStorage(store.db_path)
+    original = store.get_artifact
+    target = 'synthetic-reserved-race'
+    def raced(identifier):
+        if identifier == target:
+            with other._conn() as conn:
+                conn.execute("INSERT INTO artifacts(artifact_id,artifact_type,content) VALUES(?,'learning_orchestration_day','{}')", (target,))
+            return None
+        return original(identifier)
+    monkeypatch.setattr(store, 'get_artifact', raced)
+    try:
+        with pytest.raises(ValueError):
+            store.save_artifact(artifact_id=target, artifact_type='summary', content={'tampered': True})
+        assert other.get_artifact(target)['artifact_type'] == 'learning_orchestration_day'
+    finally:
+        other.close()

@@ -1552,7 +1552,7 @@ class SQLiteStorage:
                 raise ValueError("题集正文请通过 update_artifact 修订以保留学习历史")
             admit_plan(self.db_path, artifact_type, content,
                        existing['content'] if existing and existing['artifact_type'] == artifact_type else None)
-            self._conn().execute(
+            saved = self._conn().execute(
                 """INSERT INTO artifacts
                    (artifact_id, workspace_id, source_id, artifact_type,
                     title, content, metadata)
@@ -1562,7 +1562,9 @@ class SQLiteStorage:
                        title=excluded.title,
                        content=excluded.content,
                        metadata=excluded.metadata,
-                       updated_at=?""",
+                       updated_at=?
+                   WHERE artifacts.artifact_type NOT IN
+                       ('learning_orchestration_day','learning_orchestration_operation')""",
                 (
                     artifact_id,
                     workspace_id,
@@ -1574,6 +1576,9 @@ class SQLiteStorage:
                     now,
                 ),
             )
+            if saved.rowcount == 0:
+                self._conn().rollback()
+                raise ValueError('学习安排及操作回执不能通过通用保存接口覆盖')
             self._conn().commit()
         return artifact_id
 

@@ -76,6 +76,8 @@ class TaskView(BaseModel):
     route: str
     eligibility: str = 'eligible'
     recorded_errors: int = 0
+    dependency_ids: list[str] = Field(default_factory=list)
+    dependency_coverage: str = 'not_applicable'
 
 
 class TaskProjection(BaseModel):

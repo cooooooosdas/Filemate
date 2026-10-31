@@ -32,6 +32,7 @@ def preview_body(world):
 
 
 def test_strict_json_and_unknown_or_repeated_query(client, world):
+    assert client.post(ROOT + '/snapshot', content=b'x' * 262145).status_code == 413
     for suffix in ('?unknown=1', '?x=1&x=2'):
         assert client.get(ROOT + '/capabilities' + suffix).status_code == 422
     for changes in ({'unexpected': 1}, {'options': {'available_minutes': True}}, {'scope': {'goal_id': world['goal'], 'workspace_id': 'other'}}):

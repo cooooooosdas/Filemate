@@ -10,6 +10,7 @@ export interface TaskView {
   due_date: string | null; estimated_minutes: number | null; estimate_source: string | null; status: string; reason: string
   priority: number; rule_version: string; evidence_refs: Record<string, unknown>[]; origin_refs: Record<string, unknown>[]
   completion_ref: Record<string, unknown> | null; action_key: string | null; route: string; eligibility: string; recorded_errors: number
+  dependency_ids: string[]; dependency_coverage: string
 }
 export interface TaskProjection { tasks: TaskView[]; completed: TaskView[]; unavailable: Record<string, unknown>[]; overlaps: Record<string, unknown>[]; coverage: Record<string, unknown> }
 export interface EvidenceSnapshot { scope: ScopeRequest; as_of: string; study_date: string; evidence_revision: string; facts: Record<string, unknown>; evidence_refs: Record<string, unknown>[]; coverage: Record<string, unknown> }

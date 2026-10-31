@@ -12,6 +12,32 @@ def object_json(raw: Any, expected=dict):
         return None
 
 
+def read_interviews(conn, goal_id, source_ids):
+    needles = [json.dumps({'goal_id': goal_id}, ensure_ascii=False)[1:-1],
+               json.dumps({'goal_id': goal_id}, ensure_ascii=False, separators=(',', ':'))[1:-1]]
+    where = '(instr(r.context_refs,?)>0 OR instr(r.context_refs,?)>0)'
+    joined = 'interview_sessions i JOIN agent_runs r ON r.run_id=i.agent_run_id'
+    total = conn.execute(f'SELECT count(*) FROM {joined} WHERE {where}', needles).fetchone()[0]
+    rows = conn.execute(f'''SELECT i.interview_id,i.status,i.updated_at,
+        CASE WHEN length(r.context_refs)<=65536 THEN r.context_refs END AS context_refs,
+        (SELECT count(*) FROM interview_turns t WHERE t.interview_id=i.interview_id) AS turn_count
+        FROM {joined} WHERE {where} ORDER BY i.updated_at DESC,i.interview_id LIMIT 20''', needles)
+    result, excluded = [], 0
+    for row in rows:
+        refs = object_json(row['context_refs'])
+        if (refs is None or refs.get('goal_id') != goal_id
+                or refs.get('source_id') not in [None, *source_ids]):
+            excluded += 1
+            continue
+        result.append({'interview_id': row['interview_id'], 'source_id': refs.get('source_id'),
+                       'goal_id': goal_id, 'status': row['status'], 'updated_at': row['updated_at'],
+                       'turn_count': row['turn_count']})
+    cov = coverage(total, len(result)) | {'excluded': excluded}
+    if not total:
+        cov['status'] = 'no_explicit_link'
+    return result, cov
+
+
 def coverage(total: int, returned: int) -> dict:
     return {'total': total, 'returned': returned, 'truncated': returned < total}
 
@@ -39,10 +65,10 @@ def read_plans(conn, source_ids: list[str]) -> tuple[list[dict], dict]:
         plan = dict(row)
         content = object_json(plan.pop('plan_data'))
         completed = object_json(plan.pop('completed_days'), list)
-        if content is None or completed is None or not isinstance(content.get('days', []), list):
+        if content is None or completed is None or not isinstance(content.get('daily_plan'), list):
             invalid += 1
             continue
-        days = content.get('days', [])
+        days = content['daily_plan']
         compact = []
         for i, day in enumerate(days[:remaining]):
             if not isinstance(day, dict):
@@ -50,7 +76,7 @@ def read_plans(conn, source_ids: list[str]) -> tuple[list[dict], dict]:
                 continue
             compact.append({'day_index': i, 'day': day.get('day', i + 1),
                             'date': day.get('date'), 'duration_minutes': day.get('duration_minutes', plan['daily_minutes']),
-                            'completed': day.get('day', i + 1) in completed,
+                            'completed': i in completed,
                             'composite': True})
         remaining -= len(compact)
         result.append(plan | {'days': compact, 'day_total': len(days)})
@@ -92,6 +118,27 @@ def read_evidence(read, source_ids: list[str], course_id: str | None):
         cache = {}
         for row in rows:
             if valid_evidence(read, conn, course_id, row, cache):
-                graph.append(dict(row))
+                item = dict(row)
+                if row['relation_id']:
+                    relation = conn.execute("SELECT COALESCE(a.canonical_id,a.concept_id) AS from_id,COALESCE(b.canonical_id,b.concept_id) AS to_id,r.type FROM kg_relations r JOIN kg_concepts a ON a.concept_id=r.from_id AND a.course_id=r.course_id JOIN kg_concepts b ON b.concept_id=r.to_id AND b.course_id=r.course_id WHERE r.course_id=? AND r.relation_id=? AND r.status='confirmed' AND a.status='confirmed' AND b.status='confirmed'", (course_id, row['relation_id'])).fetchone()
+                    if relation:
+                        item['relation'] = dict(relation)
+                if row['concept_id']:
+                    concept = conn.execute("SELECT COALESCE(canonical_id,concept_id) FROM kg_concepts WHERE course_id=? AND concept_id=? AND status='confirmed'", (course_id, row['concept_id'])).fetchone()
+                    item['concept_id'] = concept[0] if concept else None
+                graph.append(item)
         graph_cov = coverage(total_graph, len(graph))
     return attempts, coverage(total, len(attempts)), graph, graph_cov
+
+
+def read_plan_links(conn, source_ids, course_id):
+    if not course_id or not source_ids:
+        return [], coverage(0, 0)
+    slots = ','.join('?' for _ in source_ids)
+    base = f''' FROM kg_course_plan_links l JOIN study_plans p ON p.plan_id=l.plan_id
+        JOIN kg_concepts c ON c.course_id=l.course_id AND c.concept_id=l.concept_id
+        WHERE l.course_id=? AND p.source_id IN ({slots}) AND c.status='confirmed' '''
+    params = [course_id, *source_ids]
+    total = conn.execute('SELECT COUNT(*)' + base, params).fetchone()[0]
+    rows = [dict(r) for r in conn.execute('SELECT l.plan_id,l.day_index,COALESCE(c.canonical_id,c.concept_id) AS concept_id' + base + 'ORDER BY l.plan_id,l.day_index,l.concept_id LIMIT 200', params)]
+    return rows, coverage(total, len(rows))

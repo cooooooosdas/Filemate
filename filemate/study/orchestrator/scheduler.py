@@ -23,13 +23,27 @@ def build_schedule(snapshot: EvidenceSnapshot, projection: TaskProjection, optio
         raise OrchestratorError('task_reference_changed', 422)
     manual = {tid: n for n, tid in enumerate(options.item_order)}
     today = date.fromisoformat(snapshot.study_date)
+    task_map = {t.task_id: t for t in projection.tasks + projection.completed}
+    depths, cycles = {}, set()
+
+    def depth(tid, path=()):
+        if tid in path:
+            cycles.update(path[path.index(tid):])
+            return 0
+        if tid not in task_map:
+            return 0
+        if tid not in depths:
+            depths[tid] = max((depth(dep, (*path, tid)) + 1 for dep in task_map[tid].dependency_ids), default=0)
+        return depths[tid]
+    for tid in task_map:
+        depth(tid)
 
     def rank(task):
         due = parse_time(task.due_date) if task.due_date else None
         due_day = task.due_date[:10] if due else '9999-12-31'
         return (0 if task.task_id in manual else 1, manual.get(task.task_id, 0),
                 0 if due and due_day <= today.isoformat() else 1,
-                due_day, -task.recorded_errors, task.task_id)
+                due_day, -task.recorded_errors, depths[task.task_id], task.task_id)
 
     selected, deferred, used = [], [], 0
     for original in sorted(projection.tasks, key=rank):
@@ -41,6 +55,10 @@ def build_schedule(snapshot: EvidenceSnapshot, projection: TaskProjection, optio
         reason = None
         if task.task_id in options.excluded_ids:
             reason = 'excluded'
+        elif task.task_id in cycles:
+            reason = 'dependency_cycle'
+        elif any(dep not in task_map or (task_map[dep].status != 'completed' and dep not in {t.task_id for t in selected}) for dep in task.dependency_ids):
+            reason = 'prerequisite_unavailable'
         elif task.eligibility != 'eligible':
             reason = task.eligibility
         elif minutes is None:

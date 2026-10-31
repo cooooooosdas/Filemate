@@ -24,3 +24,17 @@ def test_no_json1_and_malformed_records(world, monkeypatch):
     snap = snapshot(world)
     assert snap.facts['reviews'][0]['data_error']
     assert module('task_views').project_tasks(snap).unavailable[0]['reason'] == 'invalid_or_historical_evidence'
+
+
+def test_due_review_is_not_hidden_by_a_hundred_future_reviews(tmp_path):
+    store, scope = runtime().seed(tmp_path, count=101)
+    try:
+        conn = store._conn()
+        target = conn.execute('SELECT wrong_id FROM wrong_questions WHERE source_id=? ORDER BY wrong_id DESC LIMIT 1', scope.source_ids).fetchone()[0]
+        conn.execute('UPDATE wrong_questions SET error_count=100,next_review_at=? WHERE source_id=?', ('2099-01-01T00:00:00+00:00', scope.source_ids[0]))
+        conn.execute('UPDATE wrong_questions SET error_count=1,next_review_at=? WHERE wrong_id=?', ('2020-01-01T00:00:00+00:00', target))
+        conn.commit()
+        snap = module('snapshot').SnapshotReader(store).read(scope)
+        assert target in {r['wrong_id'] for r in snap.facts['reviews']}
+    finally:
+        store.close()

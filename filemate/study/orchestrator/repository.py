@@ -106,6 +106,9 @@ class OrchestratorRepository:
                                scope=scope, options=options, stale_refs=config['selected_ids'])
             projection = project_tasks(snap)
             tasks = {t.task_id: t for t in projection.tasks + projection.completed}
+            for tid, minutes in options.minute_overrides.items():
+                if tid in tasks:
+                    tasks[tid] = tasks[tid].model_copy(update={'estimated_minutes': minutes, 'estimate_source': 'user_estimate'})
             stale = [tid for tid in config['selected_ids'] if tid not in tasks or tasks[tid].eligibility not in ('eligible', 'not_due')]
             if snap.evidence_revision != config['evidence_revision']:
                 stale = list(dict.fromkeys([*stale, 'evidence_changed']))

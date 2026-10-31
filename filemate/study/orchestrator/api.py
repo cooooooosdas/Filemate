@@ -54,9 +54,13 @@ class DecisionRoute(APIRoute):
                 if request.query_params:
                     raise OrchestratorError('unexpected_query_parameters', 422)
                 if request.method == 'POST':
-                    raw = await request.body()
-                    if len(raw) > 262144:
-                        raise OrchestratorError('request_too_large', 413)
+                    body = bytearray()
+                    async for chunk in request.stream():
+                        if len(body) + len(chunk) > 262144:
+                            raise OrchestratorError('request_too_large', 413)
+                        body.extend(chunk)
+                    raw = bytes(body)
+                    request._body = raw
                     try:
                         json.loads(raw, object_pairs_hook=unique_object)
                     except (ValueError, UnicodeError, RecursionError):

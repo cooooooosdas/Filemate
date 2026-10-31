@@ -81,3 +81,26 @@ def test_shanghai_midnight_and_same_day_deadline(world):
     assert snapshot(world).study_date == '2026-11-01'
     result = arrange(world)
     assert result.selected[0].due_date == '2026-11-01'
+
+
+def test_confirmed_prerequisite_orders_tasks_and_cycles_are_blocked(world):
+    snap = snapshot(world)
+    projection = module('task_views').project_tasks(snap)
+    base = projection.tasks[0]
+    a = base.model_copy(update={'task_id': 'z-prerequisite', 'dependency_ids': []})
+    b = base.model_copy(update={'task_id': 'a-dependent', 'dependency_ids': ['z-prerequisite']})
+    projection.tasks = [b, a]
+    options = module('models').ScheduleOptions(available_minutes=30)
+    result = module('scheduler').build_schedule(snap, projection, options)
+    assert [t.task_id for t in result.selected] == ['z-prerequisite', 'a-dependent']
+    a.dependency_ids = ['a-dependent']
+    result = module('scheduler').build_schedule(snap, projection, options)
+    assert result.selected == [] and result.deferred_counts == {'dependency_cycle': 2}
+
+
+def test_missing_prerequisite_never_assumes_no_dependency(world):
+    snap = snapshot(world)
+    projection = module('task_views').project_tasks(snap)
+    projection.tasks[0] = projection.tasks[0].model_copy(update={'dependency_ids': ['not-in-scope']})
+    result = module('scheduler').build_schedule(snap, projection, module('models').ScheduleOptions(available_minutes=60))
+    assert not result.selected and result.deferred_counts == {'prerequisite_unavailable': 1}
