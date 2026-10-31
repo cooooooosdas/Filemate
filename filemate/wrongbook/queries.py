@@ -274,8 +274,17 @@ class ReviewQueries:
         with self.storage.read_snapshot() as read:
             return self._snapshot_page(read, filters, as_of=as_of, limit=limit, offset=offset, eligible_only=eligible_only)
 
+    def page_in_snapshot(self, read, filters: ReviewFilter, *, as_of: datetime,
+                         source_ids: tuple[str, ...], limit=100, offset=0, eligible_only=False):
+        """Apply an authorized bounded source scope before counting or paging."""
+        if len(source_ids) > 20 or len(set(source_ids)) != len(source_ids):
+            raise ValueError('invalid_source_scope')
+        return self._snapshot_page(read, filters, as_of=as_of, limit=limit, offset=offset,
+                                   eligible_only=eligible_only, source_ids=source_ids)
+
     def _snapshot_page(self, read, filters: ReviewFilter, *, as_of: datetime, limit=30, offset=0,
-                       eligible_only=False, wrong_ids: list[str] | None = None):
+                       eligible_only=False, wrong_ids: list[str] | None = None,
+                       source_ids: tuple[str, ...] | None = None):
         _bounds(limit, offset)
         filters = ReviewFilter.model_validate(filters)
         recommended = filters.sort == 'recommended'
@@ -305,6 +314,9 @@ class ReviewQueries:
                 time_join = f' {join} review_times rt ON {key_match}'
                 when, day = 'rt.due', 'rt.local_day'
         where, params = self._where(read, filters, conn, repo, when=when)
+        if source_ids is not None:
+            where += ' AND w.source_id IN (' + ','.join('?' for _ in source_ids) + ')' if source_ids else ' AND 0=1'
+            params.extend(source_ids)
         if recommended or eligible_only:
             where += f""" AND {when}<=?
                 AND {day} IS NOT NULL
