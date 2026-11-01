@@ -2016,32 +2016,31 @@ export const commandInterviewRuntime=(id:string,input:import('../types/interview
 // 复盘接口通过同一认证客户端按需加载。
 export const reviewHTTP = api
 
-const orchestratorRoot = '/api/learning/orchestrator'
-function orchestratorResult<T>(response: ApiResponse<T>): T {
-  if (response.success && response.data != null) return response.data
-  throw new Error(response.error || '学习安排操作未完成')
-}
+export const loadOrchestratorClient = (): Promise<import('../types/orchestrator').OrchestratorClient> => import('./orchestrator-api')
 export async function getOrchestratorCapabilities(): Promise<import('../types/orchestrator').OrchestratorCapabilities> {
-  return orchestratorResult(await api.get<unknown, ApiResponse<import('../types/orchestrator').OrchestratorCapabilities>>(`${orchestratorRoot}/capabilities`, { timeout: 15000 }))
+  return (await loadOrchestratorClient()).getOrchestratorCapabilities()
+}
+export async function getOrchestratorGoalOptions(request: import('../types/orchestrator').GoalOptionsRequest): Promise<import('../types/orchestrator').GoalOptionsPage> {
+  return (await loadOrchestratorClient()).getOrchestratorGoalOptions(request)
 }
 export async function readOrchestratorSnapshot(scope: import('../types/orchestrator').ScopeRequest): Promise<import('../types/orchestrator').OrchestratorSnapshot> {
-  return orchestratorResult(await api.post<unknown, ApiResponse<import('../types/orchestrator').OrchestratorSnapshot>>(`${orchestratorRoot}/snapshot`, scope, { timeout: 15000 }))
+  return (await loadOrchestratorClient()).readOrchestratorSnapshot(scope)
 }
 export async function previewOrchestratorSchedule(request: import('../types/orchestrator').PreviewRequest): Promise<import('../types/orchestrator').SchedulePreview> {
-  return orchestratorResult(await api.post<unknown, ApiResponse<import('../types/orchestrator').SchedulePreview>>(`${orchestratorRoot}/preview`, request, { timeout: 30000 }))
+  return (await loadOrchestratorClient()).previewOrchestratorSchedule(request)
 }
 export async function confirmOrchestratorSchedule(request: import('../types/orchestrator').ConfirmRequest): Promise<import('../types/orchestrator').OperationReceipt> {
-  return orchestratorResult(await api.post<unknown, ApiResponse<import('../types/orchestrator').OperationReceipt>>(`${orchestratorRoot}/confirm`, request, { timeout: 30000 }))
+  return (await loadOrchestratorClient()).confirmOrchestratorSchedule(request)
 }
 export async function getOrchestratorToday(): Promise<import('../types/orchestrator').DayView> {
-  return orchestratorResult(await api.get<unknown, ApiResponse<import('../types/orchestrator').DayView>>(`${orchestratorRoot}/today`, { timeout: 15000 }))
+  return (await loadOrchestratorClient()).getOrchestratorToday()
 }
 export async function findOrchestratorOperation(requestKey: string): Promise<import('../types/orchestrator').OperationReceipt> {
-  return orchestratorResult(await api.get<unknown, ApiResponse<import('../types/orchestrator').OperationReceipt>>(`${orchestratorRoot}/operations/${encodeURIComponent(requestKey)}`, { timeout: 15000 }))
+  return (await loadOrchestratorClient()).findOrchestratorOperation(requestKey)
 }
 export async function previewOrchestratorUndo(operationId: string): Promise<import('../types/orchestrator').UndoPreview> {
-  return orchestratorResult(await api.post<unknown, ApiResponse<import('../types/orchestrator').UndoPreview>>(`${orchestratorRoot}/operations/${encodeURIComponent(operationId)}/undo-preview`, {}, { timeout: 30000 }))
+  return (await loadOrchestratorClient()).previewOrchestratorUndo(operationId)
 }
 export async function confirmOrchestratorUndo(operationId: string, request: import('../types/orchestrator').UndoConfirmRequest): Promise<import('../types/orchestrator').OperationReceipt> {
-  return orchestratorResult(await api.post<unknown, ApiResponse<import('../types/orchestrator').OperationReceipt>>(`${orchestratorRoot}/operations/${encodeURIComponent(operationId)}/undo-confirm`, request, { timeout: 30000 }))
+  return (await loadOrchestratorClient()).confirmOrchestratorUndo(operationId, request)
 }

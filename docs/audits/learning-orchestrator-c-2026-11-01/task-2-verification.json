@@ -1,0 +1,51 @@
+{
+  "stage": "C-task-2",
+  "date": "2026-11-01",
+  "status": "task_passed_not_C_acceptance",
+  "base_commit": "95326d79bfee5a3d14fc07129209d151121a6f59",
+  "targeted": {
+    "days_truncation_red_failed": 1,
+    "initial_green_passed": 15,
+    "initial_red_failed": 15,
+    "days_truncation_red_passed": 7
+  },
+  "frontend_gate": {
+    "failed": 0,
+    "passed": 318,
+    "build": "PASS",
+    "tests": 318,
+    "typecheck": "PASS",
+    "exit_code": 0
+  },
+  "bundle": {
+    "budget": {
+      "javascript": 460800,
+      "javascript_gzip": 143360,
+      "css": 153600
+    },
+    "eagerHeavyModules": [],
+    "measurements": {
+      "javascript": 386846,
+      "javascript_gzip": 143223,
+      "css": 111534
+    },
+    "exceeded": []
+  },
+  "backend": "Task 1 backend source fingerprints unchanged; full backend suite not repeated for TypeScript-only task.",
+  "limitations": [
+    "Presentation adapters are not yet connected to the Today UI.",
+    "No browser, production or real-student learning-effect claim."
+  ],
+  "preserved_pre_existing_files": 23,
+  "source_sha256": {
+    "filemate/web/src/services/api.ts": "f10607c84eda7263e14ca26834c07b561a78235d89be5ed667033127d4160ff3",
+    "filemate/web/src/services/orchestrator-api.ts": "94408cf8a90d1b6f36d3f3e18ff2d817dba5776a4f3760ed0a8e860fdf0e3029",
+    "filemate/web/src/types/orchestrator.ts": "02d7ef8a2af517992ec2786357d64bbed2fb8feea0b04c6f8ddc7caf6bd30f1e",
+    "filemate/web/src/types/today.ts": "2692c5a184fe840cbdbcb0379146480963dc01881f99667c73e836cb760ad7b5",
+    "filemate/web/src/today/presentation.ts": "c0d8421d1a84ada4a00a6551a2d3ce8c07565c8330dd986d39eefd286a6b6c4c",
+    "filemate/web/src/today/navigation.ts": "dcedf182ae5782a25aa024d15f53a9fcad6093ed9aa7f2455bceeb04485602ab",
+    "filemate/web/tests/orchestrator-api.test.mjs": "47dfdb1da012a664024a0a081b8ed6609374cfedb655e1a81b4a808591f034e0",
+    "filemate/web/tests/today-presentation.test.mjs": "eef92526702e46ae46039ead35a28c6b3463d6cfc9b580f472f810eec0ab78fb",
+    "filemate/web/tests/today-navigation.test.mjs": "81304689da054e8b02b9e51dfeb2035a7744039be39270bdffbaa3eb5dd1e2b3"
+  }
+}

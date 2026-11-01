@@ -92,11 +92,11 @@
 
 **Interfaces:** 消费任务1读合同与现有 `getKnowledgeArtifact` DTO；产出 `OrchestratorClient`、`loadOrchestratorClient`、`presentToday`、`resolveTodayTask`、`readStoredGoal`。保留八个已有公共函数，改为按需委托；新模块复用现有已配置HTTP实例，不创建第二套认证或密钥拦截器。
 
-- [ ] 1. 先写实际客户端行为测试：九方法发送完整原body／编码ID，读15秒、写30秒；拒绝缺data／success=false；公开委托仍返回同一回执。测试懒加载实现本身，不能只搜索源码字符串。
-- [ ] 2. 写 `history_and_truncation_are_not_today_statistics`：2026-11-01上海日只计范围内、有效判定且时间可验证的作答；历史计划勾选不计入今日；attempts截断使 `today_attempts === null` 且有边界提示；没有练习关联不能判断“不掌握”。未知JSON、null、重复来源、超长标题不抛异常；标题以文本显示。
-- [ ] 3. 写 `targets_use_real_origin_identity`：review指向原wrong_id；plan使用原plan_id及真实day；goal使用goal与task_id；semester保留原task_id。显式course＋concept关联才提供 `graph_scope=course&course=…&node=…`；资料使用实际source；无具体编程题／面试会话ID显示选择提示，禁止填入首题或伪造ID。`javascript:`、外站URL及未允许路径不能成为主操作。
-- [ ] 4. 运行 `node --test tests/orchestrator-api.test.mjs tests/today-presentation.test.mjs tests/today-navigation.test.mjs`（目录 `filemate/web`），看到新增失败后实现。纯适配只处理当前返回的200候选和有界事实；旧Goal Artifact只能还原保存字段，类型不合法返回null，不重新生成gaps。
-- [ ] 5. 同命令全通过并运行 `npm run build`、`node scripts/check-bundle.mjs --dist dist`。若初始体积超限，拆分新实现和只在工作台使用的代码；不提高阈值。提交 `feat(today): 增加可信展示与任务导航适配`。
+- [x] 1. 先写实际客户端行为测试：九方法发送完整原body／编码ID，读15秒、写30秒；拒绝缺data／success=false；公开委托仍返回同一回执。测试懒加载实现本身，不能只搜索源码字符串。
+- [x] 2. 写 `history_and_truncation_are_not_today_statistics`：2026-11-01上海日只计范围内、有效判定且时间可验证的作答；历史计划勾选不计入今日；attempts截断使 `today_attempts === null` 且有边界提示；没有练习关联不能判断“不掌握”。未知JSON、null、重复来源、超长标题不抛异常；标题以文本显示。
+- [x] 3. 写 `targets_use_real_origin_identity`：review指向原wrong_id；plan使用原plan_id及真实day；goal使用goal与task_id；semester保留原task_id。显式course＋concept关联才提供 `graph_scope=course&course=…&node=…`；资料使用实际source；无具体编程题／面试会话ID显示选择提示，禁止填入首题或伪造ID。`javascript:`、外站URL及未允许路径不能成为主操作。
+- [x] 4. 运行 `node --test tests/orchestrator-api.test.mjs tests/today-presentation.test.mjs tests/today-navigation.test.mjs`（目录 `filemate/web`），看到新增失败后实现。纯适配只处理当前返回的200候选和有界事实；旧Goal Artifact只能还原保存字段，类型不合法返回null，不重新生成gaps。
+- [x] 5. 同命令全通过并运行 `npm run build`、`node scripts/check-bundle.mjs --dist dist`。若初始体积超限，拆分新实现和只在工作台使用的代码；不提高阈值。提交 `feat(today): 增加可信展示与任务导航适配`。
 
 ### Task 3: 实现范围、草稿和页面生命周期
 
