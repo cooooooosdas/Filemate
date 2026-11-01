@@ -8,7 +8,7 @@
         <p v-if="plan?.review_learning?.ref?.wrong_id" class="restore-note"><RouterLink :to="`/wrongbook?focus=${encodeURIComponent(plan.review_learning.ref.wrong_id)}`">回看生成此计划的作答与复盘证据</RouterLink> · 完成任务不代表答对或掌握</p>
       </div>
     </header>
-    <aside v-if="planReference.present || route.query.day !== undefined" class="today-location">
+    <aside class="today-location">
       <RouterLink to="/today">返回今日行动</RouterLink>
       <span v-if="plan && dayLocation.notice" role="status">{{ dayLocation.notice }}</span>
     </aside>

@@ -140,12 +140,12 @@
 
 **Interfaces:** 消费任务2—5的状态、命令和导航；产出用户可用的三信息区工作台。Today路由外壳只检查能力并按需加载工作台／原页；新页面的复杂模块不进入Home／App初始包。
 
-- [ ] 1. 把已选A草图 `docs/design/learning-orchestrator-a/today-action.{svg,png}` 与当前四主题变量对齐，先提供当前选中方案的浏览器静态预览，明确示例数据只用于排版；保存桌面／窄屏预览到 `_working/learning-orchestrator-c/`。不重新发起两案风格选择，不把静态预览写成已实现功能。
-- [ ] 2. 先补导航行为回归：侧栏仅一个“今日行动”入口；原“今日学习”为搜索别名，目标／学习计划／学期保持同组详情入口，无重复业务顶栏；关闭后仍可访问旧页。能力未知显示加载／重试；enabled=true而缺ui_contract显示版本不匹配，不假装关闭。运行 `node --test tests/navigation.test.mjs tests/today-workspace.test.mjs`，新增断言先失败。
-- [ ] 3. 原Today完整保留为LegacyToday，保留未提交作答离开守卫；实现新外壳及TodayScope：目标名称、截止日期、明确范围、真实任务状态／证据和下一步。创建目标进入原表单；新工作台的“调整”进入本页候选预览，不调用会覆盖旧目标任务的 `replanReverseGoal`。开启新能力时GoalPlanner的原重排按钮改为这一入口；不宣称旧后端重排接口已安全重构。
-- [ ] 4. 实现TodayTasks／TodayPreview：动作、预计时长、估计来源、推荐理由、证据折叠、键盘上移下移、固定／排除、变更摘要、延期理由、确认／撤销回执。预计分钟数不称实际学习时长；已完成任务不提供统一伪完成按钮。桌面8:4分栏，平板先目标／时间，小屏当前行动优先；保留原页面完成能力。
-- [ ] 5. 实现TodayFeedback及三模式：日常、用户主动开启且有考试目标日期的冲刺、项目／能力训练；共享相同证据与预算管线，不自动换目标。反馈将“有时间的今日练习”与“当前目标已完成任务（含历史）”分开；延期和需要巩固直接引用真实记录。概念缺口仅按需调用 `getCourseLearning(course_id,concept_id)`，一次最多5个明确关联概念并显示查询范围／as_of；无关联标为未能核对，不把全课都判成无证据。
-- [ ] 6. 同命令、全部 `npm test`、`npm run build`、`node scripts/check-bundle.mjs --dist dist` 通过；三场景无模型调用、无重复任务创建，目标创建后可返回选择。提交 `feat(today): 完成今日行动工作台`（仅本地候选，不推送部署）。
+- [x] 1. 把已选A草图 `docs/design/learning-orchestrator-a/today-action.{svg,png}` 与当前四主题变量对齐，先提供当前选中方案的浏览器静态预览，明确示例数据只用于排版；保存桌面／窄屏预览到 `_working/learning-orchestrator-c/`。不重新发起两案风格选择，不把静态预览写成已实现功能。
+- [x] 2. 先补导航行为回归：侧栏仅一个“今日行动”入口；原“今日学习”为搜索别名，目标／学习计划／学期保持同组详情入口，无重复业务顶栏；关闭后仍可访问旧页。能力未知显示加载／重试；enabled=true而缺ui_contract显示版本不匹配，不假装关闭。运行 `node --test tests/navigation.test.mjs tests/today-workspace.test.mjs`，新增断言先失败。
+- [x] 3. 原Today完整保留为LegacyToday，保留未提交作答离开守卫；实现新外壳及TodayScope：目标名称、截止日期、明确范围、真实任务状态／证据和下一步。创建目标进入原表单；新工作台的“调整”进入本页候选预览，不调用会覆盖旧目标任务的 `replanReverseGoal`。开启新能力时GoalPlanner的原重排按钮改为这一入口；不宣称旧后端重排接口已安全重构。
+- [x] 4. 实现TodayTasks／TodayPreview：动作、预计时长、估计来源、推荐理由、证据折叠、键盘上移下移、固定／排除、变更摘要、延期理由、确认／撤销回执。预计分钟数不称实际学习时长；已完成任务不提供统一伪完成按钮。桌面8:4分栏，平板先目标／时间，小屏当前行动优先；保留原页面完成能力。
+- [x] 5. 实现TodayFeedback及三模式：日常、用户主动开启且有考试目标日期的冲刺、项目／能力训练；共享相同证据与预算管线，不自动换目标。反馈将“有时间的今日练习”与“当前目标已完成任务（含历史）”分开；延期和需要巩固直接引用真实记录。概念缺口仅按需调用 `getCourseLearning(course_id,concept_id)`，一次最多5个明确关联概念并显示查询范围／as_of；无关联标为未能核对，不把全课都判成无证据。
+- [x] 6. 同命令、全部 `npm test`、`npm run build`、`node scripts/check-bundle.mjs --dist dist` 通过；三场景无模型调用、无重复任务创建，目标创建后可返回选择。提交 `feat(today): 完成今日行动工作台`（仅本地候选，不推送部署）。
 
 ### Task 7: 真实浏览器交互、响应式与故障验收
 

@@ -6,6 +6,28 @@ const workspaceURL = new URL('../src/today/workspace-state.ts', import.meta.url)
 const preferencesURL = new URL('../src/today/preferences.ts', import.meta.url)
 const workspaceModule = existsSync(workspaceURL) ? await import(workspaceURL.href) : null
 const preferencesModule = existsSync(preferencesURL) ? await import(preferencesURL.href) : null
+const entryURL = new URL('../src/today/entry-state.ts', import.meta.url)
+const entryModule = existsSync(entryURL) ? await import(entryURL.href) : null
+function entry(name, ...args) { assert.equal(typeof entryModule?.[name], 'function', `real ${name} export required`); return entryModule[name](...args) }
+
+test('the actual Today shell enters legacy only after an explicit disabled response', () => {
+  assert.equal(entry('resolveTodayEntry', null).view, 'loading')
+  assert.equal(entry('resolveTodayEntry', { enabled: false }).view, 'legacy')
+  assert.equal(entry('resolveTodayEntry', { enabled: true, ui_contract: 'today-workspace-v1' }).view, 'workspace')
+  for (const caps of [{ enabled: true }, {}, { enabled: 'false' }, { enabled: true, ui_contract: 'old' }]) {
+    const result = entry('resolveTodayEntry', caps); assert.equal(result.view, 'error'); assert.match(result.message, /版本|兼容/)
+  }
+  for (const status of [401, 404, 429, 503]) {
+    const result = entry('resolveTodayEntry', null, { response: { status } }); assert.equal(result.view, 'error'); assert.ok(result.message)
+  }
+})
+
+test('exam mode requires the selected exam goal and a valid nonexpired date without selecting another goal', () => {
+  assert.deepEqual(entry('todayModes', { goal_type: 'exam', deadline: '2026-11-03' }, '2026-11-01'), ['daily', 'exam', 'project'])
+  for (const goal of [null, { goal_type: 'job', deadline: '2026-11-03' }, { goal_type: 'exam', deadline: null }, { goal_type: 'exam', deadline: '2026-02-30' }, { goal_type: 'exam', deadline: '2026-10-31' }]) {
+    assert.deepEqual(entry('todayModes', goal, '2026-11-01'), ['daily', 'project'])
+  }
+})
 function createTodayWorkspace(...args) {
   assert.equal(typeof workspaceModule?.createTodayWorkspace, 'function', 'the real workspace controller must exist')
   return workspaceModule.createTodayWorkspace(...args)

@@ -6,7 +6,7 @@
         <p class="lead">写下想完成的事，结合已有资料和练习记录，安排下一步。</p>
       </div>
     </header>
-    <aside v-if="goalReference.present || taskReference.present" class="today-location">
+    <aside class="today-location">
       <RouterLink to="/today">返回今日行动</RouterLink>
       <span v-if="taskLocation.notice" role="status">{{ taskLocation.notice }}</span>
     </aside>
@@ -69,9 +69,11 @@
               <option v-for="goal in goals" :key="goal.goal_id" :value="goal.goal_id">{{ goal.title }}</option>
             </select>
           </label>
-          <button type="button" :disabled="replanning" @click="replan">
+          <button v-if="replanEntry === 'legacy'" type="button" :disabled="replanning" @click="replan">
             {{ replanning ? '重新读取中…' : '根据最新进度重排' }}
           </button>
+          <RouterLink v-else-if="replanEntry === 'workspace'" to="/today">在今日行动中预览调整</RouterLink>
+          <button v-else type="button" :disabled="replanEntry === 'loading'" @click="loadReplanEntry">{{ replanEntry === 'loading' ? '正在核对安排入口…' : '重新核对安排入口' }}</button>
         </div>
       </section>
 
@@ -149,10 +151,13 @@ import { useRoute, useRouter } from 'vue-router'
 import DataState from '../components/DataState.vue'
 import LearningPath from '../components/LearningPath.vue'
 import { goalTaskTarget, loadExactTodayGoal, locateGoalTask, readRouteReference } from '../today/navigation'
+import { resolveTodayEntry } from '../today/entry-state'
+import { availableTools } from '../navigation/catalog'
 import {
   createReverseGoal,
   getKnowledgeSources,
   getKnowledgeArtifact,
+  getOrchestratorCapabilities,
   getReverseGoals,
   replanReverseGoal,
   updateReverseGoalTask,
@@ -177,6 +182,7 @@ defaultDeadline.setDate(defaultDeadline.getDate() + 30)
 const loading = ref(true)
 const creating = ref(false)
 const replanning = ref(false)
+const replanEntry = ref<'loading' | 'legacy' | 'workspace' | 'error'>('loading')
 const updatingTask = ref('')
 const error = ref('')
 const sources = ref<KnowledgeSource[]>([])
@@ -276,6 +282,7 @@ async function toggleTask(task: ReverseGoalTask): Promise<void> {
 }
 
 async function replan(): Promise<void> {
+  if (replanEntry.value !== 'legacy') return
   if (!activeGoal.value) return
   replanning.value = true
   try {
@@ -298,11 +305,17 @@ function replaceGoal(goal: ReverseGoalPlan): void {
 function openTask(task: ReverseGoalTask): void {
   if (!activeGoal.value || task.status === 'invalidated') return
   const destination = goalTaskTarget(activeGoal.value, task)
-  if (destination) void router.push(destination)
+  if (destination && availableTools(import.meta.env).some(tool => tool.path === destination.path)) void router.push(destination)
   else ElMessage.warning('原任务入口已不可用，请在对应功能中重新选择。')
 }
 
-onMounted(load)
+let entryEpoch = 0
+async function loadReplanEntry(): Promise<void> {
+  const ticket = ++entryEpoch; replanEntry.value = 'loading'
+  try { const caps = await getOrchestratorCapabilities(); if (!disposed && ticket === entryEpoch) { const view = resolveTodayEntry(caps).view; replanEntry.value = view === 'legacy' || view === 'workspace' ? view : 'error' } }
+  catch { if (!disposed && ticket === entryEpoch) replanEntry.value = 'error' }
+}
+onMounted(() => { void load(); void loadReplanEntry() })
 watch(activeGoalId, locateCurrentTask)
 onBeforeUnmount(() => { disposed = true; loadEpoch++ })
 </script>

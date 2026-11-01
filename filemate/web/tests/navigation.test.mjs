@@ -4,6 +4,14 @@ import { availableTools, childrenTools, primaryGroups, primaryPath, relatedTools
 
 const tools = availableTools()
 
+test('one Today action primary retains the old Today learning search term and detail destinations', () => {
+  const primary = primaryGroups(tools).flatMap(group => group.items).filter(tool => tool.path === '/today')
+  assert.equal(primary.length, 1)
+  assert.equal(primary[0].title, '今日行动')
+  assert.equal(searchTools('今日学习', tools)[0]?.path, '/today')
+  for (const path of ['/goals', '/study-plan', '/semester']) assert.equal(primaryPath(path, tools), '/today')
+})
+
 test('every available tool and legacy alias has a reachable primary destination', () => {
   const primaries = primaryGroups(tools).flatMap(group => group.items.map(item => item.path))
   assert.equal(new Set(tools.map(tool => tool.path)).size, tools.length)

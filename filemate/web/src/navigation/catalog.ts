@@ -12,7 +12,7 @@ export type Tool = {
 
 const catalog: Tool[] = [
   { path: '/', title: '学习工作台', icon: 'House', group: '今天', family: 'home', primary: '/', keywords: ['首页', 'dashboard', 'filemate'] },
-  { path: '/today', title: '今日学习', icon: 'DataLine', group: '今天', family: 'plan', primary: '/today', keywords: ['任务', '复习', '提醒'] },
+  { path: '/today', title: '今日行动', icon: 'DataLine', group: '今天', family: 'plan', primary: '/today', keywords: ['今日学习', '任务', '复习', '提醒'] },
   { path: '/study-plan', title: '学习计划', icon: 'Reading', group: '今天', family: 'plan', primary: '/today', keywords: ['安排', '任务'] },
   { path: '/semester', title: '学期模式', icon: 'Calendar', group: '今天', family: 'plan', primary: '/today', keywords: ['课程', '考试', 'semester'], flag: 'VITE_ENABLE_SEMESTER' },
   { path: '/goals', title: '目标反推', icon: 'Aim', group: '今天', family: 'plan', primary: '/today', keywords: ['学习目标', '规划'] },
