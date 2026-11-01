@@ -104,11 +104,11 @@
 
 **Interfaces:** 消费任务2的客户端、展示类型及既有 `getCourseBrowserScope/listGraphCourses/getGraphCourse`；产出 `createTodayWorkspace`、`createTodayPreferences`、`createTodayStorage`。Vue通过wrap注入响应式包装，控制器写入同一代理；测试默认恒等包装，不依赖DOM。
 
-- [ ] 1. 先写 `late_goal_identity_and_restore_results_are_discarded`：延迟A读取后切到B，A不能回填；session-expired／data-restored调用 `resetIdentity()` 立即清快照、草稿和令牌；重新获得身份后才能请求。身份读取失败不能沿用上个账号的缓存；dispose后无写状态和遗留监听。
-- [ ] 2. 写 `scope_and_draft_never_save_silently`：无今日优先目标显示选择，不自动选最近目标；共享资料要求选课；来源明确选择且最多20；改预算或顺序只更新draft、清preview，不请求confirm。budget=0可预览空安排，NaN／小数／超过1440拒绝；已完成项只读，dirty时刷新只提示证据变化，不覆盖草稿。
-- [ ] 3. 写 `preferences_and_day_rollover_are_scoped`：本地存储拒绝／损坏JSON退回内存，A账号偏好不出现在B；模式只保存daily/exam/project；两个标签页的待决键不互相覆盖，同标签页刷新可读原键。服务端新study_date或倒计时提示跨日时丢弃旧预览，重新读取，不用本机日期提交旧日确认。
-- [ ] 4. 运行 `node --test tests/today-workspace.test.mjs`（`filemate/web`），新增失败后实现代次控制和一次初始化。目录分页按需读取，不拉全目标正文；课程元数据只用于明确范围，不能默认选整门课程所有资料。请求失败保留有效已存day和用户输入，并区分未确认、已确认、证据已变化。
-- [ ] 5. 重跑全通过；验证重复初始化／卸载不重复请求，不使用定时轮询全库。提交 `feat(today): 实现目标范围与可恢复草稿状态`。
+- [x] 1. 先写 `late_goal_identity_and_restore_results_are_discarded`：延迟A读取后切到B，A不能回填；session-expired／data-restored调用 `resetIdentity()` 立即清快照、草稿和令牌；重新获得身份后才能请求。身份读取失败不能沿用上个账号的缓存；dispose后无写状态和遗留监听。
+- [x] 2. 写 `scope_and_draft_never_save_silently`：无今日优先目标显示选择，不自动选最近目标；共享资料要求选课；来源明确选择且最多20；改预算或顺序只更新draft、清preview，不请求confirm。budget=0可预览空安排，NaN／小数／超过1440拒绝；已完成项只读，dirty时刷新只提示证据变化，不覆盖草稿。
+- [x] 3. 写 `preferences_and_day_rollover_are_scoped`：本地存储拒绝／损坏JSON退回内存，A账号偏好不出现在B；模式只保存daily/exam/project；两个标签页的待决键不互相覆盖，同标签页刷新可读原键。服务端新study_date或倒计时提示跨日时丢弃旧预览，重新读取，不用本机日期提交旧日确认。
+- [x] 4. 运行 `node --test tests/today-workspace.test.mjs`（`filemate/web`），新增失败后实现代次控制和一次初始化。目录分页按需读取，不拉全目标正文；课程元数据只用于明确范围，不能默认选整门课程所有资料。请求失败保留有效已存day和用户输入，并区分未确认、已确认、证据已变化。
+- [x] 5. 重跑全通过；验证重复初始化／卸载不重复请求，不使用定时轮询全库。提交 `feat(today): 实现目标范围与可恢复草稿状态`。
 
 ### Task 4: 接通预览、确认、未知结果恢复和撤销
 

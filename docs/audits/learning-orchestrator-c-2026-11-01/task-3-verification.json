@@ -1,0 +1,46 @@
+{
+  "stage": "C-task-3",
+  "date": "2026-11-01",
+  "status": "task_passed_not_C_acceptance",
+  "base_commit": "050fe0192f13769358892100e007b2c0543c8c96",
+  "targeted": {
+    "malformed_snapshot_red_failed": 1,
+    "malformed_snapshot_red_passed": 15,
+    "initial_green_passed": 15,
+    "initial_red_failed": 15
+  },
+  "frontend_gate": {
+    "typecheck": "PASS",
+    "tests": 334,
+    "failed": 0,
+    "exit_code": 0,
+    "build": "PASS",
+    "passed": 334
+  },
+  "bundle": {
+    "budget": {
+      "javascript": 460800,
+      "javascript_gzip": 143360,
+      "css": 153600
+    },
+    "measurements": {
+      "javascript": 386846,
+      "javascript_gzip": 143223,
+      "css": 111534
+    },
+    "exceeded": []
+  },
+  "rulings": [
+    "Restore a scope already explicitly confirmed for today; never choose a recent goal or last_goal_id as consent.",
+    "No new TodayState fields were necessary; the agreed reactive state contract is unchanged."
+  ],
+  "limitations": [
+    "Read/draft controller not yet connected to Vue Today.",
+    "Unknown-result writes and undo are Task4; real browser verification remains required."
+  ],
+  "source_sha256": {
+    "filemate/web/src/today/preferences.ts": "55fe92990dd0b6129e1ff51e54697ba1fdff7b6a74c828ff1c18400966923915",
+    "filemate/web/src/today/workspace-state.ts": "e9dd2cd362aec593936f6e9fcef00d5fa592b38a487ce22dd9ac947365b27463",
+    "filemate/web/tests/today-workspace.test.mjs": "c711c6b963f30c0f69b16ecc0e24f6ffb028d285cefe52dd5c41b476a903f6dc"
+  }
+}
