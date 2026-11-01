@@ -1,0 +1,52 @@
+{
+  "stage": "C-task-4",
+  "date": "2026-11-01",
+  "status": "task_passed_not_C_acceptance",
+  "base_commit": "6b6101e2e0bfd970c42d304b95196ba3bed34a7d",
+  "targeted": {
+    "initial_red_failed": 18,
+    "unchanged_workspace_passed": 16,
+    "initial_green": 34,
+    "undo_invalidation_red_failed": 2,
+    "final_cases": 35,
+    "undo_invalidation_red_passed": 33
+  },
+  "frontend_gate": {
+    "passed": 353,
+    "failed": 0,
+    "build": "PASS",
+    "typecheck": "PASS",
+    "tests": 353,
+    "exit_code": 0
+  },
+  "resolved_gate_issue": "Initial build reported TS6196 for unused type-only SchedulePreview import; removed it and reran the full frontend gate.",
+  "bundle": {
+    "budget": {
+      "javascript": 460800,
+      "javascript_gzip": 143360,
+      "css": 153600
+    },
+    "measurements": {
+      "javascript": 386846,
+      "javascript_gzip": 143223,
+      "css": 111534
+    },
+    "exceeded": []
+  },
+  "rulings": [
+    "An explicit fresh preview can resume the same unresolved key on a newer server day; older winning receipts remain history.",
+    "Only per-tab PendingLocator metadata persists. Confirmation and undo authorization stay in memory.",
+    "Undo-preview and pending-locator fields extend the same reactive state; identity reset and dispose remove their in-memory authority."
+  ],
+  "limitations": [
+    "Command-port tests simulate HTTP and response loss, not a production network test.",
+    "Vue integration, real browser and backend cross-domain journey remain Tasks5-8.",
+    "No real-student learning-effect study or deployment."
+  ],
+  "source_sha256": {
+    "filemate/web/src/today/command-state.ts": "5da26594f826fb157b7a40e273ba65fe1e3785bdb84caf449e61055a0da61dad",
+    "filemate/web/src/today/workspace-state.ts": "781c0ec94b698d03160b7eeda4d8ce169969952cb0248c21126e0e23ff81a638",
+    "filemate/web/src/types/today.ts": "78fecd4f937fcdeb137c798df4f5ae48a4a204dbc16edc3e53aa8622ed3ecefb",
+    "filemate/web/tests/today-commands.test.mjs": "95a96f4a73656e99823454ed5757283cccfd5278c2575d3ebb4f17df7cabd8b8"
+  }
+}

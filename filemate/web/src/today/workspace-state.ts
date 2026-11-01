@@ -57,20 +57,21 @@ function optionsValue(value: ScheduleOptions, snapshot: OrchestratorSnapshot): S
 /** Own only scoped reads and a local draft; all writes belong to the command controller. */
 export function createTodayWorkspace(port: TodayReadPort, storage: TodayStorage, clock: () => number, wrap: (state: TodayState) => TodayState = value => value) {
   const state = wrap({ phase: 'loading', identity: null, snapshot: null, day: null, draft: null, preview: null,
-    receipt: null, write_status: 'idle', error: '', dirty: false, generation: 0 })
+    receipt: null, undo_preview: null, pending: null, write_status: 'idle', error: '', dirty: false, generation: 0 })
   let disposed = false, initialized = false
   let initialization: Promise<void> | null = null, selectedScope: ScopeRequest | null = null, knownIdentity: string | null = null
   const alive = (ticket: number): boolean => !disposed && ticket === state.generation
   const writing = (): boolean => state.write_status === 'confirming' || state.write_status === 'undoing'
   function invalidate(): void {
     state.preview = null
+    state.undo_preview = null
     if (state.write_status === 'previewing' || state.write_status === 'undo_preview') state.write_status = 'idle'
   }
   function clear(phase: TodayState['phase'], removePending: boolean): void {
     if (removePending && knownIdentity) { try { storage.removeItem(todayPendingKey(knownIdentity)) } catch { /* Never reuse an in-memory authority after a reset. */ } }
     state.generation++
     state.phase = phase; state.identity = null; state.snapshot = null; state.day = null; state.draft = null
-    state.preview = null; state.receipt = null; state.write_status = 'idle'; state.error = ''; state.dirty = false
+    state.preview = null; state.undo_preview = null; state.pending = null; state.receipt = null; state.write_status = 'idle'; state.error = ''; state.dirty = false
     selectedScope = null; initialized = false; initialization = null
     if (removePending) knownIdentity = null
   }
@@ -109,8 +110,9 @@ export function createTodayWorkspace(port: TodayReadPort, storage: TodayStorage,
     } catch (error) { if (alive(ticket)) failure(error) }
   }
   function initialize(capabilities?: OrchestratorCapabilities): Promise<void> {
-    if (disposed || initialized) return Promise.resolve()
+    if (disposed || initialized && (state.identity !== null || state.phase === 'legacy')) return Promise.resolve()
     if (initialization) return initialization
+    if (!state.identity) { initialized = false; selectedScope = null }
     const ticket = ++state.generation
     state.phase = 'loading'; state.error = ''
     const task = (async () => {

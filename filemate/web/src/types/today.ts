@@ -1,5 +1,5 @@
 import type { getCourseBrowserScope, getGraphCourse, listGraphCourses } from '../services/api.ts'
-import type { DayView, OperationReceipt, OrchestratorClient, OrchestratorSnapshot, PreviewRequest, SchedulePreview, TaskView } from './orchestrator.ts'
+import type { DayView, OperationReceipt, OrchestratorClient, OrchestratorSnapshot, PreviewRequest, SchedulePreview, TaskView, UndoPreview } from './orchestrator.ts'
 
 export type { OrchestratorClient } from './orchestrator.ts'
 export type TodayMode = 'daily' | 'exam' | 'project'
@@ -20,6 +20,7 @@ export interface TodayState {
   phase: 'loading' | 'legacy' | 'ready' | 'error' | 'expired'; identity: string | null
   snapshot: OrchestratorSnapshot | null; day: DayView | null; draft: PreviewRequest | null
   preview: SchedulePreview | null; receipt: OperationReceipt | null
+  undo_preview: UndoPreview | null; pending: PendingLocator | null
   write_status: 'idle' | 'previewing' | 'confirming' | 'unknown' | 'saved' | 'undo_preview' | 'undoing'
   error: string; dirty: boolean; generation: number
 }

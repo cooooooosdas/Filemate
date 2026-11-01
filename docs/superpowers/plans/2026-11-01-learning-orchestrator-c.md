@@ -116,11 +116,11 @@
 
 **Interfaces:** 消费 `TodayState`、任务3的refresh及B级写合同；产出 `createTodayCommands`。预览body、确认body和undo token分别管理，不能互用。
 
-- [ ] 1. 先写 `lost_confirm_uses_one_key_and_never_means_failure`：重复点击只发一次confirm；超时进入unknown；recover沿原键查询，404仍unknown；收到回执后再读day。回执已成功而day读取503显示“已保存，刷新暂不可用”，不能再确认或假撤销。另写 `missing_request_can_resume_with_fresh_preview_and_same_key`：刷新后旧请求从未到达时，用户可重读并明确重新预览／确认，沿用未决键；旧请求若先提交，新体得到冲突后查出原回执；新体若先提交，旧体不能另写一次。不得永久卡在404，也不得自动换键反复提交。
-- [ ] 2. 写 `confirm_and_undo_bind_the_reviewed_revision`：改预算／目标／顺序后旧preview不可确认；900秒过期或409需重预览；撤销先独立预览且显示影响，使用自己的稳定键。重新打开页面用day.latest_operation恢复撤销入口，完成过的领域任务不被撤销重置；无旧指针说明限制，不猜operation_id。
-- [ ] 3. 写 `pending_locator_survives_refresh_without_secrets`：同身份同日期刷新后只按保存键查回执；存储中没有token、scope正文、回答或快照；待决撤销只允许按原operation_id重做撤销预览并沿用原键，不变成确认安排。恢复备份／账号过期／dispose清除确认与撤销授权。旧日回执只能作为同身份历史显示，不能覆盖新的日期／范围／修订；确认或撤销在途时禁止再发另一写操作。
-- [ ] 4. 运行 `node --test tests/today-commands.test.mjs tests/today-workspace.test.mjs`（`filemate/web`），新增失败后实现。429不自动循环重试；503保留输入；401清身份；未知错误有明确重读／查回执操作。刷新和路由离开须提示未提交草稿或在途请求可能完成。
-- [ ] 5. 重跑全通过，确认UI发出的confirm完全沿用预览scope/options/evidence_revision。提交 `feat(today): 接入确认撤销与断线回执恢复`。
+- [x] 1. 先写 `lost_confirm_uses_one_key_and_never_means_failure`：重复点击只发一次confirm；超时进入unknown；recover沿原键查询，404仍unknown；收到回执后再读day。回执已成功而day读取503显示“已保存，刷新暂不可用”，不能再确认或假撤销。另写 `missing_request_can_resume_with_fresh_preview_and_same_key`：刷新后旧请求从未到达时，用户可重读并明确重新预览／确认，沿用未决键；旧请求若先提交，新体得到冲突后查出原回执；新体若先提交，旧体不能另写一次。不得永久卡在404，也不得自动换键反复提交。
+- [x] 2. 写 `confirm_and_undo_bind_the_reviewed_revision`：改预算／目标／顺序后旧preview不可确认；900秒过期或409需重预览；撤销先独立预览且显示影响，使用自己的稳定键。重新打开页面用day.latest_operation恢复撤销入口，完成过的领域任务不被撤销重置；无旧指针说明限制，不猜operation_id。
+- [x] 3. 写 `pending_locator_survives_refresh_without_secrets`：同身份同日期刷新后只按保存键查回执；存储中没有token、scope正文、回答或快照；待决撤销只允许按原operation_id重做撤销预览并沿用原键，不变成确认安排。恢复备份／账号过期／dispose清除确认与撤销授权。旧日回执只能作为同身份历史显示，不能覆盖新的日期／范围／修订；确认或撤销在途时禁止再发另一写操作。
+- [x] 4. 运行 `node --test tests/today-commands.test.mjs tests/today-workspace.test.mjs`（`filemate/web`），新增失败后实现。429不自动循环重试；503保留输入；401清身份；未知错误有明确重读／查回执操作。刷新和路由离开须提示未提交草稿或在途请求可能完成。
+- [x] 5. 重跑全通过，确认UI发出的confirm完全沿用预览scope/options/evidence_revision。提交 `feat(today): 接入确认撤销与断线回执恢复`。
 
 ### Task 5: 让原功能精确接住任务
 
