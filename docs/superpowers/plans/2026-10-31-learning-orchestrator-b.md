@@ -77,11 +77,11 @@
 
 **Interfaces:** Consumes当前`SQLiteStorage.read_snapshot()`、来源修订、领域表/Artifact和`ReviewQueries`；Produces `SnapshotReader(storage, *, clock: Clock | None = None).read(scope: ScopeRequest) -> EvidenceSnapshot`及`read_in_transaction(read: SQLiteStorage, scope: ScopeRequest, *, as_of: datetime) -> EvidenceSnapshot`。后者只读传入连接，不新开快照/提交事务。`ReviewQueries.page_in_snapshot(read, filters, *, as_of, source_ids: tuple[str, ...], limit=100, offset=0, eligible_only=False) -> dict`保证先范围过滤再计数/分页；不改变旧course过滤含义。
 
-- [ ] Step 1: 写`test_scope_never_reads_other_course`、`test_goal_without_scope_has_no_global_evidence`、`test_scope_membership_and_foreign_ids`、`test_writer_between_tables_cannot_mix_snapshots`、`test_scoped_due_after_global_first_hundred_is_not_hidden`。断言只读前后数据库逐表逻辑摘要相同、题干/回答不进入公开摘要。
-- [ ] Step 2: Run `uv run pytest filemate/tests/orchestrator/test_snapshot.py -q`。Expected: 新入口缺失导致FAIL，不能以fixture导入错误充当RED。
-- [ ] Step 3: 实现上述合同。课程、来源、目标、领域事实在同一事务核验；面试只读显式goal关联与原训练证据，不并入课程评分；未知、历史只读/坏JSON/缺源项标明不可用。查询上限：100个计划、100个复习候选、200条引用、最终投影200项；全量计数与有限详情分开，覆盖不足显式返回；依赖关系未完整核验不能当作“没有前置”，受影响任务blocked/deferred。不靠全空间画像或整图聚合。SQL使用参数绑定，空source_ids绝不能取消WHERE条件。
-- [ ] Step 4: Run `uv run pytest filemate/tests/orchestrator/test_snapshot.py filemate/tests/wrongbook/test_workspace_reads.py filemate/tests/wrongbook/test_insights.py filemate/tests/wrongbook/test_priority_capacity_contracts.py -q`。Expected: 全部PASS，旧筛选及真实SQLite只读约束保持。以上三个现有测试文件已按当前仓库核对。
-- [ ] Step 5: Commit `feat(orchestrator): 增加限域一致学习证据快照`，只暂存本任务文件。
+- [x] Step 1: 写`test_scope_never_reads_other_course`、`test_goal_without_scope_has_no_global_evidence`、`test_scope_membership_and_foreign_ids`、`test_writer_between_tables_cannot_mix_snapshots`、`test_scoped_due_after_global_first_hundred_is_not_hidden`。断言只读前后数据库逐表逻辑摘要相同、题干/回答不进入公开摘要。
+- [x] Step 2: Run `uv run pytest filemate/tests/orchestrator/test_snapshot.py -q`。Expected: 新入口缺失导致FAIL，不能以fixture导入错误充当RED。
+- [x] Step 3: 实现上述合同。课程、来源、目标、领域事实在同一事务核验；面试只读显式goal关联与原训练证据，不并入课程评分；未知、历史只读/坏JSON/缺源项标明不可用。查询上限：100个计划、100个复习候选、200条引用、最终投影200项；全量计数与有限详情分开，覆盖不足显式返回；依赖关系未完整核验不能当作“没有前置”，受影响任务blocked/deferred。不靠全空间画像或整图聚合。SQL使用参数绑定，空source_ids绝不能取消WHERE条件。
+- [x] Step 4: Run `uv run pytest filemate/tests/orchestrator/test_snapshot.py filemate/tests/wrongbook/test_workspace_reads.py filemate/tests/wrongbook/test_insights.py filemate/tests/wrongbook/test_priority_capacity_contracts.py -q`。Expected: 全部PASS，旧筛选及真实SQLite只读约束保持。以上三个现有测试文件已按当前仓库核对。
+- [x] Step 5: Commit `feat(orchestrator): 增加限域一致学习证据快照`，只暂存本任务文件。
 
 ### Task 2: 任务身份、去重与真实状态投影（B2）
 
@@ -89,11 +89,11 @@
 
 **Interfaces:** Consumes任务1 `EvidenceSnapshot`；Produces `project_tasks(snapshot: EvidenceSnapshot) -> TaskProjection`，其中`TaskProjection`有`tasks/completed/unavailable/overlaps/coverage`；每项为TaskView或带原因的原始引用。
 
-- [ ] Step 1: 写`test_graph_and_review_plans_project_once`、`test_same_wrong_cycle_one_action_with_all_origins`、`test_diagnosis_does_not_create_cycle`、`test_new_due_cycle_keeps_old_history`、`test_composite_plan_is_not_swallowed_by_one_review`、`test_completion_and_semester_revision_do_not_mint_new_task`、`test_task_routes_resolve_original_resource`。
-- [ ] Step 2: Run `uv run pytest filemate/tests/orchestrator/test_task_views.py -q`。Expected: project_tasks缺失或关键断言FAIL。
-- [ ] Step 3: `plan:{plan_id}:{day_index}`、`goal:{goal_id}:{template_id}`、`semester:{semester_artifact_id}:{task_id}`作为原始身份；图谱与错题增量是已有plan的来源，不能再投影一份。复习身份为`review:{wrong_id}:{digest(规范UTC next_review_at)}:independent_review`；诊断更新不改变周期，人工改期只标原引用superseded，不谎报完成。只在明确同wrong、周期与独立复练动作时合并，并保留全部origin_refs；通用导航任务或复合计划日只标可能重叠。以领域完成记录/实际作答事件区分已执行、待核对与达标，不从勾选生成能力结论。
-- [ ] Step 4: Run `uv run pytest filemate/tests/orchestrator/test_snapshot.py filemate/tests/orchestrator/test_task_views.py -q`。Expected: 全部PASS；重复投影不写study_plans、quiz_attempts、review_events或完成字段。
-- [ ] Step 5: Commit `feat(orchestrator): 统一任务投影与动作去重`。
+- [x] Step 1: 写`test_graph_and_review_plans_project_once`、`test_same_wrong_cycle_one_action_with_all_origins`、`test_diagnosis_does_not_create_cycle`、`test_new_due_cycle_keeps_old_history`、`test_composite_plan_is_not_swallowed_by_one_review`、`test_completion_and_semester_revision_do_not_mint_new_task`、`test_task_routes_resolve_original_resource`。
+- [x] Step 2: Run `uv run pytest filemate/tests/orchestrator/test_task_views.py -q`。Expected: project_tasks缺失或关键断言FAIL。
+- [x] Step 3: `plan:{plan_id}:{day_index}`、`goal:{goal_id}:{template_id}`、`semester:{semester_artifact_id}:{task_id}`作为原始身份；图谱与错题增量是已有plan的来源，不能再投影一份。复习身份为`review:{wrong_id}:{digest(规范UTC next_review_at)}:independent_review`；诊断更新不改变周期，人工改期只标原引用superseded，不谎报完成。只在明确同wrong、周期与独立复练动作时合并，并保留全部origin_refs；通用导航任务或复合计划日只标可能重叠。以领域完成记录/实际作答事件区分已执行、待核对与达标，不从勾选生成能力结论。
+- [x] Step 4: Run `uv run pytest filemate/tests/orchestrator/test_snapshot.py filemate/tests/orchestrator/test_task_views.py -q`。Expected: 全部PASS；重复投影不写study_plans、quiz_attempts、review_events或完成字段。
+- [x] Step 5: Commit `feat(orchestrator): 统一任务投影与动作去重`。
 
 ### Task 3: 规则优先级、预算与用户固定顺序（B3—B4）
 
@@ -101,11 +101,11 @@
 
 **Interfaces:** Consumes `EvidenceSnapshot`、`TaskProjection`、`ScheduleOptions`；Produces `build_schedule(snapshot: EvidenceSnapshot, projection: TaskProjection, options: ScheduleOptions) -> ScheduleResult`及常量`RULE_VERSION='learning-orchestrator-rules-v1'`。纯函数，无SQL、当前时钟、随机数或模型调用。
 
-- [ ] Step 1: 写`test_same_snapshot_is_deterministic`、`test_zero_minutes_defers_every_pending_task`、`test_pins_and_manual_order_survive_budget_reduction`、`test_overbudget_urgent_task_is_deferred_with_reason`、`test_shanghai_midnight_and_same_day_deadline`、`test_unknown_minutes_and_inactive_refs_are_explicit`、`test_manual_minutes_are_bounded_estimates`、`test_completed_is_never_reopened`，拒绝bool/浮点预算与重复/外来ID。
-- [ ] Step 2: Run `uv run pytest filemate/tests/orchestrator/test_scheduler.py -q`。Expected: build_schedule缺失或上述行为FAIL。
-- [ ] Step 3: 固定/手排序列先保持相对顺序，其余键为`(是否有效到期, 明确截止日, -可信错误次数, 已确认前置层级, task_id)`；日期、次数、关系均附可核对引用，缺失值不得编造。循环依赖标blocked，不猜前置关系。按顺序只纳入可完整放入剩余预算的任务；入选最多20，其余说明budget/limit/excluded/blocked/estimate_required。完成反馈独立于预算，截止日从原目标读取，不改为明天。估时可复用已有duration；目标模板的版本估时为import-source=5、review-source=15、baseline-quiz=20、explain-wrong-aloud=12、build-study-plan=10、baseline-interview=15、review-evidence=5分钟，标明rule_default而非实际耗时；clear-due-wrong是汇总导航，不伪装成单题动作或已完成聚合。用户分钟覆盖优先但仍标明预计；未知模板没有估时则estimate_required。
-- [ ] Step 4: Run `uv run pytest filemate/tests/orchestrator -q`。Expected: 全部PASS；三类目标（考试、竞赛、求职）的相同证据规则可复算、零模型调用。
-- [ ] Step 5: Commit `feat(orchestrator): 增加可解释预算调度规则`。
+- [x] Step 1: 写`test_same_snapshot_is_deterministic`、`test_zero_minutes_defers_every_pending_task`、`test_pins_and_manual_order_survive_budget_reduction`、`test_overbudget_urgent_task_is_deferred_with_reason`、`test_shanghai_midnight_and_same_day_deadline`、`test_unknown_minutes_and_inactive_refs_are_explicit`、`test_manual_minutes_are_bounded_estimates`、`test_completed_is_never_reopened`，拒绝bool/浮点预算与重复/外来ID。
+- [x] Step 2: Run `uv run pytest filemate/tests/orchestrator/test_scheduler.py -q`。Expected: build_schedule缺失或上述行为FAIL。
+- [x] Step 3: 固定/手排序列先保持相对顺序，其余键为`(是否有效到期, 明确截止日, -可信错误次数, 已确认前置层级, task_id)`；日期、次数、关系均附可核对引用，缺失值不得编造。循环依赖标blocked，不猜前置关系。按顺序只纳入可完整放入剩余预算的任务；入选最多20，其余说明budget/limit/excluded/blocked/estimate_required。完成反馈独立于预算，截止日从原目标读取，不改为明天。估时可复用已有duration；目标模板的版本估时为import-source=5、review-source=15、baseline-quiz=20、explain-wrong-aloud=12、build-study-plan=10、baseline-interview=15、review-evidence=5分钟，标明rule_default而非实际耗时；clear-due-wrong是汇总导航，不伪装成单题动作或已完成聚合。用户分钟覆盖优先但仍标明预计；未知模板没有估时则estimate_required。
+- [x] Step 4: Run `uv run pytest filemate/tests/orchestrator -q`。Expected: 全部PASS；三类目标（考试、竞赛、求职）的相同证据规则可复算、零模型调用。
+- [x] Step 5: Commit `feat(orchestrator): 增加可解释预算调度规则`。
 
 ### Task 4: 日安排确认、幂等恢复与撤销（B5）
 
@@ -113,12 +113,12 @@
 
 **Interfaces:** Consumes任务1—3及现役`data_actions.issue/check/finish`；Produces `OrchestratorCommands(storage, *, clock=None).preview(request: PreviewRequest) -> SchedulePreview`、`confirm(request: ConfirmRequest) -> OperationReceipt`、`preview_undo(operation_id: str) -> UndoPreview`、`confirm_undo(operation_id: str, request: UndoConfirmRequest) -> OperationReceipt`；`OrchestratorRepository(storage).today(study_date: date) -> DayView`及`find_request(request_key: str) -> OperationReceipt | None`。
 
-- [ ] Step 1: 写`test_preview_only_persists_token_not_tasks`、`test_confirm_replay_and_changed_body`、`test_two_storage_instances_only_one_revision_wins`、`test_lost_response_recovers_without_second_apply`、`test_undo_preserves_new_completion`、`test_retry_after_undo_never_reapplies`、`test_source_delete_or_midnight_invalidates_preview`、`test_write_failure_rolls_back_artifact_token_and_audit`、`test_reserved_artifacts_cannot_be_edited_or_retyped`。
-- [ ] Step 2: Run `uv run pytest filemate/tests/orchestrator/test_commands.py -q`。Expected: commands/repository缺失或原子性断言FAIL。
-- [ ] Step 3: preview短事务写15分钟绑定令牌；不写领域记录。confirm/undo使用同一数据库连接的`BEGIN IMMEDIATE`，在事务内重读scope、day revision、偏好和证据，再保存日安排、不可变操作Artifact、令牌回执及审计。禁止调用会自行commit的`save_artifact/set_daily_coach_preferences`作为事务内部子步骤。操作键同body回执幂等、异body409；先核对command摘要才走成功token回放。恢复后的旧token不存在即拒绝，不能仅凭操作Artifact重放写入。
+- [x] Step 1: 写`test_preview_only_persists_token_not_tasks`、`test_confirm_replay_and_changed_body`、`test_two_storage_instances_only_one_revision_wins`、`test_lost_response_recovers_without_second_apply`、`test_undo_preserves_new_completion`、`test_retry_after_undo_never_reapplies`、`test_source_delete_or_midnight_invalidates_preview`、`test_write_failure_rolls_back_artifact_token_and_audit`、`test_reserved_artifacts_cannot_be_edited_or_retyped`。
+- [x] Step 2: Run `uv run pytest filemate/tests/orchestrator/test_commands.py -q`。Expected: commands/repository缺失或原子性断言FAIL。
+- [x] Step 3: preview短事务写15分钟绑定令牌；不写领域记录。confirm/undo使用同一数据库连接的`BEGIN IMMEDIATE`，在事务内重读scope、day revision、偏好和证据，再保存日安排、不可变操作Artifact、令牌回执及审计。禁止调用会自行commit的`save_artifact/set_daily_coach_preferences`作为事务内部子步骤。操作键同body回执幂等、异body409；先核对command摘要才走成功token回放。恢复后的旧token不存在即拒绝，不能仅凭操作Artifact重放写入。
   同日仅一个已确认主安排，切目标需展示替换影响；先读旧日期同名偏好作为首次默认值，不回写旧偏好表。旧入口并发改偏好也参与预览摘要。撤销只恢复此前范围/偏好/引用，不能恢复任务旧status；后续编辑冲突时拒绝。原确认撤销后再重试只返回历史回执并明确undone，不重新应用。读取保存安排时重验引用，缺源/改题/换周期标stale并要求重做预览。将新操作和未使用预览分别限制为每空间每天100条，超额429；回放、只读和每个操作至多一次的撤销不消耗新确认额度。
-- [ ] Step 4: Run `uv run pytest filemate/tests/orchestrator -q`。Expected: 全部PASS；并发、故障、重试后领域表指纹均未被日安排写入改变。
-- [ ] Step 5: Commit `feat(orchestrator): 增加可撤销的日安排确认命令`。
+- [x] Step 4: Run `uv run pytest filemate/tests/orchestrator -q`。Expected: 全部PASS；并发、故障、重试后领域表指纹均未被日安排写入改变。
+- [x] Step 5: Commit `feat(orchestrator): 增加可撤销的日安排确认命令`。
 
 ### Task 5: 现役认证内的API与客户端合同
 
@@ -137,11 +137,11 @@
 | POST `/operations/{operation_id}/undo-preview` | 严格空对象 → UndoPreview；仅令牌 | `previewOrchestratorUndo(operationId: string): Promise<UndoPreview>` |
 | POST `/operations/{operation_id}/undo-confirm` | token、request_key、confirmed=true → OperationReceipt | `confirmOrchestratorUndo(operationId: string, request: UndoConfirmRequest): Promise<OperationReceipt>` |
 
-- [ ] Step 1: 写`test_auth_and_tenant_boundaries`、`test_disabled_keeps_history_readable`、`test_strict_json_and_unknown_or_repeated_query`、`test_stale_scope_409_and_storage_503`、`test_preview_and_operation_quotas_429`、`test_generic_artifact_patch_rejects_reserved_types`、`test_api_prefix_uses_existing_gateway_rules`；客户端测试用现有typescript包AST提取新增8个导出函数及其私有orchestratorResult函数与orchestratorRoot常量，transpile后注入HTTP替身执行函数体；不初始化import.meta.env或全局Axios拦截器。要求原参数完整发送、路径ID编码、读取/写入超时分别15/30秒、失败不上报成功，不以源码关键词匹配代替行为断言。
-- [ ] Step 2: Run `uv run pytest filemate/tests/orchestrator/test_api.py -q`及`node --test filemate/web/tests/orchestrator-api.test.mjs`。Expected: 新路由404/函数缺失等目标FAIL；沿用当前Node test runner与TypeScript编译器，不添加测试框架。
-- [ ] Step 3: 挂载前缀`/api/learning/orchestrator`的薄路由，客户端同前缀；现有Vite、Caddy、Nginx的`/api/`规则已存在，不增第二套转发路径。沿用现役身份/CSRF/origin边界、错误envelope、no-store，拒绝未知或重复查询参数；SQLite故障503保留客户端输入。开关关闭不改变任何旧路由。更新环境示例/API文档与Ruff检查目录，不新增Vue界面或客户端本地伪回执。
-- [ ] Step 4: Run `uv run pytest filemate/tests/orchestrator -q`、`node --test filemate/web/tests/orchestrator-api.test.mjs`和`npm --prefix filemate/web run build`。Expected: 全部PASS、类型/构建通过；既有账号、错题、图谱路由合同不变。
-- [ ] Step 5: Commit `feat(orchestrator): 接通学习决策API与共享类型`。
+- [x] Step 1: 写`test_auth_and_tenant_boundaries`、`test_disabled_keeps_history_readable`、`test_strict_json_and_unknown_or_repeated_query`、`test_stale_scope_409_and_storage_503`、`test_preview_and_operation_quotas_429`、`test_generic_artifact_patch_rejects_reserved_types`、`test_api_prefix_uses_existing_gateway_rules`；客户端测试用现有typescript包AST提取新增8个导出函数及其私有orchestratorResult函数与orchestratorRoot常量，transpile后注入HTTP替身执行函数体；不初始化import.meta.env或全局Axios拦截器。要求原参数完整发送、路径ID编码、读取/写入超时分别15/30秒、失败不上报成功，不以源码关键词匹配代替行为断言。
+- [x] Step 2: Run `uv run pytest filemate/tests/orchestrator/test_api.py -q`及`node --test filemate/web/tests/orchestrator-api.test.mjs`。Expected: 新路由404/函数缺失等目标FAIL；沿用当前Node test runner与TypeScript编译器，不添加测试框架。
+- [x] Step 3: 挂载前缀`/api/learning/orchestrator`的薄路由，客户端同前缀；现有Vite、Caddy、Nginx的`/api/`规则已存在，不增第二套转发路径。沿用现役身份/CSRF/origin边界、错误envelope、no-store，拒绝未知或重复查询参数；SQLite故障503保留客户端输入。开关关闭不改变任何旧路由。更新环境示例/API文档与Ruff检查目录，不新增Vue界面或客户端本地伪回执。
+- [x] Step 4: Run `uv run pytest filemate/tests/orchestrator -q`、`node --test filemate/web/tests/orchestrator-api.test.mjs`和`npm --prefix filemate/web run build`。Expected: 全部PASS、类型/构建通过；既有账号、错题、图谱路由合同不变。
+- [x] Step 5: Commit `feat(orchestrator): 接通学习决策API与共享类型`。
 
 ### Task 6: 旧SQLite、范围容量与故障兼容（B6）
 
@@ -149,13 +149,13 @@
 
 **Interfaces:** Consumes任务1—5；Produces runtime/performance JSON证据。CLI：`uv run python -m scripts.acceptance.orchestrator_runtime --sqlite _working/wrongbook-e-20261029/sqlite3.exe --out _working/orchestrator-b-20261031/runtime-1`；`uv run python -m scripts.acceptance.orchestrator_performance --out _working/orchestrator-b-20261031/performance-1`。runtime另支持`--probe-only --db <明确路径> --out <非已有JSON>`，只以SQLite URI mode=ro记录实际Python/SQLite/JSON1/变量上限/schema、表/索引、release标识，不调用init_schema、不输出行内容或任何凭据。提供`--self-test --out <新的候选目录_working子目录>`，用当前解释器的SQLite模块运行任务1—5的合成快照/调度/确认/重放/撤销，不读生产DB、不依赖pytest。结果区分probe_only、cli_sql_subset和full_application。
 
-- [ ] Step 1: 写`test_runtime_probe_cannot_migrate_or_write`、`test_schema36_unchanged_by_schedule`、`test_runtime_cli_rejects_missing_or_wrong_engine`、`test_no_json1_and_malformed_records`、`test_large_scope_reports_counts_without_cross_scope_fallback`。容量数据为100/1000/10000道原创合成错题，并放入另一课程大量排在前面的记录。
-- [ ] Step 2: Run `uv run pytest filemate/tests/orchestrator/test_runtime.py filemate/tests/orchestrator/test_capacity.py -q`。Expected: 缺CLI入口或相应兼容性断言FAIL。
-- [ ] Step 3: 在实际3.26引擎执行本阶段涉及的SQL、确认/重放/撤销SQL事务和完整性检查；本机Python仓储回读只作为另一个证明，不冒称旧Python完整运行。记录34→36升级路径既有迁移行为、业务schema仍36、FK/integrity、无JSON1分支与坏数据处理。新脚本只输出到新的项目_working子目录，拒绝覆盖。
+- [x] Step 1: 写`test_runtime_probe_cannot_migrate_or_write`、`test_schema36_unchanged_by_schedule`、`test_runtime_cli_rejects_missing_or_wrong_engine`、`test_no_json1_and_malformed_records`、`test_large_scope_reports_counts_without_cross_scope_fallback`。容量数据为100/1000/10000道原创合成错题，并放入另一课程大量排在前面的记录。
+- [x] Step 2: Run `uv run pytest filemate/tests/orchestrator/test_runtime.py filemate/tests/orchestrator/test_capacity.py -q`。Expected: 缺CLI入口或相应兼容性断言FAIL。
+- [x] Step 3: 在实际3.26引擎执行本阶段涉及的SQL、确认/重放/撤销SQL事务和完整性检查；本机Python仓储回读只作为另一个证明，不冒称旧Python完整运行。记录34→36升级路径既有迁移行为、业务schema仍36、FK/integrity、无JSON1分支与坏数据处理。新脚本只输出到新的项目_working子目录，拒绝覆盖。
   容量记录冷/暖、四并发、P50/P95/最大值、SQL数量和候选/响应尺寸；暖请求与四并发P95预算500ms，响应≤512KiB，输出候选≤200/选中≤20，计数准确且truncation明确。范围查询在LIMIT前过滤，不因200条限额漏掉范围后方数据而声称完整。超限记录真实P2并修复，不改阈值冒充通过。
   通过现有服务器连接方式只读取得**当时实际生产**探针；使用同一实际服务解释器/SQLite，在隔离候选目录执行本脚本`--self-test`，仅操作自建合成库，不切换生产服务或启动第二个公网服务。CLI旧引擎执行不了Python注册的UDF时明确记为SQL子集证明，不能称为完整应用已兼容。若未取得探针或未在匹配的完整目标运行时完成合成服务验证，保留实际生产兼容待验；禁止以旧发布报告或Windows 3.26替代。其余B工作可继续，但B6完整生产兼容不得标PASS，更不能上线。
-- [ ] Step 4: Run `uv run pytest filemate/tests/orchestrator -q`、上述两CLI（旧引擎当前候选路径`_working/wrongbook-e-20261029/sqlite3.exe`，先核对版本与来源SHA；引擎不随源码交付，缺失或版本不符时本项未完成，不能用mock替代运行成功）。Expected: 本地合同/旧引擎/容量全部PASS；生产探针及匹配解释器的隔离self-test另列，仅有版本信息或CLI子集不能完成B6。
-- [ ] Step 5: Commit `test(orchestrator): 验证旧运行时与限域容量边界`。
+- [x] Step 4: Run `uv run pytest filemate/tests/orchestrator -q`、上述两CLI（旧引擎当前候选路径`_working/wrongbook-e-20261029/sqlite3.exe`，先核对版本与来源SHA；引擎不随源码交付，缺失或版本不符时本项未完成，不能用mock替代运行成功）。Expected: 本地合同/旧引擎/容量全部PASS；生产探针及匹配解释器的隔离self-test另列，仅有版本信息或CLI子集不能完成B6。
+- [x] Step 5: Commit `test(orchestrator): 验证旧运行时与限域容量边界`。
 
 ### Task 7: B级端到端、备份恢复与阶段交付
 
@@ -163,12 +163,12 @@
 
 **Interfaces:** Consumes任务1—6；Produces完整B级工程候选和可重跑合成证据（API阶段，无新增Vue工作台）；CLI `uv run python -m scripts.acceptance.orchestrator_journey --out _working/orchestrator-b-20261031/journey-1`。运行原有接口完成真实领域写入，新决策层只做安排与依据。
 
-- [ ] Step 1: 写`test_goal_to_schedule_to_completion_and_restart`、`test_restore_keeps_references_but_invalidates_tokens`、`test_delete_one_source_only_stales_affected_schedule`、`test_api_via_dev_proxy_returns_json_for_both_accept_headers`。至少覆盖：创建两个课程与多个目标→明确今日优先目标→候选与依据→确认→减少预算→预览重排→去重→在原错题/计划/目标接口执行→刷新重启→查看证据→撤销安排不撤销已完成学习。
-- [ ] Step 2: Run `uv run pytest filemate/tests/orchestrator/test_journey.py -q`。Expected: 缺journey入口或跨域/恢复断言FAIL；不得用手改数据库模拟最终用户完成流程。
-- [ ] Step 3: 实现合成验收驱动及真实HTTP请求，模拟失联重试/DB503/过期token；启动自有隔离backend/Vite子进程，通过前端代理请求新API，Accept=application/json与text/html均须返回JSON，结束只关闭自有进程；用既有托管与个人备份机制恢复到新隔离目录并拒绝覆盖，核对完整记录与来源指纹。前三专项数据前后逐表/有序行摘要保存；预览和确认不得修改领域表，只有原领域提交带来预期变化。导出不含密钥，删除资料后不能从操作Artifact恢复原文或继续声称旧依据有效。
-- [ ] Step 4: Run `uv run pytest filemate/tests/orchestrator -q`、`uv run python -m scripts.acceptance.orchestrator_journey --out _working/orchestrator-b-20261031/journey-1`、`powershell -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend`。Expected: 定向、端到端及全项目门禁全部PASS；读取日志而非推定旧1820/302仍适用。新API类型构建和既有前三专项测试均进入本次门禁。
-- [ ] Step 5: 自查本计划覆盖，完成一次独立全范围审阅；Important/Critical以可复现测试修复，一次修复后回归，不循环重复审阅。交付记录实际提交、运行时、开关/关闭回退、确认与撤销手册、API、无迁移证明、容量、失败恢复、未完成条件；不把合成结果称为真人学习效果。
-- [ ] Step 6: Commit `docs(orchestrator): 归档B级联调与阶段交付证据`。停止于B级报告，等待用户确认B级通过后才进入C，不推送部署。
+- [x] Step 1: 写`test_goal_to_schedule_to_completion_and_restart`、`test_restore_keeps_references_but_invalidates_tokens`、`test_delete_one_source_only_stales_affected_schedule`、`test_api_via_dev_proxy_returns_json_for_both_accept_headers`。至少覆盖：创建两个课程与多个目标→明确今日优先目标→候选与依据→确认→减少预算→预览重排→去重→在原错题/计划/目标接口执行→刷新重启→查看证据→撤销安排不撤销已完成学习。
+- [x] Step 2: Run `uv run pytest filemate/tests/orchestrator/test_journey.py -q`。Expected: 缺journey入口或跨域/恢复断言FAIL；不得用手改数据库模拟最终用户完成流程。
+- [x] Step 3: 实现合成验收驱动及真实HTTP请求，模拟失联重试/DB503/过期token；启动自有隔离backend/Vite子进程，通过前端代理请求新API，Accept=application/json与text/html均须返回JSON，结束只关闭自有进程；用既有托管与个人备份机制恢复到新隔离目录并拒绝覆盖，核对完整记录与来源指纹。前三专项数据前后逐表/有序行摘要保存；预览和确认不得修改领域表，只有原领域提交带来预期变化。导出不含密钥，删除资料后不能从操作Artifact恢复原文或继续声称旧依据有效。
+- [x] Step 4: Run `uv run pytest filemate/tests/orchestrator -q`、`uv run python -m scripts.acceptance.orchestrator_journey --out _working/orchestrator-b-20261031/journey-1`、`powershell -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend`。Expected: 定向、端到端及全项目门禁全部PASS；读取日志而非推定旧1820/302仍适用。新API类型构建和既有前三专项测试均进入本次门禁。
+- [x] Step 5: 自查本计划覆盖，完成一次独立全范围审阅；Important/Critical以可复现测试修复，一次修复后回归，不循环重复审阅。交付记录实际提交、运行时、开关/关闭回退、确认与撤销手册、API、无迁移证明、容量、失败恢复、未完成条件；不把合成结果称为真人学习效果。
+- [x] Step 6: Commit `docs(orchestrator): 归档B级联调与阶段交付证据`。停止于B级报告，等待用户确认B级通过后才进入C，不推送部署。
 
 ## B级退出清单与覆盖自检
 
@@ -184,4 +184,4 @@
 
 自检要求：所有消费的类/函数均在前置任务产生；新增文件名与命令先核对；五项Review Focus分别有测试；各Task先RED后GREEN再提交。没有生产探针与匹配完整运行时self-test、没有实际旧引擎/恢复，或存在未修复Important/Critical时，报告保持条件通过或未完成，不能仅凭测试数量宣布B级全部通过。
 
-当前仅完成计划编制与自检，以上复选框均未执行；不新增功能或测试通过声明。
+2026-11-01执行进度：用户已确认逐项实施与一次独立审阅。任务1—6及任务7实现已完成；a7422ec修复独立审阅六项Important，目标解释器完整应用／34→36合成迁移／旧代码恢复通过。任务7与全项目门禁完成：1897项后端／304项前端、类型／构建／体积通过；证据归档于docs/audits/learning-orchestrator-b-2026-10-31/verification.json。B仍待用户验收，C—E未开始。B不新增迁移不代表现主站34无需升级至候选36。

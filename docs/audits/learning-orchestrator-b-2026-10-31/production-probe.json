@@ -1,0 +1,12 @@
+{
+  "mode": "probe_only",
+  "python": "3.11.13",
+  "sqlite": "3.26.0",
+  "platform": "Linux",
+  "json1": true,
+  "variable_limit": 999,
+  "schema_version": 34,
+  "release": "alpha4-41a360bd2f32",
+  "rows_exported": 0,
+  "live_database_write": false
+}

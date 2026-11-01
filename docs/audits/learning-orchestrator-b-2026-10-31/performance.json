@@ -1,0 +1,93 @@
+{
+  "synthetic": true,
+  "results": [
+    {
+      "scope_wrong_count": 100,
+      "foreign_wrong_count": 100,
+      "distinct_due_times_per_scope": 100,
+      "cold_ms": 45.67669999960344,
+      "warm": {
+        "p50_ms": 11.018399993190542,
+        "p95_ms": 22.784500004490837,
+        "max_ms": 22.784500004490837,
+        "samples": 10
+      },
+      "stage_max_ms": {
+        "open": 1.1756000021705404,
+        "snapshot": 36.79329999431502,
+        "projection": 2.3280999885173514,
+        "schedule": 2.5902000052155927,
+        "serialize": 12.238900002557784,
+        "close": 0.4157999937888235
+      },
+      "four_concurrent": {
+        "p50_ms": 37.13539999444038,
+        "p95_ms": 41.87499999534339,
+        "max_ms": 41.87499999534339,
+        "samples": 16
+      },
+      "max_response_bytes": 173777,
+      "max_sql_statements": 24,
+      "status": "PASS"
+    },
+    {
+      "scope_wrong_count": 1000,
+      "foreign_wrong_count": 1000,
+      "distinct_due_times_per_scope": 1000,
+      "cold_ms": 42.0631000015419,
+      "warm": {
+        "p50_ms": 13.784499999019317,
+        "p95_ms": 17.06380001269281,
+        "max_ms": 17.06380001269281,
+        "samples": 10
+      },
+      "stage_max_ms": {
+        "open": 1.3230000040493906,
+        "snapshot": 45.976599998539314,
+        "projection": 2.2305000020423904,
+        "schedule": 2.8577999910339713,
+        "serialize": 2.3360000050161034,
+        "close": 1.0516000038478523
+      },
+      "four_concurrent": {
+        "p50_ms": 46.86509999737609,
+        "p95_ms": 52.024999997229315,
+        "max_ms": 52.024999997229315,
+        "samples": 16
+      },
+      "max_response_bytes": 173777,
+      "max_sql_statements": 24,
+      "status": "PASS"
+    },
+    {
+      "scope_wrong_count": 10000,
+      "foreign_wrong_count": 10000,
+      "distinct_due_times_per_scope": 10000,
+      "cold_ms": 93.50080000876915,
+      "warm": {
+        "p50_ms": 58.10479998763185,
+        "p95_ms": 73.88490000448655,
+        "max_ms": 73.88490000448655,
+        "samples": 10
+      },
+      "stage_max_ms": {
+        "open": 2.588199989986606,
+        "snapshot": 278.83379999548197,
+        "projection": 3.4804000024450943,
+        "schedule": 4.452599998330697,
+        "serialize": 4.494599997997284,
+        "close": 1.9604999979492277
+      },
+      "four_concurrent": {
+        "p50_ms": 259.2700999957742,
+        "p95_ms": 287.18889999436215,
+        "max_ms": 287.18889999436215,
+        "samples": 16
+      },
+      "max_response_bytes": 173779,
+      "max_sql_statements": 24,
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS"
+}

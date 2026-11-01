@@ -1,0 +1,38 @@
+{
+  "status": "PASS",
+  "python": "3.11.13",
+  "sqlite": "3.26.0",
+  "platform": "Linux",
+  "source_commit": "a7422eca3b16e4141812f2aa6ab8b87488805a93",
+  "source_archive_sha256": "aec219d8e1814899f5dfedf3ad5390f81f0b0c705ad9ed573eca453d8857f26a",
+  "synthetic": true,
+  "live_database_write": false,
+  "live_service_switch": false,
+  "full_application": {
+    "mode": "full_application",
+    "status": "PASS",
+    "synthetic": true,
+    "schema_before": 36,
+    "schema_after": 36,
+    "integrity": "ok",
+    "foreign_key_errors": 0,
+    "domain_fingerprint_unchanged": true,
+    "python": "3.11.13",
+    "sqlite": "3.26.0"
+  },
+  "migration": {
+    "from_schema": 34,
+    "to_schema": 36,
+    "old_fields_preserved": true,
+    "integrity": "ok",
+    "foreign_key_errors": 0,
+    "old_completed_goal_readable": true,
+    "old_completed_plan_readable": true,
+    "old_wrong_record_retained": true
+  },
+  "restored_old_runtime": {
+    "schema": 34,
+    "goal_count": 1,
+    "integrity": "ok"
+  }
+}
