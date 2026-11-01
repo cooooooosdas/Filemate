@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 _CAUSE_ACTIONS = {
@@ -26,7 +26,7 @@ def wrong_review_guidance(wrong: dict[str, Any], today: date) -> dict[str, Any]:
         due_at = datetime.fromisoformat(str(wrong.get("next_review_at") or ""))
         if due_at.tzinfo is None:
             due_at = due_at.replace(tzinfo=timezone.utc)
-        overdue_days = max(0, (today - due_at.astimezone().date()).days)
+        overdue_days = max(0, (today - due_at.astimezone(timezone(timedelta(hours=8))).date()).days)
     except (TypeError, ValueError):
         overdue_days = 0
     score = 76 + min(errors, 5) * 3 + min(overdue_days, 7)

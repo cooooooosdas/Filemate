@@ -406,9 +406,9 @@ class StudyPlanGenerator:
         except ValueError as exc:
             raise ValueError("考试日期必须使用 YYYY-MM-DD 格式") from exc
 
-        from datetime import datetime
+        from datetime import datetime, timedelta, timezone
 
-        today = datetime.now().astimezone().date()
+        today = datetime.now(timezone(timedelta(hours=8))).date()
         total_days = (target_date - today).days
         if total_days < 1:
             raise ValueError("考试日期必须晚于今天")

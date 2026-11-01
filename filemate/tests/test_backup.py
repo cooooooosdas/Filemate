@@ -83,7 +83,23 @@ def test_preview_and_three_databases_restore(managed: Path, tmp_path: Path) -> N
     }
 
 
-def test_committed_wal_is_included(managed: Path, tmp_path: Path) -> None:
+def test_restore_drops_stale_action_tokens(managed: Path, tmp_path: Path) -> None:
+    """快照里的旧确认令牌不能随恢复回流，否则可绕过重新预览边界。"""
+    with closing(sqlite3.connect(managed / "filemate.db")) as conn:
+        conn.execute(
+            "INSERT INTO data_action_previews"
+            "(token_hash, action, resource_id, revision, expires_at, result)"
+            " VALUES ('stale', 'orchestrator_confirm', 'res', 'rev', 9999999999, NULL)"
+        )
+        conn.commit()
+    snapshot = tmp_path / "backup"
+    _create(managed, snapshot)
+    target = tmp_path / "staged"
+    restore_plan = backup.plan_restore(snapshot, target)
+    result = backup.restore_backup(snapshot, target, restore_plan["confirmation"])
+    assert result["passed"] is True
+    with closing(sqlite3.connect(target / "filemate.db")) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM data_action_previews").fetchone()[0] == 0
     with closing(sqlite3.connect(managed / "filemate.db")) as writer:
         writer.execute("PRAGMA journal_mode=WAL")
         writer.execute(

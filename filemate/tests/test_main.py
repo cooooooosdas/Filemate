@@ -94,3 +94,23 @@ def test_generate_name_passes_organizer_to_namer(tmp_path: Path) -> None:
     assert captured["course"] == ""
     assert captured["extra_entities"]["organizer"].startswith("iCAN")
     assert session.suggested_name.startswith("[iCAN大赛组委会]")
+
+
+def test_process_single_releases_its_storage_connection(monkeypatch, tmp_path: Path) -> None:
+    """每次处理都新建 storage 实例，返回前必须关闭，否则句柄与 WAL 锁会累积。"""
+    created: list = []
+    real_storage = main_mod.SQLiteStorage
+
+    class TrackingStorage(real_storage):  # type: ignore[misc, valid-type]
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            created.append(self)
+
+    monkeypatch.setattr(main_mod, "SQLiteStorage", TrackingStorage)
+    bad = tmp_path / "讲义.xyz"
+    bad.write_bytes(b"garbage")
+
+    asyncio.run(main_mod.process_single(str(bad), db_path=str(tmp_path / "db.db")))
+
+    assert created, "process_single 应当创建独立 storage"
+    assert all(not instance._connections for instance in created)

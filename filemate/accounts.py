@@ -68,9 +68,25 @@ def _password_hash(password: str, salt: str | None = None) -> str:
 
 
 def _verify_password(password: str, encoded: str) -> bool:
-    """恒定时间比较密码派生值。"""
-    _, salt, _ = encoded.split("$")
-    return hmac.compare_digest(_password_hash(password, salt), encoded)
+    """恒定时间比较密码派生值；格式损坏时按"不匹配"处理而不是抛异常。
+
+    旧版/外部导入的 password_hash 不一定是 scrypt-v1 格式，若在此处抛
+    ValueError，登录接口会变成 500 且用户完全无法登录（也无法自救），
+    因此统一收敛为"凭据无效"。
+    """
+    if not isinstance(encoded, str):
+        return False
+    parts = encoded.split("$")
+    if len(parts) != 3:
+        return False
+    algorithm, salt, digest = parts
+    if algorithm != "scrypt-v1" or not salt or not digest:
+        return False
+    try:
+        candidate = _password_hash(password, salt)
+    except (TypeError, ValueError):
+        return False
+    return hmac.compare_digest(candidate, encoded)
 
 
 def _digest(value: str) -> str:

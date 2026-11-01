@@ -2639,3 +2639,27 @@ def test_classification_upload_contract_keeps_existing_formats(
     with TestClient(module.app) as client:
         response = client.post("/process", files={"file": ("笔记.md", b"# notes")})
         assert response.status_code == 400
+
+
+def test_streamed_upload_rejects_over_limit_and_empty_without_residue(
+    server_module: tuple[ModuleType, SQLiteStorage],
+) -> None:
+    """流式落盘后，超限与空文件仍要给出原错误码，且不留下半成品目录。"""
+    module, _ = server_module
+    original = module.MAX_UPLOAD_BYTES
+    inbox = module.UPLOAD_ROOT
+    try:
+        # 不能用 monkeypatch：server_module fixture 会先 pop sys.modules，
+        # 导致 monkeypatch undo 时模块已不存在，污染后续测试。
+        module.MAX_UPLOAD_BYTES = 1024
+        with TestClient(module.app) as client:
+            over = client.post("/process", files={"file": ("样本.txt", b"x" * 2048)})
+            assert over.status_code == 413
+            assert "25 MB" in over.json()["error"]
+
+            empty = client.post("/process", files={"file": ("空.txt", b"")})
+            assert empty.status_code == 400
+    finally:
+        module.MAX_UPLOAD_BYTES = original
+
+    assert not list(inbox.rglob("*")) if inbox.exists() else True

@@ -591,6 +591,12 @@ def restore_backup(backup: Path, target: Path, confirmation: str) -> dict[str, A
                 from filemate.study.orchestrator.privacy import normalize_restored_orchestrator
 
                 normalize_restored_orchestrator(conn)
+                # 恢复出的快照不得携带旧确认令牌，否则恢复后仍可对旧预览
+                # 执行确认/撤销，绕过"资料变化需重新预览"的边界。
+                if conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='data_action_previews'"
+                ).fetchone():
+                    conn.execute("DELETE FROM data_action_previews")
                 if conn.execute('PRAGMA foreign_key_check').fetchone():
                     raise ValueError('恢复安全规范化失败，新目录不可启用')
                 normalized += int(bool(exists))
