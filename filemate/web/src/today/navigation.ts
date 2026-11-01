@@ -1,4 +1,5 @@
-import type { KnowledgeArtifact, ReverseGoalPlan } from '../services/api.ts'
+import type { KnowledgeArtifact, ReverseGoalPlan, ReverseGoalTask } from '../services/api.ts'
+import type { LocationQuery, LocationQueryRaw } from 'vue-router'
 import type { OrchestratorSnapshot, TaskView } from '../types/orchestrator.ts'
 import type { TaskNavigation, TodayTarget } from '../types/today.ts'
 
@@ -8,6 +9,78 @@ const rows = (value: unknown, limit = 200): Row[] => Array.isArray(value) ? valu
 const id = (value: unknown): string | null => typeof value === 'string' && value.trim() && value.length <= 128 && !/[\u0000-\u001f]/.test(value) ? value : null
 const target = (path: string, query: Record<string, string>, label: string): TodayTarget => ({ path, query, label })
 const member = (value: unknown, values: string[]) => typeof value === 'string' && values.includes(value)
+
+export function readRouteReference(query: Record<string, unknown>, key: string, max = 128): { value: string | null; present: boolean; notice: string } {
+  const value = query?.[key]
+  if (value === undefined) return { value: null, present: false, notice: '' }
+  if (typeof value !== 'string' || !value.trim() || value.length > max || /[\x00-\x1f]/.test(value)) return { value: null, present: true, notice: '任务链接含重复或无效参数，请重新选择原记录。' }
+  return { value, present: true, notice: '' }
+}
+
+export function normalizeWrongbookQuery(query: LocationQuery, v2: boolean): { query: LocationQueryRaw; blocked: boolean; changed: boolean; notice: string } {
+  const wrong = readRouteReference(query, 'wrong_id'), focus = readRouteReference(query, 'focus')
+  const blocked = !!wrong.notice || !!focus.notice || !!(wrong.value && focus.value && wrong.value !== focus.value)
+  const result: LocationQueryRaw = { ...query }
+  if (blocked) return { query: result, blocked: true, changed: false, notice: '错题链接无法唯一定位原记录，请返回目录重新选择。' }
+  if (v2 && wrong.value) { delete result.wrong_id; result.focus = wrong.value }
+  return { query: result, blocked: false, changed: v2 && !!wrong.value, notice: '' }
+}
+
+export async function loadExactTodayGoal(goalId: string, recent: ReverseGoalPlan[], read: (id: string) => Promise<KnowledgeArtifact>): Promise<{ goal: ReverseGoalPlan | null; notice: string }> {
+  if (!id(goalId)) return { goal: null, notice: '目标链接无效，请重新选择。' }
+  const cached = recent.find(goal => goal.goal_id === goalId)
+  if (cached) return { goal: JSON.parse(JSON.stringify(cached)) as ReverseGoalPlan, notice: '' }
+  try {
+    const artifact = await read(goalId)
+    const goal = artifact?.artifact_id === goalId ? readStoredGoal(artifact) : null
+    return { goal, notice: goal ? '' : '指定目标记录无效，原数据保留，请重新选择或修复。' }
+  } catch (error) {
+    return { goal: null, notice: (error as { response?: { status?: number } })?.response?.status === 404
+      ? '指定目标不存在或当前账号无法访问，请重新选择。' : '暂时无法读取指定目标，请重试。' }
+  }
+}
+
+function locate(items: unknown, requested: unknown, key: string): { index: number | null; notice: string } {
+  const ref = readRouteReference({ ref: requested }, 'ref', 512)
+  if (!ref.present) return { index: null, notice: '' }
+  if (!ref.value || !Array.isArray(items) || items.length > 10000) return { index: null, notice: ref.notice || '任务超出当前可定位范围，请重新选择。' }
+  const matches: number[] = []
+  items.forEach((item, index) => { if (record(item)?.[key] === ref.value) matches.push(index) })
+  return matches.length === 1 ? { index: matches[0]!, notice: '' } : { index: null, notice: '原任务不存在、已移除或标识重复，请重新选择；不会打开另一项任务。' }
+}
+export function locateGoalTask(goal: ReverseGoalPlan | null, requested: unknown): { index: number | null; notice: string } {
+  return locate(goal?.tasks, requested, 'task_id')
+}
+export function locatePlanDay(days: unknown, requested: unknown): { index: number | null; notice: string } {
+  if (requested === undefined) return { index: null, notice: '' }
+  if (typeof requested !== 'string' || !/^[1-9]\d{0,14}$/.test(requested) || !Number.isSafeInteger(Number(requested))) return { index: null, notice: '计划天数链接无效，请重新选择原学习日。' }
+  return locate(Array.isArray(days) ? days.map(day => ({ day: typeof record(day)?.day === 'number' ? String(record(day)!.day) : null })) : days, requested, 'day')
+}
+export function locateSemesterTask(tasks: unknown, requested: unknown): { index: number | null; page: number | null; notice: string } {
+  const result = locate(tasks, requested, 'task_id')
+  return { ...result, page: result.index === null ? null : Math.floor(result.index / 30) }
+}
+export function locateProgrammingProblem(problems: unknown, requested: unknown): { id: string | null; notice: string } {
+  if (requested === undefined) return { id: null, notice: '请选择一道题开始练习。' }
+  const result = locate(problems, requested, 'id')
+  const ref = readRouteReference({ problem: requested }, 'problem')
+  return { id: result.index !== null && !ref.notice ? ref.value : null, notice: result.notice || ref.notice }
+}
+export function goalTaskTarget(goal: ReverseGoalPlan, task: ReverseGoalTask): TodayTarget | null {
+  if (!id(goal?.goal_id) || !task || task.status === 'invalidated') return null
+  const route = task.route
+  if (!['/import', '/ai-tools', '/wrongbook', '/study-plan', '/interview', '/analytics', '/skills', '/knowledge-graph', '/knowledge', '/programming', '/growth', '/goals'].includes(route)) return null
+  if (route === '/goals') return target(route, { goal: goal.goal_id, task_id: task.task_id }, '复核原目标证据')
+  if (route === '/interview') {
+    const query: Record<string, string> = { goal: goal.goal_id, scenario: goal.goal_type === 'competition' ? '竞赛答辩' : goal.goal_type === 'postgraduate' ? '保研复试' : goal.goal_type === 'job' ? '求职面试' : '知识讲解', target: goal.title }
+    if (id(task.source_id)) query.source = task.source_id!
+    if (query.source && id(task.focus_wrong_id)) query.focus = task.focus_wrong_id!
+    return target(route, query, '开始面试训练')
+  }
+  if (route === '/ai-tools' && id(goal.source_id)) return target(route, { source: goal.source_id! }, '学习原资料')
+  if (route === '/wrongbook' && id(task.focus_wrong_id)) return target(route, { wrong_id: task.focus_wrong_id! }, '复习原错题')
+  return target(route, {}, route === '/programming' ? '选择编程题' : '进入对应功能')
+}
 
 /** Rebuild destinations from original domain identities, never stored URL text. */
 export function resolveTodayTask(task: TaskView, bundle: OrchestratorSnapshot): TaskNavigation {

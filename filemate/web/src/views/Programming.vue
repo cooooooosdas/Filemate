@@ -1,6 +1,7 @@
 <template>
   <div class="coding-page coach-surface">
     <header class="page-heading"><div><h1>编程练习</h1><p>选一道题，写代码，再用编译器验证。</p></div><button :disabled="!!busy || loading" @click="load"><Refresh :size="20" aria-hidden="true" />刷新记录</button></header>
+    <aside class="today-location"><RouterLink to="/today">返回今日行动</RouterLink><p v-if="routeNotice" role="status">{{ routeNotice }}</p></aside>
     <section class="environment" aria-label="评测环境">
       <div><strong>{{ environment?.ready ? '隔离评测已就绪' : '评测环境待准备' }}</strong><p>{{ environment?.ready ? 'C++17 · 单测试点 1 秒 / 256 MB · 禁止网络 · 单进程' : environment?.error || '正在核对评测环境…' }}</p></div>
       <button v-if="environment && !environment.ready && environment.setup_supported" :disabled="!!busy || !environment.installed" @click="setup">{{ busy === 'setup' ? '正在准备…' : '准备本地评测环境' }}</button>
@@ -15,7 +16,7 @@
     <section v-if="tab === 'practice'" class="practice-grid">
       <aside class="panel problem-panel">
         <div class="filters"><label>题目难度<select v-model="difficulty" aria-label="题目难度" :disabled="!!busy"><option value="">全部难度</option><option>简单</option><option>中等</option><option>困难</option></select></label><label>知识分类<select v-model="category" aria-label="知识分类" :disabled="!!busy"><option value="">全部分类</option><option v-for="tag in tags" :key="tag">{{ tag }}</option></select></label></div>
-        <label>选择题目<select :value="problemId" aria-label="选择题目" :disabled="!!busy" @change="chooseProblem(($event.target as HTMLSelectElement).value)"><option v-for="p in filteredProblems" :key="p.id" :value="p.id">{{ p.difficulty }} · {{ p.title }}</option><option v-if="!filteredProblems.length" value="">{{ loading ? '正在读取题目…' : '没有符合条件的题目' }}</option></select></label>
+        <label>选择题目<select :value="problemId" aria-label="选择题目" :disabled="!!busy" @change="chooseProblem(($event.target as HTMLSelectElement).value)"><option value="" disabled>{{ loading ? '正在读取题目…' : filteredProblems.length ? '请选择一道题' : '没有符合条件的题目' }}</option><option v-for="p in filteredProblems" :key="p.id" :value="p.id">{{ p.difficulty }} · {{ p.title }}</option></select></label>
         <template v-if="problem"><div class="problem-title"><span>{{ problem.difficulty }} · {{ problem.test_count }} 个测试点</span><h2>{{ problem.title }}</h2></div><div class="tags"><span v-for="tag in problem.tags" :key="tag">{{ tag }}</span></div><p class="statement">{{ problem.statement }}</p><h3>输入输出示例</h3><div v-for="(example, i) in problem.examples" :key="i" class="example"><span>输入</span><pre>{{ example.input }}</pre><span>输出</span><pre>{{ example.output }}</pre></div><details><summary>查看解题提示</summary><p>{{ problem.hint }}</p></details><p class="attribution">{{ problem.attribution }} <a v-if="problem.source_url" :href="problem.source_url" target="_blank" rel="noopener noreferrer">查看原创题库来源</a></p></template>
       </aside>
       <section class="panel code-panel" aria-label="C++ 编辑与提交">
@@ -81,6 +82,7 @@ import { getProgrammingProblems, getProgrammingStatus, setupProgramming, getCodi
 import type { CodingOverview, CodingProblem, CodingSubmission, ProgrammingStatus } from '../types/programming'
 import { codingStateText as stateText, submissionVerdictText as verdictText, submissionEvidenceText } from '../programming/submissionState'
 import { Code, DataAnalysis, Document, Notebook, Refresh, Terminal, Tickets } from '../icons'
+import { locateProgrammingProblem, readRouteReference } from '../today/navigation'
 const problems = shallowRef<CodingProblem[]>([])
 const route = useRoute(), router = useRouter()
 const overview = shallowRef<CodingOverview | null>(null)
@@ -89,18 +91,25 @@ const current = shallowRef<CodingSubmission | null>(null)
 const problemId = ref(''), difficulty = ref(''), category = ref(''), code = ref(''), notes = ref('')
 const loading = ref(false), busy = ref(''), cancelling = ref(false), error = ref(''), notice = ref(''), externalConsent = ref(false)
 const tab = ref('practice')
+const routeNotice = ref('')
 const tabs = [{ id: 'practice', label: '题目练习', icon: Code }, { id: 'wrongbook', label: '编程错题', icon: Notebook }, { id: 'history', label: '提交记录', icon: Document }, { id: 'profile', label: '练习证据', icon: DataAnalysis }, { id: 'events', label: '操作日志', icon: Tickets }]
 const drafts = new Map<string, string>()
 const tags = computed(() => [...new Set(problems.value.flatMap(p => p.tags))].sort())
 const filteredProblems = computed(() => problems.value.filter(p => (!difficulty.value || p.difficulty === difficulty.value) && (!category.value || p.tags.includes(category.value))))
 const problem = computed(() => problems.value.find(p => p.id === problemId.value))
 const feedback = computed(() => current.value?.review || current.value?.local_feedback)
-let disposed = false, loadEpoch = 0, runEpoch = 0, pollTimer: number | undefined, polling = false
+let disposed = false, loadEpoch = 0, runEpoch = 0, pollTimer: number | undefined, polling = false, routeApplied = false
 let pending: { problem: string; code: string; key: string } | null = null
 function message(cause: unknown) { return cause instanceof Error ? cause.message : '操作失败，请稍后重试' }
 function selectRecord(row: CodingSubmission) { if (row.submission_id !== current.value?.submission_id) externalConsent.value = false; current.value = row; notes.value = row.notes || '' }
-function chooseProblem(id: string) { if (busy.value) return; if (problemId.value) drafts.set(problemId.value, code.value); problemId.value = id; code.value = drafts.get(id) ?? problems.value.find(p => p.id === id)?.starter ?? '' }
-watch(filteredProblems, list => { if (!list.some(p => p.id === problemId.value)) chooseProblem(list[0]?.id || '') })
+function chooseProblem(id: string) {
+  if (busy.value) return
+  if (problemId.value) drafts.set(problemId.value, code.value)
+  if (id && !problems.value.some(problem => problem.id === id)) { problemId.value = ''; code.value = ''; routeNotice.value = '指定题目不存在，请重新选择；不会打开其他题目。'; return }
+  problemId.value = id; code.value = drafts.get(id) ?? problems.value.find(p => p.id === id)?.starter ?? ''
+  if (id) routeNotice.value = ''
+}
+watch(filteredProblems, list => { if (problemId.value && !list.some(p => p.id === problemId.value)) { chooseProblem(''); routeNotice.value = '原题目不在当前筛选范围，请调整筛选或重新选题。' } })
 async function load() {
   const epoch = ++loadEpoch; loading.value = true; error.value = ''
   const values = await Promise.allSettled([getProgrammingProblems(), getCodingOverview(), getProgrammingStatus()])
@@ -109,8 +118,13 @@ async function load() {
   if (values[1].status === 'fulfilled') overview.value = values[1].value
   if (values[2].status === 'fulfilled') environment.value = values[2].value
   error.value = values.filter(v => v.status === 'rejected').map(v => message((v as PromiseRejectedResult).reason)).join('；')
-  if (!problemId.value && problems.value.length) chooseProblem(problems.value.find(p => p.id === route.query.problem)?.id || problems.value[0]!.id)
-  if (typeof route.query.submission === 'string' && !current.value) await openSubmission(route.query.submission)
+  if (!routeApplied && values[0].status === 'fulfilled') {
+    const target = locateProgrammingProblem(problems.value, route.query.problem)
+    chooseProblem(target.id || ''); routeNotice.value = target.notice; routeApplied = true
+  }
+  const submission = readRouteReference(route.query, 'submission')
+  if (submission.notice) routeNotice.value = submission.notice
+  else if (submission.value && !current.value) await openSubmission(submission.value)
   loading.value = false
 }
 async function refreshOverview() { const value = await getCodingOverview(); if (!disposed) overview.value = value }
@@ -169,5 +183,7 @@ onUnmounted(() => { disposed = true; loadEpoch++; stopPolling() })
 </script>
 
 <style scoped>
+.today-location { display:flex; flex-wrap:wrap; align-items:center; gap:16px; font-size:17px; overflow-wrap:anywhere; }
+.today-location a { display:inline-flex; align-items:center; min-height:44px; color:var(--accent); }
 .coding-page{max-width:1380px;margin:auto;padding:0;color:var(--text-primary)}.page-heading,.panel-title,.environment{display:flex;justify-content:space-between;gap:20px;align-items:center}.page-heading h1{font-size:30px;margin:4px 0 10px;letter-spacing:-.5px}.eyebrow{font-size: var(--type-copy);color:var(--text-muted);letter-spacing:1px;margin:0 0 6px}.page-heading p,.environment p{color:var(--text-muted);font-size: var(--type-copy)}.environment{margin:24px 0 8px;padding:16px 20px;background:var(--accent-soft);border:1px solid var(--border-subtle);border-radius:14px}.environment p{margin:6px 0 0}.panel{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:16px;padding:24px;min-width:0;margin-bottom:20px}h2{font-size:20px;margin:0 0 16px}h3{font-size:20px;margin:16px 0 10px}p{line-height:1.75}.muted,.attribution{font-size: var(--type-copy);color:var(--text-muted)}.attribution{margin-top:24px}.message{border-radius:10px;padding:12px 16px;font-size: var(--type-copy);background:var(--accent-soft);border:1px solid var(--border-subtle);overflow-wrap:anywhere}.message.error{background:#fff5ee;color:#955a31;border-color:#ecd2bc}button,select,textarea{font:inherit}button{border:1px solid var(--border-subtle);background:var(--bg-elevated);color:var(--text-primary);border-radius:9px;padding:9px 14px;cursor:pointer;font-size: var(--type-action);min-height:44px}button:hover:enabled{background:var(--accent-soft)}button:disabled{opacity:.48;cursor:not-allowed}button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.primary{background:var(--action-fill, var(--accent));color:#fff;border-color:var(--accent)}.primary:hover:enabled{background:var(--action-hover, var(--accent-hover))}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:24px 0}.tabs button{background:transparent;border-color:transparent}.tabs .active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-border)}.practice-grid{display:grid;grid-template-columns:minmax(270px,.78fr) minmax(0,1.6fr);gap:20px}.filters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}label{display:flex;flex-direction:column;gap:8px;font-size: var(--type-meta);margin-bottom:12px}select{min-width:0;width:100%;background:var(--bg-elevated);color:var(--text-primary);border:1px solid var(--border-subtle);border-radius:9px;padding:10px}.problem-title{margin:24px 0 12px}.problem-title>span,.panel-title>span{font-size: var(--type-copy);color:var(--text-muted)}.problem-title h2{margin:6px 0}.tags{display:flex;flex-wrap:wrap;gap:6px}.tags span{font-size: var(--type-copy);padding:4px 8px;border-radius:6px;background:#eff4e9;color:#61754d}.statement{font-size: var(--type-copy);white-space:pre-wrap}.example{background:var(--bg-elevated);padding:14px;border-radius:9px}.example>span{font-size: var(--type-copy);color:var(--text-muted)}pre{font:var(--type-meta)/1.7 Consolas,'Microsoft YaHei',monospace;margin:6px 0 12px;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg-elevated);border-radius:8px;padding:12px;max-height:300px;overflow:auto}.example pre{padding:4px 0}.editor-actions,.row-actions,.review-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.editor-actions{margin-top:16px}.panel-title{margin-bottom:10px}.panel-title h2{margin-bottom:0}.wrong-row,.history-row{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px 0;border-bottom:1px solid #e6ece1}.wrong-row h3,.history-row h3{margin:0 0 5px}.wrong-row p,.history-row p{font-size: var(--type-copy);color:var(--text-muted);margin:4px 0}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}.metrics>div{border:1px solid var(--border-subtle);border-radius:10px;background:#fafcf6;padding:14px}.metrics span{display:block;font-size: var(--type-copy);color:var(--text-muted)}.metrics strong{display:block;font-size:26px;margin-top:8px}.metrics .state-text{font-size:20px}.verdict{font-size: var(--type-copy);border:1px solid #e1d7ca;border-radius:6px;padding:3px 8px;margin-left:8px;color:#896443;background:#fbf7ed}.accepted{color:#55753a!important}.verdict.accepted{border-color:#d7e6c9;background:#f0f7e9}.test-list details{border:1px solid var(--border-subtle);border-radius:10px;margin:10px 0;padding:12px}.test-list summary{display:flex;gap:12px;justify-content:space-between;align-items:center;cursor:pointer;font-size: var(--type-action);flex-wrap:wrap}.test-list summary>span:first-child{flex:1;min-width:100px}.test-list strong{color:#9a7049}.test-evidence{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:10px}h4{font-size: var(--type-copy);margin:10px 0}.compile-log,.submitted-code{margin:16px 0;font-size:var(--type-action)}summary{cursor:pointer;line-height:1.6}.feedback{border-top:1px solid var(--border-subtle);margin-top:24px;padding-top:8px}.feedback ul{font-size: var(--type-meta);line-height:1.8;padding-left:20px;overflow-wrap:anywhere}.feedback p{font-size: var(--type-meta)}.feedback-label{color:var(--accent);font-weight:600}.consent{flex-direction:row;align-items:flex-start;line-height:1.7;font-size: var(--type-copy);margin-top:12px;max-width:100%}.consent input{margin-top:4px;accent-color:var(--accent);flex-shrink:0}textarea{min-height:110px;border:1px solid var(--border-subtle);border-radius:9px;padding:12px;resize:vertical;max-width:100%;background:var(--bg-elevated);color:var(--text-primary)}.category-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:20px 0}.category-grid article{padding:14px;background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:10px}.category-grid h3{margin:0 0 8px}.category-grid p,.category-grid span{font-size: var(--type-copy);color:var(--text-muted)}.category-grid progress{display:block;width:100%;height:7px;margin:10px 0;accent-color:var(--accent)}.trend{font-size: var(--type-meta);line-height:2;padding-left:20px}.event-list{padding:0;list-style:none;font-size: var(--type-copy)}.event-list li{display:flex;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--border-subtle);padding:12px 0}.event-list span{color:var(--text-muted)}.empty{color:var(--text-muted);padding:28px 0;text-align:center}@media(max-width:1024px){.coding-page{padding:22px}.practice-grid{grid-template-columns:1fr}.problem-panel .statement{max-width:80ch}}@media(max-width:600px){.coding-page{padding:16px 10px}.page-heading{align-items:flex-start}.page-heading h1{font-size:25px}.page-heading>button{flex-shrink:0}.panel{padding:16px}.environment{align-items:flex-start;flex-direction:column;gap:12px}.metrics{grid-template-columns:1fr}.test-evidence{grid-template-columns:1fr}.wrong-row,.history-row,.panel-title{align-items:flex-start;flex-direction:column;gap:12px}.tabs{gap:4px}.tabs button{padding:8px 10px}.editor-actions{align-items:flex-start}.code-panel .panel-title{flex-direction:row}}
 </style>

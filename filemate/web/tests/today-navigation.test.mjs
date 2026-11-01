@@ -91,3 +91,97 @@ test('unknown input and out-of-scope origins stay unavailable', () => {
   }
   assert.equal(resolveTodayTask(task('review', [{ kind: 'review', id: 'wrong' }]), null).primary, null)
 })
+
+function actualHelper(name, ...args) {
+  assert.equal(typeof navigation?.[name], 'function', `the real ${name} must exist`)
+  return navigation[name](...args)
+}
+function oldGoalArtifact() {
+  return { artifact_id: 'outside-recent-20', source_id: 's1', artifact_type: 'reverse_goal_plan', title: 'column title',
+    metadata: {}, created_at: '2026-10-01T00:00:00', updated_at: '2026-10-02T00:00:00',
+    content: { title: '原始考试目标', goal_type: 'exam', deadline: '2026-12-01', target_score: 90, source_id: 's1',
+      source_name: '原资料', evidence_status: 'insufficient', evidence_snapshot: { quiz_attempts: 0 }, last_agent_run_id: 'saved-run',
+      gaps: [{ name: '证据', current: '待评测', target: '练习', status: 'gap', evidence: '已存依据' }],
+      tasks: [{ task_id: 'wanted-task', title: '阅读原资料', reason: '原理由', route: '/ai-tools', status: 'pending', due_date: '2026-11-02' }] } }
+}
+
+test('exact_goal_outside_recent_list_remains_selected', async () => {
+  const requested = oldGoalArtifact(), recent = [{ goal_id: 'latest-but-unrelated' }], reads = []
+  const result = await actualHelper('loadExactTodayGoal', requested.artifact_id, recent, async id => { reads.push(id); return requested })
+  assert.deepEqual(reads, ['outside-recent-20'])
+  assert.equal(result.goal.goal_id, requested.artifact_id)
+  assert.deepEqual(result.goal.gaps, requested.content.gaps)
+  assert.deepEqual(result.goal.evidence_snapshot, requested.content.evidence_snapshot)
+  assert.equal(recent.length, 1, 'loading must not mutate or replan the recent list')
+  const focus = actualHelper('locateGoalTask', result.goal, 'wanted-task')
+  assert.equal(focus.index, 0)
+  const missing = actualHelper('locateGoalTask', result.goal, 'nonexistent-task')
+  assert.equal(missing.index, null)
+  assert.ok(missing.notice)
+})
+
+test('a missing, malformed or foreign exact goal never falls back to the latest goal', async () => {
+  for (const read of [async () => { throw Object.assign(new Error('missing'), { response: { status: 404 } }) },
+    async () => ({ ...oldGoalArtifact(), artifact_type: 'summary' }), async () => ({ ...oldGoalArtifact(), artifact_id: 'foreign-goal' })]) {
+    const result = await actualHelper('loadExactTodayGoal', 'outside-recent-20', [{ goal_id: 'unrelated' }], read)
+    assert.equal(result.goal, null)
+    assert.ok(result.notice)
+  }
+})
+
+test('plan_day_and_semester_focus_do_not_choose_the_first_item', () => {
+  const days = [{ day: 1 }, { day: 4 }, { day: 7 }]
+  assert.equal(actualHelper('locatePlanDay', days, '7').index, 2, 'completion writes use this original zero-based index')
+  for (const value of ['8', '7x', ['7', '4'], '0']) {
+    const missing = actualHelper('locatePlanDay', days, value)
+    assert.equal(missing.index, null)
+    assert.ok(missing.notice)
+  }
+  const tasks = Array.from({ length: 83 }, (_, index) => ({ task_id: `task-${index + 1}` }))
+  assert.deepEqual(actualHelper('locateSemesterTask', tasks, 'task-75'), { index: 74, page: 2, notice: '' })
+  for (const list of [tasks.slice(0, 30), tasks.filter(row => row.task_id !== 'task-75')]) {
+    const missing = actualHelper('locateSemesterTask', list, 'task-75')
+    assert.equal(missing.index, null)
+    assert.equal(missing.page, null)
+    assert.ok(missing.notice)
+  }
+})
+
+test('ambiguous domain task identities are unavailable rather than silently choosing one', () => {
+  assert.equal(actualHelper('locatePlanDay', [{ day: 7 }, { day: 7 }], '7').index, null)
+  assert.equal(actualHelper('locateSemesterTask', [{ task_id: 'same' }, { task_id: 'same' }], 'same').index, null)
+  assert.equal(actualHelper('locateGoalTask', { tasks: [{ task_id: 'same' }, { task_id: 'same' }] }, 'same').index, null)
+})
+
+test('programming_missing_reference_is_explicit', () => {
+  const problems = [{ id: 'first' }, { id: 'actual' }]
+  assert.equal(actualHelper('locateProgrammingProblem', problems, 'actual').id, 'actual')
+  for (const value of ['missing', ['first', 'actual'], undefined, null]) {
+    const result = actualHelper('locateProgrammingProblem', problems, value)
+    assert.equal(result.id, null)
+    assert.match(result.notice, /选择|不存在|链接|题目/)
+  }
+})
+
+test('goal interview targets preserve source focus goal scenario and target without claiming an existing session', () => {
+  const goal = { goal_id: 'g1', source_id: 's1', goal_type: 'competition', title: '真实答辩目标' }
+  const row = { task_id: 'task', route: '/interview', source_id: 's1', focus_wrong_id: 'wrong-one', status: 'pending' }
+  const target = actualHelper('goalTaskTarget', goal, row)
+  assert.deepEqual(target.query, { source: 's1', focus: 'wrong-one', goal: 'g1', scenario: '竞赛答辩', target: '真实答辩目标' })
+  assert.equal(target.path, '/interview')
+  assert.equal('interview' in target.query, false)
+  assert.equal(/继续本场/.test(target.label), false)
+  for (const route of ['javascript:alert(1)', 'https://external.invalid', '//external.invalid', '/interview?return=https://external.invalid']) {
+    assert.equal(actualHelper('goalTaskTarget', goal, { ...row, route }), null)
+  }
+  const programming = actualHelper('goalTaskTarget', goal, { ...row, route: '/programming' })
+  assert.equal(programming.path, '/programming')
+  assert.deepEqual(programming.query, {})
+  assert.match(programming.label, /选择/)
+})
+
+test('the existing review-evidence goal task keeps its original goal context', () => {
+  const target = actualHelper('goalTaskTarget', { goal_id: 'old-goal' }, { task_id: 'review-evidence', route: '/goals', status: 'pending' })
+  assert.equal(target?.path, '/goals')
+  assert.deepEqual(target.query, { goal: 'old-goal', task_id: 'review-evidence' })
+})

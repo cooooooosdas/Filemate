@@ -6,6 +6,10 @@
         <p class="lead">写下想完成的事，结合已有资料和练习记录，安排下一步。</p>
       </div>
     </header>
+    <aside v-if="goalReference.present || taskReference.present" class="today-location">
+      <RouterLink to="/today">返回今日行动</RouterLink>
+      <span v-if="taskLocation.notice" role="status">{{ taskLocation.notice }}</span>
+    </aside>
 
     <section class="create-panel">
       <div class="section-heading">
@@ -116,7 +120,8 @@
           <span :style="{ width: `${completionRate}%` }" />
         </div>
         <div class="task-list">
-          <article v-for="(task, index) in activeGoal.tasks" :key="task.task_id" :class="{ completed: task.status === 'completed' }">
+          <article v-for="(task, index) in activeGoal.tasks" :id="`goal-task-${encodeURIComponent(task.task_id)}`" :key="task.task_id" :class="{ completed: task.status === 'completed', 'today-selected': taskLocation.index === index }">
+            <strong v-if="taskLocation.index === index" class="today-badge">当前行动</strong>
             <button type="button" class="task-check" :aria-label="task.status === 'completed' ? '标记为未完成' : '标记为已完成'" :disabled="updatingTask === task.task_id || task.status === 'invalidated'" @click="toggleTask(task)">
               {{ task.status === 'completed' ? '✓' : String(index + 1).padStart(2, '0') }}
             </button>
@@ -138,14 +143,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import DataState from '../components/DataState.vue'
 import LearningPath from '../components/LearningPath.vue'
+import { goalTaskTarget, loadExactTodayGoal, locateGoalTask, readRouteReference } from '../today/navigation'
 import {
   createReverseGoal,
   getKnowledgeSources,
+  getKnowledgeArtifact,
   getReverseGoals,
   replanReverseGoal,
   updateReverseGoalTask,
@@ -175,6 +182,8 @@ const error = ref('')
 const sources = ref<KnowledgeSource[]>([])
 const goals = ref<ReverseGoalPlan[]>([])
 const activeGoalId = ref('')
+const goalReference = computed(() => readRouteReference(route.query, 'goal'))
+const taskReference = computed(() => readRouteReference(route.query, 'task_id', 512))
 const form = ref<{ title: string; goal_type: ReverseGoalType; deadline: string; target_score: number | null; source_id: string }>({
   title: '',
   goal_type: 'exam',
@@ -184,6 +193,9 @@ const form = ref<{ title: string; goal_type: ReverseGoalType; deadline: string; 
 })
 
 const activeGoal = computed(() => goals.value.find(goal => goal.goal_id === activeGoalId.value) || null)
+const taskLocation = computed(() => goalReference.value.value && goalReference.value.value !== activeGoalId.value
+  ? { index: null, notice: '已切换目标；原任务定位不适用于当前目标。' }
+  : locateGoalTask(activeGoal.value, route.query.task_id))
 const canCreate = computed(() => form.value.title.length >= 2 && form.value.deadline >= today)
 const completedCount = computed(() => activeGoal.value?.tasks.filter(task => task.status === 'completed').length || 0)
 const completionRate = computed(() => activeGoal.value?.tasks.length ? Math.round(completedCount.value / activeGoal.value.tasks.length * 100) : 0)
@@ -192,20 +204,42 @@ const openGapCount = computed(() => activeGoal.value?.gaps.filter(gap => gap.sta
 const formatDate = (value: string) => new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric' }).format(new Date(`${value}T00:00:00`))
 const goalTypeLabel = (type: ReverseGoalType) => ({ exam: '课程考试', competition: '竞赛答辩', job: '求职面试', postgraduate: '保研复试', custom: '自定义目标' }[type])
 
+let loadEpoch = 0, disposed = false
+async function locateCurrentTask(): Promise<void> {
+  const epoch = loadEpoch
+  await nextTick()
+  if (disposed || epoch !== loadEpoch || taskLocation.value.index === null) return
+  const task = activeGoal.value?.tasks[taskLocation.value.index]
+  if (task) document.getElementById(`goal-task-${encodeURIComponent(task.task_id)}`)?.scrollIntoView({ block: 'center' })
+}
 async function load(): Promise<void> {
+  const epoch = ++loadEpoch
   loading.value = true
   error.value = ''
   try {
+    if (goalReference.value.notice || taskReference.value.notice || taskReference.value.present && !goalReference.value.present) {
+      activeGoalId.value = ''
+      error.value = goalReference.value.notice || taskReference.value.notice || '任务链接缺少目标编号，请从今日行动重新打开。'
+      return
+    }
     const [sourceList, goalList] = await Promise.all([getKnowledgeSources(), getReverseGoals()])
+    if (disposed || epoch !== loadEpoch) return
     sources.value = sourceList
-    goals.value = goalList
-    const requestedGoal = typeof route.query.goal === 'string' ? route.query.goal : ''
-    if (requestedGoal && goalList.some(goal => goal.goal_id === requestedGoal)) activeGoalId.value = requestedGoal
-    else if (!activeGoalId.value || !goalList.some(goal => goal.goal_id === activeGoalId.value)) activeGoalId.value = goalList[0]?.goal_id || ''
+    const requestedGoal = goalReference.value.value
+    if (requestedGoal) {
+      const exact = await loadExactTodayGoal(requestedGoal, goalList, getKnowledgeArtifact)
+      if (disposed || epoch !== loadEpoch) return
+      if (!exact.goal) { goals.value = goalList; activeGoalId.value = ''; error.value = exact.notice; return }
+      goals.value = goalList.some(goal => goal.goal_id === requestedGoal) ? goalList : [exact.goal, ...goalList]
+      activeGoalId.value = requestedGoal
+    } else {
+      goals.value = goalList
+      if (!activeGoalId.value || !goalList.some(goal => goal.goal_id === activeGoalId.value)) activeGoalId.value = goalList[0]?.goal_id || ''
+    }
   } catch (cause: any) {
-    error.value = cause?.message || '目标与证据加载失败'
+    if (!disposed && epoch === loadEpoch) error.value = cause?.message || '目标与证据加载失败'
   } finally {
-    loading.value = false
+    if (!disposed && epoch === loadEpoch) { loading.value = false; await locateCurrentTask() }
   }
 }
 
@@ -263,30 +297,21 @@ function replaceGoal(goal: ReverseGoalPlan): void {
 
 function openTask(task: ReverseGoalTask): void {
   if (!activeGoal.value || task.status === 'invalidated') return
-  if (task.route === '/interview' && task.focus_wrong_id && task.source_id) {
-    const scenario = activeGoal.value.goal_type === 'competition' ? '竞赛答辩'
-      : activeGoal.value.goal_type === 'postgraduate' ? '保研复试'
-      : activeGoal.value.goal_type === 'job' ? '求职面试' : '知识讲解'
-    void router.push({ path: '/interview', query: {
-      source: task.source_id,
-      focus: task.focus_wrong_id,
-      goal: activeGoal.value.goal_id,
-      scenario,
-      target: activeGoal.value.title
-    } })
-    return
-  }
-  if (task.route === '/ai-tools' && activeGoal.value.source_id) {
-    void router.push({ path: task.route, query: { source: activeGoal.value.source_id } })
-    return
-  }
-  void router.push(task.route)
+  const destination = goalTaskTarget(activeGoal.value, task)
+  if (destination) void router.push(destination)
+  else ElMessage.warning('原任务入口已不可用，请在对应功能中重新选择。')
 }
 
 onMounted(load)
+watch(activeGoalId, locateCurrentTask)
+onBeforeUnmount(() => { disposed = true; loadEpoch++ })
 </script>
 
 <style scoped>
+.today-location { display:flex; flex-wrap:wrap; gap:16px; align-items:center; padding:16px 0; font-size:17px; overflow-wrap:anywhere; }
+.today-location a { display:inline-flex; align-items:center; min-height:44px; color:var(--accent); }
+.today-selected { outline:2px solid var(--accent); outline-offset:3px; scroll-margin-block:96px; }
+.today-badge { color:var(--accent); font-size:16px; }
 .goal-planner-page { max-width: 1480px; margin: 0 auto; padding: 12px 18px 64px; color: var(--text-primary); }
 .goal-hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 40px; align-items: center; min-height: 270px; padding: 44px 50px; overflow: hidden; border: 1px solid rgba(31, 111, 235, .16); border-radius: 32px; background: linear-gradient(115deg, #f6fbff 0%, #edf7ff 52%, #effaf6 100%); box-shadow: 0 24px 60px rgba(30, 73, 120, .08); }
 .goal-hero::before { content: ''; position: absolute; width: 460px; height: 460px; right: -170px; top: -270px; border: 70px solid rgba(37, 99, 235, .07); border-radius: 50%; }

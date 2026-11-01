@@ -128,11 +128,11 @@
 
 **Interfaces:** 消费 `TaskNavigation` 与既有 `getKnowledgeArtifact/getStudyPlan/updateStudyPlanDay`、semester任务和Wrongbook路由；产出精确定位的原页面，不新增任务完成API。
 
-- [ ] 1. 先写 `exact_goal_outside_recent_list_remains_selected`：目标不在最近20条时按明确goal读取已存Artifact并校验类型，不选择首目标；task_id不存在显示失效提示。Wrongbook V2把旧wrong_id别名规范为focus；旧版保留其原参数，重复／非法参数不触发错误记录提交。
-- [ ] 2. 写 `plan_day_and_semester_focus_do_not_choose_the_first_item`：`?plan=p&day=7`在day字段不等于数组index+1的样本中仍定位真实day；完成写回对应0基index。缺失／已归档计划不回退最新计划。学期第75项任务能定位其实际页，不更改筛选后误指另一项；不存在则提示。
-- [ ] 3. 写 `programming_missing_reference_is_explicit`：明确problem不存在时不默选首题；没有题目关联时给出选择练习的清晰入口。目标面试保留现有source/focus/goal/scenario/target上下文；只有确有对应训练记录才能称“继续本场”。原功能开关关闭时呈现不可用原因及合理替代入口。
-- [ ] 4. 运行 `node --test tests/today-navigation.test.mjs tests/route-state.test.mjs`（`filemate/web`），新增失败后实现纯参数解析并在Vue挂接定位／滚动。返回固定 `/today`，不接受任意外部return URL；不把额外参数塞进会拒绝未知字段的图谱query。
-- [ ] 5. 同命令与 `npm run build` 通过；浏览器验证留到任务7，不以纯函数测试代替点击证据。提交 `fix(today): 精确定位原任务与失效入口`。
+- [x] 1. 先写 `exact_goal_outside_recent_list_remains_selected`：目标不在最近20条时按明确goal读取已存Artifact并校验类型，不选择首目标；task_id不存在显示失效提示。Wrongbook V2把旧wrong_id别名规范为focus；旧版保留其原参数，重复／非法参数不触发错误记录提交。
+- [x] 2. 写 `plan_day_and_semester_focus_do_not_choose_the_first_item`：`?plan=p&day=7`在day字段不等于数组index+1的样本中仍定位真实day；完成写回对应0基index。缺失／已归档计划不回退最新计划。学期第75项任务能定位其实际页，不更改筛选后误指另一项；不存在则提示。
+- [x] 3. 写 `programming_missing_reference_is_explicit`：明确problem不存在时不默选首题；没有题目关联时给出选择练习的清晰入口。目标面试保留现有source/focus/goal/scenario/target上下文；只有确有对应训练记录才能称“继续本场”。原功能开关关闭时呈现不可用原因及合理替代入口。
+- [x] 4. 运行 `node --test tests/today-navigation.test.mjs tests/route-state.test.mjs`（`filemate/web`），新增失败后实现纯参数解析并在Vue挂接定位／滚动。返回固定 `/today`，不接受任意外部return URL；不把额外参数塞进会拒绝未知字段的图谱query。
+- [x] 5. 同命令与 `npm run build` 通过；浏览器验证留到任务7，不以纯函数测试代替点击证据。提交 `fix(today): 精确定位原任务与失效入口`。
 
 ### Task 6: 实现A方案工作台与统一入口
 
