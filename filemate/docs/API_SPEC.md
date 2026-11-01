@@ -1312,3 +1312,15 @@ ScopeRequest：goal_id必填，course_id可选，source_ids最多20个不重复�
 2026-11-01 B审阅修复：共享来源属于多门课程时必须显式course_id。计划内容、metadata、课程关联与额外来源在COUNT/LIMIT前同时限域；跨课计划不成为候选。V2 criterion_met不等于下一复习周期已完成。投影路由使用现役Vue的goal／plan参数，到期日转换为上海自然日。托管与个人恢复均使旧确认／撤销令牌失效，保留日安排、回执和审计；需重新预览。
 
 当前B不新增迁移，但生产只读探测为schema34、候选为36；升级需复用第三专项既有35／36迁移。现用Python3.11.13／SQLite3.26.0已完成提交源码的隔离应用及原创合成34→36升级／旧版本备份恢复验证，没有写入生产库或切换服务。日期辅助查询先按来源限域；同库快照聚合限并发，无跨账号缓存。规范UTC秒日期证明后使用原生排序，混合格式保持严格解析；容量范围及尚未完成条件见B级交付报告。
+
+## C级工作台展示合同
+
+能力响应增加 `ui_contract: "today-workspace-v1"`。新工作台须同时确认enabled与合同版本；合同未知或网络失败不能被解释为关闭功能。此合同接线不表示C级页面已经验收，功能开关仍默认关闭。
+
+`POST /api/learning/orchestrator/goal-options` 是只读的目标元数据目录，正文为严格对象 `{"q":"","offset":0}`。q最多120字符，按普通文本匹配（百分号、下划线、反斜杠不作为通配符）；offset为0—1000000的整数。固定每页30条，按更新时间倒序、目标ID稳定排序；返回 `{items,total,offset,limit:30}`。items仅含goal_id、title、goal_type、deadline、source_id和valid，标题最多160字符，不返回任务正文、画像、gaps或模型评分。搜索使用已存Artifact标题，缺标题显示“未命名目标”；损坏或超出1MiB的目标内容保留可识别目录项，valid=false，不拖垮其他记录。当前学习空间由既有认证确定，不接受workspace/user/db_path；开关关闭返回503，参数错误422，存储故障503，所有响应no-store。服务端只读取一页正文，不扫描全部目标JSON。
+
+snapshot的facts.goal增加有限长title，facts.sources增加original_name（最多240字符）；原目标／文件名不被修改。显示字段参与evidence_revision，改名后旧预览需重新读取。完整资料及目标内容仍走原有授权详情入口，不在目录内展开。
+
+DayView增加可选 `latest_operation: OperationReceipt|null`。新确认与撤销在同一事务内保存日安排的last_operation_id与不可变回执，刷新后可直接找回操作。只解析类型、请求键、ID、日期和修订全部匹配的指针；旧B日安排没有指针或指针损坏时仍正常读取，latest_operation=null，不扫描全历史猜测。原 `/operations/{request_key}` 历史查询保持可用。日安排配置为空时仍可能有本次撤销回执，返回not_confirmed及该回执；读取回执不授权再次写入，撤销仍须单独预览、确认。
+
+上述变化不新增schema迁移，不改变既有确认正文、幂等规则和真实任务完成接口；不包含D级模型建议。

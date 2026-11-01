@@ -7,6 +7,7 @@ from weakref import WeakValueDictionary
 from filemate.execution.data_actions import digest
 from filemate.wrongbook.queries import ReviewFilter, ReviewQueries
 
+from .context import display_label
 from .models import (
     LOCAL_ZONE,
     Clock,
@@ -80,7 +81,7 @@ class SnapshotReader:
             course_ref = {'course_id': scope.course_id, 'revision': course['revision']}
         sources = []
         for sid in sorted(ids):
-            source = conn.execute('SELECT source_id,updated_at FROM sources WHERE source_id=?', (sid,)).fetchone()
+            source = conn.execute('SELECT source_id,substr(original_name,1,240) AS original_name,updated_at FROM sources WHERE source_id=?', (sid,)).fetchone()
             if source is None:
                 raise OrchestratorError('source_not_found', 404)
             sources.append(dict(source))
@@ -97,6 +98,7 @@ class SnapshotReader:
         compact = [{k: r.get(k) for k in review_keys} for r in reviews['items']]
         goal_tasks = [t for item in goal.get('tasks', [])[:200] if (t := safe_task(item))]
         facts = {'goal': {'goal_id': scope.goal_id, 'source_id': row['source_id'],
+                          'title': display_label(goal.get('title'), 160, '未命名目标'),
                           'deadline': goal.get('deadline'), 'goal_type': goal.get('goal_type'), 'tasks': goal_tasks},
                  'sources': sources, 'course': course_ref, 'plans': plans, 'semester': semester,
                  'reviews': compact, 'attempts': attempts, 'graph': graph, 'plan_links': plan_links, 'interviews': interviews}

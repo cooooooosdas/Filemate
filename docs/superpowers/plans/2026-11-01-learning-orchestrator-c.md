@@ -10,7 +10,7 @@
 
 **Spec:** [已通过A级方案](../../LEARNING_ORCHESTRATOR_2_0_A_AUDIT.md)、[A级交付](../../LEARNING_ORCHESTRATOR_2_0_A_ACCEPTANCE.md)、[已验收B级交付](../../LEARNING_ORCHESTRATOR_2_0_B_DELIVERY.md)；原任务书 `C:/Users/胡希/.codex/attachments/7841a6a3-3b50-45cd-8996-97b11c136836/pasted-text-1.txt` 的 C1—C5、阶段验收与保护前三专项规则。
 
-2026-11-01 用户确认“验收B级，进入C级计划”。本文件是待审阅的实施计划，不表示C级已经开发或验收。沿用已选执行方式：当前会话由同一实施者逐项完成，结束后一次全范围独立审阅；不重新选择执行方式。第三版错题复盘成果继续维护，不被新入口替换。C完成后等待用户验收，不自动进入D／E或部署。
+2026-11-01 用户确认“验收B级，进入C级计划”，随后批准本计划“从任务1逐项实施”。当前按八项任务连续开发，尚不表示C级整体完成或验收。沿用已选执行方式：当前会话由同一实施者逐项完成，结束后一次全范围独立审阅。第三版错题复盘成果继续维护，不被新入口替换。C完成后等待用户验收，不自动进入D／E或部署。
 
 ## Global Constraints
 
@@ -80,11 +80,11 @@
 
 **Interfaces:** 消费 `ScopeRequest`、`OperationReceipt`、`OrchestratorRepository.today()` 和同空间Artifact；产出共享接口中的 `read_goal_options`、目标标签、`latest_operation` 与 `ui_contract`。
 
-- [ ] 1. 先写 `test_goal_options_are_paged_and_private`：65个原创目标分三页；第二页offset30、items30、total65；q中的 `%`、`_` 按普通字符；返回无tasks/gaps/原回答，外空间记录0条。损坏JSON仍有可识别的disabled条目，不能阻塞整页；非法offset和额外字段422。
-- [ ] 2. 写 `test_day_receipt_pointer_is_atomic_and_backward_readable`：确认后关闭重开仓储，`today.latest_operation.operation_id == receipt.operation_id`；撤销后为撤销回执；注入事务失败时日安排和回执均不部分保存；旧B日Artifact无指针仍可读；指针类型／日期／修订不匹配返回null，不引用其他记录。快照标签没有旧全局画像，重命名使旧证据版本失效。
-- [ ] 3. 运行 `uv run pytest filemate/tests/orchestrator/test_context.py filemate/tests/orchestrator/test_snapshot.py filemate/tests/orchestrator/test_commands.py filemate/tests/orchestrator/test_api.py -q`，先看到新增断言失败；实现上述接口。目录用参数化SQL、普通列搜索和固定30行分页，分页后再解码内容，不依赖新JSON语法；仅读取 `reverse_goal_plan`。新日指针为兼容元数据，不新增表或migration。
-- [ ] 4. 重跑同一命令，预期全通过；读操作前后业务表指纹相同，默认关闭仍拒绝新读入口，历史回执可读。同步API示例，说明老日安排没有定位指针时仍可凭原request_key查询。
-- [ ] 5. 仅暂存本任务文件，提交 `feat(orchestrator): 补齐工作台展示与回执定位合同`。
+- [x] 1. 先写 `test_goal_options_are_paged_and_private`：65个原创目标分三页；第二页offset30、items30、total65；q中的 `%`、`_` 按普通字符；返回无tasks/gaps/原回答，外空间记录0条。损坏JSON仍有可识别的disabled条目，不能阻塞整页；非法offset和额外字段422。
+- [x] 2. 写 `test_day_receipt_pointer_is_atomic_and_backward_readable`：确认后关闭重开仓储，`today.latest_operation.operation_id == receipt.operation_id`；撤销后为撤销回执；注入事务失败时日安排和回执均不部分保存；旧B日Artifact无指针仍可读；指针类型／日期／修订不匹配返回null，不引用其他记录。快照标签没有旧全局画像，重命名使旧证据版本失效。
+- [x] 3. 运行 `uv run pytest filemate/tests/orchestrator/test_context.py filemate/tests/orchestrator/test_snapshot.py filemate/tests/orchestrator/test_commands.py filemate/tests/orchestrator/test_api.py -q`，先看到新增断言失败；实现上述接口。目录用参数化SQL、普通列搜索和固定30行分页，分页后再解码内容，不依赖新JSON语法；仅读取 `reverse_goal_plan`。新日指针为兼容元数据，不新增表或migration。
+- [x] 4. 重跑同一命令，预期全通过；读操作前后业务表指纹相同，默认关闭仍拒绝新读入口，历史回执可读。同步API示例，说明老日安排没有定位指针时仍可凭原request_key查询。
+- [x] 5. 仅暂存本任务文件，提交 `feat(orchestrator): 补齐工作台展示与回执定位合同`。
 
 ### Task 2: 建立懒加载客户端与可信展示、导航适配
 

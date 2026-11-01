@@ -1,8 +1,13 @@
 """Protected schedule references and immutable operation receipts, no new schema."""
 
 import json
+import re
+import sqlite3
 from contextlib import contextmanager
 from datetime import date
+from typing import Any
+
+from pydantic import ValidationError
 
 from filemate.execution.data_actions import digest
 
@@ -80,6 +85,26 @@ def receipt(conn, record):
     return result
 
 
+def latest_operation(conn: sqlite3.Connection, saved: dict[str, Any] | None, day: str) -> OperationReceipt | None:
+    """Resolve only a matching persisted pointer, leaving legacy schedules readable."""
+    identifier = saved.get('last_operation_id') if saved else None
+    if not isinstance(identifier, str):
+        return None
+    try:
+        record = load(conn, identifier, OP_TYPE)
+        if record is None:
+            return None
+        result = OperationReceipt.model_validate(record.get('receipt'), strict=True)
+        if (result.operation_id != identifier or operation_id(result.request_key) != identifier
+                or not re.fullmatch(r'[a-zA-Z0-9_-]{16,80}', result.request_key)
+                or result.study_date != day or result.revision != saved.get('revision')
+                or result.status not in ('confirmed', 'undone')):
+            return None
+        return receipt(conn, record)
+    except (OrchestratorError, ValidationError, ValueError, TypeError, KeyError, RecursionError):
+        return None
+
+
 class OrchestratorRepository:
     def __init__(self, storage, *, clock=None):
         self.storage = storage
@@ -94,8 +119,9 @@ class OrchestratorRepository:
         day = study_date.isoformat()
         with self.storage.read_snapshot() as read:
             saved = load(read._conn(), day_id(day), DAY_TYPE)
+            latest = latest_operation(read._conn(), saved, day)
             if not saved or saved.get('config') is None:
-                return DayView(study_date=day, revision=saved['revision'] if saved else 0, status='not_confirmed')
+                return DayView(study_date=day, revision=saved['revision'] if saved else 0, status='not_confirmed', latest_operation=latest)
             config = saved['config']
             scope = ScopeRequest.model_validate(config['scope'])
             options = ScheduleOptions.model_validate(config['options'])
@@ -103,7 +129,7 @@ class OrchestratorRepository:
                 snap = SnapshotReader(read).read_in_transaction(read, scope, as_of=self.clock())
             except OrchestratorError:
                 return DayView(study_date=day, revision=saved['revision'], status='stale',
-                               scope=scope, options=options, stale_refs=config['selected_ids'])
+                               scope=scope, options=options, stale_refs=config['selected_ids'], latest_operation=latest)
             projection = project_tasks(snap)
             tasks = {t.task_id: t for t in projection.tasks + projection.completed}
             for tid, minutes in options.minute_overrides.items():
@@ -113,5 +139,5 @@ class OrchestratorRepository:
             if snap.evidence_revision != config['evidence_revision']:
                 stale = list(dict.fromkeys([*stale, 'evidence_changed']))
             return DayView(study_date=day, revision=saved['revision'], status='stale' if stale else 'confirmed',
-                           scope=scope, options=options, stale_refs=stale,
+                           scope=scope, options=options, stale_refs=stale, latest_operation=latest,
                            selected=[tasks[tid] for tid in config['selected_ids'] if tid in tasks], completed=projection.completed)

@@ -14,9 +14,11 @@ from pydantic import ValidationError
 from filemate.execution.storage import SQLiteStorage
 
 from .commands import OrchestratorCommands
+from .context import read_goal_options
 from .models import (
     LOCAL_ZONE,
     ConfirmRequest,
+    GoalOptionsRequest,
     OrchestratorError,
     PreviewRequest,
     ScopeRequest,
@@ -92,7 +94,12 @@ def create_router(get_storage: Callable[[], SQLiteStorage]) -> APIRouter:
     @router.get('/capabilities')
     def capabilities():
         return response({'enabled': enabled(), 'rule_version': RULE_VERSION,
+                         'ui_contract': 'today-workspace-v1',
                          'limits': {'sources': 20, 'candidates': 200, 'selected': 20, 'daily_operations': 100}})
+
+    @router.post('/goal-options', dependencies=[Depends(require_enabled)])
+    def goal_options(body: GoalOptionsRequest):
+        return response(read_goal_options(get_storage(), body))
 
     @router.post('/snapshot', dependencies=[Depends(require_enabled)])
     def snapshot(body: ScopeRequest):

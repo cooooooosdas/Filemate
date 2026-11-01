@@ -108,7 +108,8 @@ class OrchestratorCommands:
                                       study_date=day, revision=revision + 1, status='confirmed')
             record = {'command_digest': hashed, 'token_hash': data_actions.digest(request.confirmation_token),
                       'before': saved.get('config') if saved else None, 'after': config, 'receipt': output.model_dump()}
-            put(conn, day_id(day), DAY_TYPE, {'revision': revision + 1, 'config': config}, replace=True)
+            put(conn, day_id(day), DAY_TYPE, {'revision': revision + 1, 'config': config,
+                                           'last_operation_id': output.operation_id}, replace=True)
             put(conn, output.operation_id, OP_TYPE, record, title='confirm:' + day)
             data_actions.finish(conn, 'orchestrator_confirm', day_id(day), request.confirmation_token, output.model_dump())
             return output
@@ -148,7 +149,8 @@ class OrchestratorCommands:
             output = OperationReceipt(operation_id=oid, request_key=request.request_key, study_date=day, revision=revision + 1, status='undone')
             record = {'command_digest': hashed, 'token_hash': data_actions.digest(request.confirmation_token),
                       'undo_of': operation_id, 'receipt': output.model_dump()}
-            put(conn, day_id(day), DAY_TYPE, {'revision': revision + 1, 'config': target['before']}, replace=True)
+            put(conn, day_id(day), DAY_TYPE, {'revision': revision + 1, 'config': target['before'],
+                                           'last_operation_id': output.operation_id}, replace=True)
             put(conn, oid, OP_TYPE, record, title='undo:' + operation_id)
             data_actions.finish(conn, 'orchestrator_undo', day_id(day), request.confirmation_token, output.model_dump())
             return output

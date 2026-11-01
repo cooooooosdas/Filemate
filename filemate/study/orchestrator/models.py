@@ -35,6 +35,27 @@ class ScopeRequest(StrictRequest):
         return self
 
 
+class GoalOptionsRequest(StrictRequest):
+    q: str = Field(default='', max_length=120)
+    offset: int = Field(default=0, ge=0, le=1000000)
+
+
+class GoalChoice(BaseModel):
+    goal_id: str
+    title: str
+    goal_type: str | None = None
+    deadline: str | None = None
+    source_id: str | None = None
+    valid: bool
+
+
+class GoalOptionsPage(BaseModel):
+    items: list[GoalChoice]
+    total: int
+    offset: int
+    limit: int = 30
+
+
 class EvidenceSnapshot(BaseModel):
     scope: ScopeRequest
     as_of: datetime
@@ -185,3 +206,4 @@ class DayView(BaseModel):
     selected: list[TaskView] = Field(default_factory=list)
     completed: list[TaskView] = Field(default_factory=list)
     stale_refs: list[str] = Field(default_factory=list)
+    latest_operation: OperationReceipt | None = None
