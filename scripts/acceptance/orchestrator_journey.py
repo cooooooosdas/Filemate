@@ -8,6 +8,7 @@ import socket
 import subprocess
 import sys
 import time
+import uuid
 from contextlib import ExitStack
 from datetime import timedelta
 from pathlib import Path
@@ -23,6 +24,7 @@ from filemate.study.orchestrator.models import (
     LOCAL_ZONE,
     ConfirmRequest,
     OrchestratorError,
+    UndoConfirmRequest,
     utc_now,
 )
 from filemate.study.orchestrator.repository import OrchestratorRepository
@@ -44,8 +46,17 @@ def start(args, env, cwd, log):
                             creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0)
 
 
-def stop(process):
+def stop(process, *, shutdown=None):
     if process is not None and process.poll() is None:
+        if shutdown:
+            url, token = shutdown
+            try:
+                httpx.post(url, headers={'x-filemate-shutdown-token': token}, timeout=3,
+                           trust_env=False).raise_for_status()
+                process.wait(timeout=10)
+                return
+            except (httpx.HTTPError, subprocess.TimeoutExpired):
+                pass
         if sys.platform == 'win32':
             subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'], check=False,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -65,7 +76,7 @@ def wait_ready(url, process):
         if process.poll() is not None:
             raise RuntimeError('owned_service_startup_failed; see isolated logs')
         try:
-            if httpx.get(url, timeout=1).status_code == 200:
+            if httpx.get(url, timeout=1, trust_env=False).status_code == 200:
                 return
         except httpx.TransportError:
             pass
@@ -82,13 +93,17 @@ def run_journey(root: Path):
     api_port, web_port = free_port(), free_port()
     if api_port == web_port:
         raise RuntimeError('port_collision_retry_new_candidate')
+    shutdown_token = uuid.uuid4().hex
+    shutdown = (f'http://127.0.0.1:{api_port}/internal/shutdown', shutdown_token)
     env = dict(os.environ) | {'PYTHONUTF8': '1', 'FILEMATE_ENV': 'development', 'FILEMATE_IDENTITY_MODE': 'local',
         'FILEMATE_DATA_DIR': str(data), 'FILEMATE_DB_PATH': str(data / 'filemate.db'),
         'FILEMATE_UPLOAD_DIR': str(data / 'inbox'), 'FILEMATE_ARCHIVE_DIR': str(data / 'archive'),
         'FILEMATE_ENABLE_LEARNING_ORCHESTRATOR': '1', 'FILEMATE_ENABLE_KNOWLEDGE_GRAPH': '1',
         'FILEMATE_ENABLE_COURSE_GRAPH': '1',
-        'FILEMATE_ENABLE_WRONGBOOK_V2': '1', 'VITE_API_URL': f'http://127.0.0.1:{api_port}'}
-    backend_args = [sys.executable, '-m', 'uvicorn', 'server:app', '--host', '127.0.0.1', '--port', str(api_port), '--no-access-log']
+        'FILEMATE_ENABLE_WRONGBOOK_V2': '1', 'VITE_API_URL': f'http://127.0.0.1:{api_port}',
+        'FILEMATE_HOST': '127.0.0.1', 'FILEMATE_PORT': str(api_port),
+        'FILEMATE_SHUTDOWN_TOKEN': shutdown_token}
+    backend_args = [sys.executable, '-m', 'server']
     node = shutil.which('node')
     if node is None:
         raise RuntimeError('node_required_for_real_proxy_verification')
@@ -102,7 +117,7 @@ def run_journey(root: Path):
             wait_ready(f'http://127.0.0.1:{api_port}/api/ready', backend)
             frontend = start(frontend_args, env, ROOT / 'filemate/web', logs[1])
             wait_ready(f'http://127.0.0.1:{web_port}{API}/capabilities', frontend)
-            with httpx.Client(base_url=f'http://127.0.0.1:{api_port}', timeout=30) as client:
+            with httpx.Client(base_url=f'http://127.0.0.1:{api_port}', timeout=30, trust_env=False) as client:
                 def call(method, path, **kwargs):
                     res = client.request(method, path, **kwargs)
                     res.raise_for_status()
@@ -158,6 +173,9 @@ def run_journey(root: Path):
                 call('POST', API + '/operations/' + second['operation_id'] + '/undo-confirm', json={
                     'confirmation_token': undo['confirmation_token'], 'request_key': 'synthetic-journey-undo-1', 'confirmed': True})
                 checks['undo_preserves_completion'] = completed_id in [t['task_id'] for t in call('GET', API + '/today')['completed']]
+                third_request, third = arrange(45, 'synthetic-journey-confirm-3')
+                undo_pending = call('POST', API + '/operations/' + third['operation_id'] + '/undo-preview', json={})
+                undo_pending = {'confirmation_token': undo_pending['confirmation_token'], 'request_key': 'synthetic-restored-unused-undo', 'confirmed': True}
                 snap = call('POST', API + '/snapshot', json=scope)['snapshot']
                 pending = {'scope': scope, 'expected_evidence_revision': snap['evidence_revision'], 'options': {'available_minutes': 10}}
                 pending_token = call('POST', API + '/preview', json=pending)['confirmation_token']
@@ -165,11 +183,14 @@ def run_journey(root: Path):
                 exported = client.get('/api/privacy/export?format=backup')
                 exported.raise_for_status()
                 (root / 'personal-synthetic.zip').write_bytes(exported.content)
-                stop(backend)
+                # 使用现役宿主关闭合同，等待SQLite正常释放WAL句柄。
+                client.post('/internal/shutdown', headers={'x-filemate-shutdown-token': shutdown_token}).raise_for_status()
+                backend.wait(timeout=10)
                 try:
-                    client.get(API + '/today', timeout=1)
+                    with socket.create_connection(('127.0.0.1', api_port), timeout=1):
+                        pass
                     checks['network_outage_preserves_data'] = False
-                except httpx.TransportError:
+                except OSError:
                     checks['network_outage_preserves_data'] = True
                 store = SQLiteStorage(data / 'filemate.db')
                 frozen = domain_fingerprints(store)
@@ -181,6 +202,21 @@ def run_journey(root: Path):
                 restore_backup(root / 'managed-backup', target, restore_plan['confirmation'])
                 restored = SQLiteStorage(target / 'filemate.db')
                 checks['managed_restore_fingerprints_match'] = domain_fingerprints(restored) == frozen
+                restored_commands = OrchestratorCommands(restored)
+                rejected = []
+                for action in (lambda: restored_commands.confirm(ConfirmRequest(**pending)),
+                               lambda: restored_commands.confirm(ConfirmRequest(**third_request)),
+                               lambda: restored_commands.confirm_undo(third['operation_id'], UndoConfirmRequest(
+                                   confirmation_token=undo_pending['confirmation_token'],
+                                   request_key='synthetic-restored-unused-undo',
+                                   confirmed=True))):
+                    try:
+                        action()
+                        rejected.append(False)
+                    except OrchestratorError:
+                        rejected.append(True)
+                checks['managed_restore_invalidates_old_tokens'] = all(rejected) and restored._conn().execute(
+                    "SELECT count(*) FROM data_action_previews WHERE action IN ('orchestrator_confirm','orchestrator_undo')").fetchone()[0] == 0
                 restored.close()
                 try:
                     plan_restore(root / 'managed-backup', target)
@@ -196,7 +232,7 @@ def run_journey(root: Path):
                     call('DELETE', f'/knowledge/sources/{sources[index]}', json={'confirmed': True, 'confirmation_token': preview['confirmation_token']})
                     current = call('GET', API + '/today')
                     checks['unrelated_source_delete_preserves_view' if index else 'affected_source_delete_stales_view'] = current == previous if index else current['status'] == 'stale'
-            stop(backend); backend = None
+            stop(backend, shutdown=shutdown); backend = None
             personal_root = root / 'personal-restored'
             personal_root.mkdir()
             # 个人备份属于同一签名空间；隔离恢复保留本次合成空间密钥，不绕过验签。
@@ -224,9 +260,10 @@ def run_journey(root: Path):
             return {'status': 'PASS' if all(checks.values()) else 'FAIL', 'synthetic': True,
                     'fixture_setup': 'one original question artifact; domain actions via original HTTP',
                     'checks': checks, 'steps': steps, 'domain_fingerprints_before_decision': before,
-                    'domain_fingerprints_at_backup': frozen, 'production_touched': False}
+                    'domain_fingerprints_at_backup': frozen, 'production_touched': False,
+                    'shutdown_mode': 'owned_authenticated_graceful_stop'}
         finally:
-            stop(frontend); stop(backend)
+            stop(frontend); stop(backend, shutdown=shutdown)
 
 
 def main(argv=None):

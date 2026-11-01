@@ -104,3 +104,37 @@ def test_shared_source_requires_explicit_course_and_reports_source_basis(world):
     result = reader.read(scope(world))
     assert result.coverage['shared_source_ids'] == [world['sources'][0]]
     assert result.coverage['practice_scope_basis'] == 'source_records_not_course_mastery'
+
+
+@pytest.mark.parametrize('foreign_kind', ['content', 'metadata', 'extra_source'])
+def test_course_and_all_plan_sources_are_filtered_before_limit(world, foreign_kind):
+    from filemate.course_graph.repository import CourseGraphRepository
+    store, sid = world['store'], world['sources'][0]
+    cid, other = world['courses']
+    revision = store._conn().execute('SELECT revision FROM kg_courses WHERE course_id=?', (other,)).fetchone()[0]
+    CourseGraphRepository(store).attach_sources(other, [sid], None, revision)
+    plan = {'title': '原创计划', 'exam_date': '2026-11-05', 'daily_minutes': 15, 'goal': '复习',
+            'daily_plan': [{'date': '2026-10-31', 'duration_minutes': 15, 'tasks': ['阅读']}]}
+    foreign = plan | ({'course_learning': {'course_id': other}} if foreign_kind == 'content' else {})
+    aid = store.save_artifact(artifact_type='study_plan', source_id=sid, content=foreign,
+                             metadata={'course_id': other} if foreign_kind == 'metadata' else {})
+    saved = store.create_study_plan(artifact_id=aid, source_id=sid, plan=foreign)
+    conn = store._conn()
+    row = dict(conn.execute('SELECT * FROM study_plans WHERE plan_id=?', (saved['plan_id'],)).fetchone())
+    artifact = dict(conn.execute('SELECT * FROM artifacts WHERE artifact_id=?', (aid,)).fetchone())
+    for i in range(101):
+        art = artifact | {'artifact_id': f'foreign-artifact-{i:04}'}
+        conn.execute('INSERT INTO artifacts (' + ','.join(art) + ') VALUES (' + ','.join('?' for _ in art) + ')', tuple(art.values()))
+        clone = row | {'plan_id': f'000-foreign-{i:04}', 'artifact_id': art['artifact_id']}
+        conn.execute('INSERT INTO study_plans (' + ','.join(clone) + ') VALUES (' + ','.join('?' for _ in clone) + ')', tuple(clone.values()))
+        if foreign_kind == 'extra_source':
+            conn.execute('INSERT INTO kg_learning_artifact_sources VALUES(?,?)', (art['artifact_id'], world['sources'][1]))
+    if foreign_kind == 'extra_source':
+        conn.execute('INSERT INTO kg_learning_artifact_sources VALUES(?,?)', (aid, world['sources'][1]))
+    conn.commit()
+    own_aid = store.save_artifact(artifact_type='study_plan', source_id=sid, content=plan, metadata={'course_id': cid})
+    own = store.create_study_plan(artifact_id=own_aid, source_id=sid, plan=plan)
+    conn.execute('UPDATE study_plans SET plan_id=? WHERE plan_id=?', ('zz-own', own['plan_id'])); conn.commit()
+    result = snapshot(world)
+    assert [p['plan_id'] for p in result.facts['plans']] == ['zz-own']
+    assert result.coverage['plans']['total'] == 1

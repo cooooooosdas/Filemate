@@ -22,6 +22,7 @@ def test_goal_to_schedule_to_completion_and_restart(journey):
 
 def test_restore_keeps_references_but_invalidates_tokens(journey):
     assert journey['checks']['managed_restore_fingerprints_match']
+    assert journey['checks']['managed_restore_invalidates_old_tokens']
     assert journey['checks']['managed_restore_rejects_overwrite']
     assert journey['checks']['personal_restore_keeps_refs']
     assert journey['checks']['personal_restore_invalidates_old_tokens']

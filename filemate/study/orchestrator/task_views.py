@@ -52,7 +52,7 @@ def project_tasks(snapshot: EvidenceSnapshot) -> TaskProjection:
         if row['data_error'] or row['read_only_snapshot'] or key is None:
             unavailable.append({'kind': 'review', 'id': wid, 'reason': 'invalid_or_historical_evidence'})
             continue
-        done = row['learning_status'] == 'criterion_met' or (row['scheduler_version'] != 'review-interval-v2' and row['mastered'] == 1)
+        done = row['scheduler_version'] != 'review-interval-v2' and row['mastered'] == 1
         eligibility = 'eligible'
         if row['schedule_status'] != 'active':
             eligibility = 'paused'
@@ -81,7 +81,7 @@ def project_tasks(snapshot: EvidenceSnapshot) -> TaskProjection:
             minutes = None
         done = row.get('status') == 'completed'
         add(view(tid, 'goal', row.get('title', template), origin,
-                 '/goals?' + urlencode({'goal_id': scope.goal_id, 'task_id': template}),
+                 '/goals?' + urlencode({'goal': scope.goal_id, 'task_id': template}),
                  source_id=facts['goal'].get('source_id'), due_date=row.get('due_date') or facts['goal'].get('deadline'),
                  estimated_minutes=minutes, estimate_source=('domain_estimate' if 'duration_minutes' in row else 'rule_default') if minutes else None,
                  action_key=action, status='completed' if done else 'pending', completion_ref=origin if done else None))
@@ -94,7 +94,7 @@ def project_tasks(snapshot: EvidenceSnapshot) -> TaskProjection:
             if type(minutes) is not int or not 1 <= minutes <= 240:
                 minutes = None
             add(view(tid, 'plan', f"学习计划第{day['day']}天", ref,
-                     '/study-plan?' + urlencode({'plan_id': plan['plan_id'], 'day': day['day']}),
+                     '/study-plan?' + urlencode({'plan': plan['plan_id'], 'day': day['day']}),
                      source_id=plan['source_id'], due_date=day.get('date') or plan.get('exam_date'),
                      estimated_minutes=minutes, estimate_source='domain_estimate' if minutes else None,
                      status='completed' if done else 'pending', completion_ref=ref if done else None,

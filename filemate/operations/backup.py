@@ -588,6 +588,9 @@ def restore_backup(backup: Path, target: Path, confirmation: str) -> dict[str, A
                 from filemate.wrongbook.privacy import normalize_restored_wrongbook
 
                 normalize_restored_wrongbook(conn)
+                from filemate.study.orchestrator.privacy import normalize_restored_orchestrator
+
+                normalize_restored_orchestrator(conn)
                 if conn.execute('PRAGMA foreign_key_check').fetchone():
                     raise ValueError('恢复安全规范化失败，新目录不可启用')
                 normalized += int(bool(exists))

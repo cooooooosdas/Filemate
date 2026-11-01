@@ -18,6 +18,21 @@ def test_same_snapshot_is_deterministic(world):
     assert arrange(world).estimated_minutes == 15
 
 
+def test_deadlines_compare_shanghai_days_at_midnight(world):
+    from datetime import datetime, timezone
+
+    from .conftest import wrong
+    wrong(world)
+    snap = snapshot(world)
+    snap.as_of = datetime(2026, 10, 31, 18, tzinfo=timezone.utc)
+    snap.study_date = '2026-11-01'
+    snap.facts['goal']['tasks'][0].update(due_date='2026-10-31', duration_minutes=10)
+    snap.facts['reviews'][0].update(next_review_at='2026-10-31T17:00:00Z', error_count=99)
+    projection = module('task_views').project_tasks(snap)
+    result = module('scheduler').build_schedule(snap, projection, module('models').ScheduleOptions(available_minutes=10))
+    assert [t.kind for t in result.selected] == ['goal']
+
+
 def test_zero_minutes_defers_every_pending_task(world):
     result = arrange(world, 0)
     assert result.selected == [] and result.estimated_minutes == 0

@@ -1,6 +1,8 @@
 """One read transaction for scope authorization and all evidence projections."""
 
 from datetime import datetime
+from threading import RLock
+from weakref import WeakValueDictionary
 
 from filemate.execution.data_actions import digest
 from filemate.wrongbook.queries import ReviewFilter, ReviewQueries
@@ -25,11 +27,17 @@ from .snapshot_queries import (
     safe_task,
 )
 
+_READ_GATES = WeakValueDictionary()
+_GATES_LOCK = RLock()
+
 
 class SnapshotReader:
     def __init__(self, storage, *, clock: Clock | None = None):
         self.storage = storage
         self.clock = clock or utc_now
+        with _GATES_LOCK:
+            key = str(storage.db_path.resolve())
+            self._read_gate = _READ_GATES.setdefault(key, RLock())
 
     def read(self, scope: ScopeRequest) -> EvidenceSnapshot:
         as_of = aware(self.clock())
@@ -37,6 +45,11 @@ class SnapshotReader:
             return self.read_in_transaction(read, scope, as_of=as_of)
 
     def read_in_transaction(self, read, scope: ScopeRequest, *, as_of: datetime) -> EvidenceSnapshot:
+        # 同一库的快照组装串行，避免多个读线程反复争用Python/SQLite回调；其他学习空间独立。
+        with self._read_gate:
+            return self._read_locked(read, scope, as_of=as_of)
+
+    def _read_locked(self, read, scope: ScopeRequest, *, as_of: datetime) -> EvidenceSnapshot:
         as_of = aware(as_of)
         conn = read._conn()
         row = conn.execute("SELECT source_id,CASE WHEN length(content)<=1048576 THEN content END AS content FROM artifacts WHERE artifact_id=? AND artifact_type='reverse_goal_plan'", (scope.goal_id,)).fetchone()
@@ -72,7 +85,7 @@ class SnapshotReader:
                 raise OrchestratorError('source_not_found', 404)
             sources.append(dict(source))
         resolved = ScopeRequest(goal_id=scope.goal_id, course_id=scope.course_id, source_ids=sorted(ids))
-        plans, plan_coverage = read_plans(conn, ids)
+        plans, plan_coverage = read_plans(conn, ids, scope.course_id)
         semester, semester_coverage = read_semester(conn, ids)
         attempts, attempt_coverage, graph, graph_coverage = read_evidence(read, ids, scope.course_id)
         plan_links, link_coverage = read_plan_links(conn, ids, scope.course_id)

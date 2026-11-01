@@ -1,6 +1,7 @@
 """Task identity regressions with hand-checked domain facts."""
 
 from copy import deepcopy
+from urllib.parse import parse_qs, urlsplit
 
 from .conftest import module, snapshot, wrong
 
@@ -39,6 +40,24 @@ def test_new_due_cycle_keeps_old_history(world):
     assert next(t for t in second.tasks if t.kind == 'review').eligibility == 'not_due'
 
 
+def test_criterion_met_still_has_a_new_due_review_cycle(world):
+    from filemate.wrongbook.engine import parse_time, transition
+    wrong(world)
+    state, now = None, world['now'][0]
+    for _ in range(8):
+        state = transition(state, correct=True, independent=True, now=now)
+        now = parse_time(state['next_review_at'])
+        if state['learning_status'] == 'criterion_met':
+            break
+    assert state['learning_status'] == 'criterion_met'
+    snap = snapshot(world)
+    snap.facts['reviews'][0].update(state)
+    snap.as_of = now
+    result = module('task_views').project_tasks(snap)
+    review = next(t for t in result.tasks if t.kind == 'review')
+    assert review.status == 'pending' and review.eligibility == 'eligible'
+
+
 def test_composite_plan_is_not_swallowed_by_one_review(world):
     wrong(world)
     snap = snapshot(world)
@@ -61,9 +80,11 @@ def test_completion_and_semester_revision_do_not_mint_new_task(world):
 
 
 def test_task_routes_resolve_original_resource(world):
+    world['store'].save_artifact(artifact_type='reverse_goal_plan', source_id=world['sources'][0], content={'tasks': []})
     result = project(world)
     task = result.tasks[0]
     assert task.route.startswith('/goals?') and world['goal'] in task.route
+    assert parse_qs(urlsplit(task.route).query)['goal'] == [world['goal']]
     assert task.estimated_minutes == 15 and task.estimate_source == 'rule_default'
 
 
@@ -85,6 +106,7 @@ def test_real_saved_plan_uses_daily_plan_and_zero_based_completion(world):
     aid = store.save_artifact(source_id=world['sources'][0], artifact_type='study_plan', content=plan)
     saved = store.create_study_plan(artifact_id=aid, source_id=world['sources'][0], plan=plan)
     tid = f"plan:{saved['plan_id']}:0"
-    assert any(t.task_id == tid for t in project(world).tasks)
+    task = next(t for t in project(world).tasks if t.task_id == tid)
+    assert parse_qs(urlsplit(task.route).query)['plan'] == [saved['plan_id']]
     store.set_study_plan_day(saved['plan_id'], 0, completed=True)
     assert any(t.task_id == tid for t in project(world).completed)

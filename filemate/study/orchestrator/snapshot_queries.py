@@ -52,14 +52,37 @@ def safe_task(item: Any) -> dict | None:
             and (not isinstance(v, str) or len(v) <= 300)}
 
 
-def read_plans(conn, source_ids: list[str]) -> tuple[list[dict], dict]:
+def _plan_course(raw, kind):
+    data = object_json(raw) if isinstance(raw, str) and len(raw) <= 1048576 else None
+    if data is None:
+        return None
+    ref = data.get('course_learning') if kind == 'plan' else data
+    if ref is None:
+        return ''
+    if not isinstance(ref, dict):
+        return None
+    cid = ref.get('course_id')
+    return '' if cid is None else cid if isinstance(cid, str) else None
+
+
+def read_plans(conn, source_ids: list[str], course_id=None) -> tuple[list[dict], dict]:
     if not source_ids:
         return [], coverage(0, 0)
-    where = 'source_id IN (' + ','.join('?' for _ in source_ids) + ')'
-    total = conn.execute('SELECT COUNT(*) FROM study_plans WHERE ' + where, source_ids).fetchone()[0]
-    rows = conn.execute('SELECT plan_id,source_id,exam_date,daily_minutes,status,completed_days,'
-                        'CASE WHEN length(plan_data)<=1048576 THEN plan_data END AS plan_data '
-                        'FROM study_plans WHERE ' + where + ' ORDER BY plan_id LIMIT 100', source_ids).fetchall()
+    conn.create_function('filemate_orchestrator_course', 2, _plan_course)
+    slots = ','.join('?' for _ in source_ids)
+    source_where = 'p.source_id IN (' + slots + ')'
+    candidates = conn.execute('SELECT COUNT(*) FROM study_plans p WHERE ' + source_where, source_ids).fetchone()[0]
+    where = source_where + ''' AND filemate_orchestrator_course(p.plan_data,'plan') IN ('',?)
+        AND filemate_orchestrator_course(COALESCE(a.metadata,'{}'),'metadata') IN ('',?)
+        AND NOT EXISTS(SELECT 1 FROM kg_course_plan_links l WHERE l.plan_id=p.plan_id AND l.course_id!=?)
+        AND NOT EXISTS(SELECT 1 FROM kg_learning_artifact_sources r WHERE r.artifact_id=p.artifact_id
+            AND r.source_id NOT IN (''' + slots + '))'
+    params = [*source_ids, course_id or '', course_id or '', course_id or '', *source_ids]
+    joined = 'study_plans p LEFT JOIN artifacts a ON a.artifact_id=p.artifact_id'
+    total = conn.execute('SELECT COUNT(*) FROM ' + joined + ' WHERE ' + where, params).fetchone()[0]
+    rows = conn.execute('SELECT p.plan_id,p.source_id,p.exam_date,p.daily_minutes,p.status,p.completed_days,'
+                        'CASE WHEN length(p.plan_data)<=1048576 THEN p.plan_data END AS plan_data '
+                        'FROM ' + joined + ' WHERE ' + where + ' ORDER BY p.plan_id LIMIT 100', params).fetchall()
     result, remaining, invalid = [], 200, 0
     for row in rows:
         plan = dict(row)
@@ -80,7 +103,8 @@ def read_plans(conn, source_ids: list[str]) -> tuple[list[dict], dict]:
                             'composite': True})
         remaining -= len(compact)
         result.append(plan | {'days': compact, 'day_total': len(days)})
-    return result, coverage(total, len(result)) | {'invalid': invalid, 'days_truncated': any(p['day_total'] > len(p['days']) for p in result)}
+    return result, coverage(total, len(result)) | {'invalid': invalid, 'scope_excluded': candidates - total,
+        'days_truncated': any(p['day_total'] > len(p['days']) for p in result)}
 
 
 def read_semester(conn, source_ids: list[str]) -> tuple[list[dict], dict]:

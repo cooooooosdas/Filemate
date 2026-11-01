@@ -142,13 +142,19 @@ def _text_conditions(filters: ReviewFilter, conn: sqlite3.Connection) -> tuple[l
     return conditions, params
 
 
-def _time_relation(conn: sqlite3.Connection, wrong_ids: list[str] | None, filters: ReviewFilter) -> str:
+def _time_relation(conn: sqlite3.Connection, wrong_ids: list[str] | None, filters: ReviewFilter,
+                   *, source_ids: tuple[str, ...] | None = None) -> str:
     """Convert distinct dates once within the caller's current read snapshot."""
+    if source_ids == ():
+        return '{}'
     sql = 'SELECT w.next_review_at FROM wrong_questions w'
     if filters.q:
         sql += ' LEFT JOIN sources s ON s.source_id=w.source_id'
     conditions, params = _text_conditions(filters, conn)
     conditions.insert(0, "typeof(w.next_review_at)='text'")
+    if source_ids is not None:
+        conditions.append('w.source_id IN (' + ','.join('?' for _ in source_ids) + ')')
+        params.extend(source_ids)
     if wrong_ids is not None:
         conditions.append('w.wrong_id IN (' + ','.join('?' for _ in wrong_ids) + ')')
         params.extend(wrong_ids)
@@ -167,6 +173,27 @@ def _time_relation(conn: sqlite3.Connection, wrong_ids: list[str] | None, filter
         # Older JSON1 decoders truncate embedded NUL characters in object keys.
         dates[raw.encode('utf-8').hex().upper()] = [(parsed - epoch).total_seconds(), day]
     return json.dumps(dates, ensure_ascii=True, allow_nan=False, separators=(',', ':'))
+
+
+def _format_items(rows, *, recommended, as_of):
+    items = []
+    for raw in rows:
+        row = dict(raw)
+        question = _object(row.pop('question'))
+        metadata = _object(row.pop('artifact_metadata'))
+        row.pop('latest_answer', None)
+        row.update(stem=str(question.get('stem') or question.get('question') or '')[:300],
+            question_type=str(question.get('question_type') or question.get('type') or ''),
+            question_digest=digest(question), read_only_snapshot=bool(metadata.get('read_only_snapshot')),
+            data_error=not question or parse_time(row['next_review_at']) is None or _list(row['error_causes']) is None or _list(row['custom_tags']) is None)
+        row['error_causes'] = _list(row['error_causes']) or []
+        row['custom_tags'] = _list(row['custom_tags']) or []
+        if recommended:
+            row['priority'] = priority_details(row, now=as_of)
+            if row.pop('_rank_score') != row['priority']['priority_score']:
+                raise ValueError('推荐依据暂不可核验')
+        items.append(row)
+    return items
 
 
 class ReviewQueries:
@@ -279,6 +306,52 @@ class ReviewQueries:
         """Apply an authorized bounded source scope before counting or paging."""
         if len(source_ids) > 20 or len(set(source_ids)) != len(source_ids):
             raise ValueError('invalid_source_scope')
+        _bounds(limit, offset)
+        filters = ReviewFilter.model_validate(filters)
+        defaults = ReviewFilter().model_dump(exclude={'sort', 'direction'})
+        if source_ids and not eligible_only and filters.sort == 'due' and filters.model_dump(exclude={'sort', 'direction'}) == defaults:
+            conn = read._conn()
+            where = 'source_id IN (' + ','.join('?' for _ in source_ids) + ')'
+            total = conn.execute('SELECT count(*) FROM wrong_questions WHERE ' + where, source_ids).fetchone()[0]
+            if total <= 20000:
+                noncanonical = conn.execute('SELECT 1 FROM wrong_questions WHERE ' + where + ''' AND NOT (
+                    typeof(next_review_at)='text' AND length(next_review_at)=25
+                    AND substr(next_review_at,1,4) BETWEEN '0001' AND '9999'
+                    AND strftime('%Y-%m-%dT%H:%M:%S+00:00',next_review_at,'+0 seconds') IS next_review_at) LIMIT 1''', source_ids).fetchone()
+                # 先排序紧凑索引，避免并发时逐行SQLite→Python回调争用GIL；详情仍有界读取。
+                if noncanonical is None:
+                    order = ' DESC' if filters.direction == 'desc' else ' ASC'
+                    chosen = tuple(r[0] for r in conn.execute('SELECT wrong_id FROM wrong_questions WHERE ' + where
+                        + ' ORDER BY next_review_at' + order + ',wrong_id' + order + ' LIMIT ? OFFSET ?', [*source_ids, limit, offset]))
+                    rows = None
+                elif _has_json1(conn):
+                    compact = conn.execute('SELECT json_group_array(json_array(wrong_id,next_review_at)) '
+                                           'FROM wrong_questions WHERE ' + where, source_ids).fetchone()[0]
+                    rows = json.loads(compact)
+                else:
+                    rows = [tuple(r) for r in conn.execute('SELECT wrong_id,next_review_at FROM wrong_questions WHERE ' + where, source_ids)]
+                def key(row):
+                    value = parse_time(row[1])
+                    return (value is not None, value.timestamp() if value else 0, row[0])
+                if rows is not None:
+                    rows.sort(key=key, reverse=filters.direction == 'desc')
+                    chosen = tuple(r[0] for r in rows[offset:offset + limit])
+                details = []
+                if chosen:
+                    points = ','.join('?' for _ in chosen)
+                    details = [dict(r) for r in conn.execute('SELECT * FROM wrong_questions WHERE ' + where
+                        + ' AND wrong_id IN (' + points + ')', [*source_ids, *chosen])]
+                    artifact_ids = list({r['artifact_id'] for r in details})
+                    metadata = dict(conn.execute('SELECT artifact_id,metadata FROM artifacts WHERE artifact_id IN ('
+                        + ','.join('?' for _ in artifact_ids) + ')', artifact_ids))
+                    sources = dict(conn.execute('SELECT source_id,original_name FROM sources WHERE ' + where, source_ids))
+                    for row in details:
+                        row.update(artifact_metadata=metadata.get(row['artifact_id']), source_name=sources.get(row['source_id']))
+                    positions = {wid: i for i, wid in enumerate(chosen)}
+                    details.sort(key=lambda row: positions[row['wrong_id']])
+                items = _format_items(details, recommended=False, as_of=as_of)
+                return {'items': items, 'total': total, 'limit': limit, 'offset': offset,
+                        'has_more': offset + len(items) < total, 'as_of': as_of.isoformat()}
         return self._snapshot_page(read, filters, as_of=as_of, limit=limit, offset=offset,
                                    eligible_only=eligible_only, source_ids=source_ids)
 
@@ -303,12 +376,16 @@ class ReviewQueries:
                 prefix = """WITH review_times AS (SELECT CAST(key AS TEXT) AS raw,
                     json_extract(value,'$[0]') AS due, json_extract(value,'$[1]') AS local_day
                     FROM json_each(?) GROUP BY key) """
-                time_params = [_time_relation(conn, wrong_ids, filters)]
+                time_params = [_time_relation(conn, wrong_ids, filters, source_ids=source_ids)]
                 key_match = "typeof(w.next_review_at)='text' AND rt.raw IS hex(w.next_review_at)"
             elif recommended or eligible_only:
+                time_scope = ''
+                if source_ids is not None:
+                    time_scope = ' WHERE source_id IN (' + ','.join('?' for _ in source_ids) + ')' if source_ids else ' WHERE 0=1'
+                    time_params = list(source_ids)
                 prefix = """WITH review_times AS (SELECT next_review_at AS raw,
                     filemate_review_time(next_review_at) AS due,
-                    review_local_day(next_review_at) AS local_day FROM wrong_questions GROUP BY next_review_at) """
+                    review_local_day(next_review_at) AS local_day FROM wrong_questions""" + time_scope + ' GROUP BY next_review_at) '
             if prefix:
                 join = 'JOIN' if recommended or eligible_only else 'LEFT JOIN'
                 time_join = f' {join} review_times rt ON {key_match}'
@@ -343,23 +420,7 @@ class ReviewQueries:
             order = f'{sort} {filters.direction},w.wrong_id {filters.direction}'
         rows = conn.execute(prefix + 'SELECT w.*,s.original_name AS source_name,a.metadata AS artifact_metadata' + projection + base +
             f' ORDER BY {order} LIMIT ? OFFSET ?', [*time_params, *sort_params, *params, limit, offset]).fetchall()
-        items = []
-        for raw in rows:
-            row = dict(raw)
-            question = _object(row.pop('question'))
-            metadata = _object(row.pop('artifact_metadata'))
-            row.pop('latest_answer', None)
-            row.update(stem=str(question.get('stem') or question.get('question') or '')[:300],
-                question_type=str(question.get('question_type') or question.get('type') or ''),
-                question_digest=digest(question), read_only_snapshot=bool(metadata.get('read_only_snapshot')),
-                data_error=not question or parse_time(row['next_review_at']) is None or _list(row['error_causes']) is None or _list(row['custom_tags']) is None)
-            row['error_causes'] = _list(row['error_causes']) or []
-            row['custom_tags'] = _list(row['custom_tags']) or []
-            if recommended:
-                row['priority'] = priority_details(row, now=as_of)
-                if row.pop('_rank_score') != row['priority']['priority_score']:
-                    raise ValueError('推荐依据暂不可核验')
-            items.append(row)
+        items = _format_items(rows, recommended=recommended, as_of=as_of)
         result = {'items': items, 'total': total, 'limit': limit, 'offset': offset,
                   'has_more': offset + len(items) < total, 'as_of': as_of.isoformat()}
         if recommended:

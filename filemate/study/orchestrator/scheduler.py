@@ -6,6 +6,7 @@ from datetime import date
 from filemate.wrongbook.engine import parse_time
 
 from .models import (
+    LOCAL_ZONE,
     EvidenceSnapshot,
     OrchestratorError,
     ScheduleOptions,
@@ -40,7 +41,7 @@ def build_schedule(snapshot: EvidenceSnapshot, projection: TaskProjection, optio
 
     def rank(task):
         due = parse_time(task.due_date) if task.due_date else None
-        due_day = task.due_date[:10] if due else '9999-12-31'
+        due_day = due.astimezone(LOCAL_ZONE).date().isoformat() if due else '9999-12-31'
         return (0 if task.task_id in manual else 1, manual.get(task.task_id, 0),
                 0 if due and due_day <= today.isoformat() else 1,
                 due_day, -task.recorded_errors, depths[task.task_id], task.task_id)
