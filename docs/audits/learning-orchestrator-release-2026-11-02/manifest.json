@@ -1,0 +1,33 @@
+{
+  "version": "1.3.0-alpha.4",
+  "commit": "fdf6f406a5d1d691e60243908f7765d0127209a4",
+  "web_commit": "fdf6f406a5d1d691e60243908f7765d0127209a4",
+  "backend_commit": "fdf6f406a5d1d691e60243908f7765d0127209a4",
+  "release_id": "alpha4-fdf6f406a5d1",
+  "schema_version": 36,
+  "resource_schema_version": 3,
+  "ui_revision": "UI-2026.11.02-today-action",
+  "built_at": "2026-11-02T13:04:21.300031+00:00",
+  "release_kind": "candidate",
+  "status": "STAGED_NOT_ACTIVE",
+  "deployment_performed": false,
+  "course_graph": true,
+  "graph_assistant": true,
+  "wrongbook_v2": true,
+  "learning_orchestrator": true,
+  "interview_coach": true,
+  "interview_runtime": true,
+  "interview_assessment": true,
+  "interview_audio": false,
+  "interview_video": false,
+  "verification_limitations": [
+    "D/E learning-coach development not complete; this release delivers third version and fourth version A-C",
+    "physical capture and native OS export picker pending; new audio/video capture disabled",
+    "physical IME/zoom and Safari/Firefox not tested",
+    "real student experiment not collected; synthetic tests do not prove learning benefit",
+    "no production capacity SLA; historical graph 10k slow samples retained"
+  ],
+  "backend_sha256": "d9873a39dcec48522eeb108431604f879170752cbf6d4a30e23d238c485fe777",
+  "web_sha256": "70979ca30508691aa631c81789a40f60c74bf879c8865175db17da93d1054ecf",
+  "web_off_sha256": "2e93707e59ca4c2555999c0afb742c36e09d69c384c071d6957a433fa340094d"
+}

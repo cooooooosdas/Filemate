@@ -1,6 +1,6 @@
 {
   "stage": "C",
-  "status": "ENGINEERING_PASS_RELEASE_AUTHORIZED",
+  "status": "C_ENGINEERING_PASS_DEPLOYED; overall product CONDITIONAL",
   "base": "55f2c1161dccfaac798479f89c5f834f6f23530e",
   "implementation_head": "09727b6e2c22cfb9fa8f1cbcaea944e8532dc2f0",
   "tasks_1_to_7": "completed",
@@ -14,7 +14,7 @@
   "capacity_environment": "performance-environment.json",
   "actual_old_runtime": "target-runtime.json",
   "c_new_migration": false,
-  "production_upgrade_still_required": "34→36 inherited from prior third-version work",
+  "production_upgrade_still_required": false,
   "preserved_preexisting_test_files": {
     "filemate/tests/test_milestone_detector.py": true,
     "filemate/tests/test_graph_api.py": true,
@@ -74,7 +74,7 @@
   "real_student_experiment": "NOT COLLECTED",
   "physical_mobile_IME": "NOT RUN",
   "physical_browser_200_percent_zoom": "NOT RUN; equivalent CSS viewport tested",
-  "production_deployed": false,
+  "production_deployed": true,
   "D_E_started": false,
   "tasks_1_to_8": "completed; original independent findings fixed by author, no re-review",
   "fix_verification": {
@@ -117,5 +117,27 @@
     "page_errors": 0,
     "report": "review-fixed-browser.json"
   },
-  "deployment_authorization": "2026-11-02 user: 继续 最后final推进 然后部署上推"
+  "deployment_authorization": "2026-11-02 user: 继续 最后final推进 然后部署上推",
+  "production_upgrade": "430 business databases 34→36; 1 governance database remains3; original fields preserved",
+  "release_report": "../../LEARNING_ORCHESTRATOR_RELEASE_2026-11-02.md",
+  "production_release_id": "alpha4-fdf6f406a5d1",
+  "integrated_main_commit": "0b46c54846e8b813f747d7b8316bf3dd4ea8e91e",
+  "main_ci": {
+    "status": "PASS",
+    "run": 41450937157,
+    "backend_passed": 1947,
+    "frontend_passed": 378
+  },
+  "public_verification": {
+    "groups": 13,
+    "passed": true,
+    "actual_model_calls_final_run": 2,
+    "compiler": [
+      "AC",
+      "CE"
+    ],
+    "actual_natural_voices": 2,
+    "synthetic_account_cleanup": true,
+    "browser_checks": 4
+  }
 }

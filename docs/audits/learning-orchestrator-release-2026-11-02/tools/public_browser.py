@@ -1,0 +1,49 @@
+import json
+import time
+from pathlib import Path
+
+from playwright.sync_api import expect, sync_playwright
+
+out = Path('D:/FileMate-Project/_working/orchestrator-release-20261102-2')
+result = dict(passed=False, browser='installed Microsoft Edge',
+              scope='public deployed UI read-only desktop and mobile smoke, not full user journey',
+              errors=[], checks=[], responses=[])
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(executable_path='C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+        headless=True, args=['--host-resolver-rules=MAP filemate.asia 47.104.156.235'])
+    context = browser.new_context(viewport=dict(width=1440, height=1000), reduced_motion='reduce')
+    page = context.new_page()
+    page.on('pageerror', lambda error: result['errors'].append(str(error)))
+    page.on('response', lambda response: result['responses'].append(dict(path=response.url.split('filemate.asia')[-1],status=response.status)) if '/api/learning/orchestrator/' in response.url or '/wrongbook/v2/' in response.url else None)
+    try:
+        response = page.goto('https://filemate.asia/', wait_until='networkidle', timeout=60000)
+        assert response.status == 200
+        expect(page.locator('body')).to_contain_text('FileMate')
+        result['checks'].append('public homepage renders with verified HTTPS')
+        page.screenshot(path=str(out/'public-home-desktop.png'),full_page=True)
+        page.goto('https://filemate.asia/today',wait_until='networkidle',timeout=60000)
+        expect(page.get_by_role('heading',name='今日行动',exact=True)).to_be_visible(timeout=30000)
+        expect(page.get_by_label('今日优先目标')).to_be_visible()
+        assert any(r['status']==200 and r['path'].endswith('/capabilities') for r in result['responses'])
+        assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1')
+        result['checks'].append('new Today workspace/capability endpoint and empty goal state render')
+        page.screenshot(path=str(out/'public-today-desktop.png'),full_page=True)
+        page.set_viewport_size(dict(width=390,height=844))
+        page.reload(wait_until='networkidle')
+        expect(page.get_by_role('heading',name='今日行动',exact=True)).to_be_visible()
+        assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1')
+        result['checks'].append('390px Today layout has no horizontal overflow')
+        page.screenshot(path=str(out/'public-today-mobile.png'),full_page=True)
+        page.goto('https://filemate.asia/wrongbook',wait_until='networkidle',timeout=60000)
+        expect(page.locator('h1').first).to_be_visible()
+        assert any(r['status']==200 and '/wrongbook/v2/capabilities' in r['path'] for r in result['responses'])
+        assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1')
+        result['checks'].append('new wrongbook page and v2 capabilities render at 390px')
+        page.screenshot(path=str(out/'public-wrongbook-mobile.png'),full_page=True)
+        assert not result['errors']
+        result['passed']=True
+    finally:
+        (out/'public-browser.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
+        browser.close()
+print(json.dumps(result,ensure_ascii=False))

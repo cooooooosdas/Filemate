@@ -1,0 +1,65 @@
+{
+  "passed": true,
+  "commit": "fdf6f406a5d1d691e60243908f7765d0127209a4",
+  "integrated_main_commit": "0b46c54846e8b813f747d7b8316bf3dd4ea8e91e",
+  "at": "2026-11-02T13:20:28.405242+00:00",
+  "release_id": "alpha4-fdf6f406a5d1",
+  "service": {
+    "MainPID": "690446",
+    "NRestarts": "0",
+    "ExecMainStartTimestamp": "Mon 2026-11-02 21:15:19 CST",
+    "MemoryCurrent": "153636864",
+    "ActiveState": "active",
+    "SubState": "running"
+  },
+  "databases": {
+    "resource_schema_migrations:3": 1,
+    "schema_migrations:36": 438
+  },
+  "all_quick_check_and_foreign_keys": "PASS",
+  "judge_active": true,
+  "free_disk_bytes": 3909640192,
+  "backup": "/var/backups/filemate/alpha4-fdf6f406a5d1-20261102T131312Z",
+  "compatible_off_web_prepared": true,
+  "rollback_helper_syntax_checked": true,
+  "rollback_executed": false,
+  "rollback_policy": "keep schema36 and governance3 and all later writes; disable only new flags/use off web",
+  "marker": {
+    "version": "1.3.0-alpha.4",
+    "commit": "fdf6f406a5d1d691e60243908f7765d0127209a4",
+    "web_commit": "fdf6f406a5d1d691e60243908f7765d0127209a4",
+    "backend_commit": "fdf6f406a5d1d691e60243908f7765d0127209a4",
+    "release_id": "alpha4-fdf6f406a5d1",
+    "schema_version": 36,
+    "resource_schema_version": 3,
+    "ui_revision": "UI-2026.11.02-today-action",
+    "built_at": "2026-11-02T13:04:21.300031+00:00",
+    "release_kind": "live",
+    "status": "LIVE_VERIFIED",
+    "deployment_performed": true,
+    "course_graph": true,
+    "graph_assistant": true,
+    "wrongbook_v2": true,
+    "learning_orchestrator": true,
+    "interview_coach": true,
+    "interview_runtime": true,
+    "interview_assessment": true,
+    "interview_audio": false,
+    "interview_video": false,
+    "verification_limitations": [
+      "D/E learning-coach development not complete; this release delivers third version and fourth version A-C",
+      "physical capture and native OS export picker pending; new audio/video capture disabled",
+      "physical IME/zoom and Safari/Firefox not tested",
+      "real student experiment not collected; synthetic tests do not prove learning benefit",
+      "no production capacity SLA; historical graph 10k slow samples retained"
+    ],
+    "backend_sha256": "d9873a39dcec48522eeb108431604f879170752cbf6d4a30e23d238c485fe777",
+    "released_at": "2026-11-02T13:20:28.405242+00:00",
+    "integrated_main_commit": "0b46c54846e8b813f747d7b8316bf3dd4ea8e91e",
+    "verification": {
+      "public_groups": 13,
+      "public_browser_checks": 4,
+      "synthetic_only": true
+    }
+  }
+}

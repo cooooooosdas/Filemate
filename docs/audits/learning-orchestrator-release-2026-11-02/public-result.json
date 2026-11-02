@@ -1,0 +1,123 @@
+{
+  "passed": true,
+  "at": "2026-11-02T13:19:39.945936+00:00",
+  "checks": [
+    {
+      "name": "fixed release / readiness / assets / registration and login",
+      "passed": true,
+      "elapsed_ms": 17822.93,
+      "assets_checked": 20,
+      "account_login": true
+    },
+    {
+      "name": "existing feature routes and isolated judge readiness",
+      "passed": true,
+      "elapsed_ms": 9129.63,
+      "existing_routes": 14
+    },
+    {
+      "name": "course import / cited extraction / item review / fusion / isolated workspace",
+      "passed": true,
+      "elapsed_ms": 17743.28,
+      "courses": 2,
+      "sources": 3,
+      "local_extraction": true,
+      "confirmed_merge": true,
+      "tenant_isolation": true
+    },
+    {
+      "name": "practice draft / confirm / true wrong answer / dedupe / review evidence",
+      "passed": true,
+      "elapsed_ms": 5651.83,
+      "reviewed_questions": 1,
+      "attempts": 2,
+      "duplicate_attempt_prevented": true,
+      "wrongbook_entries": 1
+    },
+    {
+      "name": "evidence path / idempotent confirmation / undo / restore / daily completion",
+      "passed": true,
+      "elapsed_ms": 5851.81,
+      "plan_saved": true,
+      "duplicate_plan_prevented": true,
+      "undo_restore": true,
+      "completion_not_mastery": true
+    },
+    {
+      "name": "explicit cross-course navigation and unlink",
+      "passed": true,
+      "elapsed_ms": 3125.08,
+      "navigation_only": true,
+      "unlink": true
+    },
+    {
+      "name": "rule assistant / stored facts / bounded Agent preview without writes",
+      "passed": true,
+      "elapsed_ms": 2589.14,
+      "cited_rule_answer": true,
+      "bounded_steps": 4,
+      "no_autonomous_plan_write": true
+    },
+    {
+      "name": "actual provider cited answer and unpublished practice draft",
+      "passed": true,
+      "elapsed_ms": 4667.62,
+      "actual_provider_calls": 2,
+      "persisted_answer": true,
+      "draft_not_published": true,
+      "quality_score": null
+    },
+    {
+      "name": "wrongbook v2 enabled / real saved evidence / budgeted preview",
+      "passed": true,
+      "elapsed_ms": 1835.47,
+      "actual_wrong_total": 1,
+      "budget_bounded": true,
+      "review_preview_read_only": true
+    },
+    {
+      "name": "today action metadata / scope / budget / receipt / real 409 / undo",
+      "passed": true,
+      "elapsed_ms": 12403.94,
+      "explicit_goal": true,
+      "metadata_only_catalog": true,
+      "bounded_schedule": true,
+      "idempotent_replay": true,
+      "persisted_receipt": true,
+      "exact_concurrent_rejection": true,
+      "undo": true,
+      "tenant_isolation": true,
+      "model_calls": 0
+    },
+    {
+      "name": "personal backup / confirmed source purge / restore / old preview invalidation",
+      "passed": true,
+      "elapsed_ms": 4170.07,
+      "signed_backup": true,
+      "source_dependency_purged": true,
+      "restore_readable": true,
+      "old_token_rejected": true
+    },
+    {
+      "name": "existing isolated compiler AC / CE and natural voice upstream",
+      "passed": true,
+      "elapsed_ms": 19121.13,
+      "actual_judge_verdicts": [
+        "AC",
+        "CE"
+      ],
+      "actual_mp3_voices": 2
+    },
+    {
+      "name": "confirmed cleanup of this synthetic account only",
+      "passed": true,
+      "elapsed_ms": 1792.85,
+      "only_synthetic_account_deleted": true
+    }
+  ],
+  "commit": "fdf6f406a5d1d691e60243908f7765d0127209a4",
+  "base": "https://filemate.asia",
+  "transport": "process-only verified host IP; TLS SNI and certificate verification retained; connect-only retries",
+  "evidence_kind": "original synthetic account; actual public APIs/providers; no human learning-effect claim",
+  "browser_matrix": "local real Edge 74 original plus 12 final checks; public UI separately recorded"
+}

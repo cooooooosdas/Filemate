@@ -1,0 +1,27 @@
+{
+  "activation": "passed",
+  "commit": "fdf6f406a5d1d691e60243908f7765d0127209a4",
+  "version": "1.3.0-alpha.4",
+  "backup": "/var/backups/filemate/alpha4-fdf6f406a5d1-20261102T131312Z",
+  "databases_backed_up": 431,
+  "files_backed_up": 1146,
+  "backup_restore_verified": true,
+  "migration": {
+    "business_databases": 430,
+    "before": {
+      "34": 430
+    },
+    "after_schema": 36,
+    "resource_databases": 1,
+    "resource_before": {
+      "3": 1
+    },
+    "resource_after": 3,
+    "all_existing_business_rows_preserved": true,
+    "all_existing_control_rows_preserved": true,
+    "integrity_and_foreign_keys": "passed",
+    "restore_permissions_revoked": false
+  },
+  "pid": 690446,
+  "rollback_policy": "after public writes preserve schema36/governance3 and current data; disable learning/wrongbook flags and use compatible off web"
+}

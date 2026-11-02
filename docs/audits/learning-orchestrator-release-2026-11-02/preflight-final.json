@@ -1,0 +1,59 @@
+{
+  "backend": "/opt/filemate/releases/alpha4-41a360bd2f32",
+  "web": "/clouddream/nginx-proxy-manage/data/filemate/releases/alpha4-41a360bd2f32",
+  "service": {
+    "ActiveState": "active",
+    "SubState": "running",
+    "MainPID": "657307",
+    "NRestarts": "0",
+    "MemoryCurrent": "185511936",
+    "MemoryMax": "805306368",
+    "CPUQuotaPerSecUSec": "1.500000s",
+    "TasksMax": "128",
+    "EnvironmentFiles": "/opt/filemate/current/.env.production (ignore_errors=no)",
+    "DropInPaths": "/etc/systemd/system/filemate-api.service.d/20-alpha2-runtime.conf /etc/systemd/system/filemate-api.service.d/30-release-runtime.conf /etc/systemd/system/filemate-api.service.d/40-resources.conf /etc/systemd/system/filemate-api.service.d/45-interview-coach.conf /etc/systemd/system/filemate-api.service.d/46-interview-v2.conf /etc/systemd/system/filemate-api.service.d/47-course-graph.conf /run/systemd/system.control/filemate-api.service.d/50-CPUAccounting.conf /run/systemd/system.control/filemate-api.service.d/50-CPUQuota.conf /run/systemd/system.control/filemate-api.service.d/50-MemoryAccounting.conf /run/systemd/system.control/filemate-api.service.d/50-MemoryHigh.conf /run/systemd/system.control/filemate-api.service.d/50-MemoryMax.conf /run/systemd/system.control/filemate-api.service.d/50-TasksMax.conf"
+  },
+  "flags": {
+    "FILEMATE_ENV": "production",
+    "FILEMATE_DATA_DIR": "/var/lib/filemate",
+    "FILEMATE_DB_PATH": "/var/lib/filemate/filemate.db",
+    "FILEMATE_UPLOAD_DIR": "/var/lib/filemate/inbox",
+    "FILEMATE_ARCHIVE_DIR": "/var/lib/filemate/archive",
+    "FILEMATE_ENABLE_INTERVIEW_COACH": "1",
+    "FILEMATE_ENABLE_INTERVIEW_REVIEW": "1"
+  },
+  "configuration": [
+    {
+      "path": "/opt/filemate/current/.env.production",
+      "public_flags": {
+        "LLM_PROVIDER": "deepseek",
+        "LLM_MODEL": "deepseek-v4-flash"
+      }
+    }
+  ],
+  "databases": {
+    "count": 431,
+    "versions": {
+      "schema_migrations:34": 430,
+      "resource_schema_migrations:3": 1
+    },
+    "failed_quick_check": []
+  },
+  "disk": {
+    "/": {
+      "total": 41881894912,
+      "used": 34341416960,
+      "free": 5604835328
+    },
+    "/var/lib/filemate": {
+      "total": 41881894912,
+      "used": 34341416960,
+      "free": 5604835328
+    },
+    "/var/backups/filemate": {
+      "total": 41881894912,
+      "used": 34341416960,
+      "free": 5604835328
+    }
+  }
+}
