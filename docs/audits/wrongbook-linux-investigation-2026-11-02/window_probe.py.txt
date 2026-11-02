@@ -1,0 +1,85 @@
+"""Compare equivalent bounded SQL page selection on synthetic data only."""
+import json
+import subprocess
+from pathlib import Path
+
+out=Path('D:/FileMate-Project/_working/wrongbook-linux-investigation-20261102')
+code=r"""
+import json,os,sys,time
+from contextlib import contextmanager
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+release=Path('/opt/filemate/releases/alpha4-fdf6f406a5d1')
+root=release/'_working/wrongbook-linux-capacity-20261102-02/fixture'
+assert root.is_dir()
+os.environ.update(FILEMATE_ENV='development',FILEMATE_DATA_DIR=str(root),LLM_API_KEY='',DEEPSEEK_API_KEY='',OPENAI_API_KEY='')
+sys.path.insert(0,str(release))
+from filemate.execution.storage import SQLiteStorage
+from filemate.wrongbook.queries import ReviewQueries,ReviewFilter
+from filemate.wrongbook.repository import ReviewRepository
+import filemate.wrongbook.queries as queries
+manifest=json.loads((root/'manifest.json').read_text())
+user=next(x for x in manifest['users'] if x['wrong_count']==10000)
+store=SQLiteStorage(root/'users'/user['workspace']/'filemate.db')
+original_snapshot=store.read_snapshot
+original_json=queries._has_json1
+report=dict(synthetic_only=True,production_changed=False,diagnostic_not_capacity_gate=True,rows=[])
+try:
+ for mode in ('native','forced_no_json1'):
+  captured=[]
+  if mode!='native':queries._has_json1=lambda _:False
+  @contextmanager
+  def snapshot():
+   with original_snapshot() as read:
+    read._conn().set_trace_callback(captured.append)
+    yield read
+    read._conn().set_trace_callback(None)
+  store.read_snapshot=snapshot
+  baseline=ReviewQueries(store).page(ReviewFilter(sort='recommended'))
+  store.read_snapshot=original_snapshot
+  count_sql=next(s for s in captured if s.lstrip().upper().startswith('WITH REVIEW_TIMES') and 'SELECT COUNT(*)' in s)
+  page_sql=next(s for s in captured if s.lstrip().upper().startswith('WITH REVIEW_TIMES') and 'SELECT w.*' in s)
+  head,body=page_sql.split('SELECT w.*,s.original_name AS source_name,a.metadata AS artifact_metadata',1)
+  projection,rest=body.split(' FROM wrong_questions w',1)
+  optimized=head.rstrip()+''', picked AS (SELECT w.wrong_id,rt.due AS _when'''+projection+''',COUNT(*) OVER () AS _total FROM wrong_questions w'''+rest+''')
+    SELECT w.*,s.original_name AS source_name,a.metadata AS artifact_metadata,
+      picked._rank_score,picked._total FROM picked
+      JOIN wrong_questions w ON w.wrong_id=picked.wrong_id
+      LEFT JOIN artifacts a ON a.artifact_id=w.artifact_id
+      LEFT JOIN sources s ON s.source_id=w.source_id
+      ORDER BY picked._rank_score DESC,picked._when ASC,picked.wrong_id ASC'''
+  expected=[x['wrong_id'] for x in baseline['items']]
+  def sample(variant):
+   with original_snapshot() as read:
+    conn,_=ReviewQueries(store)._configure(read)
+    assert conn.execute('PRAGMA query_only').fetchone()[0]==1
+    started=time.perf_counter()
+    if variant=='original_two':
+     total=conn.execute(count_sql).fetchone()[0]
+     rows=conn.execute(page_sql).fetchall()
+    else:
+     rows=conn.execute(optimized).fetchall()
+     total=rows[0]['_total']
+    elapsed=(time.perf_counter()-started)*1000
+    assert total==9995 and [x['wrong_id'] for x in rows]==expected
+    return elapsed
+  for variant in ('original_two','compact_window'):
+   warm=[sample(variant) for _ in range(3)]
+   with ThreadPoolExecutor(max_workers=4) as pool:
+    values=sorted(pool.map(lambda _:sample(variant),range(20)))
+   report['rows'].append(dict(mode=mode,variant=variant,warm_ms=warm,concurrent_samples_ms=values,
+       p95_ms=values[18],total=9995,page_count=30,ids_match=True))
+  queries._has_json1=original_json
+finally:
+ store.read_snapshot=original_snapshot
+ queries._has_json1=original_json
+ store.close()
+print(json.dumps(report))
+"""
+ssh=['ssh','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=10','root@47.104.156.235']
+run=subprocess.run(ssh+['timeout 120s nice -n 10 /opt/filemate/venvs/alpha4-fdf6f406a5d1/bin/python -'],input=code.encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+(out/'window-probe.log').write_bytes(run.stderr)
+assert run.returncode==0,run.stderr.decode(errors='replace')
+report=json.loads(run.stdout)
+(out/'window-probe.json').write_bytes((json.dumps(report,ensure_ascii=False,indent=2)+'\n').encode())
+print(json.dumps({**{k:v for k,v in report.items() if k!='rows'},'rows':[{k:v for k,v in row.items() if k!='concurrent_samples_ms'} for row in report['rows']]}))

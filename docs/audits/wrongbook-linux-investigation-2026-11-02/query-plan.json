@@ -1,0 +1,249 @@
+{
+  "synthetic_only": true,
+  "live_data_accessed": false,
+  "production_changed": false,
+  "modes": [
+    {
+      "mode": "native",
+      "queries": [
+        {
+          "kind": "count",
+          "plan": [
+            {
+              "id": 3,
+              "parent": 0,
+              "notused": 0,
+              "detail": "MATERIALIZE 1"
+            },
+            {
+              "id": 11,
+              "parent": 3,
+              "notused": 0,
+              "detail": "SCAN TABLE json_each VIRTUAL TABLE INDEX 1:"
+            },
+            {
+              "id": 16,
+              "parent": 3,
+              "notused": 0,
+              "detail": "USE TEMP B-TREE FOR GROUP BY"
+            },
+            {
+              "id": 70,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH TABLE wrong_questions AS w USING INDEX idx_review_queue (schedule_status=?)"
+            },
+            {
+              "id": 87,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH TABLE artifacts AS a USING INDEX sqlite_autoindex_artifacts_1 (artifact_id=?)"
+            },
+            {
+              "id": 147,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH SUBQUERY 1 AS rt USING AUTOMATIC COVERING INDEX (raw=?)"
+            },
+            {
+              "id": 186,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH TABLE sources AS s USING COVERING INDEX sqlite_autoindex_sources_1 (source_id=?)"
+            }
+          ],
+          "samples_ms": [
+            90.68101411685348,
+            81.31421101279557,
+            81.40610391274095
+          ],
+          "result_rows": 1,
+          "count": 9995
+        },
+        {
+          "kind": "page",
+          "plan": [
+            {
+              "id": 3,
+              "parent": 0,
+              "notused": 0,
+              "detail": "MATERIALIZE 1"
+            },
+            {
+              "id": 11,
+              "parent": 3,
+              "notused": 0,
+              "detail": "SCAN TABLE json_each VIRTUAL TABLE INDEX 1:"
+            },
+            {
+              "id": 16,
+              "parent": 3,
+              "notused": 0,
+              "detail": "USE TEMP B-TREE FOR GROUP BY"
+            },
+            {
+              "id": 75,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH TABLE wrong_questions AS w USING INDEX idx_review_queue (schedule_status=?)"
+            },
+            {
+              "id": 92,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH TABLE artifacts AS a USING INDEX sqlite_autoindex_artifacts_1 (artifact_id=?)"
+            },
+            {
+              "id": 152,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH SUBQUERY 1 AS rt USING AUTOMATIC COVERING INDEX (raw=?)"
+            },
+            {
+              "id": 191,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH TABLE sources AS s USING INDEX sqlite_autoindex_sources_1 (source_id=?)"
+            },
+            {
+              "id": 275,
+              "parent": 0,
+              "notused": 0,
+              "detail": "USE TEMP B-TREE FOR ORDER BY"
+            }
+          ],
+          "samples_ms": [
+            101.19249811396003,
+            84.80652887374163,
+            85.95561585389078
+          ],
+          "result_rows": 30,
+          "count": null
+        }
+      ],
+      "total": 9995,
+      "page_count": 30
+    },
+    {
+      "mode": "forced_no_json1",
+      "queries": [
+        {
+          "kind": "count",
+          "plan": [
+            {
+              "id": 3,
+              "parent": 0,
+              "notused": 0,
+              "detail": "MATERIALIZE 1"
+            },
+            {
+              "id": 11,
+              "parent": 3,
+              "notused": 0,
+              "detail": "SCAN TABLE wrong_questions USING COVERING INDEX idx_wrong_next_review"
+            },
+            {
+              "id": 19,
+              "parent": 3,
+              "notused": 0,
+              "detail": "USE TEMP B-TREE FOR GROUP BY"
+            },
+            {
+              "id": 64,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH TABLE wrong_questions AS w USING INDEX idx_review_queue (schedule_status=?)"
+            },
+            {
+              "id": 78,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH TABLE artifacts AS a USING INDEX sqlite_autoindex_artifacts_1 (artifact_id=?)"
+            },
+            {
+              "id": 104,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH SUBQUERY 1 AS rt USING AUTOMATIC COVERING INDEX (raw=?)"
+            },
+            {
+              "id": 119,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH TABLE sources AS s USING COVERING INDEX sqlite_autoindex_sources_1 (source_id=?)"
+            }
+          ],
+          "samples_ms": [
+            173.80285286344588,
+            173.30433009192348,
+            167.66957705840468
+          ],
+          "result_rows": 1,
+          "count": 9995
+        },
+        {
+          "kind": "page",
+          "plan": [
+            {
+              "id": 3,
+              "parent": 0,
+              "notused": 0,
+              "detail": "MATERIALIZE 1"
+            },
+            {
+              "id": 11,
+              "parent": 3,
+              "notused": 0,
+              "detail": "SCAN TABLE wrong_questions USING COVERING INDEX idx_wrong_next_review"
+            },
+            {
+              "id": 19,
+              "parent": 3,
+              "notused": 0,
+              "detail": "USE TEMP B-TREE FOR GROUP BY"
+            },
+            {
+              "id": 69,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH TABLE wrong_questions AS w USING INDEX idx_review_queue (schedule_status=?)"
+            },
+            {
+              "id": 83,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH TABLE artifacts AS a USING INDEX sqlite_autoindex_artifacts_1 (artifact_id=?)"
+            },
+            {
+              "id": 109,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH SUBQUERY 1 AS rt USING AUTOMATIC COVERING INDEX (raw=?)"
+            },
+            {
+              "id": 124,
+              "parent": 0,
+              "notused": 0,
+              "detail": "SEARCH TABLE sources AS s USING INDEX sqlite_autoindex_sources_1 (source_id=?)"
+            },
+            {
+              "id": 208,
+              "parent": 0,
+              "notused": 0,
+              "detail": "USE TEMP B-TREE FOR ORDER BY"
+            }
+          ],
+          "samples_ms": [
+            179.18438417837024,
+            181.522062048316,
+            180.35317095927894
+          ],
+          "result_rows": 30,
+          "count": null
+        }
+      ],
+      "total": 9995,
+      "page_count": 30
+    }
+  ]
+}

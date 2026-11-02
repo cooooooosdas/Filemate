@@ -1,0 +1,105 @@
+"""Measure an ephemeral lookup in the isolated synthetic read transaction."""
+import json
+import subprocess
+from pathlib import Path
+
+out=Path('D:/FileMate-Project/_working/wrongbook-linux-investigation-20261102')
+code=r"""
+import json,os,sys,time,sqlite3,uuid
+from contextlib import contextmanager
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime,timezone
+release=Path('/opt/filemate/releases/alpha4-fdf6f406a5d1')
+root=release/'_working/wrongbook-linux-capacity-20261102-02/fixture'
+assert root.is_dir()
+os.environ.update(FILEMATE_ENV='development',FILEMATE_DATA_DIR=str(root),LLM_API_KEY='',DEEPSEEK_API_KEY='',OPENAI_API_KEY='')
+sys.path.insert(0,str(release))
+from filemate.execution.storage import SQLiteStorage
+from filemate.wrongbook.queries import ReviewQueries,ReviewFilter
+from filemate.wrongbook.engine import parse_time,LOCAL_ZONE
+import filemate.wrongbook.queries as queries
+manifest=json.loads((root/'manifest.json').read_text())
+user=next(x for x in manifest['users'] if x['wrong_count']==10000)
+store=SQLiteStorage(root/'users'/user['workspace']/'filemate.db')
+original_snapshot=store.read_snapshot
+original_json=queries._has_json1
+report=dict(synthetic_only=True,production_changed=False,diagnostic_not_capacity_gate=True,
+    includes='date read/strict conversion, lookup allocation/population and page SQL; API/auth/formatting not included',rows=[])
+try:
+ for mode in ('native','forced_no_json1'):
+  captured=[]
+  if mode!='native':queries._has_json1=lambda _:False
+  @contextmanager
+  def snapshot():
+   with original_snapshot() as read:
+    read._conn().set_trace_callback(captured.append)
+    yield read
+    read._conn().set_trace_callback(None)
+  store.read_snapshot=snapshot
+  baseline=ReviewQueries(store).page(ReviewFilter(sort='recommended'))
+  store.read_snapshot=original_snapshot
+  page_sql=next(s for s in captured if s.lstrip().upper().startswith('WITH REVIEW_TIMES') and 'SELECT w.*' in s)
+  head,body=page_sql.split('SELECT w.*,s.original_name AS source_name,a.metadata AS artifact_metadata',1)
+  projection,rest=body.split(' FROM wrong_questions w',1)
+  rest=rest.replace('JOIN review_times rt','JOIN fm_dates.review_times rt').replace('hex(w.next_review_at)','w.next_review_at')
+  optimized='''WITH picked AS (SELECT w.wrong_id,rt.due AS _when'''+projection+''',COUNT(*) OVER () AS _total FROM wrong_questions w'''+rest+''')
+    SELECT w.*,s.original_name AS source_name,a.metadata AS artifact_metadata,
+      picked._rank_score,picked._total FROM picked
+      JOIN wrong_questions w ON w.wrong_id=picked.wrong_id
+      LEFT JOIN artifacts a ON a.artifact_id=w.artifact_id
+      LEFT JOIN sources s ON s.source_id=w.source_id
+      ORDER BY picked._rank_score DESC,picked._when ASC,picked.wrong_id ASC'''
+  expected=[x['wrong_id'] for x in baseline['items']]
+  def sample(_):
+   started=time.perf_counter()
+   lookup=None
+   try:
+    with original_snapshot() as read:
+     conn,_=ReviewQueries(store)._configure(read)
+     assert conn.execute('PRAGMA query_only').fetchone()[0]==1
+     before=[tuple(r) for r in conn.execute('PRAGMA database_list')]
+     packed=conn.execute("SELECT group_concat(hex(raw),',') FROM (SELECT DISTINCT next_review_at AS raw FROM wrong_questions WHERE typeof(next_review_at)='text')").fetchone()[0] or ''
+     dates=[]
+     epoch=datetime(1970,1,1,tzinfo=timezone.utc)
+     for encoded in packed.split(',') if packed else []:
+      raw=bytes.fromhex(encoded).decode('utf-8')
+      parsed=parse_time(raw)
+      if parsed is not None:
+       try:day=parsed.astimezone(LOCAL_ZONE).date().toordinal()
+       except (ValueError,OverflowError):day=None
+       dates.append((raw,(parsed-epoch).total_seconds(),day))
+     uri='file:fm-probe-'+uuid.uuid4().hex+'?mode=memory&cache=shared'
+     lookup=sqlite3.connect(uri,uri=True)
+     lookup.execute('CREATE TABLE review_times(raw TEXT PRIMARY KEY,due REAL,local_day INTEGER) WITHOUT ROWID')
+     for offset in range(0,len(dates),300):
+      chunk=dates[offset:offset+300]
+      lookup.execute('INSERT INTO review_times VALUES '+','.join('(?,?,?)' for _ in chunk),[v for row in chunk for v in row])
+     lookup.commit()
+     conn.execute('ATTACH DATABASE ? AS fm_dates',(uri,))
+     rows=conn.execute(optimized).fetchall()
+     assert rows[0]['_total']==9995 and [x['wrong_id'] for x in rows]==expected
+     assert conn.execute('PRAGMA query_only').fetchone()[0]==1
+     after=[tuple(r) for r in conn.execute('PRAGMA database_list')]
+     assert len(after)==len(before)+1 and after[-1][2]==''
+    return (time.perf_counter()-started)*1000
+   finally:
+    if lookup is not None:lookup.close()
+  warm=[sample(None) for _ in range(3)]
+  with ThreadPoolExecutor(max_workers=4) as pool:values=sorted(pool.map(sample,range(20)))
+  report['rows'].append(dict(mode=mode,warm_ms=warm,concurrent_samples_ms=values,p95_ms=values[18],
+     total=9995,page_count=30,ids_match=True,main_query_only_unchanged=True,attached_path_is_memory=True))
+  queries._has_json1=original_json
+finally:
+ store.read_snapshot=original_snapshot
+ queries._has_json1=original_json
+ store.close()
+print(json.dumps(report))
+"""
+ssh=['ssh','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=10','root@47.104.156.235']
+run=subprocess.run(ssh+['timeout 120s nice -n 10 /opt/filemate/venvs/alpha4-fdf6f406a5d1/bin/python -'],input=code.encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+(out/'memory-probe.log').write_bytes(run.stderr)
+assert run.returncode==0,run.stderr.decode(errors='replace')
+report=json.loads(run.stdout)
+(out/'memory-probe.json').write_bytes((json.dumps(report,ensure_ascii=False,indent=2)+'\n').encode())
+print(json.dumps({**{k:v for k,v in report.items() if k!='rows'},'rows':[{k:v for k,v in row.items() if k!='concurrent_samples_ms'} for row in report['rows']]}))

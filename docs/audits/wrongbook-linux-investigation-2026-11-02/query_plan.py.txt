@@ -1,0 +1,65 @@
+"""Collect query plans only from the existing isolated synthetic benchmark."""
+import json
+import subprocess
+from pathlib import Path
+
+out=Path('D:/FileMate-Project/_working/wrongbook-linux-investigation-20261102')
+code=r'''
+import json,os,sys,time
+from contextlib import contextmanager
+from pathlib import Path
+release=Path('/opt/filemate/releases/alpha4-fdf6f406a5d1')
+root=release/'_working/wrongbook-linux-capacity-20261102-02/fixture'
+assert root.is_dir()
+os.environ.update(FILEMATE_ENV='development',FILEMATE_DATA_DIR=str(root),LLM_API_KEY='',DEEPSEEK_API_KEY='',OPENAI_API_KEY='')
+sys.path.insert(0,str(release))
+from filemate.execution.storage import SQLiteStorage
+from filemate.wrongbook.queries import ReviewQueries,ReviewFilter
+import filemate.wrongbook.queries as queries
+m=json.loads((root/'manifest.json').read_text())
+u=next(x for x in m['users'] if x['wrong_count']==10000)
+store=SQLiteStorage(root/'users'/u['workspace']/'filemate.db')
+original_snapshot=store.read_snapshot
+original_json=queries._has_json1
+report=dict(synthetic_only=True,live_data_accessed=False,production_changed=False,modes=[])
+try:
+ for mode in ('native','forced_no_json1'):
+  findings=[]
+  if mode!='native': queries._has_json1=lambda _:False
+  @contextmanager
+  def snapshot():
+   with original_snapshot() as read:
+    conn=read._conn()
+    assert conn.execute('PRAGMA query_only').fetchone()[0]==1
+    traces=[]
+    conn.set_trace_callback(traces.append)
+    yield read
+    conn.set_trace_callback(None)
+    for sql in traces:
+     if not sql.lstrip().upper().startswith('WITH REVIEW_TIMES'): continue
+     plan=[dict(r) for r in conn.execute('EXPLAIN QUERY PLAN '+sql)]
+     samples=[]
+     for _ in range(3):
+      started=time.perf_counter()
+      rows=conn.execute(sql).fetchall()
+      samples.append((time.perf_counter()-started)*1000)
+     findings.append(dict(kind='count' if 'SELECT COUNT(*)' in sql else 'page',plan=plan,
+        samples_ms=samples,result_rows=len(rows),count=rows[0][0] if 'SELECT COUNT(*)' in sql else None))
+  store.read_snapshot=snapshot
+  page=ReviewQueries(store).page(ReviewFilter(sort='recommended'))
+  assert page['total']==9995 and len(page['items'])==30
+  report['modes'].append(dict(mode=mode,queries=findings,total=page['total'],page_count=30))
+  queries._has_json1=original_json
+finally:
+ store.read_snapshot=original_snapshot
+ queries._has_json1=original_json
+ store.close()
+print(json.dumps(report))
+'''
+ssh=['ssh','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=10','root@47.104.156.235']
+run=subprocess.run(ssh+['timeout 90s nice -n 10 /opt/filemate/venvs/alpha4-fdf6f406a5d1/bin/python -'],input=code.encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+(out/'query-plan.log').write_bytes(run.stderr)
+assert run.returncode==0,run.stderr.decode(errors='replace')
+report=json.loads(run.stdout)
+(out/'query-plan.json').write_bytes((json.dumps(report,ensure_ascii=False,indent=2)+'\n').encode())
+print(json.dumps(report))
