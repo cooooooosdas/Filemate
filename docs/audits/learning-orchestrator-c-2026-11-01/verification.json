@@ -1,0 +1,56 @@
+{
+  "stage": "C",
+  "status": "PENDING_FINAL_GATE_AND_REVIEW",
+  "base": "55f2c1161dccfaac798479f89c5f834f6f23530e",
+  "implementation_head": "09727b6e2c22cfb9fa8f1cbcaea944e8532dc2f0",
+  "tasks_1_to_7": "completed",
+  "task_8_regression": {
+    "passed": 18,
+    "seconds": 101.23,
+    "log": "task-8-green-3.log.gz"
+  },
+  "browser": "browser.json",
+  "capacity": "performance.json",
+  "capacity_environment": "performance-environment.json",
+  "actual_old_runtime": "target-runtime.json",
+  "c_new_migration": false,
+  "production_upgrade_still_required": "34→36 inherited from prior third-version work",
+  "preserved_preexisting_test_files": {
+    "filemate/tests/test_milestone_detector.py": true,
+    "filemate/tests/test_graph_api.py": true,
+    "filemate/tests/test_file_ops.py": true,
+    "filemate/tests/test_entity_extractor.py": true,
+    "filemate/tests/test_milestone_e2e.py": true,
+    "filemate/tests/test_namer_e2e.py": true,
+    "filemate/tests/test_classifier_e2e.py": true,
+    "filemate/tests/test_namer.py": true,
+    "filemate/tests/test_entity_extractor_e2e.py": true,
+    "filemate/tests/test_ai_tools.py": true,
+    "filemate/tests/test_archiver.py": true,
+    "filemate/tests/test_classifier.py": true,
+    "filemate/tests/test_competition_trials.py": true,
+    "filemate/tests/test_evaluation_feedback.py": true,
+    "filemate/tests/test_calendar.py": true,
+    "filemate/tests/test_e2e.py": true,
+    "filemate/tests/test_pipeline_e2e.py": true,
+    "filemate/tests/test_confirmation_executor.py": true,
+    "filemate/tests/test_batch_processor.py": true,
+    "filemate/tests/test_retrieval.py": true,
+    "filemate/tests/test_security_boundaries.py": true,
+    "filemate/tests/test_interview_ai.py": true,
+    "filemate/tests/test_perception.py": true
+  },
+  "full_gate": {
+    "status": "RUNNING",
+    "command": "powershell -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend"
+  },
+  "independent_review": {
+    "status": "NOT_STARTED",
+    "planned_count": 1
+  },
+  "real_student_experiment": "NOT COLLECTED",
+  "physical_mobile_IME": "NOT RUN",
+  "physical_browser_200_percent_zoom": "NOT RUN; equivalent CSS viewport tested",
+  "production_deployed": false,
+  "D_E_started": false
+}

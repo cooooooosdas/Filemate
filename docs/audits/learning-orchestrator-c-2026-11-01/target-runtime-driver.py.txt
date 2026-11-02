@@ -1,0 +1,88 @@
+import hashlib,json,os,platform,shutil,socket,sqlite3,subprocess,sys,tarfile,time,uuid
+from pathlib import Path
+from urllib.error import HTTPError,URLError
+from urllib.request import ProxyHandler,Request,build_opener
+class Reply:
+    def __init__(self,response):self.status_code=response.code;self.body=response.read()
+    def raise_for_status(self):
+        if not 200<=self.status_code<300:raise RuntimeError('HTTP '+str(self.status_code))
+    def json(self):return json.loads(self.body)
+class Client:
+    def __init__(self,base_url,**kwargs):self.base_url=base_url;self.opener=build_opener(ProxyHandler({}))
+    def __enter__(self):return self
+    def __exit__(self,*args):return None
+    def request(self,method,path,**kwargs):
+        body=json.dumps(kwargs['json']).encode() if 'json' in kwargs else None
+        headers=dict(kwargs.get('headers',{}))
+        if body is not None:headers['Content-Type']='application/json'
+        try:response=self.opener.open(Request(self.base_url+path,data=body,headers=headers,method=method),timeout=5)
+        except HTTPError as error:response=error
+        return Reply(response)
+    def get(self,path,**kwargs):return self.request('GET',path,**kwargs)
+    def post(self,path,**kwargs):return self.request('POST',path,**kwargs)
+root=Path('/tmp/filemate-orchestrator-c-09727b6e2c-d34021f1f1');package=root/'candidate.tar.gz'
+assert root.parent==Path('/tmp') and root.name.startswith('filemate-orchestrator-c-')
+assert hashlib.sha256(package.read_bytes()).hexdigest()=='b4b057bd6ae078f623f6d7cb60ba0331528fcae7a5416710676e610046ea0e30'
+candidate=root/'candidate';candidate.mkdir(mode=0o700)
+with tarfile.open(package) as bundle:bundle.extractall(candidate,filter='data')
+env=dict(os.environ);env.update(PYTHONUTF8='1',FILEMATE_ENV='development',FILEMATE_IDENTITY_MODE='local',FILEMATE_DATA_DIR=str(root/'isolated-data'),FILEMATE_ENABLE_LEARNING_ORCHESTRATOR='1',FILEMATE_ENABLE_COURSE_GRAPH='1',FILEMATE_ENABLE_KNOWLEDGE_GRAPH='1',FILEMATE_ENABLE_WRONGBOOK_V2='1',DEEPSEEK_API_KEY='',OPENAI_API_KEY='')
+seed=subprocess.run([sys.executable,'-c','import hashlib,json,sqlite3,sys\nfrom pathlib import Path\nfrom filemate.execution.storage import SQLiteStorage\nroot=Path(sys.argv[1]);root.mkdir(mode=0o700)\ns=SQLiteStorage(root/\'filemate.db\');s.init_schema();c=s._conn()\nsid=s.save_source(original_name=\'original synthetic migration\',source_path=\'synthetic.txt\')\nq={\'question_type\':\'choice\',\'stem\':\'Original stack question\',\'options\':[\'LIFO\',\'FIFO\'],\'answer\':\'A\'}\naid=s.save_artifact(artifact_type=\'questions\',source_id=sid,content=[q])\ns.record_quiz_attempt(artifact_id=aid,question_index=0,user_answer=\'B\',expected_question=q,is_correct=False,score=0,feedback=\'synthetic incorrect answer\')\ngid=s.save_artifact(artifact_type=\'reverse_goal_plan\',source_id=sid,content={\'title\':\'synthetic goal\',\'tasks\':[{\'task_id\':\'review-source\',\'status\':\'completed\'}]})\nplan={\'title\':\'synthetic plan\',\'exam_date\':\'2026-11-05\',\'goal\':\'review\',\'daily_minutes\':15,\'daily_plan\':[{\'date\':\'2026-10-31\',\'duration_minutes\':15,\'tasks\':[\'read\']} ]}\npa=s.save_artifact(artifact_type=\'study_plan\',source_id=sid,content=plan)\np=s.create_study_plan(artifact_id=pa,source_id=sid,plan=plan);s.set_study_plan_day(p[\'plan_id\'],0,True)\ncolumns={t:[r[1] for r in c.execute(\'PRAGMA table_info(\'+t+\')\')] for t in [\'sources\',\'artifacts\',\'study_plans\',\'quiz_attempts\',\'wrong_questions\']}\ndef fp(t,cols):\n rows=[list(r) for r in c.execute(\'SELECT \'+\',\'.join(\'"\'+x+\'"\' for x in cols)+\' FROM \'+t+\' ORDER BY 1\')]\n return hashlib.sha256(json.dumps(rows,sort_keys=True,ensure_ascii=False).encode()).hexdigest()\nresult={\'schema\':c.execute(\'SELECT MAX(version) FROM schema_migrations\').fetchone()[0],\'columns\':columns,\'fingerprints\':{t:fp(t,cols) for t,cols in columns.items()},\'source_id\':sid,\'goal_id\':gid,\'plan_id\':p[\'plan_id\']}\nwith sqlite3.connect(root/\'pre-upgrade.db\') as dst:c.backup(dst)\ns.close();print(json.dumps(result))\n',str(root/'legacy-data')],cwd='/opt/filemate/current',env=env,capture_output=True,text=True,check=True)
+before=json.loads(seed.stdout)
+tested=subprocess.run([sys.executable,'-m','scripts.acceptance.orchestrator_runtime','--self-test','--out','_working/self-test'],cwd=candidate,env=env,capture_output=True,text=True)
+if tested.returncode:raise RuntimeError('candidate self-test: '+tested.stderr[-3500:])
+full=json.loads((candidate/'_working/self-test/result.json').read_text())
+sys.path.insert(0,str(candidate))
+from filemate.execution.storage import SQLiteStorage
+from filemate.study.orchestrator.context import read_goal_options
+from filemate.study.orchestrator.models import GoalOptionsRequest,ScopeRequest
+from filemate.study.orchestrator.snapshot import SnapshotReader
+from filemate.study.orchestrator.task_views import project_tasks
+store=SQLiteStorage(root/'legacy-data/filemate.db');store.init_schema();conn=store._conn()
+def fingerprint(table,columns):
+    rows=[list(row) for row in conn.execute('SELECT '+','.join('"'+name+'"' for name in columns)+' FROM '+table+' ORDER BY 1')]
+    return hashlib.sha256(json.dumps(rows,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
+after={table:fingerprint(table,columns) for table,columns in before['columns'].items()}
+snap=SnapshotReader(store).read(ScopeRequest(goal_id=before['goal_id'],source_ids=[before['source_id']]))
+projection=project_tasks(snap);catalog=read_goal_options(store,GoalOptionsRequest())
+migration={'from_schema':before['schema'],'to_schema':conn.execute('SELECT MAX(version) FROM schema_migrations').fetchone()[0],
+ 'old_fields_preserved':after==before['fingerprints'],'integrity':conn.execute('PRAGMA integrity_check').fetchone()[0],
+ 'foreign_key_errors':len(conn.execute('PRAGMA foreign_key_check').fetchall()),
+ 'old_goal_completed':any(t.task_id=='goal:'+before['goal_id']+':review-source' for t in projection.completed),
+ 'old_plan_completed':any(t.task_id=='plan:'+before['plan_id']+':0' for t in projection.completed),
+ 'old_wrong_retained':snap.coverage['reviews']['total']==1,'new_catalog_reads_old_goal':catalog.total==1 and catalog.items[0].goal_id==before['goal_id']}
+store.close()
+rollback=root/'rollback';rollback.mkdir(mode=0o700);shutil.copy2(root/'legacy-data/pre-upgrade.db',rollback/'filemate.db')
+old_code="import json,sys;from filemate.execution.storage import SQLiteStorage;s=SQLiteStorage(sys.argv[1]);s.init_schema();print(json.dumps(dict(schema=s._conn().execute('SELECT MAX(version) FROM schema_migrations').fetchone()[0],integrity=s._conn().execute('PRAGMA integrity_check').fetchone()[0])));s.close()"
+restored=subprocess.run([sys.executable,'-c',old_code,str(rollback/'filemate.db')],cwd='/opt/filemate/current',env=env,capture_output=True,text=True,check=True)
+old=json.loads(restored.stdout)
+with socket.socket() as listener:listener.bind(('127.0.0.1',0));port=listener.getsockname()[1]
+data=candidate/'_working/self-test';shutdown=uuid.uuid4().hex
+env.update(FILEMATE_DATA_DIR=str(data),FILEMATE_DB_PATH=str(data/'synthetic.db'),FILEMATE_UPLOAD_DIR=str(data/'inbox'),FILEMATE_ARCHIVE_DIR=str(data/'archive'),FILEMATE_HOST='127.0.0.1',FILEMATE_PORT=str(port),FILEMATE_SHUTDOWN_TOKEN=shutdown,FILEMATE_IDENTITY_SECRET=uuid.uuid4().hex*2)
+api={};process=None
+with (root/'backend.log').open('wb') as log:
+    try:
+        process=subprocess.Popen([sys.executable,'-m','server'],cwd=candidate,env=env,stdout=log,stderr=subprocess.STDOUT)
+        with Client(base_url='http://127.0.0.1:'+str(port)) as client:
+            deadline=time.monotonic()+45
+            while time.monotonic()<deadline:
+                if process.poll() is not None:raise RuntimeError('candidate server exited: '+(root/'backend.log').read_text(errors='replace')[-2500:])
+                try:
+                    if client.get('/api/ready').status_code==200:break
+                except (URLError,TimeoutError):pass
+                time.sleep(.2)
+            else:raise TimeoutError('owned target API not ready')
+            def call(method,path,**kwargs):
+                response=client.request(method,path,**kwargs);response.raise_for_status();body=response.json();assert body['success'];return body['data']
+            capabilities=call('GET','/api/learning/orchestrator/capabilities')
+            directory=call('POST','/api/learning/orchestrator/goal-options',json={'q':'','offset':0})
+            day=call('GET','/api/learning/orchestrator/today')
+            goal=directory['items'][0];scope={'goal_id':goal['goal_id'],'source_ids':[goal['source_id']]}
+            snapshot=call('POST','/api/learning/orchestrator/snapshot',json=scope)
+            api={'capability_contract':capabilities.get('ui_contract')=='today-workspace-v1','metadata_catalog':directory['limit']==30 and directory['total']==1,
+                 'persisted_latest_undo_receipt':day['latest_operation']['status']=='undone','snapshot_labels':bool(snapshot['snapshot']['facts']['goal']['title']) and bool(snapshot['snapshot']['facts']['sources'][0]['original_name'])}
+            client.post('/internal/shutdown',headers={'x-filemate-shutdown-token':shutdown}).raise_for_status();process.wait(timeout=10)
+    finally:
+        if process is not None and process.poll() is None:process.terminate();process.wait(timeout=10)
+checks=[full['status']=='PASS',all(api.values()),migration['to_schema']==36,migration['old_fields_preserved'],migration['integrity']=='ok',not migration['foreign_key_errors'],migration['old_goal_completed'],migration['old_plan_completed'],migration['old_wrong_retained'],migration['new_catalog_reads_old_goal'],old['schema']==before['schema'],old['integrity']=='ok',platform.python_version()=='3.11.13',sqlite3.sqlite_version=='3.26.0']
+report={'status':'PASS' if all(checks) else 'FAIL','python':platform.python_version(),'sqlite':sqlite3.sqlite_version,'platform':platform.system(),'source_commit':'09727b6e2c22cfb9fa8f1cbcaea944e8532dc2f0','source_archive_sha256':'b4b057bd6ae078f623f6d7cb60ba0331528fcae7a5416710676e610046ea0e30','synthetic_only':True,'live_database_write':False,'live_service_switch':False,'full_application':full,'real_http_api':api,'migration':migration,'old_runtime_rollback':old,'owned_server_stopped':process.poll() is not None,'remote_temp':str(root)}
+print(json.dumps(report))
