@@ -1,0 +1,42 @@
+{
+  "synthetic": true,
+  "real_student": false,
+  "clock_controlled": true,
+  "parser_exercised": false,
+  "transport": "ASGI TestClient",
+  "proof": [
+    {
+      "state": {
+        "revision": 5,
+        "error_count": 2,
+        "review_count": 3,
+        "review_attempt_count": 3,
+        "learning_status": "needs_review",
+        "mastered": 0,
+        "scheduler_version": "review-interval-v2",
+        "error_cause_source": "user"
+      },
+      "attempt_count": 4,
+      "event_count": 5,
+      "judgements": [
+        {
+          "judgement_status": "verified",
+          "is_correct": 0
+        },
+        {
+          "judgement_status": "verified",
+          "is_correct": 1
+        },
+        {
+          "judgement_status": "verified",
+          "is_correct": 1
+        },
+        {
+          "judgement_status": "verified",
+          "is_correct": 0
+        }
+      ],
+      "digest_count": 1
+    }
+  ]
+}

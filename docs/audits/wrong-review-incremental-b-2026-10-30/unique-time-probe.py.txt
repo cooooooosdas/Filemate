@@ -1,0 +1,50 @@
+"""Capacity probe on an owned synthetic clone with distinct due timestamps."""
+import json
+import math
+import sqlite3
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+root=Path.cwd()
+sys.path.insert(0,str(root))
+from filemate.execution.storage import SQLiteStorage
+from filemate.wrongbook.queries import ReviewFilter,ReviewQueries
+
+out=root/'_working/review2-incremental-b-20261030'
+manifest=json.loads((out/'after-fixture/manifest.json').read_text(encoding='utf-8'))
+user=max(manifest['users'],key=lambda row:row['wrong_count'])
+source=Path(manifest['data_root'])/'users'/user['workspace']/'filemate.db'
+assert source.resolve().is_relative_to(out.resolve())
+clone_dir=out/'unique-time-clone'
+clone_dir.mkdir(exist_ok=False)
+destination=clone_dir/'filemate.db'
+with sqlite3.connect(source.as_uri()+'?mode=ro',uri=True) as original,sqlite3.connect(destination) as clone:
+    original.backup(clone)
+    keys=clone.execute('SELECT wrong_id,question_index FROM wrong_questions WHERE question_index>=10').fetchall()
+    base=datetime.now(timezone.utc)-timedelta(days=1)
+    clone.executemany('UPDATE wrong_questions SET next_review_at=? WHERE wrong_id=?',
+        [((base+timedelta(microseconds=index)).isoformat(),wrong_id) for wrong_id,index in keys])
+    clone.commit()
+    distinct=clone.execute('SELECT COUNT(DISTINCT next_review_at) FROM wrong_questions').fetchone()[0]
+store=SQLiteStorage(destination)
+query=ReviewQueries(store)
+filters=ReviewFilter(sort='recommended')
+def sample(_):
+    start=time.perf_counter()
+    page=query.page(filters)
+    assert page['total']==9995 and len(page['items'])<=30
+    return round((time.perf_counter()-start)*1000,2)
+warm=[sample(0) for _ in range(5)]
+with ThreadPoolExecutor(max_workers=4) as pool:
+    parallel=sorted(pool.map(sample,range(20)))
+store.close()
+result={'synthetic':True,'transport':'direct storage service, not HTTP','count':10000,
+    'distinct_due_timestamps':distinct,'concurrency':4,'target_p95_ms':500,
+    'warm_samples_ms':warm,'concurrent_samples_ms':parallel,
+    'p95_ms':parallel[math.ceil(len(parallel)*.95)-1]}
+result['meets_original_500ms_target']=result['p95_ms']<=500
+(out/'unique-time-capacity.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
+print(json.dumps({key:value for key,value in result.items() if not key.endswith('samples_ms')}),flush=True)

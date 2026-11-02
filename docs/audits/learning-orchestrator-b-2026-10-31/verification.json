@@ -1,0 +1,380 @@
+{
+  "status": "B_ENGINEERING_PASS_PENDING_USER_ACCEPTANCE",
+  "completed_at_utc": "2026-11-01T02:12:20.752956+00:00",
+  "source_commit": "a7422eca3b16e4141812f2aa6ab8b87488805a93",
+  "baseline": "e58747f93a6439b59f44783cd0f52cd8891709d7",
+  "scope": "B backend only; no C-E or deployment",
+  "full_gate": {
+    "command": "powershell -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend",
+    "exit_code": 0,
+    "backend_passed": 1897,
+    "backend_skipped": 22,
+    "backend_deselected": 5,
+    "backend_warnings": 3,
+    "backend_seconds": 1485.38,
+    "frontend_passed": 304,
+    "frontend_failed": 0,
+    "typecheck": "PASS",
+    "build": "PASS",
+    "bundle": {
+      "scope": "entry plus Home and recursive static imports; gzip estimated, not a network timing",
+      "measurements": {
+        "javascript": 386980,
+        "javascript_gzip": 143190,
+        "css": 111534
+      },
+      "budget": {
+        "javascript": 460800,
+        "javascript_gzip": 143360,
+        "css": 153600
+      },
+      "exceeded": [],
+      "eagerHeavyModules": [],
+      "files": [
+        {
+          "path": "assets/Home-C_o_aHCT.css",
+          "bytes": 15375,
+          "gzip_bytes": 3290
+        },
+        {
+          "path": "assets/Home-FEc-eccE.js",
+          "bytes": 11415,
+          "gzip_bytes": 4796
+        },
+        {
+          "path": "assets/StudyMotif-CtSHOlAs.js",
+          "bytes": 1612,
+          "gzip_bytes": 633
+        },
+        {
+          "path": "assets/_plugin-vue_export-helper-BDNMzG2s.js",
+          "bytes": 84,
+          "gzip_bytes": 99
+        },
+        {
+          "path": "assets/api-B0FgCLUO.js",
+          "bytes": 94465,
+          "gzip_bytes": 31136
+        },
+        {
+          "path": "assets/createVueComponent-DkW5SasL.js",
+          "bytes": 732,
+          "gzip_bytes": 414
+        },
+        {
+          "path": "assets/css-C0dTDIzM.js",
+          "bytes": 21852,
+          "gzip_bytes": 7822
+        },
+        {
+          "path": "assets/css-C2X7avuy.js",
+          "bytes": 11060,
+          "gzip_bytes": 4539
+        },
+        {
+          "path": "assets/css-Vuo2ezMx.js",
+          "bytes": 9282,
+          "gzip_bytes": 4219
+        },
+        {
+          "path": "assets/css-Wv38huFO.css",
+          "bytes": 162,
+          "gzip_bytes": 136
+        },
+        {
+          "path": "assets/css-ZSOkJyjJ.css",
+          "bytes": 19896,
+          "gzip_bytes": 2141
+        },
+        {
+          "path": "assets/css-cyJZB4WD.css",
+          "bytes": 7857,
+          "gzip_bytes": 1961
+        },
+        {
+          "path": "assets/devtools-EWN81iOl-BkA_wGVL.js",
+          "bytes": 6898,
+          "gzip_bytes": 2985
+        },
+        {
+          "path": "assets/filemate-mascot-A-dFkQrg.js",
+          "bytes": 60,
+          "gzip_bytes": 80
+        },
+        {
+          "path": "assets/index-DHiEpJAt.css",
+          "bytes": 68244,
+          "gzip_bytes": 11985
+        },
+        {
+          "path": "assets/index-j7TGv5tp.js",
+          "bytes": 99921,
+          "gzip_bytes": 37011
+        },
+        {
+          "path": "assets/preload-helper-Czpn1I53.js",
+          "bytes": 1196,
+          "gzip_bytes": 675
+        },
+        {
+          "path": "assets/rolldown-runtime-DK3Fl9T5.js",
+          "bytes": 158,
+          "gzip_bytes": 154
+        },
+        {
+          "path": "assets/strings-DbSPS5Fs.js",
+          "bytes": 155,
+          "gzip_bytes": 153
+        },
+        {
+          "path": "assets/typescript-rk096N_P.js",
+          "bytes": 6558,
+          "gzip_bytes": 2850
+        },
+        {
+          "path": "assets/use-dialog-DOGMLXJZ.js",
+          "bytes": 4235,
+          "gzip_bytes": 1739
+        },
+        {
+          "path": "assets/use-global-config-kX3JD1xL.js",
+          "bytes": 32986,
+          "gzip_bytes": 11211
+        },
+        {
+          "path": "assets/vnode-B5ttVT14.js",
+          "bytes": 311,
+          "gzip_bytes": 216
+        },
+        {
+          "path": "assets/vue-runtime-Bkkp-_Qs.js",
+          "bytes": 84000,
+          "gzip_bytes": 32458
+        }
+      ],
+      "passed": true
+    }
+  },
+  "focused_tests": {
+    "worktree_passed": 66,
+    "exact_committed_source_passed": 65,
+    "exact_source_external_engine_initially_skipped": 1,
+    "exact_source_external_engine_followup_passed": 1
+  },
+  "independent_review": {
+    "count": 1,
+    "original_verdict": "No",
+    "critical": 0,
+    "important": 6,
+    "minor": 0,
+    "author_remediated_important": 6,
+    "second_independent_review": false,
+    "resolution": "review.md"
+  },
+  "capacity_report": "performance.json",
+  "capacity_prior_failures": "performance-history.json",
+  "target_runtime": "target-runtime.json",
+  "managed_restore_hook_only_journey": "journey.json",
+  "original_restore_negative_control": {
+    "file": "restore-original-negative-control.json",
+    "expected_status": "FAIL"
+  },
+  "migration_definitions": "migrations.json",
+  "source_boundary": {
+    "baseline": "e58747f93a6439b59f44783cd0f52cd8891709d7",
+    "source_commit": "a7422eca3b16e4141812f2aa6ab8b87488805a93",
+    "owned_commit_files": [
+      ".env.example",
+      "docs/LEARNING_ORCHESTRATOR_2_0_B_DELIVERY.md",
+      "filemate/docs/API_SPEC.md",
+      "filemate/execution/storage.py",
+      "filemate/operations/backup.py",
+      "filemate/study/orchestrator/__init__.py",
+      "filemate/study/orchestrator/api.py",
+      "filemate/study/orchestrator/commands.py",
+      "filemate/study/orchestrator/models.py",
+      "filemate/study/orchestrator/privacy.py",
+      "filemate/study/orchestrator/repository.py",
+      "filemate/study/orchestrator/scheduler.py",
+      "filemate/study/orchestrator/settings.py",
+      "filemate/study/orchestrator/snapshot.py",
+      "filemate/study/orchestrator/snapshot_queries.py",
+      "filemate/study/orchestrator/task_views.py",
+      "filemate/tests/orchestrator/__init__.py",
+      "filemate/tests/orchestrator/conftest.py",
+      "filemate/tests/orchestrator/test_api.py",
+      "filemate/tests/orchestrator/test_capacity.py",
+      "filemate/tests/orchestrator/test_commands.py",
+      "filemate/tests/orchestrator/test_journey.py",
+      "filemate/tests/orchestrator/test_runtime.py",
+      "filemate/tests/orchestrator/test_scheduler.py",
+      "filemate/tests/orchestrator/test_snapshot.py",
+      "filemate/tests/orchestrator/test_task_views.py",
+      "filemate/web/src/services/api.ts",
+      "filemate/web/src/types/orchestrator.ts",
+      "filemate/web/tests/orchestrator-api.test.mjs",
+      "filemate/wrongbook/queries.py",
+      "scripts/acceptance/orchestrator_journey.py",
+      "scripts/acceptance/orchestrator_performance.py",
+      "scripts/acceptance/orchestrator_runtime.py",
+      "scripts/verify.ps1",
+      "server.py"
+    ],
+    "note": "完整门禁验证当前工作区；账号、旧测试、main与其他并发改动保留且不纳入本专项提交。提交快照另做专项回归、目标运行时及独立恢复钩子验证。",
+    "source_files": {
+      ".env.example": {
+        "committed_sha256": "df827f77348435130a9cc2a742e763f9e67fefbe94d887a425f093911220a375",
+        "worktree_sha256": "df827f77348435130a9cc2a742e763f9e67fefbe94d887a425f093911220a375"
+      },
+      "filemate/execution/storage.py": {
+        "committed_sha256": "84f31942792e3d7a359cd5b7e4fbcc52b3341623c2c9fd090775feac245f1374",
+        "worktree_sha256": "84f31942792e3d7a359cd5b7e4fbcc52b3341623c2c9fd090775feac245f1374"
+      },
+      "filemate/operations/backup.py": {
+        "committed_sha256": "afd3abeb0484628eeda8220ff0669af7de96a32e6e02e153fb30d5d7d6a3c689",
+        "worktree_sha256": "3d837623944c4ede43c7f6da5fa476bae0cbb78d561cc0cc9689689204c30738"
+      },
+      "filemate/study/orchestrator/__init__.py": {
+        "committed_sha256": "eec01e9b1924d08c679f1474f7d195e1c37aecd82b298bbeb2700e679d99fd0e",
+        "worktree_sha256": "eec01e9b1924d08c679f1474f7d195e1c37aecd82b298bbeb2700e679d99fd0e"
+      },
+      "filemate/study/orchestrator/api.py": {
+        "committed_sha256": "1bf3804c9f9aceaafac54258553d36bbeeb29a9b7169f33c99ab4fe12b8468d2",
+        "worktree_sha256": "1bf3804c9f9aceaafac54258553d36bbeeb29a9b7169f33c99ab4fe12b8468d2"
+      },
+      "filemate/study/orchestrator/commands.py": {
+        "committed_sha256": "a7075f7caf22dd4f7ad3a530a9c6f449107e59d633291ece1de2e6b454689ac6",
+        "worktree_sha256": "a7075f7caf22dd4f7ad3a530a9c6f449107e59d633291ece1de2e6b454689ac6"
+      },
+      "filemate/study/orchestrator/models.py": {
+        "committed_sha256": "e446fcf7a4151c8db6b988e0cd955f38f2bd86e31d2b450910fbfbd711d2ecfa",
+        "worktree_sha256": "e446fcf7a4151c8db6b988e0cd955f38f2bd86e31d2b450910fbfbd711d2ecfa"
+      },
+      "filemate/study/orchestrator/privacy.py": {
+        "committed_sha256": "80fbc0838d1f65341132ede515723fcbc259794be189a150911127f88cbf8768",
+        "worktree_sha256": "80fbc0838d1f65341132ede515723fcbc259794be189a150911127f88cbf8768"
+      },
+      "filemate/study/orchestrator/repository.py": {
+        "committed_sha256": "bf07e2e3a581b8e561be294a57d522d2102fcc8ede55435d9e62bf45bd90c191",
+        "worktree_sha256": "bf07e2e3a581b8e561be294a57d522d2102fcc8ede55435d9e62bf45bd90c191"
+      },
+      "filemate/study/orchestrator/scheduler.py": {
+        "committed_sha256": "a5acb7fd34ab75102b9fdaa10b54d7b196790d6d4e409ee62bbd23f3c10bbde3",
+        "worktree_sha256": "a5acb7fd34ab75102b9fdaa10b54d7b196790d6d4e409ee62bbd23f3c10bbde3"
+      },
+      "filemate/study/orchestrator/settings.py": {
+        "committed_sha256": "26ace46514c59cfdd00897b7f0134805931dd25249643942efc063d7e108f8be",
+        "worktree_sha256": "26ace46514c59cfdd00897b7f0134805931dd25249643942efc063d7e108f8be"
+      },
+      "filemate/study/orchestrator/snapshot.py": {
+        "committed_sha256": "88ab22c97f26df700e8229fdf765b38d6e1e675badf0162148f700829fc3b50f",
+        "worktree_sha256": "88ab22c97f26df700e8229fdf765b38d6e1e675badf0162148f700829fc3b50f"
+      },
+      "filemate/study/orchestrator/snapshot_queries.py": {
+        "committed_sha256": "f61b47d4363ee9fc406244ab4c9fd9a21235c3df99aeed33d85bd6c3a48578ed",
+        "worktree_sha256": "f61b47d4363ee9fc406244ab4c9fd9a21235c3df99aeed33d85bd6c3a48578ed"
+      },
+      "filemate/study/orchestrator/task_views.py": {
+        "committed_sha256": "3374f1783a50c6f03e075a0588fba9461fc15d50be946b4011e40940b2e610e9",
+        "worktree_sha256": "3374f1783a50c6f03e075a0588fba9461fc15d50be946b4011e40940b2e610e9"
+      },
+      "filemate/tests/orchestrator/__init__.py": {
+        "committed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "worktree_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "filemate/tests/orchestrator/conftest.py": {
+        "committed_sha256": "a66784b4a892472fcab0a569da18887409925e2c19f222b6b76ea1c5c5134eb8",
+        "worktree_sha256": "a66784b4a892472fcab0a569da18887409925e2c19f222b6b76ea1c5c5134eb8"
+      },
+      "filemate/tests/orchestrator/test_api.py": {
+        "committed_sha256": "33191ee0e69f6b69e2884cd9b7dea4bf5e5f09cc88b2e302e7d66dd9bb12a036",
+        "worktree_sha256": "33191ee0e69f6b69e2884cd9b7dea4bf5e5f09cc88b2e302e7d66dd9bb12a036"
+      },
+      "filemate/tests/orchestrator/test_capacity.py": {
+        "committed_sha256": "0f041596e5e58d326611f2ef2a2b9396350886c04ccdccd0e5c9747ff6de2651",
+        "worktree_sha256": "0f041596e5e58d326611f2ef2a2b9396350886c04ccdccd0e5c9747ff6de2651"
+      },
+      "filemate/tests/orchestrator/test_commands.py": {
+        "committed_sha256": "c51446aa31a58ceec8d87f455db9658bb88a440b5f410929c247c4b322e621d3",
+        "worktree_sha256": "c51446aa31a58ceec8d87f455db9658bb88a440b5f410929c247c4b322e621d3"
+      },
+      "filemate/tests/orchestrator/test_journey.py": {
+        "committed_sha256": "f52b69471cdb6b97383372917db30fc51c8362ad33d30b59b97a6256b7064d95",
+        "worktree_sha256": "f52b69471cdb6b97383372917db30fc51c8362ad33d30b59b97a6256b7064d95"
+      },
+      "filemate/tests/orchestrator/test_runtime.py": {
+        "committed_sha256": "eec696fb42ceb864b3d24c8b3babf07c4fc72465b73c1633a5b408c667b0cada",
+        "worktree_sha256": "eec696fb42ceb864b3d24c8b3babf07c4fc72465b73c1633a5b408c667b0cada"
+      },
+      "filemate/tests/orchestrator/test_scheduler.py": {
+        "committed_sha256": "06360d686acb07076427832ec33a6bb4b6dce7a5cd40c0ca7697f99ea26cd97b",
+        "worktree_sha256": "06360d686acb07076427832ec33a6bb4b6dce7a5cd40c0ca7697f99ea26cd97b"
+      },
+      "filemate/tests/orchestrator/test_snapshot.py": {
+        "committed_sha256": "91816e39fd23de9dd31fa4d6cb61cc4b0a8f48b0d4c33fe18888cb6b889a814c",
+        "worktree_sha256": "91816e39fd23de9dd31fa4d6cb61cc4b0a8f48b0d4c33fe18888cb6b889a814c"
+      },
+      "filemate/tests/orchestrator/test_task_views.py": {
+        "committed_sha256": "6d9114f1aa88beaae5d4159fbb47cac161b187cf3e0192379f1c2e932bb6c0a8",
+        "worktree_sha256": "6d9114f1aa88beaae5d4159fbb47cac161b187cf3e0192379f1c2e932bb6c0a8"
+      },
+      "filemate/web/src/services/api.ts": {
+        "committed_sha256": "49e47534ccd0e94550a373462950d322d319a2a401955827c969bdb44134ba53",
+        "worktree_sha256": "49e47534ccd0e94550a373462950d322d319a2a401955827c969bdb44134ba53"
+      },
+      "filemate/web/src/types/orchestrator.ts": {
+        "committed_sha256": "31e60c9e26c44395afbeb1be920530774878a4704fcf5fb5e46e8d17dcbc1206",
+        "worktree_sha256": "31e60c9e26c44395afbeb1be920530774878a4704fcf5fb5e46e8d17dcbc1206"
+      },
+      "filemate/wrongbook/queries.py": {
+        "committed_sha256": "ae9efb5fc8d5271808bb60c3fa855ffa4b6996d3827c2c28ebf3c33e8281a403",
+        "worktree_sha256": "ae9efb5fc8d5271808bb60c3fa855ffa4b6996d3827c2c28ebf3c33e8281a403"
+      },
+      "scripts/acceptance/orchestrator_journey.py": {
+        "committed_sha256": "863cf59e48b4906e225f4f2bd03d4183e368d1ab3d5fad053d72f2591e751b71",
+        "worktree_sha256": "863cf59e48b4906e225f4f2bd03d4183e368d1ab3d5fad053d72f2591e751b71"
+      },
+      "scripts/acceptance/orchestrator_performance.py": {
+        "committed_sha256": "57ad4b76ac3b26e4cb0aefe372667dcf62d6041c01168d2a643b8dd1022092ce",
+        "worktree_sha256": "57ad4b76ac3b26e4cb0aefe372667dcf62d6041c01168d2a643b8dd1022092ce"
+      },
+      "scripts/acceptance/orchestrator_runtime.py": {
+        "committed_sha256": "72625606219459add706e3231d550af705d06206bf9e963cfb69bb6fda15a7ab",
+        "worktree_sha256": "72625606219459add706e3231d550af705d06206bf9e963cfb69bb6fda15a7ab"
+      },
+      "scripts/verify.ps1": {
+        "committed_sha256": "5d0a870301b01c1d933aafbe4a2e43442dfb4ecbbbb6c8f75546ba60d96765b0",
+        "worktree_sha256": "5d0a870301b01c1d933aafbe4a2e43442dfb4ecbbbb6c8f75546ba60d96765b0"
+      },
+      "server.py": {
+        "committed_sha256": "a19055ec30698da78d8efdf7f86c7dda8ba8aaa3cd573165c788b7cc114bc281",
+        "worktree_sha256": "668e93a1e8061971a49d25c76ac38d9e13ac11888ffbdbc7d36ff398eb640c28"
+      }
+    },
+    "worktree_diff_from_source_commit": [
+      "filemate/operations/backup.py",
+      "server.py"
+    ]
+  },
+  "raw_evidence_sha256": {
+    "_working/orchestrator-b-plan-20261031/final-full-verification.log": "133b9c152b1a14a6e42bce5c760e51bab26cc81502acff698ce6856402f3b379",
+    "_working/orchestrator-b-plan-20261031/frozen-target-2.log": "643aced6a171cbf5440d07f49b4330927d9252a6980f4284f105daf9f966b11c",
+    "_working/orchestrator-b-plan-20261031/committed-source-exact-tests.log": "a8a9bca14d99e90b65568e4be2c472ecb44be0cb46e366fe21884a1af246f4b8",
+    "_working/orchestrator-b-plan-20261031/committed-source-old-engine.log": "eefab76c7aae9c8e22a6e70490130abb733b51020d0fbb9781262348894e9202",
+    "_working/orchestrator-b-20261031/performance-final-a7422ec/result.json": "9cd47ad0a9bd58df6ad98b4e958ae4e259df1c25ba4732cef60edc45e76eb10b",
+    "_working/orchestrator-b-20261031/target-runtime-result-a7422ec.json": "fc8e27b128e6bcdb3d99ccbc33ddae48574ba9438bda97d448711d047c5f67d3",
+    "_working/orchestrator-b-20261031/journey-final-committed-hook/result.json": "652eca130f6e680ac26ae701cc36ae5f2081d8e88f0596584ada88076e139c1e",
+    "_working/orchestrator-b-20261031/restore-negativecontrol-2/result.json": "d83b6fdea60d4717487d7549bc1e1faf786db4d2a8988856ddddf77f534cf9f7"
+  },
+  "limitations": [
+    "No C UI, D model coaching or E full-product acceptance",
+    "No real-user learning effect, production load or physical device certification",
+    "Mixed date formats, over 20k scoped rows and absent JSON1 do not inherit this capacity result",
+    "Windows forced-kill immediate DB reopening not certified; journey uses authenticated graceful shutdown",
+    "Only 170 bytes remain under initial gzip budget; C must preserve lazy loading",
+    "Production schema34 still needs existing35/36 migrations and a real production backup/restore release procedure"
+  ],
+  "live_database_write": false,
+  "live_service_switch": false,
+  "pushed": false
+}

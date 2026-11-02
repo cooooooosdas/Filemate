@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "baseline": "e58747f93a6439b59f44783cd0f52cd8891709d7",
+  "candidate": "a7422eca3b16e4141812f2aa6ab8b87488805a93",
+  "migration_definitions_unchanged": true,
+  "definition": {
+    "count": 34,
+    "max_version": 36,
+    "sha256": "113519e4673629539a5d66acc0aa28dd974f4d0386dbedd3882f7149f45d4550"
+  },
+  "live_schema": 34,
+  "candidate_schema": 36,
+  "deployment_requires_existing_35_36_upgrade": true
+}

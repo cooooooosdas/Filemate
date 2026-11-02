@@ -12,6 +12,7 @@ from filemate.execution.storage import SQLiteStorage
 from filemate.study.evidence_profile import _number, _time
 from filemate.study.knowledge_graph import _after_question_revision
 from filemate.study.question_validation import validate_question
+from filemate.wrongbook.evidence import trusted_attempt
 
 REPORT_ZONE = timezone(timedelta(hours=8))
 
@@ -62,7 +63,7 @@ class GrowthRepository:
                         raise ValueError('invalid question index')
                     question = artifact['content'][attempt['question_index']]
                     validate_question(question, legacy=True)
-                    if (type(attempt['is_correct']) is not int or attempt['is_correct'] not in (0, 1)
+                    if (not trusted_attempt(attempt) or type(attempt['is_correct']) is not int or attempt['is_correct'] not in (0, 1)
                             or _number(attempt['score'], 1) != attempt['is_correct'] or not _after_question_revision(attempt, artifact)):
                         raise ValueError('unusable attempt')
                 except (ValueError, KeyError, TypeError, IndexError):

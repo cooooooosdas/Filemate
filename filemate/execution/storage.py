@@ -30,6 +30,8 @@ from filemate.execution import (
 from filemate.interview_assessment import schema as interview_assessment_schema
 from filemate.interview_coach import schema as interview_coach_schema
 from filemate.task_resources import admit_plan, admit_tasks
+from filemate.wrongbook import analysis_schema as review_analysis_schema
+from filemate.wrongbook import schema as review_schema
 
 logger = logging.getLogger(__name__)
 
@@ -635,6 +637,8 @@ _MIGRATIONS = (
     (32, "course_learning_evidence", learning_schema.SCHEMA),
     (33, "course_learning_derived_sources", learning_schema.DERIVED_SOURCES_SCHEMA),
     (34, "course_answer_source_backfill", learning_schema.ANSWER_SOURCE_BACKFILL_SCHEMA),
+    (35, "wrongbook_review_evidence", review_schema.SCHEMA),
+    (36, "wrongbook_learning_analysis", review_analysis_schema.SCHEMA),
 )
 
 
@@ -1395,6 +1399,10 @@ class SQLiteStorage:
             "wrong_questions": conn.execute(
                 "SELECT COUNT(*) FROM wrong_questions WHERE source_id=?", (source_id,)
             ).fetchone()[0],
+            "review_events": conn.execute(
+                "SELECT COUNT(*) FROM review_events WHERE artifact_id IN (SELECT artifact_id FROM artifacts WHERE source_id=?)",
+                (source_id,),
+            ).fetchone()[0],
             "study_plans": conn.execute(
                 "SELECT COUNT(*) FROM study_plans WHERE source_id=?", (source_id,)
             ).fetchone()[0],
@@ -1409,6 +1417,9 @@ class SQLiteStorage:
         from filemate.course_graph.privacy import source_impact
 
         counts.update(source_impact(self, source_id)["counts"])
+        from filemate.wrongbook.privacy import source_impact as review_source_impact
+
+        counts.update(review_source_impact(self, source_id)['counts'])
         return {
             "source_id": source_id,
             "original_name": source.get("original_name"),
@@ -1456,6 +1467,9 @@ class SQLiteStorage:
         from filemate.course_graph.privacy import source_revision_fragment
 
         snapshot["course_graph"] = source_revision_fragment(self, source_id)
+        from filemate.wrongbook.privacy import source_impact as review_source_impact
+
+        snapshot['review_learning'] = review_source_impact(self, source_id)['revision']
         return data_actions.digest(snapshot)
 
     def source_deletion_preview(self, source_id: str) -> dict[str, Any] | None:
@@ -1521,10 +1535,15 @@ class SQLiteStorage:
         """保存由资料派生的 AI 产物。"""
         if not artifact_type.strip():
             raise ValueError("artifact_type 不能为空")
+        protected = {'learning_orchestration_day', 'learning_orchestration_operation'}
+        if artifact_type in protected:
+            raise ValueError('学习安排及操作回执只能通过确认命令写入')
         artifact_id = artifact_id or uuid.uuid4().hex
         now = _now_iso()
         with self._write_lock:
             existing = self.get_artifact(artifact_id)
+            if existing and existing['artifact_type'] in protected:
+                raise ValueError('学习安排及操作回执不能通过通用保存接口覆盖')
             if existing and isinstance(existing.get("metadata"), dict) and existing["metadata"].get("read_only_snapshot"):
                 raise ValueError("历史题集是只读证据，不能修改")
             if existing and existing["artifact_type"] == "questions" and (
@@ -1533,7 +1552,7 @@ class SQLiteStorage:
                 raise ValueError("题集正文请通过 update_artifact 修订以保留学习历史")
             admit_plan(self.db_path, artifact_type, content,
                        existing['content'] if existing and existing['artifact_type'] == artifact_type else None)
-            self._conn().execute(
+            saved = self._conn().execute(
                 """INSERT INTO artifacts
                    (artifact_id, workspace_id, source_id, artifact_type,
                     title, content, metadata)
@@ -1543,7 +1562,9 @@ class SQLiteStorage:
                        title=excluded.title,
                        content=excluded.content,
                        metadata=excluded.metadata,
-                       updated_at=?""",
+                       updated_at=?
+                   WHERE artifacts.artifact_type NOT IN
+                       ('learning_orchestration_day','learning_orchestration_operation')""",
                 (
                     artifact_id,
                     workspace_id,
@@ -1555,6 +1576,9 @@ class SQLiteStorage:
                     now,
                 ),
             )
+            if saved.rowcount == 0:
+                self._conn().rollback()
+                raise ValueError('学习安排及操作回执不能通过通用保存接口覆盖')
             self._conn().commit()
         return artifact_id
 
@@ -1596,6 +1620,8 @@ class SQLiteStorage:
                 if artifact is None:
                     connection.rollback()
                     return None
+                if artifact['artifact_type'] in {'learning_orchestration_day', 'learning_orchestration_operation'}:
+                    raise ValueError('学习安排及操作回执不能通过通用编辑接口修改')
                 metadata = artifact.get("metadata")
                 metadata = dict(metadata) if isinstance(metadata, dict) else {}
                 if metadata.get("read_only_snapshot"):
@@ -1634,7 +1660,7 @@ class SQLiteStorage:
                                 connection.execute('''INSERT INTO kg_learning_artifact_sources(artifact_id,source_id)
                                     SELECT ?,source_id FROM kg_learning_artifact_sources WHERE artifact_id=?''',
                                     (snapshot_id, artifact_id))
-                            for table in ("quiz_attempts", "wrong_questions"):
+                            for table in ("quiz_attempts", "wrong_questions", "review_events"):
                                 connection.execute(
                                     f"UPDATE {table} SET artifact_id=? WHERE artifact_id=?",
                                     (snapshot_id, artifact_id),
@@ -1936,6 +1962,13 @@ class SQLiteStorage:
                 raise QuestionRevisionConflict("题目已更新，请刷新题集后重新作答")
             raise ValueError("题目序号无效")
         question = questions[question_index]
+        active_review = self._conn().execute(
+            "SELECT * FROM wrong_questions WHERE artifact_id=? AND question_index=?",
+            (artifact_id, question_index),
+        ).fetchone()
+        if active_review and (dict(active_review).get("scheduler_version", "legacy-v1") != "legacy-v1"
+                              or dict(active_review).get("revision", 1) > 1):
+            raise QuestionRevisionConflict("此题已启用2.0规则，请使用新版复习入口；原记录保留")
         if expected_question is not None and question != expected_question:
             raise QuestionRevisionConflict("题目已更新，请刷新题集后重新作答")
         if request_key is not None and (not isinstance(request_key, str) or not re.fullmatch(r'[A-Za-z0-9_-]{16,80}', request_key)):
@@ -2191,31 +2224,39 @@ class SQLiteStorage:
         """保存用户确认的错因，并保留同一知识点标识。"""
         if error_cause not in _ERROR_CAUSES:
             raise ValueError("错因类型无效")
-        wrong = self.get_wrong_question(wrong_id)
-        if wrong is None:
-            raise ValueError("错题不存在")
         clean_note = note.strip()
         if len(clean_note) > 300:
             raise ValueError("错因备注不能超过 300 字")
         now = _now_iso()
         with self._write_lock:
-            self._conn().execute(
-                """UPDATE wrong_questions SET
-                   knowledge_key=?, knowledge_label=?, error_cause=?,
-                   error_cause_source='user', error_cause_confidence=1,
-                   error_cause_note=?, diagnosed_at=?, updated_at=?
-                   WHERE wrong_id=?""",
-                (
-                    wrong["knowledge_key"],
-                    wrong["knowledge_label"],
-                    error_cause,
-                    clean_note,
-                    now,
-                    now,
-                    wrong_id,
-                ),
-            )
-            self._conn().commit()
+            connection = self._conn()
+            try:
+                connection.execute("BEGIN IMMEDIATE")
+                wrong = self.get_wrong_question(wrong_id)
+                if wrong is None:
+                    raise ValueError("错题不存在")
+                if wrong.get("scheduler_version", "legacy-v1") != "legacy-v1" or wrong.get("revision", 1) > 1:
+                    raise QuestionRevisionConflict("此题已由2.0接管，请使用带修订检查的错因入口")
+                connection.execute(
+                    """UPDATE wrong_questions SET
+                       knowledge_key=?, knowledge_label=?, error_cause=?,
+                       error_cause_source='user', error_cause_confidence=1,
+                       error_cause_note=?, diagnosed_at=?, updated_at=?
+                       WHERE wrong_id=?""",
+                    (
+                        wrong["knowledge_key"],
+                        wrong["knowledge_label"],
+                        error_cause,
+                        clean_note,
+                        now,
+                        now,
+                        wrong_id,
+                    ),
+                )
+                connection.commit()
+            except BaseException:
+                connection.rollback()
+                raise
         updated = self.get_wrong_question(wrong_id)
         if updated is None:
             raise ValueError("错题不存在")
@@ -3219,13 +3260,18 @@ class SQLiteStorage:
 
     def get_learning_analytics(self, *, source_id: str | None = None) -> dict[str, Any]:
         """汇总学习资产、错题与模拟面试指标。"""
+        from filemate.wrongbook.evidence import TRUSTED_SQL
+
         connection = self._conn()
         scalar_queries = {
             "source_count": "SELECT COUNT(*) FROM sources",
             "artifact_count": "SELECT COUNT(*) FROM artifacts",
-            "pending_wrong_count": "SELECT COUNT(*) FROM wrong_questions WHERE mastered=0",
-            "mastered_wrong_count": "SELECT COUNT(*) FROM wrong_questions WHERE mastered=1",
-            "quiz_attempt_count": "SELECT COUNT(*) FROM quiz_attempts",
+            "pending_wrong_count": "SELECT COUNT(*) FROM wrong_questions WHERE mastered=0 AND (scheduler_version='legacy-v1' OR error_count>0)",
+            "mastered_wrong_count": "SELECT COUNT(*) FROM wrong_questions WHERE mastered=1 AND (scheduler_version='legacy-v1' OR error_count>0)",
+            "legacy_mastered_wrong_count": "SELECT COUNT(*) FROM wrong_questions WHERE mastered=1 AND scheduler_version='legacy-v1'",
+            "criterion_met_wrong_count": "SELECT COUNT(*) FROM wrong_questions WHERE learning_status='criterion_met' AND scheduler_version='review-interval-v2' AND error_count>0",
+            "quiz_attempt_count": "SELECT COUNT(*) FROM quiz_attempts WHERE " + TRUSTED_SQL,
+            "quiz_attempt_total": "SELECT COUNT(*) FROM quiz_attempts",
             "interview_count": "SELECT COUNT(*) FROM interview_sessions",
             "study_plan_count": "SELECT COUNT(*) FROM study_plans",
             "completed_study_plan_count": (
@@ -3249,6 +3295,7 @@ class SQLiteStorage:
                 scoped(query, interview=key == "interview_count"), params
             ).fetchone()[0]) for key, query in scalar_queries.items()
         }
+        result["unverified_quiz_attempt_count"] = result["quiz_attempt_total"] - result["quiz_attempt_count"]
         checked_interviews = []
         unreadable_interviews = 0
         for row in connection.execute(
@@ -3339,9 +3386,9 @@ class SQLiteStorage:
 
         result["evidence_profile"] = build_evidence_profile(
             attempts=[dict(row) for row in connection.execute(
-                scoped("SELECT attempt_id, artifact_id, source_id, question_index, is_correct, score, created_at FROM quiz_attempts"), params)],
+                scoped("SELECT * FROM quiz_attempts"), params)],
             wrongs=[dict(row) for row in connection.execute(
-                scoped("SELECT wrong_id, artifact_id, source_id, question_index, mastered, updated_at FROM wrong_questions"), params)],
+                scoped("SELECT * FROM wrong_questions"), params)],
             plans=[dict(row) for row in connection.execute(
                 scoped("SELECT plan_id, status, plan_data, completed_days, updated_at FROM study_plans"), params)],
             interviews=checked_interviews, source_id=source_id,

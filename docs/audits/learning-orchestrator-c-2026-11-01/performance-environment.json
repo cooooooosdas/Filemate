@@ -1,0 +1,13 @@
+{
+  "python": "3.12.13 (main, Jun 23 2026, 15:23:43) [MSC v.1944 64 bit (AMD64)]",
+  "sqlite": "3.53.1",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+  "logical_cpus": 28,
+  "source_commit": "09727b6e2c22cfb9fa8f1cbcaea944e8532dc2f0",
+  "measurement": "direct application snapshot→projection→schedule→serialization; not production HTTP load",
+  "concurrent_workers": 4,
+  "warm_samples": 10,
+  "concurrent_samples": 16,
+  "synthetic_only": true
+}

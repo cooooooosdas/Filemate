@@ -1,5 +1,59 @@
 # API 规范
 
+## 错题D级学习上下文（2026-10-28，本地开发候选）
+
+分析路线：`POST /wrongbook/v2/{wrong_id}/analyses`接收attempt_id、input_digest、request_key、可空course_id、credential_mode=server|browser、force_refresh=false、allow_external_model严格true。默认模型开关FILEMATE_ENABLE_WRONGBOOK_AI=0；需同时开启V2。每次新工作最多一次模型请求、20秒总期限，无自动修复／重试。不同键相同有效输入默认复用ready结果；强制刷新需新键。同键异内容409，被删除请求墓碑410。已认领的模型故障返回200的failed记录及固定error_code，调用方必须检查status；不触发账户401退出。
+
+`GET /wrongbook/v2/{wrong_id}/analyses`默认limit20、最大100、offset≤1000000，仅返回摘要；详情`GET .../analyses/{analysis_id}`按需返回result/provenance/stale以及该分析自身的有界source_evidence引用快照，不能用当前上下文替换历史原文。`GET /wrongbook/v2/analysis-requests/{request_key}`仅恢复已保存回执，404不证明在途请求不存在，禁止自动重发；410为已删除终态，可清除该pending，重新读取后仍须独立授权新调用。`POST .../analyses/{analysis_id}/cancel`只接收request_key，停止后禁止旧epoch写回，不删除真实作答。关闭AI开关后仍可读、取消与导出。
+
+`POST .../analyses/{analysis_id}/adoption-preview`接收selected_causes（1–3个不重复的真实候选代码）及expected_revision；返回合并前后、confirmation_token（15分钟）。确认路线adoption-confirm额外接收request_key、confirmation_token、confirmed严格true；保留现有人工错因、备注和标签，合计超过3项拒绝，用户需重新选择；事件标记analysis_adopt并记录analysis_id。陈旧输入、人工修改或来源变化409。此操作不会调用模型，临时密钥不能附在GET、取消、采纳或相似后缀；只有精确分析POST且credential_mode=browser、受信Origin及Action=model允许使用浏览器密钥，固定DeepSeek官方端点，不切换服务器配置。
+
+D级本地schema追加36，旧迁移不改写。分析运行、全部输入来源依赖及无正文请求墓碑分别保存；结果作为wrong_review_analysis Artifact，与全部输入来源共同关联。删除任一输入来源会清除整份分析输入与结果；个人／管理员备份恢复轮换epoch，运行中记录标记interrupted，不重放模型请求。外发准入沿用独立治理账本，恢复个人数据不退还额度。此为本地工程实现，生产旧SQLite迁移及容量验收留到E级。
+
+`GET /wrongbook/v2/{wrong_id}/learning-context?attempt_id=<真实作答ID>&course_id=<可选单门课程>&credential_mode=server|browser` 不调用模型。返回原始题目、选定原答、最多5次其他真实作答、用户确认错因、当前复习状态、明确映射的概念、最多3段总计6000字的逐字资料引用与覆盖说明。原题≤60000 JSON字符、原答≤10000字、公开上下文≤128KiB；超限422，不截断原答。无来源明确标记not_found，不伪造引用。input_digest/context_revision绑定全部实际输入、来源版本、Provider及提示词，as_of不参与摘要。credential_mode只选择非敏感的Provider身份，GET不发送密钥，不构成分析授权；浏览器模式固定DeepSeek。next_actions返回服务器规则候选及真实训练分母／作答ID；单次错答最多一项短行动，重复错答、逾期或人工确认错因才扩展，合计最多7项，不调用模型。
+
+`POST .../learning-plan-preview`接收expected_revision、可选attempt_id/course_id/goal_id、start_date（上海当日至未来30日）及1–7项tasks。任务只能取当前候选action_id，可编辑title≤120、instructions≤500、duration_minutes=5–60、day_offset=0–6。确认路线learning-plan-confirm额外接收confirmation_token、request_key、confirmed严格true。预览不新建计划；确认原子新增一个现役StudyPlan及Artifact，绑定全部输入资料，不修改原目标、旧计划或完成记录。来源、作答、图谱、目标或编辑内容变化使旧预览409。
+
+`POST .../learning-operations/{event_id}/undo-preview`接收空对象；undo-confirm接收confirmation_token、request_key、confirmed严格true。仅支持本卡analysis_adopt／learning_plan_confirm事件；恢复诊断前值或删除本次新建且未修改、未完成的计划，保留全部作答。撤销亦需预览确认，重复确认返回原回执，之后手改或完成任务409。增量计划和撤销不依赖AI开关，仍需V2写入开关。
+
+三类review_learning预览只持久化绑定摘要，不复制任务正文或人工备注；采纳确认令牌的回执仅保留事件ID与影响数量，完整回执从所属复盘事件读取。来源删除预览沿多来源派生产物、作答、错题、分析及结果计算去重影响集合；同题证据变化时前端保留任务编辑但需重新预览，未知确认保留原键／令牌／原命令核验。
+
+`GET /wrongbook/v2/{wrong_id}/connections?limit=30&offset=0` 返回当前版本、有效课程来源、确认映射及融合后的概念，route精确定位课程／节点／证据视图。limit为1–30，offset为0–1000000；未知／重复参数422，不存在404，数据库暂不可用503。历史题仍可读取真实作答，但无当前图谱链接。question-access额外返回wrong_id/review_route，可空；摘要不符或只读历史不返回跳转。只读接口不返回内部来源依赖、密钥或文件路径。
+
+## 错题工作台C级只读合同（2026-10-26，开发候选）
+
+沿用B级身份、响应包装及no-store，GET不调用模型。`GET /wrongbook/v2/capabilities`返回`write_enabled/rule_version`，只读在关闭写入时保留。`GET /wrongbook/v2/receipts/{request_key}`返回当前空间已保存的review_events回执，键16–80位字母数字下划线／连字符，未查到404；404不证明此前在途请求已失败。作答回执额外从实际quiz_attempts读取artifact_id/question_index/question_digest，客户端须与服务端题目摘要逐项核对才可应用；证据已删除则404，不使用本机元数据生成成功结果。POST原回执合同不变。
+
+`GET /wrongbook/v2/page`默认limit30（1–100）、offset0（0–1000000），先全库过滤再分页，返回items/total/limit/offset/has_more/as_of。目录项含题目身份与原始摘要、stem（最多300字）、题型、来源名、知识点、状态、次数、日期及read_only_snapshot/data_error，不含原答／参考答案／解析。详情另含原始question与question_digest，提交必须使用原始question。
+
+参数：q≤160、knowledge_q≤120、source_id/course_id≤128；status为all/due/overdue/active/pending/criterion_met/legacy_completed/paused/history/invalid；cause为B级13类或unconfirmed；min_errors/max_errors为0–1000000；due_from/due_to/created_from/created_to为带时区ISO时间（含端点）；sort为due/updated/errors/created、direction为asc/desc，最后按wrong_id稳定排序。无效／相反区间、未知／重复参数422。reviewable_only=true在分页前排除暂停、旧版已完成、历史只读与异常记录，用于有界专注批次。课程只认有效显式映射和当前摘要，不按同名推断。
+
+`GET /wrongbook/v2/filter-options?kind=sources|courses&q=&limit=30&offset=0`返回同结构分页的id/label，只列有真实错题的来源／有效课程映射。摘要增加active_review_count（新规则active且new/needs_review/provisional）和saved_review_attempt_count（新规则review/early_practice的真实记录，包含待核对，不是正确次数）。前端工作区已接线并完成本地C级工程验收；用户阶段验收和生产上线仍单独记录。
+
+## 错题复盘2.0 B级候选（2026-10-26）
+
+独立审阅后补充：确定错误计数也排除assisted记录，待核对和辅助练习不改变既有资格；新版诊断／排期接管legacy记录后旧写入口同样409。到期候选和统计通过同一个严格时间解析函数，拒绝被SQLite宽松规范化的无效日期。个人JSON／ZIP中quiz_attempts新增显式rowid并校验完整、唯一的64位整数序号；恢复保留版本边界。旧备份没有序号时，保守重绑定带graph_attempt_cutoff的产物，原值另存graph_attempt_cutoff_before_restore，回执追加review_evidence_rebound数量及可空review_evidence_notice，旧记录保留但边界不明者不计当前版本证据，恢复后的新作答正常计入。
+
+业务migration35只追加，保留原作答ID、SQLite rowid、题目版本与旧规则标签。`FILEMATE_ENABLE_WRONGBOOK_V2=0`默认关闭以下新写入口（503）；只读、个人导出和删除始终保留。页面接线属于C级，本节不是上线声明。全部路由沿用服务端认证、租户隔离及全局限流，无owner参数，不调用模型；响应`{success,data,error}`且`Cache-Control:no-store`。
+
+| 方法／路径 | 合同 |
+| --- | --- |
+| GET `/wrongbook/v2/summary` | 全库total、due_count、overdue_count、paused_count、pending_check_count、invalid_time_count、legacy_mastered_count、criterion_met_count；rule_version/as_of/day_zone |
+| GET `/wrongbook/v2/{id}` | 原错题与learning_status/schedule_status、规则版本、revision、eligible_count、复习阶段和时间、多错因与自定义标签、只读历史及数据错误标识 |
+| GET `/wrongbook/v2/{id}/attempts`、`/events` | limit默认30，1–200；offset默认0，0–1000000；稳定时间＋rowid分页，items/total/limit/offset/has_more；事件含前后状态和回执 |
+| POST `/wrongbook/v2/attempts` | artifact_id、question_index(0–100000)、expected_question原始快照、request_key必填；user_answer最多10000字，action=answer或dont_know；answer_revealed布尔、duration_ms可空(0–14400000)、self_reported_result可空(correct/incorrect/unsure) |
+| PATCH `/wrongbook/v2/{id}/diagnosis` | request_key、expected_revision、error_causes最多3项且不重复，可空清除；primary_cause须在其中；custom_tags最多5项，每项1–30字；note最多300字 |
+| POST `/wrongbook/v2/{id}/schedule-preview` | request_key、expected_revision、action=pause/resume/reschedule/activate/undo、可空next_review_at、undo_event_id、reason最多300字；返回精确before/after及15分钟confirmation_token |
+| POST `/wrongbook/v2/{id}/schedule-confirm` | 原预览参数＋confirmed严格true＋confirmation_token；原子保存状态、事件及审计回执，重复确认返回原回执 |
+
+所有写体拒绝额外字段及类型强制转换；request_key是16–80位字母数字下划线或连字符。同键同参数返回原结果，换参数409。缺失对象404、题目或revision冲突409、参数422、存储故障503且不暴露SQL或底层异常。读取查询不允许未知／重复参数。
+
+错因枚举：concept_gap、memory_gap、reasoning_break、expression_gap、option_confusion、careless、method_gap、condition_gap、calculation_error、code_error、boundary_gap、time_pressure、other。空列表表示未确认，不伪造AI诊断。
+
+客观选择／填空沿用实际题目规则核对；主观回答、暂时不会和自报结果保存is_correct/score=NULL，分别标pending或self_reported。看过答案标assisted，不能提高确定能力统计；客户端耗时标client_reported。作答、聚合与review_events在同一事务；不覆盖旧作答。1/3/7/15/30天透明间隔，订正不计有效延迟复习；至少3次有效正确，跨3个上海日期且首次至末次至少7天，才标“达到本轮复习标准”，仍继续滚动复习。旧版两次正确保留历史含义，启用新规则需明确预览确认；不自动复活已完成历史。排期确认绑定原参数和数据，期间有新操作则重新预览。撤销仅恢复最近且未被后续操作覆盖的排期，不删除证据，revision递增。日期须带时区且在服务端当前时间至365天内。暂停不进入自动队列；坏日期单列，不当作逾期。
+
+`GET /review/today`保留旧字段，pending_wrong_count改为全库有效到期数，追加wrong_candidate_count（最多50），deferred_count包含未取入候选的到期记录。画像／成长／技能／图谱只使用可信数值证据，旧规则历史兼容；analytics追加quiz_attempt_total、unverified_quiz_attempt_count、legacy_mastered_wrong_count、criterion_met_wrong_count。旧`/quiz/attempts`及旧诊断入口不能覆盖已采用2.0规则的错题，返回409。关闭新写入口不代表降级数据库；旧应用不保证可读取schema35，需配套schema35兼容版本或恢复完整迁移前备份。个人备份含review_events与新增列；恢复清除旧排期令牌。
+
 2026-10-16 OPT-01候选：五个上传AI接口将同步生成放入线程池；摘要/卡片/笔记为空、结构错误或上游失败返回502，不持久化成功产物。上传和现役工作区保持配额429/治理503。学习导入与上传共用受控解析422，错误明确等待/拆分/解密，未知内部异常不公开。Source元数据保留页数/truncated/enrichment_incomplete及parse_warnings；AI响应、Artifact/Context元数据和计划新增可选warnings，记录实际模型输入截取范围。卡片数1–50、摘要长度1–10000、卡片格式front_back/qa、笔记outline/markdown/mindmap在落盘前校验。无新路由/schema/依赖/环境变量；旧数据缺字段仍可读。实现、证据及未完成项见[优化合同](../../docs/PRODUCT_OPTIMIZATION_EXECUTION_2026-10-16.md)，尚未发布。
 
 2026-10-15 上传故障修复候选：PDF/Office 解码和 `/process` 富提取使用单槽子进程，384 MiB、40 秒墙钟、Linux 25 秒 CPU、8 MiB 输出上限。忙碌、超时、资源超限及失败沿用 `{raw_text,metadata,error}`；`/process` 为 success:false 的失败会话，`/knowledge/import` 沿用解析失败响应。超过 500 页 PDF 要求拆分，文本上限 500,000 字，metadata.truncated 标注截断；超过 50 页保留正文，metadata.enrichment_incomplete=true 和 note 明示未做表格／图表几何提取。API/阶段线程池保留租户及模型授权上下文；子进程不传模型密钥，不执行 LLM 或数据库写入。没有新环境变量、路由或迁移；Windows RSS 巡检不等同于 Linux 地址空间硬限制。见 [故障记录](../../docs/INCIDENT_2026-10-15.md)。
@@ -1198,3 +1252,87 @@ Task6前端接线：课程知识点详情的“开始学习与练习”打开同
 独立治理迁移3持久化每课程滚动24小时30次准入，个人恢复、失败、取消不退款；控制先提交而业务失败可能消耗一次额度，采取失败关闭。哈希准入墓碑保留30天、可导出，账户删除清除其归属记录；管理员备份／部署只读校验兼容治理1、2、3。业务schema33和治理3均须备份与匹配代码恢复，不能删除迁移实现回退。
 
 现役 `POST /quiz/attempts` 新增可选 `request_key`（`[A-Za-z0-9_-]{16,80}`）；同空间同键同题／同回答只创建一次attempt及错题更新，冲突409。仍要求expected_question版本一致；不传键的旧调用方保持原义。D前端网络未知时保留同键，用户编辑则是新请求；不引入第二套判题表。
+
+### C级作答入口预检（本地候选）
+
+`GET /wrongbook/v2/question-access/{artifact_id}/{question_index}` 返回 `legacy_writable/read_only_snapshot/question_digest`，摘要来自服务端原始题目，用于所有入口核验恢复回执；按服务端身份定位真实题集，非法序号422、不存在404，禁止未知查询参数，无模型调用。旧界面须先预检再提交；新界面仍须能力开关，未知状态不降回旧算法。今日复习队列 `route` 精确指向 `/wrongbook?focus=<wrong_id>`。复盘HTTP实现放在按路由载入的 `services/review-api.ts`，复用 `services/api.ts` 的认证、错误和超时客户端。
+
+
+### C级工作台查询的兼容与运行边界
+
+`GET /wrongbook/v2/page` 的全库搜索只匹配题干、知识点与资料名，不搜索参考答案。安装有SQLite JSON1时在SQL内安全提取题干；无JSON1时使用兼容UDF。两条路径均先筛选再分页，坏JSON不会使整页崩溃；两者的低版本性能仍须分别实测，不把本机原生路径的计时作为生产承诺。没有新增表、字段或迁移。
+
+C级浏览器验收使用隔离合成账号与真实API。备份恢复测试会显式注入恢复通知、延迟已完成POST的响应以核对身份代次；这不代表生产SQLite3.26恢复已验收。前端仅在新规则能力确认后写入；503/409/待核对都不会重试旧判题。
+
+## 2026-10-29 错题E验收补充
+
+沿用schema36与既有 /wrongbook/v2 路由，无新增环境变量。新模型输出同一候选内相同attempt_id／quote引用不可重复计为依据，无效结果保留失败状态；规则判题、NULL待核对与掌握判据不变。前端仅V2筛选复用实例，空结果清除旧题及在途详情；关闭开关保留旧版导航行为。
+
+本地E结果为CONDITIONAL：单请求0／100／1000／10000规模达500ms P95，万条库四并发仍有容量问题。具体证据与生产边界以 docs/WRONGBOOK_2_0_E_DELIVERY.md 为准。
+
+## 2026-10-30 错题增量B：可解释推荐
+
+`GET /wrongbook/v2/page` 新增显式 `sort=recommended`；缺省仍为 `due`，原四种排序和 direction 原义保留。推荐固定按分数降序、到期时刻升序、wrong_id升序，direction不改变推荐顺序。仍在当前身份的同一SQLite只读快照内完成全范围筛选、排序、计数后分页，不加载第一页伪装全库推荐。
+
+推荐范围是原筛选与可复习到期题的交集：active、有效日期/题目/错因数组/元数据、历史错答次数为非负整数、题集与来源仍匹配；排除历史只读、旧版已完成、暂停、未来及损坏记录。V2已达本轮标准但再次到期仍可推荐。无来源的合法题集可保留，不补造来源。
+
+推荐页顶层增加 `priority_rule_version=review2-priority-v1`、`recommendation_scope=filtered_eligible_due`、`day_zone=Asia/Shanghai` 与说明；每项增加 `priority={priority_score,overdue_days,reason,rule_version}`。分数为 `min(上海逾期天数,30)*3 + min(error_count,10)*4 + (error_cause_source=user ? 4 : 0)`。error_count是已保存的历史错答次数，旧记录判定来源可能不同；user仅说明本人标注过错因。该分数是队列启发式，不是掌握率、已验证正确率或学习效果。
+
+本次所有page响应固定同一个服务端UTC `as_of`，旧无时区时间按UTC解释；客户端不得自传时钟。日期换算仍复用严格Python引擎；JSON1原生校验与无JSON1兼容路径均拒绝损坏/非有限JSON。按不同到期字符串在当前快照中换算后关联，避免每行多次Python回调，无跨账号结果缓存。无新增迁移或模型调用；可见入口仍属后续C级。
+
+2026-10-30 P2 容量修复：具备 JSON1 标量、聚合及表函数时，在同一只读快照内一次聚合不同的 TEXT 日期，再批量执行严格日期解析；使用单个绑定参数构建原生查询关系，不拉取全库题干／答案。日期键编码为 UTF-8 十六进制，避免旧 SQLite JSON1 截断内嵌 NUL；BLOB 日期不与等字节的 TEXT 日期混淆。普通 due 排序保留无法解析日期的行及原 NULL 排序，推荐与预览继续排除无效日期。开始前核验只换算所请求的至多20题。没有 JSON1 时沿用原读取分支；其大规模容量不能由 JSON1 分支的测试替代。所有响应字段、排序规则、筛选、开关、幂等、写入和数据迁移合同保持原义。
+
+`GET /wrongbook/v2/session-preview`：复用page筛选（不接受limit/offset），另需 `available_minutes=0..1440`，可选 `minutes_per_question=1..60`，默认4。时长必须整数文本，拒绝小数/布尔/重复或未知参数。只在当前筛选内选择可复习到期题，默认due顺序，recommended显式启用。最多20题，预算不足一题时返回空选择，仍给真实全范围候选数；预估仅指本次短练，不替换今日复盘的10—15分钟建议。
+
+响应：`status=preview_only`、`scope=filtered_eligible_due`、`as_of/day_zone/filters`、`items`、`eligible_count/selected_count/deferred_count`、`estimated_minutes/available_minutes/minutes_per_question/selection_limit`、`rule_version=review2-session-v1`、`priority_rule_version`、`estimate_note/warning`。每项只含简短题干、知识点、优先级解释、估时与 `ref={wrong_id,artifact_id,source_id,question_index,question_digest,revision,next_review_at}`；不返回原答或参考答案。
+
+`POST /wrongbook/v2/session-check`：JSON严格为 `{refs:[...], filters?:{...}}`，refs为1—20项且wrong_id不得重复，字段同上，类型严格；总请求体上限64KiB，不接受URL查询参数。应回传预览的filters，以复核课程/资料/搜索等上下文。服务端在同一只读快照和同一as_of内核对资格、来源、当前题集原始摘要、排期与修订号，任一不符/已删除/另一身份均统一409“请重新生成预览”，不部分开始。成功仅返回 `status=ready/refs/as_of/rule_version`，不创建任务、attempt、event或锁。ready是瞬时核验，不是预留或评分承诺；真正作答仍走既有attempt端点并重新验证当前题目和状态。
+
+两个新端点均受现有 `FILEMATE_ENABLE_WRONGBOOK_V2=1` 控制，关闭503，原历史查询保持可用；沿用认证、Origin保护、统一错误及no-store。数据库异常503不暴露内部位置。无新增环境变量、迁移、持久任务或模型凭据外发。B交付后台与类型化客户端；2026-10-31 C级已接入显式推荐选项、本次时长预览及核验后开始，默认到期排序不变。筛选、预算或身份变化会失效旧预览；核验冲突要求重新预览，网络失败保留选择供明确重试。刷新只恢复原批次，无批次不自动另选十题。
+# Learning Orchestrator 2.0 B · 开发候选
+
+统一前缀 `/api/learning/orchestrator`，复用现役账号／游客学习空间、origin与认证中间件。`FILEMATE_ENABLE_LEARNING_ORCHESTRATOR=0` 默认关闭；关闭后 capabilities/today/operations 只读保留。零模型调用、零schema迁移，不替代原领域作答和任务完成接口。
+
+| 方法与后缀 | 输入 / 输出 |
+|---|---|
+| GET `/capabilities` | enabled、rule_version、limits |
+| POST `/snapshot` | ScopeRequest → snapshot、projection；只读 |
+| POST `/preview` | scope、expected_evidence_revision、options → 依据/安排/延期/替换影响、15分钟令牌 |
+| POST `/confirm` | 同预览正文＋confirmation_token、request_key、confirmed=true → OperationReceipt |
+| GET `/today` | 当前上海自然日 DayView；未确认不造任务，变化后返回 stale |
+| GET `/operations/{request_key}` | 本空间不可变操作回执；撤销后原回执标 undone |
+| POST `/operations/{operation_id}/undo-preview` | 严格空对象 → UndoPreview |
+| POST `/operations/{operation_id}/undo-confirm` | confirmation_token、request_key、confirmed=true → 回执；保留后来完成的学习记录 |
+
+ScopeRequest：goal_id必填，course_id可选，source_ids最多20个不重复来源。必须是本空间目标与课程的有效来源；无范围目标只返回目标自身，不读取全空间。options：available_minutes严格整数0–1440，item_order/excluded_ids各最多200、pinned_ids最多20且属于手动顺序，minute_overrides最多200项且各1–240分钟；所有引用须来自当前快照。估时明确标记 domain_estimate/rule_default/user_estimate，不表示实际耗时或能力。候选最多200、选中最多20，延期详情最多100并保留总数与截断说明。
+
+拒绝未知/重复查询参数、重复JSON键、额外字段与非严格类型。统一success/data/error、no-store；401认证失效、404资源不存在、409修订/令牌冲突、422参数无效、429每日额度、503数据暂不可用，错误不回显SQL/原文/路径。每空间每天最多100次新确认，最多100个未使用预览；成功重放、读取、每操作一次的撤销不重复消耗确认额度。请求键16–80位字母数字下划线连字符；更改正文重放拒绝。恢复后旧令牌失效，需重新预览。两类安排/操作Artifact受通用编辑保护，仅保存范围和引用，不存原答、题干或面试评分。B阶段不挂载新页面，生产兼容与验收见阶段交付报告。
+
+
+2026-11-01 B审阅修复：共享来源属于多门课程时必须显式course_id。计划内容、metadata、课程关联与额外来源在COUNT/LIMIT前同时限域；跨课计划不成为候选。V2 criterion_met不等于下一复习周期已完成。投影路由使用现役Vue的goal／plan参数，到期日转换为上海自然日。托管与个人恢复均使旧确认／撤销令牌失效，保留日安排、回执和审计；需重新预览。
+
+当前B不新增迁移，但生产只读探测为schema34、候选为36；升级需复用第三专项既有35／36迁移。现用Python3.11.13／SQLite3.26.0已完成提交源码的隔离应用及原创合成34→36升级／旧版本备份恢复验证，没有写入生产库或切换服务。日期辅助查询先按来源限域；同库快照聚合限并发，无跨账号缓存。规范UTC秒日期证明后使用原生排序，混合格式保持严格解析；容量范围及尚未完成条件见B级交付报告。
+
+## C级工作台展示合同
+
+能力响应增加 `ui_contract: "today-workspace-v1"`。新工作台须同时确认enabled与合同版本；合同未知或网络失败不能被解释为关闭功能。此合同接线不表示C级页面已经验收，功能开关仍默认关闭。
+
+`POST /api/learning/orchestrator/goal-options` 是只读的目标元数据目录，正文为严格对象 `{"q":"","offset":0}`。q最多120字符，按普通文本匹配（百分号、下划线、反斜杠不作为通配符）；offset为0—1000000的整数。固定每页30条，按更新时间倒序、目标ID稳定排序；返回 `{items,total,offset,limit:30}`。items仅含goal_id、title、goal_type、deadline、source_id和valid，标题最多160字符，不返回任务正文、画像、gaps或模型评分。搜索使用已存Artifact标题，缺标题显示“未命名目标”；损坏或超出1MiB的目标内容保留可识别目录项，valid=false，不拖垮其他记录。当前学习空间由既有认证确定，不接受workspace/user/db_path；开关关闭返回503，参数错误422，存储故障503，所有响应no-store。服务端只读取一页正文，不扫描全部目标JSON。
+
+snapshot的facts.goal增加有限长title，facts.sources增加original_name（最多240字符）；原目标／文件名不被修改。显示字段参与evidence_revision，改名后旧预览需重新读取。完整资料及目标内容仍走原有授权详情入口，不在目录内展开。
+
+DayView增加可选 `latest_operation: OperationReceipt|null`。新确认与撤销在同一事务内保存日安排的last_operation_id与不可变回执，刷新后可直接找回操作。只解析类型、请求键、ID、日期和修订全部匹配的指针；旧B日安排没有指针或指针损坏时仍正常读取，latest_operation=null，不扫描全历史猜测。原 `/operations/{request_key}` 历史查询保持可用。日安排配置为空时仍可能有本次撤销回执，返回not_confirmed及该回执；读取回执不授权再次写入，撤销仍须单独预览、确认。
+
+上述变化不新增schema迁移，不改变既有确认正文、幂等规则和真实任务完成接口；不包含D级模型建议。
+
+## 2026-11-02 C级今日行动客户端恢复语义
+
+现役浏览器接线通过公共api.ts按需加载，读取15秒、预览和写命令30秒超时，不自动重试写入。确认前持久化原请求键的轻量定位信息（sessionStorage至多512字节，不含命令正文、令牌、密钥），确认成功后独立保留回执；日查询故障不否定已经确认的结果。响应丢失由用户显式查原键回执，404仍未确定，409核验既有回执；跨日旧回执显示历史，不覆盖当前服务端日期。401清除身份内缓存，断网保留当前草稿，备份恢复事件使旧待决与预览失效。
+
+仅明确enabled=false进入原今日页；缺ui_contract或请求失败显示错误。日常／碎片／冲刺仅改变用户主动选择的显示偏好，不调用模型或自动确认。领域完成仍由实际错题、计划、学期等原接口保存；历史无逐项时间不计算今日完成。课程概念缺口每次最多核验5个关联概念并披露范围，目录固定30、候选最多200、选中最多20；不存在的原记录显示明确替代入口，不默选第一项。C工程门禁不表示D／E、真人效果或生产发布已通过。
+
+C级审阅修复：客户端消费公共顶层status/code错误合同（适配器也兼容原始response.status）。原确认回执若后来被撤销，undone是可核验终态；首次新撤销收到明确schedule_changed_since_operation拒绝可结束该新请求，此前丢响应的待决请求仍按原键查证，404不自动清除。退出／恢复／401在应用级清理每页定位，通过同源本机epoch通知其他标签页；定位可含短epoch以防事件尚未送达时加载旧缓存，不含模型密钥或命令正文。
+
+跨上海自然日撤销旧预览：服务端撤销令牌绑定签发时的上海日期，新日拒绝未使用旧令牌；已成功写入的原键回执仍幂等可查。历史安排在新日可经新的显式预览授权撤销，并不批量禁止历史读取。前端日界定时、前台恢复及提交时仅触发失效与服务端重读，本机时间不授权新日期。合同不新增字段或migration；部署前旧未使用撤销预览须重新获取。
+
+2026-11-02 发布前真实双页复验补充：学习决策接口的 OrchestratorError 在失败响应中附带 `data.error_code`（同 error 的有限机器码），供公共客户端归一化为顶层 code。success 仍为 false，原 HTTP 状态及 error 保留；客户端只针对明确的新撤销拒绝终止待决，不能凭 404 或一般网络错误抛弃请求。

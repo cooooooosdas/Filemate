@@ -31,6 +31,8 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "24"
+      - name: Install frontend for real dev-proxy journeys
+        run: npm ci --prefix filemate/web
       - name: Static checks
         run: >-
           uv run ruff check

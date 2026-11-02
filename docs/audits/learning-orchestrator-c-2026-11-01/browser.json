@@ -1,0 +1,2060 @@
+{
+  "stage": "C-task-7",
+  "status": "PASS_LOCAL_ENGINEERING",
+  "synthetic_only": true,
+  "real_students": false,
+  "checks": 74,
+  "reports": [
+    {
+      "phase": "course-flag-off",
+      "synthetic_only": true,
+      "checks": [
+        {
+          "name": "course_ui_off_no_incompatible_concept_link",
+          "status": "PASS"
+        },
+        {
+          "name": "course_ui_off_has_explicit_source_alternative",
+          "status": "PASS"
+        }
+      ],
+      "responses": [
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        }
+      ],
+      "page_errors": [],
+      "console_errors": [],
+      "console_warnings": [],
+      "status": "PASS"
+    },
+    {
+      "phase": "estimate",
+      "synthetic_only": true,
+      "checks": [
+        {
+          "name": "draft_estimate_copy_matches_user_input",
+          "status": "PASS"
+        }
+      ],
+      "responses": [
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        }
+      ],
+      "page_errors": [],
+      "console_errors": [],
+      "console_warnings": [],
+      "status": "PASS"
+    },
+    {
+      "phase": "faults",
+      "synthetic_only": true,
+      "checks": [
+        {
+          "name": "committed_ack_dropped_no_auto_write",
+          "status": "PASS",
+          "request_key": "5ab974d3-65d0-4870-906f-668e1f02cd35",
+          "operation_id": "learning-operation-c80349bf52301206693fd228ccb558527ed422dc98583c1d1174a98a55ba7d55"
+        },
+        {
+          "name": "temporary_404_retains_original_key",
+          "status": "PASS"
+        },
+        {
+          "name": "recover_exact_original_receipt",
+          "status": "PASS"
+        },
+        {
+          "name": "direct_receipt_survives_day_503",
+          "status": "PASS",
+          "operation_id": "learning-operation-e42060f57a5ca35624f3c138718e6ff2757c2e65ead73b3b6962e14381266ec2"
+        },
+        {
+          "name": "429_no_auto_retry_or_lost_candidates",
+          "status": "PASS"
+        },
+        {
+          "name": "offline_keeps_prior_evidence",
+          "status": "PASS"
+        },
+        {
+          "name": "401_clears_account_tasks_and_permissions",
+          "status": "PASS"
+        },
+        {
+          "name": "missing_contract_blocks_writes_without_legacy_fallback",
+          "status": "PASS"
+        },
+        {
+          "name": "two_tab_409_preserves_newer_day",
+          "status": "PASS",
+          "operation_id": "learning-operation-4b19ff2b2425a08254eac44c25fdd59956b4a179810e01b11f37b53a885c9a2d"
+        }
+      ],
+      "responses": [
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/preview",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/operations/5ab974d3-65d0-4870-906f-668e1f02cd35",
+          "method": "GET",
+          "status": 404
+        },
+        {
+          "path": "/api/learning/orchestrator/operations/5ab974d3-65d0-4870-906f-668e1f02cd35",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/preview",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/confirm",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/preview",
+          "method": "POST",
+          "status": 429
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 401
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/preview",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/confirm",
+          "method": "POST",
+          "status": 409
+        }
+      ],
+      "page_errors": [],
+      "console_errors": [
+        "[API Error] Network Error",
+        "Failed to load resource: net::ERR_FAILED",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Error] SYNTHETIC_404",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "[API Error] SYNTHETIC_429",
+        "[API Error] Network Error",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "[API Error] SYNTHETIC_401",
+        "Failed to load resource: the server responded with a status of 409 (Conflict)",
+        "[API Error] preview_expired_or_changed"
+      ],
+      "console_warnings": [],
+      "status": "PASS"
+    },
+    {
+      "phase": "final-screens",
+      "synthetic_only": true,
+      "checks": [
+        {
+          "name": "final_normal_goal_confirmed_with_real_receipt",
+          "status": "PASS"
+        },
+        {
+          "name": "final-desktop_captured",
+          "status": "PASS"
+        },
+        {
+          "name": "final-mobile_captured",
+          "status": "PASS"
+        }
+      ],
+      "responses": [
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/preview",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/confirm",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        }
+      ],
+      "page_errors": [],
+      "console_errors": [],
+      "console_warnings": [],
+      "status": "PASS"
+    },
+    {
+      "phase": "font-probe",
+      "synthetic_only": true,
+      "checks": [
+        {
+          "name": "actual_font_rendering_observed",
+          "status": "PASS"
+        }
+      ],
+      "responses": [
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        }
+      ],
+      "api_requests": [
+        {
+          "path": "/api/health",
+          "method": "GET"
+        },
+        {
+          "path": "/api/auth/me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET"
+        },
+        {
+          "path": "/api/llm/status",
+          "method": "GET"
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET"
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST"
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST"
+        },
+        {
+          "path": "/api/knowledge-graph/courses",
+          "method": "GET"
+        },
+        {
+          "path": "/api/knowledge-graph/courses/e7b7a60e-28e6-470d-8daf-43c3b122df72",
+          "method": "GET"
+        }
+      ],
+      "page_errors": [],
+      "console_errors": [],
+      "console_warnings": [],
+      "fonts": [
+        {
+          "selector": ".action-scope h2",
+          "computed_family": "MiSans, \"HarmonyOS Sans SC\", \"Alibaba PuHuiTi 3\", \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif",
+          "platform_fonts": {
+            "fonts": [
+              {
+                "familyName": "Microsoft YaHei",
+                "postScriptName": "MicrosoftYaHei-Bold",
+                "isCustomFont": false,
+                "glyphCount": 7
+              }
+            ]
+          }
+        },
+        {
+          "selector": ".action-heading p",
+          "computed_family": "MiSans, \"HarmonyOS Sans SC\", \"Alibaba PuHuiTi 3\", \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif",
+          "platform_fonts": {
+            "fonts": [
+              {
+                "familyName": "Microsoft YaHei",
+                "postScriptName": "MicrosoftYaHei",
+                "isCustomFont": false,
+                "glyphCount": 13
+              }
+            ]
+          }
+        },
+        {
+          "selector": ".action-workspace .action-help",
+          "computed_family": "MiSans, \"HarmonyOS Sans SC\", \"Alibaba PuHuiTi 3\", \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif",
+          "platform_fonts": {
+            "fonts": [
+              {
+                "familyName": "Microsoft YaHei",
+                "postScriptName": "MicrosoftYaHei",
+                "isCustomFont": false,
+                "glyphCount": 23
+              }
+            ]
+          }
+        }
+      ],
+      "status": "PASS"
+    },
+    {
+      "phase": "interview",
+      "synthetic_only": true,
+      "checks": [
+        {
+          "name": "linked_interview_context_preserved",
+          "status": "PASS"
+        },
+        {
+          "name": "interview_entry_does_not_claim_existing_session",
+          "status": "PASS"
+        }
+      ],
+      "responses": [
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        }
+      ],
+      "page_errors": [],
+      "console_errors": [],
+      "console_warnings": [],
+      "status": "PASS"
+    },
+    {
+      "phase": "journey",
+      "synthetic_only": true,
+      "checks": [
+        {
+          "name": "wrongbook_link_uses_exact_id",
+          "status": "PASS"
+        },
+        {
+          "name": "wrongbook_precise_original_question",
+          "status": "PASS"
+        },
+        {
+          "name": "real_wrongbook_answer_saved",
+          "status": "PASS"
+        },
+        {
+          "name": "refreshed_actual_domain_answer",
+          "status": "PASS",
+          "review_attempt_count": 4,
+          "observed_revision": 5
+        },
+        {
+          "name": "separate_undo_preview",
+          "status": "PASS"
+        },
+        {
+          "name": "separate_undo_confirm",
+          "status": "PASS",
+          "operation_id": "learning-operation-8bc2a145b432a50d559bbc11143c09ec50ffc0a841e438a482a165e07cdd7547"
+        }
+      ],
+      "responses": [
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/operations/learning-operation-d36d823fb8c190136d670c70d4004bdbd2abe01162c40d85f5bd2f18269d8458/undo-preview",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/operations/learning-operation-d36d823fb8c190136d670c70d4004bdbd2abe01162c40d85f5bd2f18269d8458/undo-confirm",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        }
+      ],
+      "page_errors": [],
+      "console_errors": [],
+      "console_warnings": [],
+      "status": "PASS"
+    },
+    {
+      "phase": "legacy",
+      "synthetic_only": true,
+      "checks": [
+        {
+          "name": "create_goal_1_real_click",
+          "status": "PASS"
+        },
+        {
+          "name": "create_goal_2_real_click",
+          "status": "PASS"
+        },
+        {
+          "name": "legacy_populated_same_identity",
+          "status": "PASS"
+        }
+      ],
+      "responses": [
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/goals/reverse-plan",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/goals/reverse-plan",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        }
+      ],
+      "page_errors": [],
+      "console_errors": [],
+      "status": "PASS"
+    },
+    {
+      "phase": "legacy-check",
+      "synthetic_only": true,
+      "checks": [
+        {
+          "name": "explicit_feature_off_uses_preserved_legacy_page",
+          "status": "PASS"
+        }
+      ],
+      "responses": [
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        }
+      ],
+      "page_errors": [],
+      "console_errors": [],
+      "console_warnings": [],
+      "status": "PASS"
+    },
+    {
+      "phase": "main",
+      "synthetic_only": true,
+      "checks": [
+        {
+          "name": "explicit_goal_course_source",
+          "status": "PASS"
+        },
+        {
+          "name": "preview_120_minutes",
+          "status": "PASS",
+          "selected": 4
+        },
+        {
+          "name": "multiple_real_candidates",
+          "status": "PASS",
+          "count": 90
+        },
+        {
+          "name": "preview_45_with_edits",
+          "status": "PASS",
+          "selected": 3
+        },
+        {
+          "name": "real_confirm_saved",
+          "status": "PASS",
+          "operation_id": "learning-operation-d36d823fb8c190136d670c70d4004bdbd2abe01162c40d85f5bd2f18269d8458"
+        },
+        {
+          "name": "actual_task_evidence_visible",
+          "status": "PASS"
+        }
+      ],
+      "responses": [
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/preview",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/preview",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/confirm",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        }
+      ],
+      "page_errors": [],
+      "console_errors": [],
+      "console_warnings": [],
+      "status": "PASS"
+    },
+    {
+      "phase": "navigation",
+      "synthetic_only": true,
+      "checks": [
+        {
+          "name": "plan_real_day_7_maps_to_original_index_2",
+          "status": "PASS"
+        },
+        {
+          "name": "plan_domain_completion_saved",
+          "status": "PASS"
+        },
+        {
+          "name": "plan_original_completed_day_preserved",
+          "status": "PASS"
+        },
+        {
+          "name": "goal_outside_recent_20_exact_task_loaded",
+          "status": "PASS"
+        },
+        {
+          "name": "goal_domain_completion_saved",
+          "status": "PASS"
+        },
+        {
+          "name": "semester_task_75_opens_later_page",
+          "status": "PASS"
+        },
+        {
+          "name": "semester_original_completion_saved",
+          "status": "PASS"
+        },
+        {
+          "name": "linked_graph_concept_precise",
+          "status": "PASS"
+        },
+        {
+          "name": "source_action_opens_exact_source",
+          "status": "PASS"
+        },
+        {
+          "name": "unassociated_programming_opens_explicit_chooser",
+          "status": "PASS"
+        },
+        {
+          "name": "all_domain_returns_visible",
+          "status": "PASS"
+        }
+      ],
+      "responses": [
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        }
+      ],
+      "page_errors": [],
+      "console_errors": [],
+      "console_warnings": [],
+      "status": "PASS"
+    },
+    {
+      "phase": "render-probe",
+      "synthetic_only": true,
+      "checks": [
+        {
+          "name": "render_probe_collected",
+          "status": "PASS"
+        }
+      ],
+      "responses": [
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        }
+      ],
+      "page_errors": [],
+      "console_errors": [],
+      "ancestors": [
+        {
+          "tag": "MAIN",
+          "class": "action-workspace",
+          "opacity": "1",
+          "visibility": "visible",
+          "display": "block",
+          "transform": "none",
+          "clipPath": "none",
+          "overflow": "visible",
+          "rect": {
+            "x": 276,
+            "y": 96,
+            "width": 1128,
+            "height": 41806.46875
+          }
+        },
+        {
+          "tag": "DIV",
+          "class": "today-shell",
+          "opacity": "1",
+          "visibility": "visible",
+          "display": "block",
+          "transform": "none",
+          "clipPath": "none",
+          "overflow": "visible",
+          "rect": {
+            "x": 276,
+            "y": 96,
+            "width": 1128,
+            "height": 41806.46875
+          }
+        },
+        {
+          "tag": "DIV",
+          "class": "content-scroll",
+          "opacity": "1",
+          "visibility": "visible",
+          "display": "block",
+          "transform": "none",
+          "clipPath": "none",
+          "overflow": "auto",
+          "rect": {
+            "x": 240,
+            "y": 64,
+            "width": 1200,
+            "height": 936
+          }
+        },
+        {
+          "tag": "MAIN",
+          "class": "workspace",
+          "opacity": "1",
+          "visibility": "visible",
+          "display": "flex",
+          "transform": "none",
+          "clipPath": "none",
+          "overflow": "visible",
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "width": 1200,
+            "height": 1000
+          }
+        },
+        {
+          "tag": "DIV",
+          "class": "app-shell",
+          "opacity": "1",
+          "visibility": "visible",
+          "display": "grid",
+          "transform": "none",
+          "clipPath": "none",
+          "overflow": "visible",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1440,
+            "height": 1000
+          }
+        },
+        {
+          "tag": "DIV",
+          "class": "",
+          "opacity": "1",
+          "visibility": "visible",
+          "display": "block",
+          "transform": "none",
+          "clipPath": "none",
+          "overflow": "visible",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1440,
+            "height": 1000
+          }
+        },
+        {
+          "tag": "BODY",
+          "class": "",
+          "opacity": "1",
+          "visibility": "visible",
+          "display": "block",
+          "transform": "none",
+          "clipPath": "none",
+          "overflow": "visible",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1440,
+            "height": 1000
+          }
+        },
+        {
+          "tag": "HTML",
+          "class": "",
+          "opacity": "1",
+          "visibility": "visible",
+          "display": "block",
+          "transform": "none",
+          "clipPath": "none",
+          "overflow": "visible",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1440,
+            "height": 1000
+          }
+        }
+      ],
+      "status": "PASS"
+    },
+    {
+      "phase": "visual",
+      "synthetic_only": true,
+      "checks": [
+        {
+          "name": "long_title_and_filename_are_real_server_data",
+          "status": "PASS"
+        },
+        {
+          "name": "large_candidates_are_bounded_and_disclosed",
+          "status": "PASS",
+          "rendered": 200
+        },
+        {
+          "name": "zero_budget_actual_preview_has_no_selected_tasks",
+          "status": "PASS"
+        },
+        {
+          "name": "three_modes_switch_without_confirming_or_changing_goal",
+          "status": "PASS"
+        },
+        {
+          "name": "layout_desktop",
+          "status": "PASS",
+          "width": 1440,
+          "document": 1440,
+          "body": 1440,
+          "workspace": 1128,
+          "overflow": []
+        },
+        {
+          "name": "layout_tablet",
+          "status": "PASS",
+          "width": 1024,
+          "document": 1024,
+          "body": 1024,
+          "workspace": 712,
+          "overflow": []
+        },
+        {
+          "name": "layout_mobile",
+          "status": "PASS",
+          "width": 390,
+          "document": 390,
+          "body": 390,
+          "workspace": 358,
+          "overflow": []
+        },
+        {
+          "name": "layout_narrow",
+          "status": "PASS",
+          "width": 320,
+          "document": 320,
+          "body": 320,
+          "workspace": 288,
+          "overflow": []
+        },
+        {
+          "name": "layout_desktop-200-effective-css",
+          "status": "PASS",
+          "width": 720,
+          "document": 720,
+          "body": 720,
+          "workspace": 648,
+          "overflow": []
+        },
+        {
+          "name": "focused_input_reduced_height_keeps_primary_action_reachable",
+          "status": "PASS",
+          "note": "Reduced viewport simulates keyboard space; physical IME not tested."
+        },
+        {
+          "name": "theme_blue-gray_contrast_and_keyboard_dialog",
+          "status": "PASS",
+          "minimum_ratio": 6.81
+        },
+        {
+          "name": "theme_mist_contrast_and_keyboard_dialog",
+          "status": "PASS",
+          "minimum_ratio": 7.31
+        },
+        {
+          "name": "theme_graphite_contrast_and_keyboard_dialog",
+          "status": "PASS",
+          "minimum_ratio": 6.82
+        },
+        {
+          "name": "theme_midnight_contrast_and_keyboard_dialog",
+          "status": "PASS",
+          "minimum_ratio": 6.51
+        },
+        {
+          "name": "system_theme_live_change_and_reduced_motion",
+          "status": "PASS"
+        },
+        {
+          "name": "visual_run_has_no_uncaught_page_errors",
+          "status": "PASS"
+        }
+      ],
+      "responses": [
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/preview",
+          "method": "POST",
+          "status": 200
+        }
+      ],
+      "page_errors": [],
+      "console_errors": [],
+      "console_warnings": [],
+      "coverage_notices": {
+        "needs_scope": false,
+        "reviews": {
+          "total": 0,
+          "returned": 0,
+          "truncated": false
+        },
+        "shared_source_ids": [],
+        "practice_scope_basis": "source_records_not_course_mastery",
+        "plans": {
+          "total": 0,
+          "returned": 0,
+          "truncated": false,
+          "invalid": 0,
+          "scope_excluded": 0,
+          "days_truncated": false
+        },
+        "semester": {
+          "total": 200,
+          "returned": 200,
+          "truncated": false
+        },
+        "goal_tasks": {
+          "total": 4,
+          "returned": 4,
+          "truncated": false
+        },
+        "attempts": {
+          "total": 0,
+          "returned": 0,
+          "truncated": false
+        },
+        "graph": {
+          "total": 0,
+          "returned": 0,
+          "truncated": false
+        },
+        "plan_links": {
+          "total": 0,
+          "returned": 0,
+          "truncated": false
+        },
+        "interviews": {
+          "total": 0,
+          "returned": 0,
+          "truncated": false,
+          "excluded": 0,
+          "status": "no_explicit_link"
+        }
+      },
+      "layouts": [
+        {
+          "label": "desktop",
+          "width": 1440,
+          "height": 1000,
+          "document": 1440,
+          "body": 1440,
+          "workspace": 1128,
+          "overflow": []
+        },
+        {
+          "label": "tablet",
+          "width": 1024,
+          "height": 768,
+          "document": 1024,
+          "body": 1024,
+          "workspace": 712,
+          "overflow": []
+        },
+        {
+          "label": "mobile",
+          "width": 390,
+          "height": 844,
+          "document": 390,
+          "body": 390,
+          "workspace": 358,
+          "overflow": []
+        },
+        {
+          "label": "narrow",
+          "width": 320,
+          "height": 720,
+          "document": 320,
+          "body": 320,
+          "workspace": 288,
+          "overflow": []
+        },
+        {
+          "label": "desktop-200-effective-css",
+          "width": 720,
+          "height": 500,
+          "document": 720,
+          "body": 720,
+          "workspace": 648,
+          "overflow": []
+        }
+      ],
+      "contrasts": [
+        {
+          "theme": "blue-gray",
+          "minimum_ratio": 6.808126341987992,
+          "computed_samples": [
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(240, 243, 248)",
+              "label": "H2"
+            },
+            {
+              "text": "rgb(69, 85, 109)",
+              "bg": "rgb(240, 243, 248)",
+              "label": "P"
+            },
+            {
+              "text": "rgb(255, 255, 255)",
+              "bg": "rgb(37, 75, 195)",
+              "label": "BUTTON"
+            },
+            {
+              "text": "rgb(52, 70, 95)",
+              "bg": "rgb(240, 243, 248)",
+              "label": "P"
+            },
+            {
+              "text": "rgb(52, 70, 95)",
+              "bg": "rgb(240, 243, 248)",
+              "label": "DT"
+            },
+            {
+              "text": "rgb(52, 70, 95)",
+              "bg": "rgb(240, 243, 248)",
+              "label": "DT"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(240, 243, 248)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(240, 243, 248)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(240, 243, 248)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(240, 243, 248)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(240, 243, 248)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(240, 243, 248)",
+              "label": "H3"
+            }
+          ]
+        },
+        {
+          "theme": "mist",
+          "minimum_ratio": 7.309127698028378,
+          "computed_samples": [
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(255, 255, 255)",
+              "label": "H2"
+            },
+            {
+              "text": "rgb(69, 85, 109)",
+              "bg": "rgb(255, 255, 255)",
+              "label": "P"
+            },
+            {
+              "text": "rgb(255, 255, 255)",
+              "bg": "rgb(37, 75, 195)",
+              "label": "BUTTON"
+            },
+            {
+              "text": "rgb(52, 70, 95)",
+              "bg": "rgb(255, 255, 255)",
+              "label": "P"
+            },
+            {
+              "text": "rgb(52, 70, 95)",
+              "bg": "rgb(255, 255, 255)",
+              "label": "DT"
+            },
+            {
+              "text": "rgb(52, 70, 95)",
+              "bg": "rgb(255, 255, 255)",
+              "label": "DT"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(255, 255, 255)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(255, 255, 255)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(255, 255, 255)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(255, 255, 255)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(255, 255, 255)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(255, 255, 255)",
+              "label": "H3"
+            }
+          ]
+        },
+        {
+          "theme": "graphite",
+          "minimum_ratio": 6.82018734003803,
+          "computed_samples": [
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(242, 243, 245)",
+              "label": "H2"
+            },
+            {
+              "text": "rgb(69, 85, 109)",
+              "bg": "rgb(242, 243, 245)",
+              "label": "P"
+            },
+            {
+              "text": "rgb(255, 255, 255)",
+              "bg": "rgb(41, 79, 134)",
+              "label": "BUTTON"
+            },
+            {
+              "text": "rgb(52, 70, 95)",
+              "bg": "rgb(242, 243, 245)",
+              "label": "P"
+            },
+            {
+              "text": "rgb(52, 70, 95)",
+              "bg": "rgb(242, 243, 245)",
+              "label": "DT"
+            },
+            {
+              "text": "rgb(52, 70, 95)",
+              "bg": "rgb(242, 243, 245)",
+              "label": "DT"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(242, 243, 245)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(242, 243, 245)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(242, 243, 245)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(242, 243, 245)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(242, 243, 245)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(22, 36, 59)",
+              "bg": "rgb(242, 243, 245)",
+              "label": "H3"
+            }
+          ]
+        },
+        {
+          "theme": "midnight",
+          "minimum_ratio": 6.5075125566193845,
+          "computed_samples": [
+            {
+              "text": "rgb(237, 243, 255)",
+              "bg": "rgb(27, 41, 64)",
+              "label": "H2"
+            },
+            {
+              "text": "rgb(206, 218, 236)",
+              "bg": "rgb(27, 41, 64)",
+              "label": "P"
+            },
+            {
+              "text": "rgb(255, 255, 255)",
+              "bg": "rgb(49, 88, 185)",
+              "label": "BUTTON"
+            },
+            {
+              "text": "rgb(206, 218, 236)",
+              "bg": "rgb(27, 41, 64)",
+              "label": "P"
+            },
+            {
+              "text": "rgb(237, 243, 255)",
+              "bg": "rgb(27, 41, 64)",
+              "label": "DT"
+            },
+            {
+              "text": "rgb(237, 243, 255)",
+              "bg": "rgb(27, 41, 64)",
+              "label": "DT"
+            },
+            {
+              "text": "rgb(237, 243, 255)",
+              "bg": "rgb(27, 41, 64)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(237, 243, 255)",
+              "bg": "rgb(27, 41, 64)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(237, 243, 255)",
+              "bg": "rgb(27, 41, 64)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(237, 243, 255)",
+              "bg": "rgb(27, 41, 64)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(237, 243, 255)",
+              "bg": "rgb(27, 41, 64)",
+              "label": "H3"
+            },
+            {
+              "text": "rgb(237, 243, 255)",
+              "bg": "rgb(27, 41, 64)",
+              "label": "H3"
+            }
+          ]
+        }
+      ],
+      "status": "PASS"
+    },
+    {
+      "phase": "recovery",
+      "synthetic_only": true,
+      "checks": [
+        {
+          "name": "real_empty_library_has_only_goal_placeholder",
+          "status": "PASS"
+        },
+        {
+          "name": "signed_personal_backup_restored_by_real_ui",
+          "status": "PASS"
+        },
+        {
+          "name": "delete_test_source_uses_real_preview_and_confirmation",
+          "status": "PASS"
+        },
+        {
+          "name": "deleted_source_disables_old_preview_and_keeps_explicit_error",
+          "status": "PASS"
+        },
+        {
+          "name": "restored_source_and_goal_are_readable_again",
+          "status": "PASS"
+        },
+        {
+          "name": "unknown_write_before_restore_has_one_persisted_key",
+          "status": "PASS"
+        },
+        {
+          "name": "actual_restore_event_clears_old_pending_and_preview",
+          "status": "PASS"
+        },
+        {
+          "name": "restored_backup_rejects_pre_restore_token",
+          "status": 409
+        },
+        {
+          "name": "restored_account_can_be_explicitly_reinitialized",
+          "status": "PASS"
+        },
+        {
+          "name": "in_flight_scope_blocks_conflicting_ui_changes",
+          "status": "PASS"
+        },
+        {
+          "name": "new_scope_response_matches_selected_goal",
+          "status": "PASS"
+        },
+        {
+          "name": "recovery_has_no_uncaught_page_errors",
+          "status": "PASS"
+        }
+      ],
+      "responses": [
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/privacy/boundary",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/privacy/restore-preview",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/privacy/restore",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/privacy/boundary",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/preview",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 404
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/privacy/boundary",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/privacy/restore-preview",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/privacy/restore",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/privacy/boundary",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/capabilities",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/privacy/export",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/preview",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/privacy/restore-preview",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/privacy/restore",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/today",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/goal-options",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/orchestrator/snapshot",
+          "method": "POST",
+          "status": 200
+        }
+      ],
+      "page_errors": [],
+      "console_errors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[API Error] goal_not_found",
+        "[API Error] Network Error",
+        "Failed to load resource: net::ERR_FAILED"
+      ],
+      "console_warnings": [],
+      "status": "PASS"
+    }
+  ],
+  "preservation": {
+    "other_goal_entire_record_sha256_matches": true,
+    "original_completed_plan_index_0_preserved": true,
+    "plan_index_2_completed_by_actual_domain_click": true,
+    "note": "Repeated browser runs made additional real synthetic review attempts. The original semester was intentionally replaced with a 200-task synthetic capacity semester after its navigation tests; neither action is called preserved training data."
+  },
+  "frontend": {
+    "tests": 368,
+    "pass": 368,
+    "fail": 0,
+    "type_build": "PASS",
+    "bundle": {
+      "scope": "entry plus Home and recursive static imports; gzip estimated, not a network timing",
+      "measurements": {
+        "javascript": 385512,
+        "javascript_gzip": 142832,
+        "css": 111534
+      },
+      "budget": {
+        "javascript": 460800,
+        "javascript_gzip": 143360,
+        "css": 153600
+      },
+      "exceeded": [],
+      "eagerHeavyModules": [],
+      "files": [
+        {
+          "path": "assets/Home-CFaZPYO_.js",
+          "bytes": 9983,
+          "gzip_bytes": 4327
+        },
+        {
+          "path": "assets/Home-Do308xzO.css",
+          "bytes": 15375,
+          "gzip_bytes": 3288
+        },
+        {
+          "path": "assets/StudyMotif-CtSHOlAs.js",
+          "bytes": 1612,
+          "gzip_bytes": 633
+        },
+        {
+          "path": "assets/_plugin-vue_export-helper-BDNMzG2s.js",
+          "bytes": 84,
+          "gzip_bytes": 99
+        },
+        {
+          "path": "assets/api-om9HrAki.js",
+          "bytes": 94468,
+          "gzip_bytes": 31233
+        },
+        {
+          "path": "assets/createVueComponent-DkW5SasL.js",
+          "bytes": 732,
+          "gzip_bytes": 414
+        },
+        {
+          "path": "assets/css-C0dTDIzM.js",
+          "bytes": 21852,
+          "gzip_bytes": 7822
+        },
+        {
+          "path": "assets/css-C2X7avuy.js",
+          "bytes": 11060,
+          "gzip_bytes": 4539
+        },
+        {
+          "path": "assets/css-Vuo2ezMx.js",
+          "bytes": 9282,
+          "gzip_bytes": 4219
+        },
+        {
+          "path": "assets/css-Wv38huFO.css",
+          "bytes": 162,
+          "gzip_bytes": 136
+        },
+        {
+          "path": "assets/css-ZSOkJyjJ.css",
+          "bytes": 19896,
+          "gzip_bytes": 2141
+        },
+        {
+          "path": "assets/css-cyJZB4WD.css",
+          "bytes": 7857,
+          "gzip_bytes": 1961
+        },
+        {
+          "path": "assets/devtools-EWN81iOl-BkA_wGVL.js",
+          "bytes": 6898,
+          "gzip_bytes": 2985
+        },
+        {
+          "path": "assets/filemate-mascot-A-dFkQrg.js",
+          "bytes": 60,
+          "gzip_bytes": 80
+        },
+        {
+          "path": "assets/index-BvaBocUg.js",
+          "bytes": 99882,
+          "gzip_bytes": 37025
+        },
+        {
+          "path": "assets/index-DHiEpJAt.css",
+          "bytes": 68244,
+          "gzip_bytes": 11985
+        },
+        {
+          "path": "assets/preload-helper-Czpn1I53.js",
+          "bytes": 1196,
+          "gzip_bytes": 675
+        },
+        {
+          "path": "assets/rolldown-runtime-DK3Fl9T5.js",
+          "bytes": 158,
+          "gzip_bytes": 154
+        },
+        {
+          "path": "assets/strings-DbSPS5Fs.js",
+          "bytes": 155,
+          "gzip_bytes": 153
+        },
+        {
+          "path": "assets/typescript-rk096N_P.js",
+          "bytes": 6558,
+          "gzip_bytes": 2850
+        },
+        {
+          "path": "assets/use-dialog-DOGMLXJZ.js",
+          "bytes": 4235,
+          "gzip_bytes": 1739
+        },
+        {
+          "path": "assets/use-global-config-kX3JD1xL.js",
+          "bytes": 32986,
+          "gzip_bytes": 11211
+        },
+        {
+          "path": "assets/vnode-B5ttVT14.js",
+          "bytes": 311,
+          "gzip_bytes": 216
+        },
+        {
+          "path": "assets/vue-runtime-Bkkp-_Qs.js",
+          "bytes": 84000,
+          "gzip_bytes": 32458
+        }
+      ],
+      "passed": true
+    }
+  },
+  "integration_attempt": {
+    "backend_passed": 1925,
+    "skipped": 22,
+    "deselected": 5,
+    "warnings": 3,
+    "seconds": 560.44,
+    "overall_exit": 1,
+    "failure": "npm ci EPERM: owned Vite held a native dependency. Dependencies restored offline; final gate will use the existing -IsolateFrontend option."
+  },
+  "not_run": [
+    "Physical mobile IME and device/browser hardware",
+    "Physical desktop keyboard/browser 200% zoom; equivalent 720x500 CSS viewport was tested",
+    "Other browser engines and production traffic",
+    "Real student learning effectiveness"
+  ],
+  "repaired_browser_regressions": [
+    "Stable Today router-transition root prevents permanent opacity 0",
+    "Stable Wrongbook root restores return navigation",
+    "Optional study-plan topics are guarded without altering stored data",
+    "Offline identity read retains draft; HTTP401 still expires identity",
+    "Course graph UI links respect its distinct feature flag",
+    "Displayed draft duration and provenance match user input"
+  ],
+  "harness_failures": "Earlier recovery runs stopped on incorrect locator names (static refresh name while loading); raw failures remain in _working. Final fresh empty-clone run passed all 12 checks; no product failure is hidden as a harness fix."
+}

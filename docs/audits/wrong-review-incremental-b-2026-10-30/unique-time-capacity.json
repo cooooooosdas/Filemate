@@ -1,0 +1,39 @@
+{
+  "synthetic": true,
+  "transport": "direct storage service, not HTTP",
+  "count": 10000,
+  "distinct_due_timestamps": 9992,
+  "concurrency": 4,
+  "target_p95_ms": 500,
+  "warm_samples_ms": [
+    172.13,
+    150.67,
+    147.98,
+    156.99,
+    175.15
+  ],
+  "concurrent_samples_ms": [
+    1220.92,
+    1263.36,
+    1412.59,
+    1442.44,
+    1469.35,
+    1494.76,
+    1498.23,
+    1500.38,
+    1535.48,
+    1544.62,
+    1550.14,
+    1551.4,
+    1562.71,
+    1577.38,
+    1601.73,
+    1606.96,
+    1607.69,
+    1614.18,
+    1624.01,
+    1646.68
+  ],
+  "p95_ms": 1624.01,
+  "meets_original_500ms_target": false
+}

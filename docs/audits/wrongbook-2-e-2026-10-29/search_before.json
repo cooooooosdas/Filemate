@@ -1,0 +1,35 @@
+{
+  "feedback": 1090,
+  "rows": [
+    {
+      "path": "/api/health",
+      "start": 128,
+      "ms": 3
+    },
+    {
+      "path": "/api/auth/me",
+      "start": 128,
+      "ms": 28
+    },
+    {
+      "path": "/api/llm/status",
+      "start": 369,
+      "ms": 41
+    },
+    {
+      "path": "/wrongbook/v2/capabilities",
+      "start": 369,
+      "ms": 57
+    },
+    {
+      "path": "/wrongbook/v2/summary",
+      "start": 370,
+      "ms": 433
+    },
+    {
+      "path": "/wrongbook/v2/page?status=all&sort=due&direction=asc&q=%E5%90%88%E6%88%90%E5%A4%8D%E7%9B%9810000&limit=30&offset=0",
+      "start": 802,
+      "ms": 285
+    }
+  ]
+}

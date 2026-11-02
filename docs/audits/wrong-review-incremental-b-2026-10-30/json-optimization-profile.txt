@@ -1,0 +1,28 @@
+         44312 function calls in 0.128 seconds
+
+   Ordered by: cumulative time
+   List reduced from 130 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.128    0.128 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:213(page)
+        6    0.114    0.019    0.124    0.021 {method 'execute' of 'sqlite3.Connection' objects}
+        1    0.000    0.000    0.011    0.011 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:165(_where)
+        2    0.000    0.000    0.011    0.006 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:69(_has_json1)
+        1    0.000    0.000    0.011    0.011 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:95(_history_expression)
+    19992    0.008    0.000    0.009    0.000 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\queries.py:128(<lambda>)
+        2    0.000    0.000    0.002    0.001 {built-in method builtins.next}
+        2    0.000    0.000    0.002    0.001 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\execution\storage.py:777(read_snapshot)
+    20206    0.002    0.000    0.002    0.000 {method 'get' of 'dict' objects}
+        1    0.000    0.000    0.001    0.001 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\contextlib.py:132(__enter__)
+        1    0.000    0.000    0.001    0.001 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\pathlib.py:1228(resolve)
+        1    0.000    0.000    0.001    0.001 <frozen ntpath>:664(realpath)
+        1    0.000    0.000    0.001    0.001 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\contextlib.py:141(__exit__)
+      181    0.000    0.000    0.001    0.000 C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\__init__.py:299(loads)
+        1    0.000    0.000    0.001    0.001 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\execution\storage.py:763(close)
+        2    0.001    0.000    0.001    0.000 {built-in method nt._getfinalpathname}
+        1    0.001    0.001    0.001    0.001 {built-in method _sqlite3.connect}
+        1    0.001    0.001    0.001    0.001 {method 'close' of 'sqlite3.Connection' objects}
+       30    0.000    0.000    0.000    0.000 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\execution\data_actions.py:31(digest)
+       30    0.000    0.000    0.000    0.000 C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\filemate\wrongbook\insights.py:27(priority_details)
+
+

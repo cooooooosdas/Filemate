@@ -45,14 +45,9 @@
         </div>
         <aside class="desk-aside">
           <section class="today-sheet" aria-labelledby="today-heading">
-            <div class="section-heading"><h2 id="today-heading">今日安排</h2><router-link to="/today" aria-label="查看全部今日学习任务"><el-icon><ArrowRight /></el-icon></router-link></div>
-            <div v-if="reviewError" class="review-error" role="alert"><p>今日安排暂时无法读取。</p><button @click="loadReview" :disabled="reviewLoading">{{ reviewLoading ? '正在加载…' : '重试' }}</button></div>
-            <template v-else-if="review">
-              <p class="today-summary">{{ review.items.length ? `${review.items.length} 项待办 · 预计 ${review.recommended_minutes} 分钟` : '今天还没有待完成的安排' }}</p>
-              <ol v-if="review.items.length" class="task-list"><li v-for="item in review.items.slice(0, 3)" :key="item.item_id"><router-link :to="todayItemTarget(item)"><span class="task-circle" /><span><strong>{{ item.title }}</strong><small>{{ item.kind === 'wrong_question' ? '错题复习' : '学习计划' }} · {{ item.duration_minutes }} 分钟</small></span></router-link></li></ol>
-              <div v-else class="today-empty"><el-icon><Calendar /></el-icon><p>给下次考试或复习留出时间，<br />安排会在这里提醒你。</p><router-link to="/study-plan">制定学习计划<el-icon><ArrowRight /></el-icon></router-link></div>
-              <router-link v-if="review.items.length" class="solid-link today-start" to="/today">开始今日学习<el-icon><ArrowRight /></el-icon></router-link>
-            </template>
+            <div class="section-heading"><h2 id="today-heading">今日行动</h2></div>
+            <p class="today-summary">选定优先目标，安排可用时间，从有依据的下一步开始。</p>
+            <router-link class="solid-link today-start" to="/today">打开今日行动<el-icon><ArrowRight /></el-icon></router-link>
           </section>
           <section class="partner-note"><div><h2>最近学了什么？</h2><p>回看练习、面试和学习记录。</p><router-link to="/growth">查看学习记录<el-icon><ArrowRight /></el-icon></router-link></div><img src="../assets/filemate-mascot.png" alt="" aria-hidden="true" width="1086" height="1448" loading="lazy" /></section>
           <router-link class="privacy-link" to="/trust"><el-icon><Lock /></el-icon><span>资料如何保存与使用</span><el-icon><ArrowRight /></el-icon></router-link>
@@ -66,16 +61,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { ArrowRight, Calendar, FolderOpened, Loading, Lock, Microphone, Reading } from '../icons'
 import StudyMotif from '../components/StudyMotif.vue'
-import { todayItemTarget } from '../navigation/route-state'
 import HeroEncouragement from '../components/HeroEncouragement.vue'
-import { getHistory, getTodayReview, type TodayReview } from '../services/api'
+import { getHistory } from '../services/api'
 import type { HistoryItem, SessionStatus } from '../types'
 const loading = ref(true)
 const errorMessage = ref('')
 const history = ref<HistoryItem[]>([])
-const review = ref<TodayReview | null>(null)
-const reviewError = ref(false)
-const reviewLoading = ref(false)
 const todayLabel = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }).format(new Date())
 const hour = new Date().getHours()
 const greeting = hour < 6 ? '夜深了' : hour < 11 ? '早上好' : hour < 14 ? '中午好' : hour < 18 ? '下午好' : '晚上好'
@@ -84,7 +75,7 @@ const studyTasks = [
     ...(import.meta.env.VITE_ENABLE_KNOWLEDGE_GRAPH === 'false' ? [] : [{ label: '知识图谱', route: '/knowledge-graph' }]),
     ...(import.meta.env.VITE_ENABLE_DIGITAL_HUMAN === 'false' ? [] : [{ label: '听导师讲解', route: '/digital-human' }]),
   ] },
-  { id: 'review', title: '复习，查漏补缺', description: '按今日安排做练习，回顾还没弄懂的题。', route: '/today', icon: Calendar, links: [
+  { id: 'review', title: '复习，查漏补缺', description: '回顾真实错题，在原题中重新验证。', route: '/wrongbook', icon: Calendar, links: [
     { label: '错题本', route: '/wrongbook' }, { label: '学习计划', route: '/study-plan' }, { label: '学习目标', route: '/goals' },
   ] },
   { id: 'interview', title: '练表达，准备面试', description: '选择场景作答，结束后回看回答与报告。', route: '/interview', icon: Microphone, links: [
@@ -113,19 +104,10 @@ function statusClass(status: SessionStatus): string {
   if (status === 'failed' || status === 'expired') return 'danger'
   return status === 'done' ? 'warning' : 'neutral'
 }
-async function loadReview(): Promise<void> {
-  reviewLoading.value = true
-  try { review.value = await getTodayReview(); reviewError.value = false }
-  catch { reviewError.value = true }
-  finally { reviewLoading.value = false }
-}
 async function loadDashboard(): Promise<void> {
   loading.value = true
   errorMessage.value = ''
-  await Promise.all([
-    getHistory(undefined, 100).then(items => { history.value = items }).catch(() => { errorMessage.value = '学习记录暂时无法读取，请检查服务连接后重试。' }),
-    loadReview()
-  ])
+  await getHistory(undefined, 100).then(items => { history.value = items }).catch(() => { errorMessage.value = '学习记录暂时无法读取，请检查服务连接后重试。' })
   loading.value = false
 }
 onMounted(loadDashboard)

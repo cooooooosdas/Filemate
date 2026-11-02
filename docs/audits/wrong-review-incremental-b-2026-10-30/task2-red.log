@@ -1,0 +1,645 @@
+FFFFFFFFFFFFFFFFFFFFFFF                                                  [100%]
+================================== FAILURES ===================================
+_____________ test_priority_uses_shanghai_day_and_annotated_cause _____________
+
+    def test_priority_uses_shanghai_day_and_annotated_cause():
+        now = datetime(2026, 10, 29, 0, 30, tzinfo=timezone.utc)
+>       result = details({'next_review_at': '2026-10-28T20:00:00Z', 'error_count': 2,
+                          'error_cause_source': 'user'}, now)
+
+filemate\tests\wrongbook\test_insights.py:20: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+filemate\tests\wrongbook\test_insights.py:14: in details
+    module = importlib.import_module('filemate.wrongbook.insights')
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'filemate.wrongbook.insights'
+import_ = <function _gcd_import at 0x0000024DD41580E0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'filemate.wrongbook.insights'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+__________ test_priority_rejects_invalid_or_future_time[not-a-time] ___________
+
+due = 'not-a-time'
+
+    @pytest.mark.parametrize('due', ['not-a-time', '', None, '0001-01-01T00:00:00+14:00',
+                                    '2026-10-30T00:00:00Z'])
+    def test_priority_rejects_invalid_or_future_time(due):
+        with pytest.raises(ValueError):
+>           details({'next_review_at': due, 'error_count': 1},
+                    datetime(2026, 10, 29, tzinfo=timezone.utc))
+
+filemate\tests\wrongbook\test_insights.py:36: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+filemate\tests\wrongbook\test_insights.py:14: in details
+    module = importlib.import_module('filemate.wrongbook.insights')
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'filemate.wrongbook.insights'
+import_ = <function _gcd_import at 0x0000024DD41580E0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'filemate.wrongbook.insights'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+_______________ test_priority_rejects_invalid_or_future_time[] ________________
+
+due = ''
+
+    @pytest.mark.parametrize('due', ['not-a-time', '', None, '0001-01-01T00:00:00+14:00',
+                                    '2026-10-30T00:00:00Z'])
+    def test_priority_rejects_invalid_or_future_time(due):
+        with pytest.raises(ValueError):
+>           details({'next_review_at': due, 'error_count': 1},
+                    datetime(2026, 10, 29, tzinfo=timezone.utc))
+
+filemate\tests\wrongbook\test_insights.py:36: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+filemate\tests\wrongbook\test_insights.py:14: in details
+    module = importlib.import_module('filemate.wrongbook.insights')
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'filemate.wrongbook.insights'
+import_ = <function _gcd_import at 0x0000024DD41580E0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'filemate.wrongbook.insights'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+_____________ test_priority_rejects_invalid_or_future_time[None] ______________
+
+due = None
+
+    @pytest.mark.parametrize('due', ['not-a-time', '', None, '0001-01-01T00:00:00+14:00',
+                                    '2026-10-30T00:00:00Z'])
+    def test_priority_rejects_invalid_or_future_time(due):
+        with pytest.raises(ValueError):
+>           details({'next_review_at': due, 'error_count': 1},
+                    datetime(2026, 10, 29, tzinfo=timezone.utc))
+
+filemate\tests\wrongbook\test_insights.py:36: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+filemate\tests\wrongbook\test_insights.py:14: in details
+    module = importlib.import_module('filemate.wrongbook.insights')
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'filemate.wrongbook.insights'
+import_ = <function _gcd_import at 0x0000024DD41580E0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'filemate.wrongbook.insights'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+___ test_priority_rejects_invalid_or_future_time[0001-01-01T00:00:00+14:00] ___
+
+due = '0001-01-01T00:00:00+14:00'
+
+    @pytest.mark.parametrize('due', ['not-a-time', '', None, '0001-01-01T00:00:00+14:00',
+                                    '2026-10-30T00:00:00Z'])
+    def test_priority_rejects_invalid_or_future_time(due):
+        with pytest.raises(ValueError):
+>           details({'next_review_at': due, 'error_count': 1},
+                    datetime(2026, 10, 29, tzinfo=timezone.utc))
+
+filemate\tests\wrongbook\test_insights.py:36: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+filemate\tests\wrongbook\test_insights.py:14: in details
+    module = importlib.import_module('filemate.wrongbook.insights')
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'filemate.wrongbook.insights'
+import_ = <function _gcd_import at 0x0000024DD41580E0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'filemate.wrongbook.insights'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+_____ test_priority_rejects_invalid_or_future_time[2026-10-30T00:00:00Z] ______
+
+due = '2026-10-30T00:00:00Z'
+
+    @pytest.mark.parametrize('due', ['not-a-time', '', None, '0001-01-01T00:00:00+14:00',
+                                    '2026-10-30T00:00:00Z'])
+    def test_priority_rejects_invalid_or_future_time(due):
+        with pytest.raises(ValueError):
+>           details({'next_review_at': due, 'error_count': 1},
+                    datetime(2026, 10, 29, tzinfo=timezone.utc))
+
+filemate\tests\wrongbook\test_insights.py:36: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+filemate\tests\wrongbook\test_insights.py:14: in details
+    module = importlib.import_module('filemate.wrongbook.insights')
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'filemate.wrongbook.insights'
+import_ = <function _gcd_import at 0x0000024DD41580E0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'filemate.wrongbook.insights'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+_______________ test_priority_does_not_invent_bad_counters[-1] ________________
+
+count = -1
+
+    @pytest.mark.parametrize('count', [-1, True, '9', 9.5, None])
+    def test_priority_does_not_invent_bad_counters(count):
+        with pytest.raises(ValueError):
+>           details({'next_review_at': '2026-10-25T00:00:00Z', 'error_count': count},
+                    datetime(2026, 10, 29, tzinfo=timezone.utc))
+
+filemate\tests\wrongbook\test_insights.py:43: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+filemate\tests\wrongbook\test_insights.py:14: in details
+    module = importlib.import_module('filemate.wrongbook.insights')
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'filemate.wrongbook.insights'
+import_ = <function _gcd_import at 0x0000024DD41580E0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'filemate.wrongbook.insights'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+______________ test_priority_does_not_invent_bad_counters[True] _______________
+
+count = True
+
+    @pytest.mark.parametrize('count', [-1, True, '9', 9.5, None])
+    def test_priority_does_not_invent_bad_counters(count):
+        with pytest.raises(ValueError):
+>           details({'next_review_at': '2026-10-25T00:00:00Z', 'error_count': count},
+                    datetime(2026, 10, 29, tzinfo=timezone.utc))
+
+filemate\tests\wrongbook\test_insights.py:43: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+filemate\tests\wrongbook\test_insights.py:14: in details
+    module = importlib.import_module('filemate.wrongbook.insights')
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'filemate.wrongbook.insights'
+import_ = <function _gcd_import at 0x0000024DD41580E0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'filemate.wrongbook.insights'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+________________ test_priority_does_not_invent_bad_counters[9] ________________
+
+count = '9'
+
+    @pytest.mark.parametrize('count', [-1, True, '9', 9.5, None])
+    def test_priority_does_not_invent_bad_counters(count):
+        with pytest.raises(ValueError):
+>           details({'next_review_at': '2026-10-25T00:00:00Z', 'error_count': count},
+                    datetime(2026, 10, 29, tzinfo=timezone.utc))
+
+filemate\tests\wrongbook\test_insights.py:43: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+filemate\tests\wrongbook\test_insights.py:14: in details
+    module = importlib.import_module('filemate.wrongbook.insights')
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'filemate.wrongbook.insights'
+import_ = <function _gcd_import at 0x0000024DD41580E0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'filemate.wrongbook.insights'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+_______________ test_priority_does_not_invent_bad_counters[9.5] _______________
+
+count = 9.5
+
+    @pytest.mark.parametrize('count', [-1, True, '9', 9.5, None])
+    def test_priority_does_not_invent_bad_counters(count):
+        with pytest.raises(ValueError):
+>           details({'next_review_at': '2026-10-25T00:00:00Z', 'error_count': count},
+                    datetime(2026, 10, 29, tzinfo=timezone.utc))
+
+filemate\tests\wrongbook\test_insights.py:43: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+filemate\tests\wrongbook\test_insights.py:14: in details
+    module = importlib.import_module('filemate.wrongbook.insights')
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'filemate.wrongbook.insights'
+import_ = <function _gcd_import at 0x0000024DD41580E0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'filemate.wrongbook.insights'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+______________ test_priority_does_not_invent_bad_counters[None] _______________
+
+count = None
+
+    @pytest.mark.parametrize('count', [-1, True, '9', 9.5, None])
+    def test_priority_does_not_invent_bad_counters(count):
+        with pytest.raises(ValueError):
+>           details({'next_review_at': '2026-10-25T00:00:00Z', 'error_count': count},
+                    datetime(2026, 10, 29, tzinfo=timezone.utc))
+
+filemate\tests\wrongbook\test_insights.py:43: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+filemate\tests\wrongbook\test_insights.py:14: in details
+    module = importlib.import_module('filemate.wrongbook.insights')
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\胡希\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'filemate.wrongbook.insights'
+import_ = <function _gcd_import at 0x0000024DD41580E0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'filemate.wrongbook.insights'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+___________ test_recommendation_sorts_all_candidates_before_paging ____________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x0000024DDA8EAD20>, '59021750ecb4420c84abcf642c3b3213', '1f753d0...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+
+    def test_recommendation_sorts_all_candidates_before_paging(review_store):
+        store, read = seed_due(review_store, 65)
+        first = read.page(ReviewFilter(), limit=30)
+        target = read.page(ReviewFilter(), offset=60)['items'][-1]
+        assert target['wrong_id'] not in {item['wrong_id'] for item in first['items']}
+        with store._conn() as conn:
+            conn.execute("UPDATE wrong_questions SET error_count=10,error_cause_source='user' WHERE wrong_id=?",
+                         (target['wrong_id'],))
+>       recommended = read.page(ReviewFilter(sort='recommended'), limit=7)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for ReviewFilter
+E       sort
+E         Input should be 'due', 'updated', 'errors' or 'created' [type=literal_error, input_value='recommended', input_type=str]
+E           For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+
+filemate\tests\wrongbook\test_insights.py:61: ValidationError
+_________ test_recommendation_excludes_unreviewable_records[change0] __________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x0000024DDA8EA870>, 'c6822e476a3b4a14b092d494662db836', 'd560734...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+change = {'schedule_status': 'paused'}
+
+    @pytest.mark.parametrize('change', [
+        {'schedule_status': 'paused'}, {'mastered': 1},
+        {'next_review_at': '2999-01-01T00:00:00Z'}, {'next_review_at': 'invalid'},
+        {'next_review_at': '0001-01-01T00:00:00+14:00'},
+        {'question': '[]'}, {'error_causes': 'not-json'}, {'error_count': -1},
+    ])
+    def test_recommendation_excludes_unreviewable_records(review_store, change):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET ' + ','.join(f'{key}=?' for key in change),
+                         list(change.values()))
+>       assert read.page(ReviewFilter(sort='recommended'))['total'] == 0
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for ReviewFilter
+E       sort
+E         Input should be 'due', 'updated', 'errors' or 'created' [type=literal_error, input_value='recommended', input_type=str]
+E           For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+
+filemate\tests\wrongbook\test_insights.py:92: ValidationError
+_________ test_recommendation_excludes_unreviewable_records[change1] __________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x0000024DDA872300>, '65bede8aea324f2b8a58a06a0bbd899e', '853c70d...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+change = {'mastered': 1}
+
+    @pytest.mark.parametrize('change', [
+        {'schedule_status': 'paused'}, {'mastered': 1},
+        {'next_review_at': '2999-01-01T00:00:00Z'}, {'next_review_at': 'invalid'},
+        {'next_review_at': '0001-01-01T00:00:00+14:00'},
+        {'question': '[]'}, {'error_causes': 'not-json'}, {'error_count': -1},
+    ])
+    def test_recommendation_excludes_unreviewable_records(review_store, change):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET ' + ','.join(f'{key}=?' for key in change),
+                         list(change.values()))
+>       assert read.page(ReviewFilter(sort='recommended'))['total'] == 0
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for ReviewFilter
+E       sort
+E         Input should be 'due', 'updated', 'errors' or 'created' [type=literal_error, input_value='recommended', input_type=str]
+E           For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+
+filemate\tests\wrongbook\test_insights.py:92: ValidationError
+_________ test_recommendation_excludes_unreviewable_records[change2] __________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x0000024DDA873D40>, '3f51b586ed89451e822620eae86e5bf6', 'd5a730d...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+change = {'next_review_at': '2999-01-01T00:00:00Z'}
+
+    @pytest.mark.parametrize('change', [
+        {'schedule_status': 'paused'}, {'mastered': 1},
+        {'next_review_at': '2999-01-01T00:00:00Z'}, {'next_review_at': 'invalid'},
+        {'next_review_at': '0001-01-01T00:00:00+14:00'},
+        {'question': '[]'}, {'error_causes': 'not-json'}, {'error_count': -1},
+    ])
+    def test_recommendation_excludes_unreviewable_records(review_store, change):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET ' + ','.join(f'{key}=?' for key in change),
+                         list(change.values()))
+>       assert read.page(ReviewFilter(sort='recommended'))['total'] == 0
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for ReviewFilter
+E       sort
+E         Input should be 'due', 'updated', 'errors' or 'created' [type=literal_error, input_value='recommended', input_type=str]
+E           For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+
+filemate\tests\wrongbook\test_insights.py:92: ValidationError
+_________ test_recommendation_excludes_unreviewable_records[change3] __________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x0000024DDA8EB020>, '2f24f72cb4b745d786f723826f5fceae', 'db393b2...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+change = {'next_review_at': 'invalid'}
+
+    @pytest.mark.parametrize('change', [
+        {'schedule_status': 'paused'}, {'mastered': 1},
+        {'next_review_at': '2999-01-01T00:00:00Z'}, {'next_review_at': 'invalid'},
+        {'next_review_at': '0001-01-01T00:00:00+14:00'},
+        {'question': '[]'}, {'error_causes': 'not-json'}, {'error_count': -1},
+    ])
+    def test_recommendation_excludes_unreviewable_records(review_store, change):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET ' + ','.join(f'{key}=?' for key in change),
+                         list(change.values()))
+>       assert read.page(ReviewFilter(sort='recommended'))['total'] == 0
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for ReviewFilter
+E       sort
+E         Input should be 'due', 'updated', 'errors' or 'created' [type=literal_error, input_value='recommended', input_type=str]
+E           For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+
+filemate\tests\wrongbook\test_insights.py:92: ValidationError
+_________ test_recommendation_excludes_unreviewable_records[change4] __________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x0000024DDA8EB1A0>, 'e363c953365442768c750794f028c969', 'dad0dcf...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+change = {'next_review_at': '0001-01-01T00:00:00+14:00'}
+
+    @pytest.mark.parametrize('change', [
+        {'schedule_status': 'paused'}, {'mastered': 1},
+        {'next_review_at': '2999-01-01T00:00:00Z'}, {'next_review_at': 'invalid'},
+        {'next_review_at': '0001-01-01T00:00:00+14:00'},
+        {'question': '[]'}, {'error_causes': 'not-json'}, {'error_count': -1},
+    ])
+    def test_recommendation_excludes_unreviewable_records(review_store, change):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET ' + ','.join(f'{key}=?' for key in change),
+                         list(change.values()))
+>       assert read.page(ReviewFilter(sort='recommended'))['total'] == 0
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for ReviewFilter
+E       sort
+E         Input should be 'due', 'updated', 'errors' or 'created' [type=literal_error, input_value='recommended', input_type=str]
+E           For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+
+filemate\tests\wrongbook\test_insights.py:92: ValidationError
+_________ test_recommendation_excludes_unreviewable_records[change5] __________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x0000024DDA8EBB90>, '20443c6dfb0e418788e5b2bc53237e05', '3aebc7a...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+change = {'question': '[]'}
+
+    @pytest.mark.parametrize('change', [
+        {'schedule_status': 'paused'}, {'mastered': 1},
+        {'next_review_at': '2999-01-01T00:00:00Z'}, {'next_review_at': 'invalid'},
+        {'next_review_at': '0001-01-01T00:00:00+14:00'},
+        {'question': '[]'}, {'error_causes': 'not-json'}, {'error_count': -1},
+    ])
+    def test_recommendation_excludes_unreviewable_records(review_store, change):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET ' + ','.join(f'{key}=?' for key in change),
+                         list(change.values()))
+>       assert read.page(ReviewFilter(sort='recommended'))['total'] == 0
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for ReviewFilter
+E       sort
+E         Input should be 'due', 'updated', 'errors' or 'created' [type=literal_error, input_value='recommended', input_type=str]
+E           For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+
+filemate\tests\wrongbook\test_insights.py:92: ValidationError
+_________ test_recommendation_excludes_unreviewable_records[change6] __________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x0000024DDA87BDD0>, '875ae31a37e64701bc008b1c8050d689', '044293e...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+change = {'error_causes': 'not-json'}
+
+    @pytest.mark.parametrize('change', [
+        {'schedule_status': 'paused'}, {'mastered': 1},
+        {'next_review_at': '2999-01-01T00:00:00Z'}, {'next_review_at': 'invalid'},
+        {'next_review_at': '0001-01-01T00:00:00+14:00'},
+        {'question': '[]'}, {'error_causes': 'not-json'}, {'error_count': -1},
+    ])
+    def test_recommendation_excludes_unreviewable_records(review_store, change):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET ' + ','.join(f'{key}=?' for key in change),
+                         list(change.values()))
+>       assert read.page(ReviewFilter(sort='recommended'))['total'] == 0
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for ReviewFilter
+E       sort
+E         Input should be 'due', 'updated', 'errors' or 'created' [type=literal_error, input_value='recommended', input_type=str]
+E           For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+
+filemate\tests\wrongbook\test_insights.py:92: ValidationError
+_________ test_recommendation_excludes_unreviewable_records[change7] __________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x0000024DDA87A3C0>, '44b0ca23301e4b26981ee11cacea50c7', 'cf7471b...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+change = {'error_count': -1}
+
+    @pytest.mark.parametrize('change', [
+        {'schedule_status': 'paused'}, {'mastered': 1},
+        {'next_review_at': '2999-01-01T00:00:00Z'}, {'next_review_at': 'invalid'},
+        {'next_review_at': '0001-01-01T00:00:00+14:00'},
+        {'question': '[]'}, {'error_causes': 'not-json'}, {'error_count': -1},
+    ])
+    def test_recommendation_excludes_unreviewable_records(review_store, change):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute('UPDATE wrong_questions SET ' + ','.join(f'{key}=?' for key in change),
+                         list(change.values()))
+>       assert read.page(ReviewFilter(sort='recommended'))['total'] == 0
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for ReviewFilter
+E       sort
+E         Input should be 'due', 'updated', 'errors' or 'created' [type=literal_error, input_value='recommended', input_type=str]
+E           For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+
+filemate\tests\wrongbook\test_insights.py:92: ValidationError
+___________ test_history_excluded_but_due_v2_criterion_met_included ___________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x0000024DDA873110>, '9496e0898e8442e9b7d60f001d64ba38', '2b20e8e...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+
+    def test_history_excluded_but_due_v2_criterion_met_included(review_store):
+        store, read = seed_due(review_store)
+        with store._conn() as conn:
+            conn.execute("UPDATE wrong_questions SET mastered=1,scheduler_version='review-interval-v2',learning_status='criterion_met'")
+>       assert read.page(ReviewFilter(sort='recommended'))['total'] == 1
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for ReviewFilter
+E       sort
+E         Input should be 'due', 'updated', 'errors' or 'created' [type=literal_error, input_value='recommended', input_type=str]
+E           For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+
+filemate\tests\wrongbook\test_insights.py:99: ValidationError
+___________ test_ranking_uses_one_server_clock_and_keeps_naive_utc ____________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x0000024DDA870D40>, '5fb3532b22ae44318f80f5f06c12166d', '77d2f0e...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+
+    def test_ranking_uses_one_server_clock_and_keeps_naive_utc(review_store):
+        store, _ = seed_due(review_store)
+        times = [datetime(2026, 10, 29, 0, 30, tzinfo=timezone.utc),
+                 datetime(2026, 10, 30, 0, 30, tzinfo=timezone.utc)]
+        clock_calls = []
+    
+        def clock():
+            clock_calls.append(True)
+            return times[min(len(clock_calls) - 1, 1)]
+    
+        with store._conn() as conn:
+            conn.execute("UPDATE wrong_questions SET next_review_at='2026-10-28T20:00:00'")
+>       page = ReviewQueries(store, clock=clock).page(ReviewFilter(sort='recommended'))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for ReviewFilter
+E       sort
+E         Input should be 'due', 'updated', 'errors' or 'created' [type=literal_error, input_value='recommended', input_type=str]
+E           For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+
+filemate\tests\wrongbook\test_insights.py:119: ValidationError
+_______________ test_recommendation_search_works_without_json1 ________________
+
+review_store = (<filemate.execution.storage.SQLiteStorage object at 0x0000024DDA8717C0>, '2494e0112aa94b10a2a19642c96e3607', '53ff1f9...'fill', 'stem': '队列遵循什么顺序？', 'answer': '先进先出'}], [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000024DDA870050>
+
+    def test_recommendation_search_works_without_json1(review_store, monkeypatch):
+        store, read = seed_due(review_store, 65)
+        module = importlib.import_module('filemate.wrongbook.queries')
+        monkeypatch.setattr(module, '_stem_expression', lambda conn: 'review_stem(w.question)')
+>       page = read.page(ReviewFilter(sort='recommended', q='知识点00064'))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for ReviewFilter
+E       sort
+E         Input should be 'due', 'updated', 'errors' or 'created' [type=literal_error, input_value='recommended', input_type=str]
+E           For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+
+filemate\tests\wrongbook\test_insights.py:132: ValidationError
+============================== warnings summary ===============================
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED filemate/tests/wrongbook/test_insights.py::test_priority_uses_shanghai_day_and_annotated_cause
+FAILED filemate/tests/wrongbook/test_insights.py::test_priority_rejects_invalid_or_future_time[not-a-time]
+FAILED filemate/tests/wrongbook/test_insights.py::test_priority_rejects_invalid_or_future_time[]
+FAILED filemate/tests/wrongbook/test_insights.py::test_priority_rejects_invalid_or_future_time[None]
+FAILED filemate/tests/wrongbook/test_insights.py::test_priority_rejects_invalid_or_future_time[0001-01-01T00:00:00+14:00]
+FAILED filemate/tests/wrongbook/test_insights.py::test_priority_rejects_invalid_or_future_time[2026-10-30T00:00:00Z]
+FAILED filemate/tests/wrongbook/test_insights.py::test_priority_does_not_invent_bad_counters[-1]
+FAILED filemate/tests/wrongbook/test_insights.py::test_priority_does_not_invent_bad_counters[True]
+FAILED filemate/tests/wrongbook/test_insights.py::test_priority_does_not_invent_bad_counters[9]
+FAILED filemate/tests/wrongbook/test_insights.py::test_priority_does_not_invent_bad_counters[9.5]
+FAILED filemate/tests/wrongbook/test_insights.py::test_priority_does_not_invent_bad_counters[None]
+FAILED filemate/tests/wrongbook/test_insights.py::test_recommendation_sorts_all_candidates_before_paging
+FAILED filemate/tests/wrongbook/test_insights.py::test_recommendation_excludes_unreviewable_records[change0]
+FAILED filemate/tests/wrongbook/test_insights.py::test_recommendation_excludes_unreviewable_records[change1]
+FAILED filemate/tests/wrongbook/test_insights.py::test_recommendation_excludes_unreviewable_records[change2]
+FAILED filemate/tests/wrongbook/test_insights.py::test_recommendation_excludes_unreviewable_records[change3]
+FAILED filemate/tests/wrongbook/test_insights.py::test_recommendation_excludes_unreviewable_records[change4]
+FAILED filemate/tests/wrongbook/test_insights.py::test_recommendation_excludes_unreviewable_records[change5]
+FAILED filemate/tests/wrongbook/test_insights.py::test_recommendation_excludes_unreviewable_records[change6]
+FAILED filemate/tests/wrongbook/test_insights.py::test_recommendation_excludes_unreviewable_records[change7]
+FAILED filemate/tests/wrongbook/test_insights.py::test_history_excluded_but_due_v2_criterion_met_included
+FAILED filemate/tests/wrongbook/test_insights.py::test_ranking_uses_one_server_clock_and_keeps_naive_utc
+FAILED filemate/tests/wrongbook/test_insights.py::test_recommendation_search_works_without_json1
+23 failed, 1 warning in 2.22s

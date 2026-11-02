@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+{"synthetic": true, "transport": "direct storage service", "count": 10000, "distinct_due_timestamps": 9992, "concurrency": 4, "target_p95_ms": 500, "warm_samples_ms": [169.88, 180.25, 166.11, 162.02, 167.04], "concurrent_samples_ms": [1745.78, 3052.72, 3206.24, 3268.83, 6630.65, 6828.54, 7424.13, 7928.18, 8236.18, 8327.19, 8358.21, 8379.35, 8432.55, 8499.03, 8592.75, 8722.59, 8948.18, 9072.33, 9311.97, 9449.27], "p95_ms": 9311.97, "meets_target": false}
+  File "C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\_working\wrongbook-p2-20261030\capacity-gate.py", line 30, in <module>
+    assert report['meets_target'],'P2: original 500ms P95 target not met'
+           ~~~~~~^^^^^^^^^^^^^^^^
+AssertionError: P2: original 500ms P95 target not met

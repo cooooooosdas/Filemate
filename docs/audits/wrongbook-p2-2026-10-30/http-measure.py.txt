@@ -1,0 +1,142 @@
+"""Synthetic-only baseline/after run; never reads the user's data directory."""
+import asyncio
+import cProfile
+import io
+import json
+import math
+import os
+from pathlib import Path
+import pstats
+import secrets
+import sqlite3
+from datetime import datetime,timedelta,timezone
+import socket
+import subprocess
+import sys
+import time
+import httpx
+
+ROOT = Path.cwd()
+sys.path.insert(0, str(ROOT))
+from scripts.acceptance.wrongbook_release_fixture import prepare_managed
+from scripts.acceptance.wrongbook_release_performance import measure
+from filemate.execution.storage import SQLiteStorage
+from filemate.wrongbook.queries import ReviewFilter, ReviewQueries
+
+
+async def measure_new(base, origin, fixture, output):
+    rows = []
+    for mode in ('recommended', 'preview'):
+        for user in sorted(fixture['users'], key=lambda u: u['wrong_count']):
+            for search in ([False, True] if mode == 'recommended' and user['wrong_count'] == 10000 else [False]):
+                async with httpx.AsyncClient(base_url=base, timeout=30) as client:
+                    login = await client.post('/api/auth/login',
+                        headers={'Origin': origin, 'X-FileMate-Action': 'account'},
+                        json={'email': user['email'], 'password': os.environ['FILEMATE_AUDIT_PASSWORD'], 'remember': False})
+                    assert login.status_code == 200
+                    async def query():
+                        params = {'limit': 30, 'sort': 'recommended'} if mode == 'recommended' else {'available_minutes': 12}
+                        if search:
+                            params['q'] = '合成复盘10000'
+                        path = '/wrongbook/v2/page' if mode == 'recommended' else '/wrongbook/v2/session-preview'
+                        start = time.perf_counter()
+                        response = await client.get(path, params=params)
+                        assert response.status_code == 200, response.text
+                        data = response.json()['data']
+                        expected = 1 if search else max(0, user['wrong_count']-5)
+                        assert data['total' if mode == 'recommended' else 'eligible_count'] == expected
+                        assert len(data['items']) <= (30 if mode == 'recommended' else 3)
+                        return (time.perf_counter()-start)*1000
+                    first = await query()
+                    warm = [await query() for _ in range(20)]
+                    parallel = []
+                    for _ in range(5):
+                        parallel.extend(await asyncio.gather(*(query() for _ in range(4))))
+                    def distribution(values):
+                        values = sorted(values)
+                        return {'samples': len(values), 'p50_ms': round(values[len(values)//2],2),
+                                'p95_ms': round(values[math.ceil(len(values)*.95)-1],2)}
+                    row = {'count': user['wrong_count'], 'mode': mode, 'search': search,
+                        'process_first_ms': round(first,2), 'warm': distribution(warm), 'concurrent_4': distribution(parallel)}
+                    row['warm_meets_500ms_p95'] = row['warm']['p95_ms'] <= 500
+                    row['concurrent_4_meets_500ms_p95'] = row['concurrent_4']['p95_ms'] <= 500
+                    rows.append(row)
+    report = {'synthetic': True, 'target_p95_ms': 500, 'rows': rows,
+        'first_request_definition': 'one fresh API process, then first request per workspace/mode; OS cache not flushed'}
+    output.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+    return report
+
+label = sys.argv[1]
+out = ROOT / '_working/wrongbook-p2-20261030'
+data_root = out / (label + '-fixture')
+password = secrets.token_urlsafe(32)
+os.environ['FILEMATE_AUDIT_PASSWORD'] = password
+manifest = prepare_managed(data_root, password)
+print('fixture_ready', label, flush=True)
+large = max(manifest['users'], key=lambda u: u['wrong_count'])
+large_db=data_root / 'users' / large['workspace'] / 'filemate.db'
+with sqlite3.connect(large_db) as database:
+    entries=database.execute('SELECT wrong_id,question_index FROM wrong_questions WHERE question_index>=10').fetchall()
+    base=datetime.now(timezone.utc)-timedelta(days=1)
+    database.executemany('UPDATE wrong_questions SET next_review_at=? WHERE wrong_id=?',
+        [((base+timedelta(microseconds=index)).isoformat(),wrong_id) for wrong_id,index in entries])
+    database.commit()
+    distinct=database.execute('SELECT COUNT(DISTINCT next_review_at) FROM wrong_questions').fetchone()[0]
+print('distinct_due_timestamps',distinct,flush=True)
+store = SQLiteStorage(large_db)
+profiler = cProfile.Profile()
+profiler.enable()
+for _ in range(5):
+    for filters in (ReviewFilter(), ReviewFilter(q='合成复盘10000')):
+        ReviewQueries(store).page(filters)
+profiler.disable()
+stream = io.StringIO()
+pstats.Stats(profiler, stream=stream).sort_stats('cumulative').print_stats(35)
+(out / (label + '-profile.txt')).write_text(stream.getvalue(), encoding='utf-8')
+with store.read_snapshot() as read:
+    query = ReviewQueries(read)
+    connection, repo = query._configure(read)
+    where, params = query._where(read, ReviewFilter(), connection, repo)
+    plan = connection.execute('EXPLAIN QUERY PLAN SELECT w.*, s.original_name, a.metadata '
+        'FROM wrong_questions w LEFT JOIN artifacts a ON a.artifact_id=w.artifact_id '
+        'LEFT JOIN sources s ON s.source_id=w.source_id WHERE ' + where +
+        ' ORDER BY filemate_review_time(w.next_review_at),w.wrong_id LIMIT 30', params).fetchall()
+(out / (label + '-explain.json')).write_text(json.dumps([list(r) for r in plan]), encoding='utf-8')
+store.close()
+with socket.socket() as sock:
+    sock.bind(('127.0.0.1', 0))
+    port = sock.getsockname()[1]
+base = f'http://127.0.0.1:{port}'
+origin = 'http://127.0.0.1:5198'
+env = dict(os.environ, FILEMATE_DATA_DIR=str(data_root), FILEMATE_DB_PATH=str(data_root/'filemate.db'),
+    FILEMATE_IDENTITY_MODE='anonymous', FILEMATE_ENV='development', FILEMATE_CORS_ORIGINS=origin,
+    FILEMATE_ENABLE_WRONGBOOK_V2='1', PYTHONUTF8='1')
+with (out / (label + '-server.log')).open('w', encoding='utf-8') as log:
+    process = subprocess.Popen([sys.executable, '-m', 'uvicorn', 'server:app', '--host', '127.0.0.1',
+        '--port', str(port), '--log-level', 'warning'], env=env, stdout=log, stderr=subprocess.STDOUT,
+        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    try:
+        for _ in range(100):
+            assert process.poll() is None, 'owned API failed to start'
+            try:
+                if httpx.get(base + '/api/health', timeout=1).status_code == 200:
+                    break
+            except httpx.HTTPError:
+                pass
+            time.sleep(.2)
+        else:
+            raise RuntimeError('owned API startup timed out')
+        print('http_measurement_started', label, flush=True)
+        report = asyncio.run(measure(base, origin, data_root/'manifest.json', out/(label+'-performance.json')))
+        print(json.dumps([{'count': r['count'], 'search': r['search'], 'warm': r['warm']['p95_ms'],
+            'concurrent_4': r['concurrent_4']['p95_ms']} for r in report['rows']]), flush=True)
+        new_report = asyncio.run(measure_new(base, origin, manifest, out/(label+'-new-performance.json')))
+        print(json.dumps([{'count': r['count'], 'mode': r['mode'], 'search': r['search'],
+            'warm': r['warm']['p95_ms'], 'concurrent_4': r['concurrent_4']['p95_ms']} for r in new_report['rows']]), flush=True)
+    finally:
+        process.terminate()
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=10)

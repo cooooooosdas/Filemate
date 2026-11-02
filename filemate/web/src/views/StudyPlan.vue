@@ -5,8 +5,14 @@
         <h1>学习计划</h1>
         <p>选好资料和考试日期，把复习分到每一天。</p>
         <p v-if="restoredTitle" class="restore-note">已恢复：{{ restoredTitle }}，完成状态会自动保存到学习空间。</p>
+        <p v-if="plan?.review_learning?.ref?.wrong_id" class="restore-note"><RouterLink :to="`/wrongbook?focus=${encodeURIComponent(plan.review_learning.ref.wrong_id)}`">回看生成此计划的作答与复盘证据</RouterLink> · 完成任务不代表答对或掌握</p>
       </div>
     </header>
+    <aside class="today-location">
+      <RouterLink to="/today">返回今日行动</RouterLink>
+      <span v-if="plan && dayLocation.notice" role="status">{{ dayLocation.notice }}</span>
+    </aside>
+    <p v-if="restoring" role="status">正在定位原学习计划…</p>
 
     <section class="planner-card">
       <label
@@ -88,7 +94,7 @@
         <span :style="{ width: `${completionRate}%` }"></span>
       </div>
 
-      <div v-if="plan.topics.length" class="topic-row">
+      <div v-if="plan.topics?.length" class="topic-row">
         <span
           v-for="topic in plan.topics"
           :key="topic.name"
@@ -112,8 +118,9 @@
         <article
           v-for="(day, index) in plan.daily_plan"
           :key="`${day.date}-${index}`"
+          :id="`study-day-${index}`"
           class="day-card"
-          :class="{ completed: completedDays.has(index) }"
+          :class="{ completed: completedDays.has(index), 'today-selected': dayLocation.index === index }"
         >
           <button
             class="completion-toggle"
@@ -128,7 +135,7 @@
           </div>
           <div class="day-content">
             <div class="day-heading">
-              <h3>{{ day.focus }}</h3>
+              <h3><span v-if="dayLocation.index === index" class="today-badge">当前行动 · </span>{{ day.focus }}</h3>
               <span>{{ day.duration_minutes }} 分钟 · {{ day.review_method }}</span>
             </div>
             <ul>
@@ -145,10 +152,11 @@
 <script setup lang="ts">
 import { saveDownload } from '../services/downloads'
 import AnalysisWarnings from '../components/AnalysisWarnings.vue'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 import DataState from '../components/DataState.vue'
+import { locatePlanDay, readRouteReference } from '../today/navigation'
 import {
   generateStudyPlan,
   getStudyPlan,
@@ -172,10 +180,13 @@ defaultExam.setDate(defaultExam.getDate() + 14)
 
 const selectedFile = ref<File | null>(null)
 const route = useRoute()
+const planReference = computed(() => readRouteReference(route.query, 'plan'))
+const restoring = ref(false)
 const isDragging = ref(false)
 const isGenerating = ref(false)
 const error = ref('')
 const plan = ref<StudyPlan | null>(null)
+const dayLocation = computed(() => locatePlanDay(plan.value?.daily_plan, route.query.day))
 const planId = ref('')
 const restoredTitle = ref('')
 const completedDays = ref<Set<number>>(new Set())
@@ -261,12 +272,15 @@ const toggleDay = async (index: number) => {
 let restoreEpoch = 0
 const restoreLatestPlan = async () => {
   const epoch = ++restoreEpoch
-  plan.value = null; planId.value = ''; completedDays.value = new Set(); error.value = ''
+  plan.value = null; planId.value = ''; restoredTitle.value = ''; completedDays.value = new Set(); error.value = ''; restoring.value = true
   try {
-    const requestedId = typeof route.query.plan === 'string' ? route.query.plan : ''
+    if (planReference.value.notice || route.query.day !== undefined && !planReference.value.value) {
+      error.value = planReference.value.notice || '学习日链接缺少计划编号，请从今日行动重新打开。'; return
+    }
+    const requestedId = planReference.value.value
     const latest = requestedId ? await getStudyPlan(requestedId) : (await getStudyPlans(undefined, 1))[0]
     if (epoch !== restoreEpoch) return
-    if (!latest) return
+    if (!latest || requestedId && latest.plan_id !== requestedId) { if (requestedId) error.value = '指定计划不存在或无法访问，不会打开其他计划。'; return }
     if (latest.status === 'archived') {
       error.value = '这份计划已撤销，请从生成它的知识图谱或求职岗位恢复。'
       return
@@ -275,9 +289,11 @@ const restoreLatestPlan = async () => {
     planId.value = latest.plan_id
     completedDays.value = new Set(latest.completed_days)
     restoredTitle.value = latest.title
+    await nextTick()
+    if (epoch === restoreEpoch && dayLocation.value.index !== null) document.getElementById(`study-day-${dayLocation.value.index}`)?.scrollIntoView({ block: 'center' })
   } catch (cause) {
     if (epoch === restoreEpoch) error.value = cause instanceof Error ? cause.message : '读取学习计划失败，请刷新重试。'
-  }
+  } finally { if (epoch === restoreEpoch) restoring.value = false }
 }
 
 const formatDate = (value: string) => new Intl.DateTimeFormat('zh-CN', {
@@ -329,11 +345,15 @@ const exportIcs = () => {
 }
 
 onMounted(restoreLatestPlan)
-watch(() => route.query.plan, restoreLatestPlan)
+watch(() => [route.query.plan, route.query.day], restoreLatestPlan)
 onUnmounted(() => { restoreEpoch++ })
 </script>
 
 <style scoped>
+.today-location { display:flex; flex-wrap:wrap; gap:16px; align-items:center; padding:16px 0; font-size:17px; overflow-wrap:anywhere; }
+.today-location a { display:inline-flex; align-items:center; min-height:44px; color:var(--accent); }
+.day-card.today-selected { outline:2px solid var(--accent); outline-offset:3px; scroll-margin-block:96px; }
+.today-badge { font-size:16px; color:var(--accent); }
 .study-plan-page {
   max-width: 1120px;
   margin: 0 auto;

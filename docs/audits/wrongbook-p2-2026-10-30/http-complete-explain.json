@@ -1,0 +1,1 @@
+[[9, 0, 216, "SCAN w"], [11, 0, 46, "SEARCH a USING INDEX sqlite_autoindex_artifacts_1 (artifact_id=?) LEFT-JOIN"], [18, 0, 46, "SEARCH s USING INDEX sqlite_autoindex_sources_1 (source_id=?) LEFT-JOIN"], [83, 0, 0, "USE TEMP B-TREE FOR ORDER BY"]]

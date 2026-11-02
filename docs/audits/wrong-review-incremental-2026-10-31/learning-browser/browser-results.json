@@ -1,0 +1,236 @@
+{
+  "synthetic": true,
+  "checks": [
+    {
+      "name": "real answer, GET-only outbound preview, explicit single-call analysis and literal citations",
+      "passed": true,
+      "evidence": {
+        "calls": 1,
+        "analysis_id": "66f5bce807e44eeab43fe27cbb4001ac"
+      }
+    },
+    {
+      "name": "adoption preview confirmation and separate undo preserve real answers",
+      "passed": true,
+      "evidence": {
+        "attempts_preserved": 2
+      }
+    },
+    {
+      "name": "editable task preview cancellation confirmation Today evidence and undo",
+      "passed": true,
+      "evidence": {
+        "created_then_removed": "74d02629e6bd4a86893845309e179f80"
+      }
+    },
+    {
+      "name": "lost response, refresh and relogin recover the same request without another model call",
+      "passed": true,
+      "evidence": {
+        "additional_calls": 1,
+        "recovered_after_relogin": true
+      }
+    },
+    {
+      "name": "graph precise round trip preserves course and node and warns on an unsaved answer",
+      "passed": false,
+      "error": "TimeoutError: locator.click: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: '开始学习与练习', exact: true })\u001b[22m\n"
+    },
+    {
+      "name": "new real answer makes earlier analysis historical and prevents adoption",
+      "passed": true,
+      "evidence": {
+        "historical": "66f5bce807e44eeab43fe27cbb4001ac"
+      }
+    },
+    {
+      "name": "real worker failure matrix returns safe states and retains independent practice evidence",
+      "passed": true,
+      "evidence": [
+        {
+          "mode": "401",
+          "error": "provider_unavailable",
+          "elapsed_ms": 1099
+        },
+        {
+          "mode": "429",
+          "error": "quota_exceeded",
+          "elapsed_ms": 947
+        },
+        {
+          "mode": "bad_json",
+          "error": "invalid_output",
+          "elapsed_ms": 1064
+        },
+        {
+          "mode": "no_refs",
+          "error": "invalid_output",
+          "elapsed_ms": 998
+        },
+        {
+          "mode": "false_refs",
+          "error": "invalid_output",
+          "elapsed_ms": 1038
+        },
+        {
+          "mode": "dribble",
+          "error": "timeout",
+          "elapsed_ms": 20066
+        }
+      ]
+    },
+    {
+      "name": "cross-account analyses and evidence remain inaccessible",
+      "passed": true,
+      "evidence": {
+        "status": 404
+      }
+    },
+    {
+      "name": "cancel the real slow worker without changing independent answer history",
+      "passed": true,
+      "evidence": {
+        "cancelled_in_ms": 162
+      }
+    },
+    {
+      "name": "network failure and component read errors leave answer and base history usable",
+      "passed": true
+    },
+    {
+      "name": "four widths and themes, 44px controls, readable text, long results, 200 percent and keyboard",
+      "passed": true,
+      "evidence": [
+        {
+          "width": 1440,
+          "theme": "blue-gray",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 13.989695452482472,
+          "link_contrast_min": 13.989695452482472
+        },
+        {
+          "width": 1440,
+          "theme": "mist",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 15.559952500501744,
+          "link_contrast_min": 15.559952500501744
+        },
+        {
+          "width": 1440,
+          "theme": "graphite",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 14.014479024510564,
+          "link_contrast_min": 14.014479024510564
+        },
+        {
+          "width": 1440,
+          "theme": "midnight",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 10.33804373082321,
+          "link_contrast_min": 13.120741319554533
+        },
+        {
+          "width": 1024,
+          "theme": "blue-gray",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 13.989695452482472,
+          "link_contrast_min": 13.989695452482472
+        },
+        {
+          "width": 1024,
+          "theme": "mist",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 15.559952500501744,
+          "link_contrast_min": 15.559952500501744
+        },
+        {
+          "width": 1024,
+          "theme": "graphite",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 14.014479024510564,
+          "link_contrast_min": 14.014479024510564
+        },
+        {
+          "width": 1024,
+          "theme": "midnight",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 10.33804373082321,
+          "link_contrast_min": 13.120741319554533
+        },
+        {
+          "width": 768,
+          "theme": "blue-gray",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 13.989695452482472,
+          "link_contrast_min": 13.989695452482472
+        },
+        {
+          "width": 768,
+          "theme": "mist",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 15.559952500501744,
+          "link_contrast_min": 15.559952500501744
+        },
+        {
+          "width": 768,
+          "theme": "graphite",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 14.014479024510564,
+          "link_contrast_min": 14.014479024510564
+        },
+        {
+          "width": 768,
+          "theme": "midnight",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 10.33804373082321,
+          "link_contrast_min": 13.120741319554533
+        },
+        {
+          "width": 375,
+          "theme": "blue-gray",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 13.989695452482472,
+          "link_contrast_min": 13.989695452482472
+        },
+        {
+          "width": 375,
+          "theme": "mist",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 15.559952500501744,
+          "link_contrast_min": 15.559952500501744
+        },
+        {
+          "width": 375,
+          "theme": "graphite",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 14.014479024510564,
+          "link_contrast_min": 14.014479024510564
+        },
+        {
+          "width": 375,
+          "theme": "midnight",
+          "button_height": 50.046875,
+          "font": 18,
+          "contrast": 10.33804373082321,
+          "link_contrast_min": 13.120741319554533
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

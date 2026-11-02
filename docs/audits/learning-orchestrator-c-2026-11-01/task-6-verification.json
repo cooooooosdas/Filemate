@@ -1,0 +1,70 @@
+{
+  "stage": "C-task-6",
+  "status": "local_engineering_candidate_browser_acceptance_pending",
+  "date": "2026-11-01",
+  "base_commit": "645109174206ecf99398cd7500eb9c3a24663c32",
+  "frontend_gate": {
+    "build": "PASS",
+    "tests": 365,
+    "original_budget": {
+      "javascript": 460800,
+      "javascript_gzip": 143360,
+      "css": 153600
+    },
+    "passed": 365,
+    "bundle": {
+      "javascript": 385401,
+      "javascript_gzip": 142771,
+      "css": 111534
+    },
+    "failed": 0,
+    "typecheck": "PASS"
+  },
+  "tdd": {
+    "new_expected_assertion_failures": 3,
+    "unchanged_passed": 22,
+    "targeted_final_passed": 25
+  },
+  "original_today_sha256": "B7A8594C1584DE3E467AAC2C50ED6D245F6FAFF2992675B50971BC048E5040C1",
+  "static_preview": {
+    "mobile": "D:/FileMate-Project/_working/learning-orchestrator-c/a-static-mobile.png",
+    "sizes": [
+      "1440x1000",
+      "390x844"
+    ],
+    "kind": "layout_only_synthetic_examples_not_functional_evidence",
+    "browser": "installed Edge via offline cached Playwright CLI",
+    "desktop": "D:/FileMate-Project/_working/learning-orchestrator-c/a-static-desktop.png"
+  },
+  "decisions": [
+    "Only explicit enabled=false loads LegacyToday; contract/version/read failures remain errors.",
+    "Tiny lazy entry-state helper makes shell decisions testable and is consumed by real Vue.",
+    "GoalPlanner replaces legacy replan only when new capability is confirmed; capability failures cannot silently call legacy replan.",
+    "Mode is a display preference over the same evidence/budget pipeline; no new model or task database.",
+    "Pending confirmation allows an explicit fresh preview with the original key; pending undo offers the exact original operation.",
+    "One Home action entry; the review tile goes directly to Wrongbook.",
+    "Primary and pressed controls use existing action-fill/action-hover tokens for all four themes."
+  ],
+  "limitations": [
+    "Static examples and unit tests do not establish real browser task completion; Task7 remains.",
+    "Existing unsafe legacy replan API is not claimed redesigned; new workbench never invokes it.",
+    "No D/E, deployment or real-student experiment."
+  ],
+  "source_sha256": {
+    "filemate/web/src/views/Today.vue": "f18aefbe83d9bbba7ce32966e8baf91673e12affcc9746d2a8414ce4f97c4d8b",
+    "filemate/web/src/views/LegacyToday.vue": "b7a8594c1584de3e467aac2c50ed6d245f6faff2992675b50971bc048e5040c1",
+    "filemate/web/src/views/Home.vue": "a0ea12b129994cfea379216a8f5dddbb532343bdcea5c09c99283af20a3cd166",
+    "filemate/web/src/views/GoalPlanner.vue": "e7707f71a3da9223957e86718b8d185571f0fb80df5ad26feda2f086a4b9715f",
+    "filemate/web/src/views/StudyPlan.vue": "fdc4d01567f20329638288b096382d05fa4436f79167aee21f534b1c012d78f7",
+    "filemate/web/src/navigation/catalog.ts": "2d9d8228f9f4048c47022510e9b663d8686349988f9c2bae052a3b144b84cbee",
+    "filemate/web/src/today/entry-state.ts": "b37e74e5a5b6d979c8652e2e9c6f30889029611a340134cfb3ec81267873dd1a",
+    "filemate/web/src/today/today.css": "f8a0ccbdf75ef23a52626c9b49c6ec41ae5d28033d60d51683dc339d515fe8f4",
+    "filemate/web/tests/navigation.test.mjs": "01c6382cf2c629d71d2052f1251ee322fbbb2443092b1ce719c1a326f514ab28",
+    "filemate/web/tests/today-workspace.test.mjs": "97b481feddc55fde4523b2e7359148f8d9c4e047eeea0c381051ffc705dab635",
+    "filemate/web/src/components/today/TodayWorkspace.vue": "65ba227158eb8c9eb15c9098878d513b6a214e1a9fe52222a92e235d7b8b834c",
+    "filemate/web/src/components/today/TodayScope.vue": "5c572e34cb5f678558b38262530c41d088ea5f64ef843495724a5571ceecd6de",
+    "filemate/web/src/components/today/TodayTasks.vue": "1c5def0bc8d5a1fccb58d6bd3c2ac6fd38d59add33cba3d95596c753f61913f0",
+    "filemate/web/src/components/today/TodayPreview.vue": "ab54df5d87a6d6607bd7683878e4028c6424da2c680af6270b8fc088f43306a1",
+    "filemate/web/src/components/today/TodayFeedback.vue": "2ea9f5aac27ab0761332938f006d05a1f58ad356f48c1ed8ba568fc40f155a13"
+  }
+}

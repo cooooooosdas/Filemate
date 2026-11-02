@@ -1,0 +1,240 @@
+{
+  "completed_at": "2026-10-27",
+  "scope": "Wrongbook 2.0 C engineering acceptance",
+  "overall_status": "CONDITIONAL PASS",
+  "engineering_gate_passed": true,
+  "user_stage_acceptance": "pending",
+  "production_deployed": false,
+  "synthetic_engineering_only": true,
+  "real_learning_effect_verified": false,
+  "base": "e1c97e1",
+  "code_commit": "6ccf642fa8ad3699b226cdc730af2103d712dfc7",
+  "schema_version": 35,
+  "local_sqlite_version": "3.53.1",
+  "production_sqlite_3_26_migration_restore": "not executed; E dependency",
+  "full_gate": {
+    "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend",
+    "exit_code": 0,
+    "backend": {
+      "passed": 1648,
+      "skipped": 22,
+      "deselected": 5,
+      "warnings": 3
+    },
+    "frontend_passed": 257,
+    "frontend_failed": 0,
+    "ruff": "pass",
+    "typecheck_and_build": "pass"
+  },
+  "enabled_bundle": {
+    "measurements": {
+      "javascript": 385398,
+      "javascript_gzip": 142888,
+      "css": 111534
+    },
+    "budget": {
+      "javascript": 460800,
+      "javascript_gzip": 143360,
+      "css": 153600
+    },
+    "exceeded": [],
+    "eagerHeavyModules": [],
+    "passed": true
+  },
+  "disabled_bundle": {
+    "measurements": {
+      "javascript": 385781,
+      "javascript_gzip": 142929,
+      "css": 111534
+    },
+    "budget": {
+      "javascript": 460800,
+      "javascript_gzip": 143360,
+      "css": 153600
+    },
+    "exceeded": [],
+    "eagerHeavyModules": [],
+    "passed": true
+  },
+  "browser": {
+    "exit_code": 0,
+    "checks": [
+      {
+        "name": "100/1000/10000 actual authenticated API query and search timings",
+        "passed": true
+      },
+      {
+        "name": "full library search, deep link beyond page one and bounded DOM",
+        "passed": true
+      },
+      {
+        "name": "returning from another page restores the real content scroll container",
+        "passed": true
+      },
+      {
+        "name": "five widths and four real themes, contrast, long filename and 44px targets",
+        "passed": true
+      },
+      {
+        "name": "source uses actual original text; history and schedule dialogs work by keyboard",
+        "passed": true
+      },
+      {
+        "name": "diagnosis persists and clearing retains no invented cause",
+        "passed": true
+      },
+      {
+        "name": "subjective NULL is pending, complete raw answer is durable",
+        "passed": true
+      },
+      {
+        "name": "lost response commits once and refresh recovers with zero extra POST",
+        "passed": true
+      },
+      {
+        "name": "409 retains the draft and does not call old judge",
+        "passed": true
+      },
+      {
+        "name": "focus hides reference before reveal; skip creates no attempt, resume verifies server",
+        "passed": true
+      },
+      {
+        "name": "network failure contains the error, keeps app navigation and allows retry",
+        "passed": true
+      },
+      {
+        "name": "today, learning artifact and graph submit through the real shared contract",
+        "passed": true
+      },
+      {
+        "name": "real backup restore invalidates a late pre-restore response",
+        "passed": true
+      },
+      {
+        "name": "second account cannot read the first account question or recover its batch",
+        "passed": true
+      },
+      {
+        "name": "reduced motion, 200 percent layout and keyboard reach the primary actions",
+        "passed": true
+      },
+      {
+        "name": "review fix: narrow focus is visible and accepts an answer",
+        "passed": true
+      },
+      {
+        "name": "review fix: missing receipt after reload permits original text and dont-know retry",
+        "passed": true
+      },
+      {
+        "name": "review fix: answer then diagnosis uses the current server revision",
+        "passed": true
+      },
+      {
+        "name": "review fix: artifact switch and refresh protect a mounted draft",
+        "passed": true
+      },
+      {
+        "name": "review fix: multiple mounted Today entries preserve both uncertain request keys",
+        "passed": true
+      },
+      {
+        "name": "review fix: each new graph question draft requires fresh leave confirmation",
+        "passed": true
+      }
+    ],
+    "page_errors": 0,
+    "widths": [
+      1440,
+      1280,
+      1024,
+      768,
+      375
+    ],
+    "themes": [
+      "blue-gray",
+      "mist",
+      "graphite",
+      "midnight"
+    ],
+    "normal_text_contrast_tested": "question against reading panel >=4.5, not a whole-site claim",
+    "targets_tested_min_px": 44,
+    "zoom_percent": 200,
+    "reduced_motion": true,
+    "performance": [
+      {
+        "count": 100,
+        "search": false,
+        "p50_ms": 13.154700000000048,
+        "p95_ms": 15.43809999999985
+      },
+      {
+        "count": 100,
+        "search": true,
+        "p50_ms": 13.440700000000106,
+        "p95_ms": 18.795200000000023
+      },
+      {
+        "count": 1000,
+        "search": false,
+        "p50_ms": 13.973799999999756,
+        "p95_ms": 16.036399999999958
+      },
+      {
+        "count": 1000,
+        "search": true,
+        "p50_ms": 15.350400000000263,
+        "p95_ms": 17.073199999999815
+      },
+      {
+        "count": 10000,
+        "search": false,
+        "p50_ms": 42.306800000000294,
+        "p95_ms": 45.69430000000011
+      },
+      {
+        "count": 10000,
+        "search": true,
+        "p50_ms": 63.20810000000074,
+        "p95_ms": 71.55130000000008
+      }
+    ],
+    "search_feedback": {
+      "list_dom": 1,
+      "feedback_ms": 467.83610000000044
+    },
+    "samples_per_api_measurement": 20,
+    "discarded_warmup_requests": 2,
+    "p95_sorted_index": 18,
+    "backup_restore": "real signed synthetic backup in workspace and artifact; app restore event explicitly injected"
+  },
+  "preserved_tests": {
+    "count": 24,
+    "changed": 0
+  },
+  "review": {
+    "model": "gpt-6-astra",
+    "fresh_context": true,
+    "critical": 0,
+    "important": 8,
+    "important_fixed_with_red_green": 8,
+    "new_minor": 0,
+    "re_review_performed": false
+  },
+  "earlier_failed_measurements_retained": {
+    "api_before_native_json_search_ms_approx": 700,
+    "browser_under_concurrent_backend_load_ms": 1532.636,
+    "notice": "Final quiet run passed the original thresholds; this is not a production or stress SLA."
+  },
+  "known_limits": [
+    "D AI/precise graph links/incremental goals deferred",
+    "E production runtime and overall release acceptance deferred",
+    "JSON1-free fallback performance not measured in production",
+    "No live-model or real-student experiment",
+    "Unsent answers stay in memory; no cross-device sync or forced-close recovery",
+    "Focus <=20 questions, local references expire after 7 days; completion checks latest 100 attempts",
+    "B indirect derived-source delete preview may undercount review_events; cascade correct"
+  ],
+  "evidence_root": "_working/wrongbook-c-20261026/"
+}

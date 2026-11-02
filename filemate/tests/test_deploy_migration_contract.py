@@ -22,8 +22,11 @@ deploy = SimpleNamespace(**{name: namespace[name] for name in functions})
 def test_actual_current_migration_contract_allows_v28_append(tmp_path) -> None:
     storage = Path(__file__).resolve().parents[2] / 'filemate/execution/storage.py'
     contract = deploy.migration_contract(storage)
-    assert contract[-1][0] == 34 and contract[-1][1] == 'course_answer_source_backfill'
-    assert 'INSERT OR IGNORE INTO kg_learning_work_sources' in contract[-1][2]
+    assert contract[-1][0] == 36 and contract[-1][1] == 'wrongbook_learning_analysis'
+    assert 'CREATE TABLE wrong_review_analyses' in contract[-1][2]
+    assert contract[-2][0] == 35 and contract[-2][1] == 'wrongbook_review_evidence'
+    assert 'CREATE TABLE review_events' in contract[-2][2]
+    assert contract[-3][0] == 34 and contract[-3][1] == 'course_answer_source_backfill'
     old = tmp_path / 'released.py'
     old.write_text('_MIGRATIONS = ' + repr(tuple(contract[:-1])), encoding='utf-8')
     deploy.check_migration_upgrade(old, storage)

@@ -35,7 +35,10 @@ export default defineConfig({
       for (const filename of visionFiles) this.emitFile({ type: 'asset', fileName: 'interview-vision/wasm/' + filename, source: readFileSync(join(visionRoot, 'wasm', filename)) })
     }
   }],
-  build: { manifest: true },
+  build: { manifest: true, rolldownOptions: { output: { codeSplitting: { groups: [
+    // 相互依赖的Vue运行时一起压缩，避免新增懒路由令公共运行时碎片化。
+    { name: 'vue-runtime', test: /node_modules\/@vue\/(runtime-core|runtime-dom|reactivity|shared)\// },
+  ] } } } },
   optimizeDeps: {
     // 首次打开懒加载页面时，样式入口不应触发依赖重编译和路由中断。
     include: [...elementPlusStyles, '@mediapipe/tasks-vision', 'animejs/waapi'],

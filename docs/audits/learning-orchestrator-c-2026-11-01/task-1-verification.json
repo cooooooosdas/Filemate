@@ -1,0 +1,34 @@
+{
+  "stage": "C-task-1",
+  "date": "2026-11-01",
+  "status": "task_passed_not_C_acceptance",
+  "base_commit": "55f2c1161dccfaac798479f89c5f834f6f23530e",
+  "scope": "Working-tree integration, including 23 preserved pre-existing test changes; not an exact-commit-only or production verification.",
+  "targeted": {
+    "green_passed": 59,
+    "command": "uv run pytest filemate/tests/orchestrator/test_context.py filemate/tests/orchestrator/test_snapshot.py filemate/tests/orchestrator/test_commands.py filemate/tests/orchestrator/test_api.py -q",
+    "red_passed": 39,
+    "red_failed": 20
+  },
+  "full_gate": {
+    "exit_code": 0,
+    "frontend_tests": 304,
+    "backend": "1925 passed, 22 skipped, 5 deselected, 3 warnings in 3178.72s (0:52:58)",
+    "command": "scripts/verify.ps1 -IsolateFrontend",
+    "frontend_failed": 0,
+    "frontend_passed": 304
+  },
+  "preserved_pre_existing_files": 23,
+  "new_migrations": 0,
+  "production_deployed": false,
+  "C_accepted": false,
+  "source_sha256": {
+    "filemate/study/orchestrator/api.py": "67a185e281dba5931c30f9c4e8a2400a0e19c85f0e11428b80106130c9a1832c",
+    "filemate/study/orchestrator/commands.py": "87a67b0dc35e048eb881029ec901a2c6d63dcef3c6a36bf7ab0da4365f6afb02",
+    "filemate/study/orchestrator/models.py": "b1aa5e42ec12098c94ac8e0c51d05d2780be9d62b5f6af5c4a1698a67479d8c1",
+    "filemate/study/orchestrator/repository.py": "8c9d0084bc1013ec327facd56e9696042299787a226d7bdd9c982ba179a4d0f7",
+    "filemate/study/orchestrator/snapshot.py": "95b314d09e58304056ed900dbf89fbc5e9a7edd7f3b4f2ac621c2bd16e7c2e81",
+    "filemate/study/orchestrator/context.py": "467c549f9bfb2dc5ab65dc0a3fdfdfbfcd53b5b4bed3d1daee685030aeca48a5",
+    "filemate/tests/orchestrator/test_context.py": "df8a78c7511b9755f4498d9aaa8ab59d152cb0ef99173fa483f00fe50662206f"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "synthetic": true,
+  "transport": "direct storage service",
+  "count": 10000,
+  "distinct_due_timestamps": 9992,
+  "concurrency": 4,
+  "target_p95_ms": 500,
+  "warm_samples_ms": [
+    171.41,
+    124.08,
+    111.62,
+    110.87,
+    112.5
+  ],
+  "concurrent_samples_ms": [
+    158.03,
+    163.74,
+    165.68,
+    167.2,
+    168.79,
+    174.32,
+    178.86,
+    212.8,
+    213.89,
+    214.21,
+    215.29,
+    216.05,
+    219.75,
+    225.19,
+    229.2,
+    231.44,
+    231.68,
+    238.21,
+    240.61,
+    243.35
+  ],
+  "p95_ms": 240.61,
+  "meets_target": true
+}

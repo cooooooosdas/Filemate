@@ -1,0 +1,86 @@
+......................FFFF......................................         [100%]
+================================== FAILURES ===================================
+____ test_default_due_preserves_invalid_rows_and_null_tie_order[json1-asc] ____
+
+date_reader = (<filemate.execution.storage.SQLiteStorage object at 0x0000014D52C82570>, <filemate.wrongbook.queries.ReviewQueries object at 0x0000014D52C80EF0>, [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+direction = 'asc'
+
+    @pytest.mark.parametrize('direction', ['asc', 'desc'])
+    def test_default_due_preserves_invalid_rows_and_null_tie_order(date_reader, direction):
+        store, query, clock = date_reader
+        many(store, 5)
+        rows = store._conn().execute('SELECT wrong_id,question_index FROM wrong_questions ORDER BY question_index').fetchall()
+        times = [None, b'not-a-time', 'invalid', (clock[0] - timedelta(days=1)).isoformat(),
+                 (clock[0] + timedelta(days=1)).isoformat()]
+        with store._conn() as conn:
+>           conn.executemany('UPDATE wrong_questions SET next_review_at=? WHERE wrong_id=?',
+                             [(raw, row['wrong_id']) for raw, row in zip(times, rows, strict=True)])
+E           sqlite3.IntegrityError: NOT NULL constraint failed: wrong_questions.next_review_at
+
+filemate\tests\wrongbook\test_priority_capacity_contracts.py:90: IntegrityError
+___ test_default_due_preserves_invalid_rows_and_null_tie_order[json1-desc] ____
+
+date_reader = (<filemate.execution.storage.SQLiteStorage object at 0x0000014D52C3F9E0>, <filemate.wrongbook.queries.ReviewQueries object at 0x0000014D52C3DAC0>, [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+direction = 'desc'
+
+    @pytest.mark.parametrize('direction', ['asc', 'desc'])
+    def test_default_due_preserves_invalid_rows_and_null_tie_order(date_reader, direction):
+        store, query, clock = date_reader
+        many(store, 5)
+        rows = store._conn().execute('SELECT wrong_id,question_index FROM wrong_questions ORDER BY question_index').fetchall()
+        times = [None, b'not-a-time', 'invalid', (clock[0] - timedelta(days=1)).isoformat(),
+                 (clock[0] + timedelta(days=1)).isoformat()]
+        with store._conn() as conn:
+>           conn.executemany('UPDATE wrong_questions SET next_review_at=? WHERE wrong_id=?',
+                             [(raw, row['wrong_id']) for raw, row in zip(times, rows, strict=True)])
+E           sqlite3.IntegrityError: NOT NULL constraint failed: wrong_questions.next_review_at
+
+filemate\tests\wrongbook\test_priority_capacity_contracts.py:90: IntegrityError
+__ test_default_due_preserves_invalid_rows_and_null_tie_order[no-json1-asc] ___
+
+date_reader = (<filemate.execution.storage.SQLiteStorage object at 0x0000014D52C3DEB0>, <filemate.wrongbook.queries.ReviewQueries object at 0x0000014D52C3E270>, [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+direction = 'asc'
+
+    @pytest.mark.parametrize('direction', ['asc', 'desc'])
+    def test_default_due_preserves_invalid_rows_and_null_tie_order(date_reader, direction):
+        store, query, clock = date_reader
+        many(store, 5)
+        rows = store._conn().execute('SELECT wrong_id,question_index FROM wrong_questions ORDER BY question_index').fetchall()
+        times = [None, b'not-a-time', 'invalid', (clock[0] - timedelta(days=1)).isoformat(),
+                 (clock[0] + timedelta(days=1)).isoformat()]
+        with store._conn() as conn:
+>           conn.executemany('UPDATE wrong_questions SET next_review_at=? WHERE wrong_id=?',
+                             [(raw, row['wrong_id']) for raw, row in zip(times, rows, strict=True)])
+E           sqlite3.IntegrityError: NOT NULL constraint failed: wrong_questions.next_review_at
+
+filemate\tests\wrongbook\test_priority_capacity_contracts.py:90: IntegrityError
+__ test_default_due_preserves_invalid_rows_and_null_tie_order[no-json1-desc] __
+
+date_reader = (<filemate.execution.storage.SQLiteStorage object at 0x0000014D52C83A70>, <filemate.wrongbook.queries.ReviewQueries object at 0x0000014D54EAE6C0>, [datetime.datetime(2026, 10, 26, 8, 0, tzinfo=datetime.timezone.utc)])
+direction = 'desc'
+
+    @pytest.mark.parametrize('direction', ['asc', 'desc'])
+    def test_default_due_preserves_invalid_rows_and_null_tie_order(date_reader, direction):
+        store, query, clock = date_reader
+        many(store, 5)
+        rows = store._conn().execute('SELECT wrong_id,question_index FROM wrong_questions ORDER BY question_index').fetchall()
+        times = [None, b'not-a-time', 'invalid', (clock[0] - timedelta(days=1)).isoformat(),
+                 (clock[0] + timedelta(days=1)).isoformat()]
+        with store._conn() as conn:
+>           conn.executemany('UPDATE wrong_questions SET next_review_at=? WHERE wrong_id=?',
+                             [(raw, row['wrong_id']) for raw, row in zip(times, rows, strict=True)])
+E           sqlite3.IntegrityError: NOT NULL constraint failed: wrong_questions.next_review_at
+
+filemate\tests\wrongbook\test_priority_capacity_contracts.py:90: IntegrityError
+============================== warnings summary ===============================
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED filemate/tests/wrongbook/test_priority_capacity_contracts.py::test_default_due_preserves_invalid_rows_and_null_tie_order[json1-asc]
+FAILED filemate/tests/wrongbook/test_priority_capacity_contracts.py::test_default_due_preserves_invalid_rows_and_null_tie_order[json1-desc]
+FAILED filemate/tests/wrongbook/test_priority_capacity_contracts.py::test_default_due_preserves_invalid_rows_and_null_tie_order[no-json1-asc]
+FAILED filemate/tests/wrongbook/test_priority_capacity_contracts.py::test_default_due_preserves_invalid_rows_and_null_tie_order[no-json1-desc]
+4 failed, 60 passed, 1 warning in 13.50s

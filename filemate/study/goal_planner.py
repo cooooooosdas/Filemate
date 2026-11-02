@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import math
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
+
+# 学习计划"今日"按中国时区计算，与错题复习排期口径一致。
+LOCAL_ZONE = timezone(timedelta(hours=8))
 
 
 def _gap(
@@ -199,7 +202,7 @@ def build_reverse_goal_plan(
         for item in (previous_tasks or [])
         if item.get("status") == "completed"
     }
-    today = datetime.now().astimezone().date()
+    today = datetime.now(LOCAL_ZONE).date()
     total_days = max(1, (deadline - today).days)
     pending_count = max(1, len(tasks))
     for index, item in enumerate(tasks):

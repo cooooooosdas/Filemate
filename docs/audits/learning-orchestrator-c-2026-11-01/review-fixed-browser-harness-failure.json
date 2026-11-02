@@ -1,0 +1,311 @@
+{
+  "phase": "review-fixed",
+  "synthetic_only": true,
+  "checks": [
+    {
+      "name": "fresh_signed_backup_restored_through_actual_ui",
+      "status": "PASS"
+    },
+    {
+      "name": "lost_confirm_then_other_tab_undo_recovers_terminal_receipt",
+      "status": "PASS"
+    },
+    {
+      "name": "new_preview_usable_after_terminal_recovery",
+      "status": "PASS"
+    },
+    {
+      "name": "actual_concurrent_undo_409_ends_definitely_rejected_request",
+      "status": "PASS"
+    },
+    {
+      "name": "new_arrangement_unblocked_after_rejected_undo",
+      "status": "PASS"
+    }
+  ],
+  "responses": [
+    {
+      "path": "/api/privacy/boundary",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/privacy/restore-preview",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/privacy/restore",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/privacy/boundary",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/goal-options",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/operations/148360a6-3531-4c44-8b29-631570349816",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/confirm",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/operations/learning-operation-6d11a8223491e396842995396a861d21469c75559b7e1d6dd418eced1efe5065/undo-preview",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/operations/learning-operation-6d11a8223491e396842995396a861d21469c75559b7e1d6dd418eced1efe5065/undo-confirm",
+      "method": "POST",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST",
+      "status": 200
+    }
+  ],
+  "api_requests": [
+    {
+      "path": "/api/health",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/trust/overview",
+      "method": "GET"
+    },
+    {
+      "path": "/api/privacy/boundary",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/privacy/restore-preview",
+      "method": "POST"
+    },
+    {
+      "path": "/api/privacy/restore",
+      "method": "POST"
+    },
+    {
+      "path": "/trust/overview",
+      "method": "GET"
+    },
+    {
+      "path": "/api/privacy/boundary",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/health",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/capabilities",
+      "method": "GET"
+    },
+    {
+      "path": "/api/llm/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/goal-options",
+      "method": "POST"
+    },
+    {
+      "path": "/api/knowledge-graph/courses",
+      "method": "GET"
+    },
+    {
+      "path": "/api/knowledge-graph/courses/e7b7a60e-28e6-470d-8daf-43c3b122df72",
+      "method": "GET"
+    },
+    {
+      "path": "/api/knowledge-graph/courses/e7b7a60e-28e6-470d-8daf-43c3b122df72",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST"
+    },
+    {
+      "path": "/api/knowledge-graph/courses/e7b7a60e-28e6-470d-8daf-43c3b122df72",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/confirm",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/operations/148360a6-3531-4c44-8b29-631570349816",
+      "method": "GET"
+    },
+    {
+      "path": "/api/llm/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/confirm",
+      "method": "POST"
+    },
+    {
+      "path": "/api/llm/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/operations/learning-operation-6d11a8223491e396842995396a861d21469c75559b7e1d6dd418eced1efe5065/undo-preview",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/operations/learning-operation-6d11a8223491e396842995396a861d21469c75559b7e1d6dd418eced1efe5065/undo-confirm",
+      "method": "POST"
+    },
+    {
+      "path": "/api/llm/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/confirm",
+      "method": "POST"
+    }
+  ],
+  "page_errors": [],
+  "console_errors": [
+    "[API Error] Network Error",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: the server responded with a status of 409 (Conflict)",
+    "[API Error] schedule_changed_since_operation"
+  ],
+  "console_warnings": [],
+  "status": "FAIL",
+  "error": "TypeError: LocatorAssertions.to_be_visible: Route.fulfill: Object of type Request is not JSON serializable",
+  "traceback": "Traceback (most recent call last):\n  File \"D:\\FileMate-Project\\_working\\learning-orchestrator-c\\final_browser.py\", line 129, in <module>\n    expect(page.locator('.action-alert')).to_be_visible()\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\n  File \"D:\\Ana\\Lib\\site-packages\\playwright\\sync_api\\_generated.py\", line 23019, in to_be_visible\n    self._sync(\n    ~~~~~~~~~~^\n        self._impl_obj.to_be_visible(\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            visible=visible, timeout=to_milliseconds(timeout)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        )\n        ^\n    )\n    ^\n  File \"D:\\Ana\\Lib\\site-packages\\playwright\\_impl\\_sync_base.py\", line 115, in _sync\n    return task.result()\n           ~~~~~~~~~~~^^\n  File \"D:\\Ana\\Lib\\site-packages\\playwright\\_impl\\_assertions.py\", line 841, in to_be_visible\n    await self._expect_impl(\n    ...<5 lines>...\n    )\n  File \"D:\\Ana\\Lib\\site-packages\\playwright\\_impl\\_assertions.py\", line 103, in _expect_impl\n    result = await self._call_expect(expression, expect_options, title)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\Ana\\Lib\\site-packages\\playwright\\_impl\\_assertions.py\", line 248, in _call_expect\n    return await self._actual_locator._expect(expression, expect_options, title)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\Ana\\Lib\\site-packages\\playwright\\_impl\\_locator.py\", line 775, in _expect\n    return await self._frame._expect(self._selector, expression, options, title)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\Ana\\Lib\\site-packages\\playwright\\_impl\\_frame.py\", line 193, in _expect\n    await self._channel.send(\n    ...<8 lines>...\n    )\n  File \"D:\\Ana\\Lib\\site-packages\\playwright\\_impl\\_connection.py\", line 69, in send\n    return await self._connection.wrap_api_call(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    ...<3 lines>...\n    )\n    ^\n  File \"D:\\Ana\\Lib\\site-packages\\playwright\\_impl\\_connection.py\", line 563, in wrap_api_call\n    raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nTypeError: LocatorAssertions.to_be_visible: Route.fulfill: Object of type Request is not JSON serializable\n"
+}

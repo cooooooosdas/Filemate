@@ -1,0 +1,22 @@
+{
+  "status": "FAIL",
+  "synthetic": true,
+  "fixture_setup": "one original question artifact; domain actions via original HTTP",
+  "checks": {
+    "proxy_json_accept": true,
+    "proxy_html_accept": true,
+    "schedule_commands_preserve_domain_fingerprints": true,
+    "real_domain_completion": true,
+    "undo_preserves_completion": true,
+    "network_outage_preserves_data": true,
+    "managed_restore_fingerprints_match": true,
+    "managed_restore_invalidates_old_tokens": false,
+    "managed_restore_rejects_overwrite": true,
+    "restart_preserves_completion": true,
+    "unrelated_source_delete_preserves_view": true,
+    "affected_source_delete_stales_view": true,
+    "personal_restore_keeps_refs": true,
+    "personal_restore_invalidates_old_tokens": true
+  },
+  "production_touched": false
+}

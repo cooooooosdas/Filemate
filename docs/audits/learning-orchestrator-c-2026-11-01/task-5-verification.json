@@ -1,0 +1,47 @@
+{
+  "stage": "C-task-5",
+  "date": "2026-11-01",
+  "status": "task_passed_not_C_acceptance",
+  "base_commit": "e25e7284613dd3f9f1d36f5dcd6436b2030edff9",
+  "targeted": {
+    "first_red_failed": 8,
+    "first_red_passed": 10,
+    "final_cases": 19,
+    "legacy_goal_route_red_failed": 1
+  },
+  "frontend_gate": {
+    "typecheck": "PASS",
+    "failed": 0,
+    "passed": 362,
+    "build": "PASS",
+    "bundle": {
+      "javascript": 386932,
+      "javascript_gzip": 143269,
+      "css": 111534
+    },
+    "tests": 362
+  },
+  "scope": [
+    "Exact old goal Artifact read; no first-goal fallback",
+    "Actual day field maps to original zero-based completion index",
+    "Semester task page is computed from the actual filtered task list",
+    "V2 wrong_id alias canonicalized; malformed or ambiguous references block record workspace",
+    "Programming explicit chooser; missing problem never selects first problem",
+    "Interview source/focus/goal/scenario/target kept; no invented session"
+  ],
+  "limitations": [
+    "Legacy wrongbook keeps the original query but only supports directory browsing; UI explicitly discloses this.",
+    "Behavior tests and Vue build are not browser-click evidence; browser acceptance remains Task7.",
+    "No deployment, D/E implementation or real-student learning-effect claim."
+  ],
+  "source_sha256": {
+    "filemate/web/src/today/navigation.ts": "2b4df69e48b8787323aa5f3e6270e73cf0c8d00e37046aeb0fb65f0198aed57e",
+    "filemate/web/tests/today-navigation.test.mjs": "5e193e3dfc9b12a1553d8e27aa9613ce0339f40e2c33a4aa66264ae634b5d9ad",
+    "filemate/web/tests/route-state.test.mjs": "46a006629bb5d8372dc061eec69bb39b38058c5ac8c2211f37a03dbe6e490da1",
+    "filemate/web/src/views/GoalPlanner.vue": "e62f83cacb1ca506ab1f088f4569f67956e6f24e3eee73771a7d6d339706607d",
+    "filemate/web/src/views/StudyPlan.vue": "4202005d6d88abf644182fad43c461df7348edfc7030ce4f7e20e572c3d01b41",
+    "filemate/web/src/views/Wrongbook.vue": "3324668f1582cef212ff2ffabed316c3da555831b9177fd19c881dee847a075b",
+    "filemate/web/src/views/Semester.vue": "c259f1892b5ac2d95cb8d21fe8df16b01594fc2806a00b75033ac9b86a45eed4",
+    "filemate/web/src/views/Programming.vue": "0c7b8d308e1dfeab99f831dbf1aafcf620198fd794ad6cb711e10a9c03f97980"
+  }
+}

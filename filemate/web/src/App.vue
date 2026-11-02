@@ -125,7 +125,7 @@
       <div class="content-scroll">
         <router-view v-slot="{ Component }">
           <transition name="page-fade" mode="out-in">
-            <component :is="Component" :key="routeViewKey(route.path, route.fullPath, refreshToken)" />
+            <component :is="Component" :key="routeViewKey(route.path, route.fullPath, refreshToken, wrongbookV2Enabled)" />
           </transition>
         </router-view>
         <footer class="site-footer" aria-label="网站备案与使用说明">
@@ -202,6 +202,7 @@ import { checkHealth, getAccountState, logoutAccount } from './services/api'
 import type { AccountState } from './types/account'
 
 const route = useRoute()
+const wrongbookV2Enabled = import.meta.env.VITE_ENABLE_WRONGBOOK_V2 === 'true'
 const router = useRouter()
 const sidebarCollapsed = ref(false)
 const mobileNavOpen = ref(false)
@@ -664,6 +665,9 @@ function isAuthPath(path: string): boolean {
 
 .topbar-actions {
   display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 8px;
 }

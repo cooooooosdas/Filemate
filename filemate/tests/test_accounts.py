@@ -308,3 +308,45 @@ def test_concurrent_registration_and_recovery_are_single_use(tmp_path):
         results = list(pool.map(lambda _: attempt_recover(), range(2)))
     assert len([item for item in results if item]) == 1
     storage.close()
+
+
+@pytest.mark.parametrize(
+    "encoded",
+    [
+        "",
+        "plain-text-password",
+        "md5$abc",
+        "scrypt-v1$zz$00",
+        "scrypt-v1$$",
+        "bcrypt-v1$aa$bb",
+        "scrypt-v1$aa$bb$cc",
+        None,
+    ],
+)
+def test_corrupted_password_hash_is_rejected_without_crashing(encoded) -> None:
+    """损坏/异构的 password_hash 必须判为不匹配，而不是让登录接口 500。"""
+    from filemate.accounts import _verify_password
+
+    assert _verify_password("Passw0rd123", encoded) is False
+
+
+def test_session_cache_is_bounded_and_evicts_least_recently_used(account_server) -> None:
+    """session 缓存必须有上限，否则进程内存随上传次数单调增长。"""
+    original = account_server._SESSION_CACHE_LIMIT
+    try:
+        account_server._SESSION_CACHE_LIMIT = 3
+        for index in range(6):
+            account_server._session_cache_set(f"s{index}", {"session_id": f"s{index}"})
+        assert [key[1] for key in account_server._sessions] == ["s3", "s4", "s5"]
+
+        # 命中要刷新 LRU 位置：s3 被提升到队尾，下一次写入该淘汰最旧的 s4。
+        assert account_server._session_cache_get("s3") is not None
+        account_server._session_cache_set("s6", {"session_id": "s6"})
+        assert [key[1] for key in account_server._sessions] == ["s5", "s3", "s6"]
+
+        account_server._session_cache_clear("local")
+        assert len(account_server._sessions) == 0
+    finally:
+        # 不能用 monkeypatch：account_server fixture 会先 pop sys.modules，
+        # 导致 monkeypatch undo 时模块已不存在，污染后续测试。
+        account_server._SESSION_CACHE_LIMIT = original

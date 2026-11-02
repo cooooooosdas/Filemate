@@ -1,0 +1,9 @@
+{
+  "synthetic": true,
+  "passed": true,
+  "checks": [
+    "cancel keeps draft",
+    "confirm clears empty selection",
+    "back loads clean question"
+  ]
+}

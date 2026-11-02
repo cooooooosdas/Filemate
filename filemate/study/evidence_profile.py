@@ -8,6 +8,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import urlencode
 
+from filemate.wrongbook.evidence import trusted_attempt
+
 MIN_SAMPLES = 5
 STALE_DAYS = 90
 DIMENSIONS = {"内容", "结构", "表达", "岗位匹配", "内容准确性", "逻辑结构", "表达流畅性", "岗位匹配度"}
@@ -81,7 +83,7 @@ def build_evidence_profile(*, attempts: list[dict[str, Any]], wrongs: list[dict[
     for row in attempts:
         moment = _time(row.get("created_at"), current)
         correct = _number(row.get("is_correct"), 1)
-        if moment is None or correct not in {0, 1} or _number(row.get("score"), 1) is None:
+        if not trusted_attempt(row) or moment is None or correct not in {0, 1} or _number(row.get("score"), 1) is None:
             excluded["quiz"] += 1
             continue
         valid["quiz"].append({"time": moment, "record_id": row["attempt_id"],
@@ -90,7 +92,8 @@ def build_evidence_profile(*, attempts: list[dict[str, Any]], wrongs: list[dict[
     for row in wrongs:
         moment = _time(row.get("updated_at"), current)
         mastered = _number(row.get("mastered"), 1)
-        if moment is None or mastered not in {0, 1}:
+        if (moment is None or mastered not in {0, 1} or row.get("learning_status") == "pending_check"
+                or row.get("scheduler_version") == "review-interval-v2" and not row.get("error_count")):
             excluded["wrong"] += 1
             continue
         pending += mastered == 0
@@ -143,7 +146,7 @@ def build_evidence_profile(*, attempts: list[dict[str, Any]], wrongs: list[dict[
                     dimensions.setdefault(name, []).append({**record, "value": numeric})
     metadata = {
         "quiz": ("练习作答正确率", "次作答", "有效客观判题记录中答对次数 / 作答次数；重复作答逐次计入，不等同于独立题目或知识掌握。"),
-        "wrong": ("错题复练状态", "道错题", "同题连续答对两次记为平台已掌握；已掌握错题 / 全部有效错题，不证明延迟保持或知识迁移。"),
+        "wrong": ("错题复练状态", "道错题", "旧版连续答对两次与review-interval-v2延迟复习标准分别保留规则含义；已达各自规则标准 / 有效错题，不证明长期掌握或知识迁移，待核对记录排除。"),
         "plan": ("学习计划完成率", "个计划学习日", "有效未撤销计划中完成学习日 / 总学习日；不同计划的相同日期分别计入，只表示勾选完成。"),
         "interview": ("面试模型参考分", "条已评估回答", "仅对scoring_mode=llm且有效的逐回答分数取算术平均；排除本地回退，不等同于导师校准结果。"),
     }

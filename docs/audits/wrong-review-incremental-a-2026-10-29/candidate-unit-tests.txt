@@ -1,0 +1,15 @@
+test_budget_and_preview_only (review2_candidate_tests.Review2Test.test_budget_and_preview_only) ... ok
+test_due_excludes_future_and_mastered (review2_candidate_tests.Review2Test.test_due_excludes_future_and_mastered) ... ok
+test_duplicate_row_does_not_duplicate_task (review2_candidate_tests.Review2Test.test_duplicate_row_does_not_duplicate_task) ... ok
+test_invalid_date_is_not_silently_due (review2_candidate_tests.Review2Test.test_invalid_date_is_not_silently_due) ... ok
+test_page_scope_is_explicit (review2_candidate_tests.Review2Test.test_page_scope_is_explicit) ... ok
+test_priority_has_clear_reason (review2_candidate_tests.Review2Test.test_priority_has_clear_reason) ... ok
+test_requires_timezone (review2_candidate_tests.Review2Test.test_requires_timezone) ... ok
+test_requires_valid_budget (review2_candidate_tests.Review2Test.test_requires_valid_budget) ... ok
+test_utc_naive_legacy (review2_candidate_tests.Review2Test.test_utc_naive_legacy) ... ok
+test_zero_minutes (review2_candidate_tests.Review2Test.test_zero_minutes) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.001s
+
+OK

@@ -1,0 +1,162 @@
+{
+  "filemate/wrongbook/api.py": [
+    {
+      "method": "get",
+      "path": "/summary",
+      "function": "summary",
+      "line": 80
+    },
+    {
+      "method": "get",
+      "path": "/capabilities",
+      "function": "capabilities",
+      "line": 84
+    },
+    {
+      "method": "get",
+      "path": "/page",
+      "function": "page",
+      "line": 91
+    },
+    {
+      "method": "get",
+      "path": "/filter-options",
+      "function": "options",
+      "line": 96
+    },
+    {
+      "method": "get",
+      "path": "/receipts/{request_key}",
+      "function": "receipt",
+      "line": 101
+    },
+    {
+      "method": "get",
+      "path": "/question-access/{artifact_id}/{question_index}",
+      "function": "question_access",
+      "line": 105
+    },
+    {
+      "method": "post",
+      "path": "/attempts",
+      "function": "answer",
+      "line": 126
+    },
+    {
+      "method": "get",
+      "path": "/{wrong_id}",
+      "function": "detail",
+      "line": 130
+    },
+    {
+      "method": "get",
+      "path": "/{wrong_id}/attempts",
+      "function": "attempts",
+      "line": 134
+    },
+    {
+      "method": "get",
+      "path": "/{wrong_id}/events",
+      "function": "events",
+      "line": 138
+    },
+    {
+      "method": "patch",
+      "path": "/{wrong_id}/diagnosis",
+      "function": "diagnosis",
+      "line": 142
+    },
+    {
+      "method": "post",
+      "path": "/{wrong_id}/schedule-preview",
+      "function": "preview",
+      "line": 146
+    },
+    {
+      "method": "post",
+      "path": "/{wrong_id}/schedule-confirm",
+      "function": "confirm",
+      "line": 150
+    }
+  ],
+  "filemate/wrongbook/learning_api.py": [
+    {
+      "method": "get",
+      "path": "/{wrong_id}/learning-context",
+      "function": "context",
+      "line": 72
+    },
+    {
+      "method": "get",
+      "path": "/{wrong_id}/connections",
+      "function": "connections",
+      "line": 79
+    },
+    {
+      "method": "get",
+      "path": "/analysis-requests/{request_key}",
+      "function": "recovery",
+      "line": 83
+    },
+    {
+      "method": "post",
+      "path": "/{wrong_id}/analyses",
+      "function": "analyze",
+      "line": 90
+    },
+    {
+      "method": "get",
+      "path": "/{wrong_id}/analyses",
+      "function": "analyses",
+      "line": 94
+    },
+    {
+      "method": "get",
+      "path": "/{wrong_id}/analyses/{analysis_id}",
+      "function": "analysis",
+      "line": 98
+    },
+    {
+      "method": "post",
+      "path": "/{wrong_id}/analyses/{analysis_id}/cancel",
+      "function": "cancel",
+      "line": 102
+    },
+    {
+      "method": "post",
+      "path": "/{wrong_id}/analyses/{analysis_id}/adoption-preview",
+      "function": "adoption_preview",
+      "line": 106
+    },
+    {
+      "method": "post",
+      "path": "/{wrong_id}/analyses/{analysis_id}/adoption-confirm",
+      "function": "adoption_confirm",
+      "line": 110
+    },
+    {
+      "method": "post",
+      "path": "/{wrong_id}/learning-plan-preview",
+      "function": "plan_preview",
+      "line": 116
+    },
+    {
+      "method": "post",
+      "path": "/{wrong_id}/learning-plan-confirm",
+      "function": "plan_confirm",
+      "line": 120
+    },
+    {
+      "method": "post",
+      "path": "/{wrong_id}/learning-operations/{event_id}/undo-preview",
+      "function": "undo_preview",
+      "line": 126
+    },
+    {
+      "method": "post",
+      "path": "/{wrong_id}/learning-operations/{event_id}/undo-confirm",
+      "function": "undo_confirm",
+      "line": 132
+    }
+  ]
+}

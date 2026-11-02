@@ -20,9 +20,10 @@ import uuid
 from collections import OrderedDict
 from contextlib import asynccontextmanager, suppress
 from contextvars import ContextVar
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, Any, Literal
+from urllib.parse import quote
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
@@ -102,6 +103,10 @@ load_dotenv(env_path, override=False)
 logger = logging.getLogger(__name__)
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+UPLOAD_CHUNK_BYTES = 1024 * 1024
+# 业务"今日"统一按中国时区计算，与预算账本（runtime_governance）口径一致；
+# 不再依赖容器/服务器本地时区，避免 UTC 部署时 0-8 点"今天"错位一天。
+LOCAL_ZONE = timezone(timedelta(hours=8))
 ALLOWED_UPLOAD_SUFFIXES = {".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt"}
 LEARNING_UPLOAD_SUFFIXES = ALLOWED_UPLOAD_SUFFIXES | {f".{suffix}" for suffix in PLAIN_TEXT_SUFFIXES}
 DATA_DIR = Path(
@@ -328,29 +333,44 @@ async def _save_upload(file: UploadFile, *, learning_source: bool = False) -> tu
     if Path(filename).suffix.lower() not in supported:
         raise HTTPException(status_code=400, detail="不支持的文件格式")
 
-    content = await file.read(MAX_UPLOAD_BYTES + 1)
-    if len(content) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="文件不能超过 25 MB")
-    if not content:
-        raise HTTPException(status_code=400, detail="文件内容为空")
-
     upload_dir = _current_upload_root() / uuid.uuid4().hex
     file_path = upload_dir / filename
     created = False
-    try:
-        upload_dir.mkdir(parents=True, exist_ok=False)
-        created = True
-        with file_path.open("xb") as stream:
-            stream.write(content)
-    except OSError:
+    written = 0
+
+    def discard() -> None:
+        """清理本次上传产生的半成品，不触碰同一目录下的其他内容。"""
         if created:
             with suppress(OSError):
                 file_path.unlink(missing_ok=True)
             with suppress(OSError):
                 upload_dir.rmdir()
+
+    try:
+        upload_dir.mkdir(parents=True, exist_ok=False)
+        created = True
+        # 边读边写：整文件读入内存会让并发上传按 25MB×并发数放大 RSS。
+        with file_path.open("xb") as stream:
+            while True:
+                chunk = await file.read(UPLOAD_CHUNK_BYTES)
+                if not chunk:
+                    break
+                written += len(chunk)
+                if written > MAX_UPLOAD_BYTES:
+                    raise HTTPException(status_code=413, detail="文件不能超过 25 MB")
+                stream.write(chunk)
+    except HTTPException:
+        discard()
+        raise
+    except OSError:
+        discard()
         logger.warning("上传存储暂不可用")
         raise HTTPException(status_code=503, detail="文件暂时无法保存，请稍后重试") from None
-    return file_path, len(content)
+
+    if not written:
+        discard()
+        raise HTTPException(status_code=400, detail="文件内容为空")
+    return file_path, written
 
 
 def _managed_file_status(
@@ -570,6 +590,15 @@ async def isolate_model_credentials(request: Request, call_next):
         if not isinstance(body, dict) or body.get('mode') != 'llm':
             return JSONResponse(status_code=403, content={
                 'success': False, 'data': None, 'error': '本地提取不接收模型密钥',
+            })
+    if request.url.path.startswith('/wrongbook/v2/'):
+        try:
+            body = await request.json()
+        except ValueError:
+            body = None
+        if not isinstance(body, dict) or body.get('credential_mode') != 'browser':
+            return JSONResponse(status_code=403, content={
+                'success': False, 'data': None, 'error': '请先预览浏览器凭据模式的分析范围',
             })
     with model_request_key(value):
         return await call_next(request)
@@ -819,9 +848,7 @@ def delete_account(request: Request, payload: AccountDeleteRequest):
 
             service.delete_account(account['user']['account_id'], payload.password.get_secret_value(), stage, lambda: _workspace_deletion.rollback(token))
             receipt = _workspace_deletion.finish(token)
-            for key in list(_sessions):
-                if key[0] == owner:
-                    _sessions.pop(key, None)
+            _session_cache_clear(owner)
         except AccountError:
             raise
         except sqlite3.Error as exc:
@@ -891,18 +918,39 @@ async def unhandled_exception_handler(
     )
 
 
-# 内存存储 session（简化版，后续可以连数据库）
-_sessions: dict[tuple[str, str], dict] = {}
+# 内存 session 缓存：按（身份, session_id）分桶，超出上限按 LRU 淘汰。
+# 不设上限时每次 /process 都会留下一条完整 session，长期运行进程内存
+# 只增不减，最终需要重启才能回收。
+_SESSION_CACHE_LIMIT = max(64, int(os.getenv("FILEMATE_SESSION_CACHE_LIMIT", "2000")))
+_sessions: OrderedDict[tuple[str, str], dict] = OrderedDict()
+_session_cache_lock = threading.Lock()
 
 
 def _session_cache_get(session_id: str) -> dict[str, Any] | None:
     """读取当前身份的 Session 缓存。"""
-    return _sessions.get((_current_identity_id(), session_id))
+    key = (_current_identity_id(), session_id)
+    with _session_cache_lock:
+        value = _sessions.get(key)
+        if value is not None:
+            _sessions.move_to_end(key)
+        return value
 
 
 def _session_cache_set(session_id: str, value: dict[str, Any]) -> None:
-    """写入当前身份的 Session 缓存。"""
-    _sessions[(_current_identity_id(), session_id)] = value
+    """写入当前身份的 Session 缓存，并按 LRU 淘汰超额条目。"""
+    key = (_current_identity_id(), session_id)
+    with _session_cache_lock:
+        _sessions[key] = value
+        _sessions.move_to_end(key)
+        while len(_sessions) > _SESSION_CACHE_LIMIT:
+            _sessions.popitem(last=False)
+
+
+def _session_cache_clear(identity_id: str) -> None:
+    """丢弃某个身份的全部缓存（账号注销、数据恢复后使用）。"""
+    with _session_cache_lock:
+        for key in [item for item in _sessions if item[0] == identity_id]:
+            _sessions.pop(key, None)
 
 
 def _deserialize_session(session: dict[str, Any]) -> dict[str, Any]:
@@ -1318,7 +1366,6 @@ async def process_file(
         )
 
         result = session.to_dict()
-        result["_local_file_path"] = str(file_path)
         _session_cache_set(session.session_id, result)
 
         # 阶段级失败（损坏/加密文件）→ 返回 success=False，前端 ElMessage.error 已就绪
@@ -1733,6 +1780,19 @@ def _course_graph_storage() -> SQLiteStorage:
 from filemate.course_graph.api import create_router as _course_graph_router
 
 app.include_router(_course_graph_router(_course_graph_storage))
+
+from filemate.wrongbook.api import create_router as _wrongbook_router
+from filemate.wrongbook.repository import ReviewRepository
+
+app.include_router(_wrongbook_router(lambda: _storage))
+
+from filemate.wrongbook.learning_api import create_router as _review_learning_router
+
+app.include_router(_review_learning_router(lambda: _storage))
+
+from filemate.study.orchestrator.api import create_router as _orchestrator_router
+
+app.include_router(_orchestrator_router(lambda: _storage))
 
 
 def _require_graph_enabled() -> None:
@@ -3129,7 +3189,7 @@ def _select_focus_wrong(source_id: str | None) -> dict[str, Any] | None:
 @app.post("/goals/reverse-plan", response_model=ApiResponse)
 def create_reverse_goal(request: ReverseGoalRequest):
     """从目标和真实学习证据反推缺口与行动任务。"""
-    if request.deadline < datetime.now().astimezone().date():
+    if request.deadline < datetime.now(LOCAL_ZONE).date():
         raise HTTPException(status_code=422, detail="目标截止日期不能早于今天")
     source = _storage.get_source(request.source_id) if request.source_id else None
     if request.source_id and source is None:
@@ -3249,7 +3309,7 @@ def replan_reverse_goal(goal_id: str):
         raise HTTPException(status_code=404, detail="目标计划不存在")
     current = dict(artifact.get("content") or {})
     deadline = date.fromisoformat(str(current["deadline"]))
-    if deadline < datetime.now().astimezone().date():
+    if deadline < datetime.now(LOCAL_ZONE).date():
         raise HTTPException(status_code=409, detail="目标已过截止日期，请新建目标")
     source_id = artifact.get("source_id")
     source = _storage.get_source(source_id) if source_id else None
@@ -3275,7 +3335,7 @@ def replan_reverse_goal(goal_id: str):
                 "focus_wrong_id": task.get("focus_wrong_id"),
                 "attempt_id": (task.get("evidence_ref") or {}).get("attempt_id"),
                 "reason": reason,
-                "invalidated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+                "invalidated_at": datetime.now(LOCAL_ZONE).isoformat(timespec="seconds"),
             })
     plan["invalidated_tasks"] = invalidated[-20:]
     run_id = _run_goal_agents(
@@ -3488,9 +3548,7 @@ def restore_personal_data(request: PersonalRestoreRequest):
         _exclusive_tenants.add(identity)
     try:
         result = _personal_backup().restore(request.backup_id, request.confirmation_token)
-        for key in list(_sessions):
-            if key[0] == identity:
-                _sessions.pop(key, None)
+        _session_cache_clear(identity)
         return ApiResponse(success=True, data=result)
     except sqlite3.Error as exc:
         logger.warning('个人恢复数据库失败 (%s)', type(exc).__name__)
@@ -3759,6 +3817,8 @@ def update_wrongbook_diagnosis(
             error_cause=request.error_cause,
             note=request.note,
         )
+    except QuestionRevisionConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
         detail = str(exc)
         status_code = 404 if detail == "错题不存在" else 422
@@ -3874,7 +3934,7 @@ def today_review():
     """按证据、用户顺序和可用时长生成今日队列。"""
     from filemate.study.daily_coach import select_daily_queue, wrong_review_guidance
 
-    today = datetime.now().astimezone().date()
+    today = datetime.now(LOCAL_ZONE).date()
     preferences = _storage.get_daily_coach_preferences(today.isoformat())
     items: list[dict[str, Any]] = []
     active_plans = _storage.list_study_plans(status="active", limit=20)
@@ -3923,11 +3983,9 @@ def today_review():
             }
         )
 
-    wrong_questions = _storage.list_wrong_questions(
-        mastered=False,
-        due_only=True,
-        limit=50,
-    )
+    review_repository = ReviewRepository(_storage)
+    wrong_questions = review_repository.due_page(limit=50)
+    full_due_count = review_repository.summary()["due_count"]
     for wrong in wrong_questions:
         question = wrong.get("question") or {}
         guidance = wrong_review_guidance(wrong, today)
@@ -3947,7 +4005,7 @@ def today_review():
                 "question_snapshot": question,
                 "wrong_id": wrong["wrong_id"],
                 "explanation": question.get("explanation", ""),
-                "route": "/wrongbook",
+                "route": f"/wrongbook?focus={quote(wrong['wrong_id'], safe='')}",
             }
         )
 
@@ -3962,10 +4020,11 @@ def today_review():
             "date": today.isoformat(),
             "items": recommended,
             "active_plan_count": len(active_plans),
-            "pending_wrong_count": len(wrong_questions),
+            "pending_wrong_count": full_due_count,
+            "wrong_candidate_count": len(wrong_questions),
             "available_minutes": preferences["available_minutes"],
             "item_order": preferences["item_order"],
-            "deferred_count": deferred_count,
+            "deferred_count": deferred_count + max(0, full_due_count - len(wrong_questions)),
             "recommended_minutes": sum(
                 int(item["duration_minutes"]) for item in recommended
             ),
@@ -3980,7 +4039,7 @@ def update_daily_coach_preferences(request: DailyCoachPreferencesRequest):
         raise HTTPException(status_code=422, detail="任务标识过长")
     try:
         _storage.set_daily_coach_preferences(
-            datetime.now().astimezone().date().isoformat(),
+            datetime.now(LOCAL_ZONE).date().isoformat(),
             available_minutes=request.available_minutes,
             item_order=request.item_order,
         )

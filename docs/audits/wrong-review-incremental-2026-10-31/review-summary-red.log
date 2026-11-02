@@ -1,0 +1,42 @@
+✖ summary-only refresh failure retains identity, capability and existing facts (3.5748ms)
+✖ old or cross-identity summary response cannot replace newer facts (0.213ms)
+✔ clearing a confirmed empty selection removes the old writable question and ignores a late detail (7.5258ms)
+✔ after an answer refresh detail revision without losing receipt or unsaved diagnosis (1.8362ms)
+✔ late answer detail refresh cannot replace another selection (0.7309ms)
+✔ failed post-answer refresh preserves success and blocks stale revision writes until retry (0.5494ms)
+✔ deep links select their actual id, and missing ids never fall back to first (0.5645ms)
+✔ deleting the final page returns to the final valid offset, including empty library (0.1608ms)
+✔ late detail and source responses cannot replace the selected question (0.5402ms)
+✔ detail and history failures can be retried independently (0.6855ms)
+✔ cleared diagnosis sends an empty list, conflict preserves the draft (1.3504ms)
+✔ schedule confirms exactly the previewed command; retry preserves key and token (0.6035ms)
+✔ saved writes followed by failed refresh are described as saved (0.4398ms)
+✔ capability failure blocks writing and switching identity discards old UI application (0.3397ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 12
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 169.1988
+
+✖ failing tests:
+
+test at tests\wrongbook-workspace.test.mjs:13:1
+✖ summary-only refresh failure retains identity, capability and existing facts (3.5748ms)
+  TypeError: c.refreshSummary is not a function
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-workspace.test.mjs:16:54)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)
+
+test at tests\wrongbook-workspace.test.mjs:19:1
+✖ old or cross-identity summary response cannot replace newer facts (0.213ms)
+  TypeError: c.refreshSummary is not a function
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-workspace.test.mjs:21:18)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)

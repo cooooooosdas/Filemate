@@ -1,0 +1,667 @@
+Resolved 145 packages in 1ms
+Checked 103 packages in 608ms
+All checks passed!
+........................................................................ [  3%]
+........................................................................ [  7%]
+........................................................................ [ 11%]
+........................................................................ [ 15%]
+.......................................................s................ [ 19%]
+........................................................................ [ 23%]
+........................................................................ [ 27%]
+........................................................................ [ 31%]
+........................................................................ [ 35%]
+........................................................................ [ 39%]
+........................................................................ [ 43%]
+......................................................s................. [ 46%]
+........................................................................ [ 50%]
+........................................................................ [ 54%]
+.............................................................ssssss.ss.. [ 58%]
+........s.s........ssss..............sss................................ [ 62%]
+.........................................................s.............. [ 66%]
+........................................................................ [ 70%]
+................................s....................................... [ 74%]
+........................................................................ [ 78%]
+........................................................................ [ 82%]
+........................................................................ [ 86%]
+........................................................................ [ 89%]
+........................................................................ [ 93%]
+........................................................................ [ 97%]
+.........................................                                [100%]
+============================== warnings summary ===============================
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+.venv\Lib\site-packages\PyPDF2\__init__.py:21
+  C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\.venv\Lib\site-packages\PyPDF2\__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.
+    warnings.warn(
+
+filemate/tests/test_server_tenant_isolation.py::test_invalid_or_forged_identity_cookie_cannot_select_another_tenant
+  C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\.venv\Lib\site-packages\starlette\testclient.py:455: DeprecationWarning: Setting per-request cookies=<...> is being deprecated, because the expected behaviour on cookie persistence is ambiguous. Set cookies directly on the client instance instead.
+    return super().request(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+SKIPPED [1] filemate\tests\test_deploy_existing.py:15: 既有服务器部署工具仅在Linux使用
+SKIPPED [1] filemate\tests\test_bounded_parse.py:113: Linux worker address-space limit
+SKIPPED [1] filemate\tests\test_linux_judge.py:114: 仅验证 Linux 平台分支
+SKIPPED [1] filemate\tests\test_perception.py:191: 没有可用的 .docx 测试文件
+SKIPPED [1] filemate\tests\test_perception.py:203: 没有可用的 .docx 测试文件
+SKIPPED [1] filemate\tests\test_perception.py:216: 没有可用的 .docx 测试文件
+SKIPPED [1] filemate\tests\test_perception.py:236: 没有可用的 .pdf 测试文件
+SKIPPED [1] filemate\tests\test_perception.py:248: 没有可用的 .pdf 测试文件
+SKIPPED [1] filemate\tests\test_perception.py:279: 没有大 PDF 文件
+SKIPPED [1] filemate\tests\test_perception.py:321: 没有可用的 .pptx 测试文件
+SKIPPED [1] filemate\tests\test_perception.py:333: 没有可用的 .pptx 测试文件
+SKIPPED [1] filemate\tests\test_perception.py:480: PaddleOCR 未安装（可选依赖）
+SKIPPED [1] filemate\tests\test_perception.py:491: 需下载 PaddleOCR 模型（~80MB），CI 环境跳过
+SKIPPED [1] filemate\tests\test_perception.py:610: 测试文件不存在
+SKIPPED [1] filemate\tests\test_perception.py:627: 测试文件不存在
+SKIPPED [1] filemate\tests\test_perception.py:640: 测试文件不存在
+SKIPPED [1] filemate\tests\test_perception.py:655: 测试文件不存在
+SKIPPED [1] filemate\tests\test_perception.py:821: 测试文件不存在
+SKIPPED [1] filemate\tests\test_perception.py:831: 没有可用的 PDF 测试文件
+SKIPPED [1] filemate\tests\test_perception.py:842: 没有可用的 PPT 测试文件
+SKIPPED [1] filemate\tests\test_resource_recorder.py:64: 实际 /proc 仅适用于 Linux
+SKIPPED [1] filemate\tests\test_server_persistence.py:1993: 需要符号链接创建权限
+1820 passed, 22 skipped, 5 deselected, 3 warnings in 562.21s (0:09:22)
+Frontend verification workspace: C:\Users\胡希\.codex\worktrees\release-alpha3\FileMate-Project\_working\verify-web-06c1867b44f5428393aa190e97376d8b
+
+added 173 packages in 40s
+
+40 packages are looking for funding
+  run `npm fund` for details
+
+> filemate-web@1.3.0-alpha.4 test
+> node --test tests/*.test.mjs
+
+✔ shared small-text colors reach AA on all supported light surfaces (2.3316ms)
+✔ component placeholder and status colors inherit accessible tokens (0.244ms)
+✔ solid component buttons keep readable white labels when hovered (0.1724ms)
+✔ initial budget counts every static dependency and excludes lazy editor bytes (10.5209ms)
+✔ splitting an oversized eager dependency cannot bypass the total budget (25.887ms)
+✔ missing manifest dependency and eager editor loading fail explicitly (8.6265ms)
+✔ consent_is_per_request_not_restored (4.8323ms)
+✔ late_answer_never_crosses_scope (0.5084ms)
+✔ network_unknown_does_not_duplicate_model_call (0.42ms)
+✔ facts_are_read_only_and_failed_model_has_no_fake_answer (1.2347ms)
+✔ agent_preview_never_autoconfirms (0.7719ms)
+✔ history_reopen_is_read_only (0.575ms)
+✔ cancellation_wins_over_late_answer (0.6496ms)
+✔ editing_after_an_answer_is_unsent_and_keeps_the_previous_result (0.4231ms)
+✔ late_course_result_does_not_replace_selection (1.2834ms)
+✔ confirm_disabled_for_invalid_or_unsaved_decisions (0.5931ms)
+✔ retry_reuses_key_and_stale_digest_requires_preview (3.9663ms)
+✔ cancel_stops_next_source_and_keeps_ready_results (4.163ms)
+✔ new_course_panel_off_keeps_legacy_route (0.1609ms)
+✔ revoked_candidates_are_restored_from_history_and_not_republished (0.1859ms)
+✔ failed_first_source_does_not_starve_later_pending_sources (0.394ms)
+✔ unknown_network_extraction_keeps_key_until_its_result_is_known (0.3269ms)
+✔ late_read_cannot_cross_node_or_identity (3.2183ms)
+✔ answer_failure_retains_draft_and_retry_uses_same_version (5.143ms)
+✔ confirm_receipt_dedupes_refresh_not_write (0.611ms)
+✔ changed_options_invalidate_preview (0.2339ms)
+✔ no_auto_model_after_read_or_reopen (0.6267ms)
+✔ cancel_and_navigation_preserve_or_explicitly_discard (0.3065ms)
+✔ plan_completion_does_not_upgrade_training (0.2283ms)
+✔ quiz_unknown_response_reuses_key (0.3751ms)
+✔ ambiguous_500_preserves_quiz_and_generation_keys (0.5778ms)
+✔ ambiguous_502_preserves_quiz_and_generation_keys (0.2551ms)
+✔ ambiguous_504_preserves_quiz_and_generation_keys (0.3025ms)
+✔ ambiguous_408_preserves_quiz_and_generation_keys (0.2588ms)
+✔ same_work_recovers_ready_questions_without_overwriting_human_edits (175.8172ms)
+✔ url_wins_and_mobile_does_not_reuse_desktop_graph (0.9816ms)
+✔ storage_denied_and_corrupt_fall_back_to_memory (1.8456ms)
+✔ two_scopes_do_not_share_courses (1.1503ms)
+✔ query_round_trip_excludes_private_text (0.6981ms)
+✔ invalid_scalar_and_relation_inputs_fall_back_with_notice (0.4042ms)
+✔ missing_course_clears_preference_without_selecting_another (0.2762ms)
+✔ preferences_are_bounded_and_reject_untrusted_persisted_fields (4.0097ms)
+✔ initial_course_requires_an_explicit_url_or_a_saved_recent_course (0.4083ms)
+✔ real_engine_selection_preserves_zoom_center_and_dragged_coordinates (36.1453ms)
+✔ double_click_cancels_pending_selection_and_dispose_cancels_timers (1.9975ms)
+✔ outline_distinguishes_same_named_children_and_marks_multi_chapter_nodes (2.6994ms)
+✔ missing_parents_are_explicit_and_virtual_groups_are_real_labels (0.3912ms)
+✔ deterministic_layout_preserves_direction (13.9451ms)
+✔ related_to_cycles_are_not_dependencies (0.1785ms)
+✔ invalid_dependency_cycle_uses_safe_grid_and_reports_it (0.1732ms)
+✔ isolated_and_long_label_nodes_stay_selectable (0.1429ms)
+✔ duplicate_group_members_keep_same_concept_id (0.132ms)
+✔ node_budget_remains_100 (0.2753ms)
+✔ one_hundred_isolated_nodes_use_a_bounded_grid (0.3003ms)
+✔ real_graph_projection_preserves_node_aspect_for_single_rows_and_columns (27.9077ms)
+✔ unsaved_review_blocks_close_until_user_choice (2.6655ms)
+✔ successful_commit_emits_once_failed_refresh_does_not_reconfirm (1.4114ms)
+✔ closing_manager_does_not_cancel_or_restart_saved_work (0.2659ms)
+✔ restoring_backup_invalidates_preview_and_read_bundle (0.2031ms)
+✔ one_modal_at_a_time_restores_focus (1.4905ms)
+✔ late_close_does_not_close_a_new_modal (0.6209ms)
+✔ panel_tab_cycle_wraps_in_both_directions (0.6207ms)
+✔ late_old_course_and_digest_mismatch_cannot_mix (4.5514ms)
+✔ one_digest_reread_commits_only_a_consistent_bundle (0.7362ms)
+✔ search_locates_unloaded_node_and_clears_only_conflicting_filters (2.3461ms)
+✔ search_debounce_enter_cancels_pending_timer (1.5344ms)
+✔ network_error_keeps_only_same_identity_snapshot (1.4932ms)
+✔ identity_reset_clears_detail_and_aborts_reads (0.5728ms)
+✔ revoked_node_clears_selection (0.3625ms)
+✔ mutation_refresh_failure_never_replays_write (0.4246ms)
+✔ late_citation_or_new_digest_is_never_attached_to_old_detail (0.4302ms)
+✔ search_pagination_reaches_the_51st_identical_label_and_drops_late_pages (0.6697ms)
+✔ refresh_invalidates_search_from_a_different_digest (0.2713ms)
+✔ url_filter_changes_reset_offsets_and_refresh_clamps_a_shrunken_page (0.3859ms)
+✔ chapter_directory_reads_children_and_a_consistent_ancestor_path (0.2369ms)
+✔ selection_keeps_canvas_identity_and_expansion_alone_loads_neighbors (0.3351ms)
+✔ late_selection_and_new_digest_never_attach_detail_to_old_canvas (0.261ms)
+✔ chunks preserve 50/500/5000-character scripts and Unicode boundaries (3.7705ms)
+✔ 500 characters play sequentially with global subtitle offsets and one completion (2.1407ms)
+✔ a silent speech service times out once and supports retry (0.8956ms)
+✔ pause suspends the watchdog and ignores late subtitle boundaries (0.856ms)
+✔ replay after pause restores the queue and ignores old callbacks (0.6376ms)
+✔ stop during startup cancels timers and prevents all late events (0.5275ms)
+✔ network error is terminal even if end/start arrive later (0.4171ms)
+✔ native speak/pause/resume failures are translated into recoverable errors (0.7679ms)
+✔ empty text, invalid settings, unavailable voices and unsupported browser (0.6545ms)
+✔ remote poetry preserves original wording, attribution and official detail link (1.3779ms)
+✔ missing author and source stay absent instead of being invented (0.359ms)
+✔ unsupported categories, malformed, oversized and executable-looking responses are rejected (0.2824ms)
+✔ animation, manga, literature, poetry and philosophy retain category and longer original text (3.1267ms)
+✔ line breaks never rewrite or drop original punctuation (0.4481ms)
+✔ concurrent mounts and route returns share one in-flight request (2.6138ms)
+✔ the online corpus is not limited to the bundled fallback sentences (0.3735ms)
+✔ network failure reuses validated cached poetry with its attribution (0.3947ms)
+✔ a repeated remote sentence selects a different cached or classic sentence (0.2904ms)
+✔ duplicate wording under a different UUID still avoids the previous sentence (0.258ms)
+✔ corrupt cache, wrong category and tampered links cannot replace trusted fallback (0.245ms)
+✔ cached anime survives an offline visit and legacy poetry keeps its original category (0.3391ms)
+✔ denied and read-only browser storage do not break either online or offline visits (0.4691ms)
+✔ remote cache is capped and restored URLs are rebuilt from validated UUIDs (0.4324ms)
+✔ partial radar has only real score points and never connects missing axes through zero (41.2991ms)
+✔ late context from a previous session cannot replace current report (1.0343ms)
+✔ lost response retries identical command; stale evidence invalidates it and clears consent (6.992ms)
+✔ failed new assessment preserves readable old report and surfaces failure without fake score (1.0299ms)
+✔ history selection race and disposal suppress late updates (0.6528ms)
+✔ confirmed clear discards local reports and pending commands even when refresh fails (0.7044ms)
+✔ cancel waits for server terminal state and releases controls without manual refresh (1.0033ms)
+✔ freeze retries keep original evidence; receipt alone binds immutable take (2.6915ms)
+✔ task changes detach unsaved audio, reanswer never reuses old evidence (0.3397ms)
+✔ quotas never evict; explicit remove revokes URLs; session cleanup revokes all (0.6655ms)
+✔ no empty or wrong-context evidence, transcript missing confidence stays null (0.6733ms)
+✔ temporary ASR preview never crosses strict evidence API boundary (0.4371ms)
+✔ deleting a blob after lost receipt preserves pending evidence and original request (1.702ms)
+✔ permission denial and late grant after disposal never leak microphone tracks (3.0951ms)
+✔ stop waits for final audio chunk and releases microphone once (5.492ms)
+✔ known PCM measures real low energy and clipping without an ability score (4.0607ms)
+✔ final-only transcription preserves typed prefix, deduplicates callbacks and unknown confidence (3.3667ms)
+✔ device disconnect and size cap preserve partial audio and settle once (1.1785ms)
+✔ permission timeout and missing final stop callback cannot hold a microphone forever (1.2216ms)
+✔ transcription start timeout and network error keep final text and release vendor session (0.4201ms)
+✔ transcription provider that never starts is released after15seconds (0.3277ms)
+✔ permission or no-speech errors after final text retain interrupted evidence (0.3437ms)
+✔ hard transcription limit aborts atomically before actions unlock (0.6781ms)
+✔ same_score_new_run_and_pending_analysis_invalidate_report (0.7563ms)
+✔ unconsented_read_never_sends_text (2.5581ms)
+✔ speech_stops_and_releases_url_on_input_recording_route (1.1298ms)
+✔ tts_failure_preserves_feedback_without_browser_voice_fallback (0.4863ms)
+✔ revoking_voice_permission_stops_immediately (0.2634ms)
+✔ late_response_cannot_replace_new_session (1.2401ms)
+✔ failed_latest_never_uses_historical_score (0.2788ms)
+✔ ime_composition_preserves_draft (0.1241ms)
+✔ retry_uses_original_submit_key_but_new_explicit_analysis_key (1.0147ms)
+✔ refresh_never_automatically_analyzes_and_conflict_keeps_draft (5.2067ms)
+✔ permission_can_be_revoked_during_analysis_and_old_snapshot_is_ignored (1.3815ms)
+✔ analysis_pending_never_shows_old_success_as_current (0.5419ms)
+✔ lost_submit_receipt_cannot_analyze_or_own_later_tab_attempt (2.1774ms)
+✔ fixed-question lost save exposes replay without a runtime draft context (1.0005ms)
+✔ legacy routes retain language and scenario distinctions (1.3981ms)
+✔ loading remote draft never invokes a save or restores local inputs (0.6144ms)
+✔ failed save retains original key and payload for retry; conflicts never erase input (1.913ms)
+✔ disposed controller ignores late read result (0.3387ms)
+✔ Vue reactive configuration can be saved as a stable plain snapshot (6.491ms)
+✔ invalid custom duration cannot enter the fixed-question runner (0.43ms)
+✔ retrying a restored session retains its actual scenario, duration and device intent (0.3335ms)
+✔ draft save carries the opaque version read from the server (0.4669ms)
+✔ stalled frame times out once, releases its slot and rejects late responses (1.5971ms)
+✔ stale frame cannot unlock a new observation epoch (0.4708ms)
+✔ hidden page stops resources, visible page never automatically restarts devices (0.6294ms)
+✔ continuous missing face and darkness form actual observed intervals (2.5284ms)
+✔ observable motions have cooldown and never produce emotion labels (1.2529ms)
+✔ poor light suppresses pose and smile interpretation (0.2396ms)
+✔ background task or restored token changes never rebind an old draft (1.8767ms)
+✔ same-tab reload restores original draft context only after authorized snapshot (1.2937ms)
+✔ definite 409 permits fresh explicit same-task retry, network ambiguity retains key (1.9136ms)
+✔ bounded temporary storage ignores corrupt payloads and unavailable browser storage (18.5885ms)
+✔ ambiguous committed timed save remains replayable after snapshot changes attempt (0.7506ms)
+✔ continuous clock uses server remaining and monotonic elapsed; never negative (1.0897ms)
+✔ timed selection is explicit and unsupported AI generation stays blocked (0.5467ms)
+✔ lost submit response replays original runtime revision and preserves attempt receipt (2.0059ms)
+✔ runtime start/event retry keeps command key; legacy dispatch remains unchanged (3.6594ms)
+✔ frozen video and visual evidence survive lost response and local deletion (3.6505ms)
+✔ only matching receipt binds retained video to its immutable attempt (1.49ms)
+✔ question changes retain detached clips but block wrong-attempt attachment (0.4206ms)
+✔ quota refusal never evicts existing clips; URLs revoke once on explicit deletion or session change (1.7838ms)
+✔ empty, oversized and wrong-session recordings are refused before URL allocation (0.2723ms)
+✔ reactive vision summaries freeze as detached JSON evidence without blocking save (1.4599ms)
+✔ explicit conflicted draft abandonment drops frozen video and visual evidence even for identical replacement text (29.0025ms)
+✔ camera opens video only with exact selected device and closes without microphone (2.949ms)
+✔ cancelled and timed-out permissions release late streams and cannot revive preview (0.9557ms)
+✔ denied preview and disconnected camera remain recoverable, no automatic reopening (0.6957ms)
+✔ silent recording never acquires microphone, waits final chunk, releases clone not preview (5.1687ms)
+✔ requested microphone is exact and rejection does not silently start silent recording (0.3456ms)
+✔ recording permission timeout releases late microphone and does not create recorder (0.3225ms)
+✔ disconnect, recorder error and byte cap preserve prior chunks and settle once (2.1357ms)
+✔ missing onstop releases hardware after5seconds and ignores late callbacks (0.6128ms)
+✔ duration limit, hidden interruption and dispose preserve resource bounds (0.426ms)
+✔ unanswered permission settles start on timeout or cancellation and late grant cannot replace a new run (1.1998ms)
+✔ cancellation between permission fulfillment and recorder continuation releases microphone exactly once (0.437ms)
+✔ live readings use actual bounded coefficients, never emotion probabilities (1.998ms)
+✔ missing face or bad light clears previous readings rather than showing false zero (0.2703ms)
+✔ wrongbook credentials apply only to an explicit analysis POST (1.8757ms)
+✔ course model credential is scoped to the exact extract route and explicit llm mode (0.308ms)
+✔ keys reject whitespace and invalid header characters without echoing their value (0.8385ms)
+✔ model credential attaches only to the complete generation route set (0.3515ms)
+✔ natural voices default to Xiaoxiao and exclude device robotic voices (1.4879ms)
+✔ natural audio lifecycle releases audio and emits actual playback events (12.1702ms)
+✔ stop aborts pending requests and prevents late playback (0.8939ms)
+✔ upstream failure is visible and never falls back to device speech (0.9939ms)
+✔ rate and volume changes preserve the current audio and do not resynthesize (1.0716ms)
+✔ every available tool and legacy alias has a reachable primary destination (1.5644ms)
+✔ closed features disappear from search, primary and contextual navigation together (1.3756ms)
+✔ keyword search normalizes case and full-width characters and requires every term (3.048ms)
+✔ exact feature title outranks incidental matches and no unavailable feature is fabricated (0.2729ms)
+✔ study and archival imports guide toward their own next steps without duplicate upload links (0.476ms)
+✔ each tool appears once in a compact sidebar hierarchy (0.4407ms)
+✔ nine-character passwords accept lowercase or uppercase with digits and optional symbols (1.2125ms)
+✔ short, digits-only and letters-only new passwords explain how to correct the field (0.4884ms)
+✔ length limit counts Unicode code points and preserves the 128-character maximum (0.2694ms)
+✔ automatic appearance reacts to the system, while a manual choice survives system changes and reload (1.3048ms)
+✔ invalid preferences and unavailable browser storage cannot break the page (0.2265ms)
+✔ every theme keeps body, secondary text and links readable on its workspace and reading surfaces (1.8671ms)
+✔ saving waits for the native picker and cancellation never opens a writable file (1.0151ms)
+✔ failed file writes abort the temporary stream and report failure instead of success (1.6348ms)
+✔ export names cannot traverse directories and filenames retain their useful extension (0.6314ms)
+✔ submission labels match the evidence eligibility contract (0.8472ms)
+✔ unavailable and withdrawn records never claim statistical validity (0.1293ms)
+✔ unavailable records cannot display stale accepted or infrastructure verdicts (0.1372ms)
+✔ V2 review filter changes reuse the mounted workspace while legacy and explicit refresh still remount (1.6375ms)
+✔ interview session query synchronization preserves the running page (0.1915ms)
+✔ draft protection covers typed answers, recordings and preparation without treating saved answers as drafts (0.2296ms)
+✔ today links open the selected plan and preserve other task destinations (0.3285ms)
+✔ course_graph_browsing_preserves_the_live_workspace_but_legacy_links_remount (0.3242ms)
+✔ mouth motion follows actual sound energy, including silence and end of audio (2.0048ms)
+✔ audio analysis returns empty on unsupported, aborted, oversized and failed decoding (9.4596ms)
+✔ decoded silent sections stay closed rather than becoming a timed mouth loop (6.5501ms)
+✔ opening reads exact outbound question answers history and quotes without model or authorization (9.3947ms)
+✔ actual full review detail is narrowed to the four identity fields before context checks (0.4579ms)
+✔ unknown POST is recovered through same-key GET only, no body or key persisted (0.9201ms)
+✔ identity restore or new answer rejects late context and model responses (4.4694ms)
+✔ multi-instance pending merges, seven-day TTL and twenty-entry bound preserve unresolved requests (5.172ms)
+✔ mismatched receipt cannot become a success and cancellation invalidates late publication (0.5171ms)
+✔ a server 410 tombstone ends uncertainty and permits a separately authorized fresh analysis (0.5308ms)
+✔ only bounded navigation conditions enter the URL, never answers (2.5736ms)
+✔ batch metadata is identity scoped, bounded, and does not preserve extra text (1.2928ms)
+✔ blocked storage and corrupt preferences preserve usable in-page navigation (0.668ms)
+✔ stale navigation preferences cannot erase a newer focus batch (5.8854ms)
+✔ session planner invalidates preview on budget and applied filter changes (123.7461ms)
+✔ mounted focus resumes only, or consumes exact checked references, never auto-starts another page (55.7873ms)
+✔ new-answer revision clears old previews but preserves the real editable task draft (111.8745ms)
+✔ mounted learning hub preserves manual diagnosis and focuses its actual confirmation region (36.0173ms)
+✔ the hub cannot start undo while evidence is still loading (14.3535ms)
+✔ mounted question allows exact input recovery after refresh but locks an in-memory unknown request (9.3941ms)
+✔ historical analysis renders its own quote even when the current context has different text (11.065ms)
+✔ learning artifact switching and refresh both protect its real answer draft (47.7192ms)
+✔ mounted review entries invalidate before reopening after a restore or expired identity (8.2634ms)
+✔ graph leave permission is reset by the actual review answer, not the removed legacy input (19.9688ms)
+✔ every entry uses the complete raw snapshot and nullable review result (11.9721ms)
+✔ disabled or unavailable v2 capability never falls back to the legacy judge (1.8105ms)
+✔ old frontend refuses a v2 owned or historical question before POST (2.9772ms)
+✔ late capability or answer from a deactivated artifact cannot reach the next question (19.1597ms)
+✔ a revealed answer and lost response use the identical original request (1.5072ms)
+✔ default ten, upper twenty, empty queue; start and skip create no attempt (15.4581ms)
+✔ independent display has no reference or history; reveal remains assisted (4.5544ms)
+✔ resume verifies saved attempt against server, never trusts edited local completion (2.4277ms)
+✔ changed digest, deleted question and paused question are unavailable without substitution (0.8579ms)
+✔ seven day expiry and identity reset never replay requests (1.5565ms)
+✔ pending save recovery queries receipt; it never automatically submits (3.064ms)
+✔ receipt reference survives refresh while server verification is still in flight (1.9414ms)
+✔ checked selection starts exact references without querying another page (0.9521ms)
+✔ checked selection rejects duplicate, oversized and invalid references (0.4409ms)
+✔ checked selection retains unavailable references rather than substituting (0.6091ms)
+✔ saved edited plan releases the navigation guard while unsaved task text remains protected (7.2368ms)
+✔ edit requires fresh preview, cancel and conflict never mutate original goal or show success (2.0074ms)
+✔ late previews after identity invalidation cannot replace new state (0.9605ms)
+✔ unknown confirmation retains exact key and preview, edits blocked until receipt is recovered (0.7212ms)
+✔ undo is separately previewed and confirmed and server conflict preserves current data (0.5689ms)
+✔ evidence refresh preserves unknown confirmation identity and original command (1.8405ms)
+✔ evidence refresh invalidates preview but retains edited task text and a dirty guard (0.5085ms)
+✔ session preview uses the shared read client, full filter and explicit timeout (92.5921ms)
+✔ readiness posts only references and the preview filter, without model credentials (30.8369ms)
+✔ transport and API failures surface once, preserving the callers preview (37.0327ms)
+✔ recommended survives URL and preference round trips while due stays default (1.5459ms)
+✔ preview sends applied filters and integer budget; no page traversal or writing (1.4826ms)
+✔ invalid budget never reaches API (0.3263ms)
+✔ zero budget is valid but empty server selection cannot start (0.2481ms)
+✔ newer preview wins and stale preview cannot restore old filters (0.2077ms)
+✔ budget or identity invalidation rejects a late successful check (0.281ms)
+✔ 409 requires a fresh preview and never falls back to different questions (0.51ms)
+✔ shared HTTP client normalized 409 also invalidates preview (0.2815ms)
+✔ network check failure preserves preview and allows explicit retry (0.3187ms)
+✔ partial or changed check results cannot replace the preview (0.4692ms)
+✔ double check does not dispatch another request (0.3726ms)
+✔ disposing rejects late preview and all later operations (0.3303ms)
+✔ double click and Enter are one saved operation and keep the raw question (32.9862ms)
+✔ a lost response blocks changed input and retries the exact saved key (1.3627ms)
+✔ refresh first recovers a persisted receipt without another POST (1.3927ms)
+✔ missing receipt after refresh stays uncertain and requires the original body (1.8171ms)
+✔ viewing an answer is sticky through answer edits and a failed send (0.8874ms)
+✔ a revision conflict keeps the draft but blocks resubmitting a stale snapshot (0.9924ms)
+✔ late response cannot enter another question or identity (7.5715ms)
+✔ display normalization never edits the expected question or runs HTML (0.704ms)
+✔ schedule events expose their actual undo action (0.2691ms)
+✔ course code responses use the supported subjective type and show a code editor label (0.3914ms)
+✔ simultaneous entries preserve other pending keys and assisted flags without resurrecting removals (3.1377ms)
+✔ receipt recovery rejects another question or version and accepts verified provenance only (1.8534ms)
+✔ after refresh the original action can be retried without changing its key or input (1.8011ms)
+✔ clearing a confirmed empty selection removes the old writable question and ignores a late detail (9.4605ms)
+✔ after an answer refresh detail revision without losing receipt or unsaved diagnosis (3.0508ms)
+✔ late answer detail refresh cannot replace another selection (1.1506ms)
+✔ failed post-answer refresh preserves success and blocks stale revision writes until retry (0.7623ms)
+✔ deep links select their actual id, and missing ids never fall back to first (0.9677ms)
+✔ deleting the final page returns to the final valid offset, including empty library (0.2525ms)
+✔ late detail and source responses cannot replace the selected question (0.9793ms)
+✔ detail and history failures can be retried independently (1.1149ms)
+✔ cleared diagnosis sends an empty list, conflict preserves the draft (1.6431ms)
+✔ schedule confirms exactly the previewed command; retry preserves key and token (1.1259ms)
+✔ saved writes followed by failed refresh are described as saved (1.8816ms)
+✔ capability failure blocks writing and switching identity discards old UI application (0.6564ms)
+ℹ tests 298
+ℹ suites 0
+ℹ pass 298
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3369.6648
+
+> filemate-web@1.3.0-alpha.4 build
+> vue-tsc -b && vite build
+
+vite v8.1.5 building client environment for production...
+[2K
+transforming...✓ 9512 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                   2.08 kB │ gzip:     0.69 kB
+dist/.vite/manifest.json                                         29.67 kB │ gzip:     3.65 kB
+dist/assets/vision.worker-Dh4q88Q4.js                           154.67 kB
+dist/assets/editor.worker-CA3FUfdm.js                           303.31 kB
+dist/interview-vision/wasm/vision_wasm_nosimd_internal.js       323.18 kB
+dist/interview-vision/wasm/vision_wasm_internal.js              323.37 kB
+dist/interview-vision/wasm/vision_wasm_module_internal.js       323.41 kB
+dist/assets/filemate-brand-lockup-BcWjLiS0.png                  491.61 kB
+dist/assets/filemate-mascot-Cfg9QGSb.png                      1,250.00 kB
+dist/assets/filemate-mascot-expressions-Cl3pWeZH.png          2,082.93 kB
+dist/interview-vision/wasm/vision_wasm_nosimd_internal.wasm  10,960.24 kB │ gzip: 3,370.57 kB
+dist/interview-vision/wasm/vision_wasm_internal.wasm         11,756.95 kB │ gzip: 3,478.91 kB
+dist/interview-vision/wasm/vision_wasm_module_internal.wasm  11,756.97 kB │ gzip: 3,478.92 kB
+dist/assets/ReviewEntry-CJEiY9aY.css                              0.07 kB │ gzip:     0.09 kB
+dist/assets/css-Wv38huFO.css                                      0.16 kB │ gzip:     0.13 kB
+dist/assets/AnalysisWarnings-DS0S8JPx.css                         0.36 kB │ gzip:     0.24 kB
+dist/assets/PrivacyBoundaryNotice-C9wpkTYH.css                    0.51 kB │ gzip:     0.27 kB
+dist/assets/Semester-BcqoZWZ7.css                                 0.68 kB │ gzip:     0.31 kB
+dist/assets/DataState-Ckv2eQFr.css                                0.88 kB │ gzip:     0.44 kB
+dist/assets/css-BAyktVMS.css                                      0.92 kB │ gzip:     0.32 kB
+dist/assets/WorkflowSteps-ChQRBw1q.css                            1.60 kB │ gzip:     0.58 kB
+dist/assets/SkillTree-CfNWxoEC.css                                2.00 kB │ gzip:     0.68 kB
+dist/assets/LLMSettingsPanel-DwNh7LmR.css                         2.44 kB │ gzip:     0.78 kB
+dist/assets/portfolio-BM6xUUh9.css                                2.65 kB │ gzip:     0.87 kB
+dist/assets/useCompanion-DokFHhbs.css                             3.01 kB │ gzip:     0.98 kB
+dist/assets/History-FS33AHlP.css                                  4.69 kB │ gzip:     1.25 kB
+dist/assets/LegacyWrongbook-BunzhRt_.css                          5.86 kB │ gzip:     1.36 kB
+dist/assets/StudyPlan-CYs7Yhnn.css                                6.90 kB │ gzip:     1.70 kB
+dist/assets/Schedule-zQTYHzDk.css                                 6.99 kB │ gzip:     1.59 kB
+dist/assets/FileReview-Cm837NaN.css                               7.43 kB │ gzip:     1.69 kB
+dist/assets/Import-BOQmAHHi.css                                   7.82 kB │ gzip:     1.94 kB
+dist/assets/css-cyJZB4WD.css                                      7.85 kB │ gzip:     1.96 kB
+dist/assets/Today-BQ3zplBQ.css                                    8.60 kB │ gzip:     1.87 kB
+dist/assets/Growth-aonNT5Ww.css                                   9.25 kB │ gzip:     1.99 kB
+dist/assets/Career-DXwKAyj8.css                                   9.34 kB │ gzip:     1.95 kB
+dist/assets/Auth-DWBnc5_4.css                                     9.57 kB │ gzip:     2.10 kB
+dist/assets/review-workspace-HUMILCVL.css                        10.19 kB │ gzip:     2.57 kB
+dist/assets/TrustCenter-DRR5zCjr.css                             10.56 kB │ gzip:     2.34 kB
+dist/assets/Programming-Bad0nmmd.css                             11.43 kB │ gzip:     2.45 kB
+dist/assets/DigitalHuman-WR_p7y0J.css                            11.55 kB │ gzip:     2.69 kB
+dist/assets/GoalPlanner-UvJt8Oif.css                             13.90 kB │ gzip:     3.22 kB
+dist/assets/Home-C_o_aHCT.css                                    15.37 kB │ gzip:     3.30 kB
+dist/assets/Knowledge-CWz9kBMY.css                               15.45 kB │ gzip:     2.91 kB
+dist/assets/css-SCyShdbC.css                                     15.89 kB │ gzip:     2.70 kB
+dist/assets/KnowledgeGraph-Dd7EbUDP.css                          16.03 kB │ gzip:     3.01 kB
+dist/assets/LearningWorkspace-lSUt7ylf.css                       19.41 kB │ gzip:     3.58 kB
+dist/assets/InterviewBank-D0JFxvDe.css                           19.61 kB │ gzip:     3.67 kB
+dist/assets/css-ZSOkJyjJ.css                                     19.89 kB │ gzip:     2.13 kB
+dist/assets/CourseWorkspace-Fn_liYmy.css                         20.86 kB │ gzip:     4.37 kB
+dist/assets/css-8JXovod0.css                                     35.67 kB │ gzip:     5.06 kB
+dist/assets/Interview-nqVyAFjj.css                               47.92 kB │ gzip:     8.05 kB
+dist/assets/index-DHiEpJAt.css                                   68.24 kB │ gzip:    11.99 kB
+dist/assets/editor-DjpsE8to.css                                  99.09 kB │ gzip:    14.20 kB
+dist/assets/filemate-mascot-A-dFkQrg.js                           0.06 kB │ gzip:     0.08 kB
+dist/assets/filemate-mascot-expressions-DZNEbW1k.js               0.07 kB │ gzip:     0.09 kB
+dist/assets/_plugin-vue_export-helper-BDNMzG2s.js                 0.08 kB │ gzip:     0.09 kB
+dist/assets/editor.worker-BV5Z7Ck_.js                             0.10 kB │ gzip:     0.11 kB
+dist/assets/download-dialog-DLDizeVJ.js                           0.11 kB │ gzip:     0.10 kB
+dist/assets/IconMinus-C4qolS4E.js                                 0.13 kB │ gzip:     0.14 kB
+dist/assets/strings-DbSPS5Fs.js                                   0.15 kB │ gzip:     0.15 kB
+dist/assets/rolldown-runtime-DK3Fl9T5.js                          0.15 kB │ gzip:     0.15 kB
+dist/assets/IconPlus-8BZh_V3v.js                                  0.17 kB │ gzip:     0.16 kB
+dist/assets/IconArrowUpRight-DMuczBQB.js                          0.19 kB │ gzip:     0.17 kB
+dist/assets/IconCode-CIILjtN6.js                                  0.22 kB │ gzip:     0.17 kB
+dist/assets/IconRefresh-CgbxpC7p.js                               0.23 kB │ gzip:     0.19 kB
+dist/assets/IconEye-C6q1KKcK.js                                   0.26 kB │ gzip:     0.21 kB
+dist/assets/vnode-B5ttVT14.js                                     0.31 kB │ gzip:     0.21 kB
+dist/assets/IconMessageCircle-xlWwalQS.js                         0.31 kB │ gzip:     0.25 kB
+dist/assets/IconFileText-Dq7yJC-Z.js                              0.36 kB │ gzip:     0.22 kB
+dist/assets/fileStore-B-MaaK6d.js                                 0.57 kB │ gzip:     0.33 kB
+dist/assets/createVueComponent-DkW5SasL.js                        0.73 kB │ gzip:     0.41 kB
+dist/assets/AnalysisWarnings-BV-OZdAY.js                          0.90 kB │ gzip:     0.61 kB
+dist/assets/DataState-DRQJaP1d.js                                 0.93 kB │ gzip:     0.57 kB
+dist/assets/register-C8c3ovxp.js                                  1.02 kB │ gzip:     0.52 kB
+dist/assets/WorkflowSteps-BD1HG4YL.js                             1.08 kB │ gzip:     0.74 kB
+dist/assets/css-Cbiyubdw.js                                       1.10 kB │ gzip:     0.55 kB
+dist/assets/preload-helper-Czpn1I53.js                            1.19 kB │ gzip:     0.67 kB
+dist/assets/Wrongbook-BScMhFvg.js                                 1.23 kB │ gzip:     0.66 kB
+dist/assets/PrivacyBoundaryNotice-CmxUO9_s.js                     1.46 kB │ gzip:     0.94 kB
+dist/assets/StudyMotif-CtSHOlAs.js                                1.61 kB │ gzip:     0.63 kB
+dist/assets/ReviewEntry-BtGjh5bY.js                               1.90 kB │ gzip:     1.01 kB
+dist/assets/review-api-C_Tz9-Cp.js                                3.02 kB │ gzip:     1.04 kB
+dist/assets/useCompanion-Co3HAik3.js                              3.34 kB │ gzip:     1.85 kB
+dist/assets/use-dialog-DOGMLXJZ.js                                4.23 kB │ gzip:     1.74 kB
+dist/assets/cpp-C7h46wYY.js                                       4.74 kB │ gzip:     2.02 kB
+dist/assets/LLMSettingsPanel-mOLJVNrw.js                          5.29 kB │ gzip:     2.47 kB
+dist/assets/natural-speech-B8WHIvQH.js                            5.68 kB │ gzip:     2.34 kB
+dist/assets/typescript-rk096N_P.js                                6.55 kB │ gzip:     2.86 kB
+dist/assets/devtools-EWN81iOl-BkA_wGVL.js                         6.89 kB │ gzip:     3.00 kB
+dist/assets/SkillTree-DsGT129V.js                                 7.77 kB │ gzip:     3.49 kB
+dist/assets/LegacyWrongbook-DOVnnLbt.js                           8.59 kB │ gzip:     3.97 kB
+dist/assets/Resume-CoyjOqpT.js                                    8.84 kB │ gzip:     3.59 kB
+dist/assets/Semester-D4g15bUH.js                                  9.11 kB │ gzip:     3.68 kB
+dist/assets/css-Vuo2ezMx.js                                       9.28 kB │ gzip:     4.23 kB
+dist/assets/StudyPlan-y6I5wCq6.js                                 9.56 kB │ gzip:     4.45 kB
+dist/assets/Import-DqvB-YWc.js                                    9.80 kB │ gzip:     4.44 kB
+dist/assets/Today--rroE07A.js                                    10.30 kB │ gzip:     4.47 kB
+dist/assets/History-Bn0WHyMa.js                                  10.41 kB │ gzip:     4.34 kB
+dist/assets/css-C2X7avuy.js                                      11.06 kB │ gzip:     4.54 kB
+dist/assets/Home-DIuMFzEG.js                                     11.41 kB │ gzip:     4.81 kB
+dist/assets/FileReview-CYhF64Kf.js                               11.64 kB │ gzip:     4.66 kB
+dist/assets/review-workspace-BN3zKa0J.js                         12.09 kB │ gzip:     5.20 kB
+dist/assets/Auth-B_QrQBZQ.js                                     13.24 kB │ gzip:     5.29 kB
+dist/assets/GoalPlanner-BZTbcrUe.js                              14.93 kB │ gzip:     5.90 kB
+dist/assets/TrustCenter-6A_lBIqP.js                              17.22 kB │ gzip:     6.71 kB
+dist/assets/DigitalHuman-BOemgLIT.js                             18.53 kB │ gzip:     7.50 kB
+dist/assets/Growth-C6Da8c8q.js                                   19.35 kB │ gzip:     7.39 kB
+dist/assets/css-C0dTDIzM.js                                      21.85 kB │ gzip:     7.86 kB
+dist/assets/LearningWorkspace-Cp8DaFCz.js                        23.23 kB │ gzip:     8.80 kB
+dist/assets/css-DAsArgfZ.js                                      26.89 kB │ gzip:     9.44 kB
+dist/assets/Programming-DKOu0dDJ.js                              26.92 kB │ gzip:     9.84 kB
+dist/assets/Knowledge-4bkPqIA_.js                                27.84 kB │ gzip:    11.47 kB
+dist/assets/KnowledgeGraph-DCCXKdD6.js                           28.40 kB │ gzip:    10.67 kB
+dist/assets/Career-BdL7tKln.js                                   32.69 kB │ gzip:    10.97 kB
+dist/assets/use-global-config-kX3JD1xL.js                        32.98 kB │ gzip:    11.24 kB
+dist/assets/review-state-D-Upo661.js                             59.08 kB │ gzip:    21.10 kB
+dist/assets/Schedule-BmaC80iJ.js                                 60.00 kB │ gzip:    22.40 kB
+dist/assets/InterviewBank-DA3Erdpy.js                            68.39 kB │ gzip:    22.51 kB
+dist/assets/vue-runtime-Bkkp-_Qs.js                              84.00 kB │ gzip:    32.83 kB
+dist/assets/api-DjeRmGJw.js                                      93.33 kB │ gzip:    31.12 kB
+dist/assets/index-C0jvZKDf.js                                    99.92 kB │ gzip:    37.30 kB
+dist/assets/CourseWorkspace-BVuZz4om.js                         107.13 kB │ gzip:    35.07 kB
+dist/assets/css-BBwWJjS7.js                                     133.09 kB │ gzip:    44.87 kB
+dist/assets/Interview-DWXzGRXY.js                               137.62 kB │ gzip:    47.17 kB
+dist/assets/installCanvasRenderer-DQ5nkOUm.js                   440.53 kB │ gzip:   148.88 kB
+dist/assets/editor.api-aORaVU5-.js                            2,705.31 kB │ gzip:   694.13 kB
+
+✓ built in 4.60s
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+> filemate-web@1.3.0-alpha.4 check:bundle
+> node scripts/check-bundle.mjs --dist dist
+
+{
+  "scope": "entry plus Home and recursive static imports; gzip estimated, not a network timing",
+  "measurements": {
+    "javascript": 385849,
+    "javascript_gzip": 142963,
+    "css": 111534
+  },
+  "budget": {
+    "javascript": 460800,
+    "javascript_gzip": 143360,
+    "css": 153600
+  },
+  "exceeded": [],
+  "eagerHeavyModules": [],
+  "files": [
+    {
+      "path": "assets/Home-C_o_aHCT.css",
+      "bytes": 15375,
+      "gzip_bytes": 3290
+    },
+    {
+      "path": "assets/Home-DIuMFzEG.js",
+      "bytes": 11415,
+      "gzip_bytes": 4796
+    },
+    {
+      "path": "assets/StudyMotif-CtSHOlAs.js",
+      "bytes": 1612,
+      "gzip_bytes": 633
+    },
+    {
+      "path": "assets/_plugin-vue_export-helper-BDNMzG2s.js",
+      "bytes": 84,
+      "gzip_bytes": 99
+    },
+    {
+      "path": "assets/api-DjeRmGJw.js",
+      "bytes": 93334,
+      "gzip_bytes": 30903
+    },
+    {
+      "path": "assets/createVueComponent-DkW5SasL.js",
+      "bytes": 732,
+      "gzip_bytes": 414
+    },
+    {
+      "path": "assets/css-C0dTDIzM.js",
+      "bytes": 21852,
+      "gzip_bytes": 7822
+    },
+    {
+      "path": "assets/css-C2X7avuy.js",
+      "bytes": 11060,
+      "gzip_bytes": 4539
+    },
+    {
+      "path": "assets/css-Vuo2ezMx.js",
+      "bytes": 9282,
+      "gzip_bytes": 4219
+    },
+    {
+      "path": "assets/css-Wv38huFO.css",
+      "bytes": 162,
+      "gzip_bytes": 136
+    },
+    {
+      "path": "assets/css-ZSOkJyjJ.css",
+      "bytes": 19896,
+      "gzip_bytes": 2141
+    },
+    {
+      "path": "assets/css-cyJZB4WD.css",
+      "bytes": 7857,
+      "gzip_bytes": 1961
+    },
+    {
+      "path": "assets/devtools-EWN81iOl-BkA_wGVL.js",
+      "bytes": 6898,
+      "gzip_bytes": 2985
+    },
+    {
+      "path": "assets/filemate-mascot-A-dFkQrg.js",
+      "bytes": 60,
+      "gzip_bytes": 80
+    },
+    {
+      "path": "assets/index-C0jvZKDf.js",
+      "bytes": 99921,
+      "gzip_bytes": 37017
+    },
+    {
+      "path": "assets/index-DHiEpJAt.css",
+      "bytes": 68244,
+      "gzip_bytes": 11985
+    },
+    {
+      "path": "assets/preload-helper-Czpn1I53.js",
+      "bytes": 1196,
+      "gzip_bytes": 675
+    },
+    {
+      "path": "assets/rolldown-runtime-DK3Fl9T5.js",
+      "bytes": 158,
+      "gzip_bytes": 154
+    },
+    {
+      "path": "assets/strings-DbSPS5Fs.js",
+      "bytes": 155,
+      "gzip_bytes": 153
+    },
+    {
+      "path": "assets/typescript-rk096N_P.js",
+      "bytes": 6558,
+      "gzip_bytes": 2850
+    },
+    {
+      "path": "assets/use-dialog-DOGMLXJZ.js",
+      "bytes": 4235,
+      "gzip_bytes": 1739
+    },
+    {
+      "path": "assets/use-global-config-kX3JD1xL.js",
+      "bytes": 32986,
+      "gzip_bytes": 11211
+    },
+    {
+      "path": "assets/vnode-B5ttVT14.js",
+      "bytes": 311,
+      "gzip_bytes": 216
+    },
+    {
+      "path": "assets/vue-runtime-Bkkp-_Qs.js",
+      "bytes": 84000,
+      "gzip_bytes": 32458
+    }
+  ],
+  "passed": true
+}
+

@@ -10,6 +10,7 @@ from filemate.course_graph.question_links import _concept, question_digest
 from filemate.course_graph.workspace_models import validate_page
 from filemate.course_graph.workspace_snapshot import read_workspace_snapshot
 from filemate.study.knowledge_graph import _after_question_revision
+from filemate.wrongbook.evidence import trusted_attempt
 
 RULE_VERSION = 'course-training-v1'
 STATUSES = frozenset({'no_evidence', 'practiced', 'needs_reinforcement', 'recently_stable'})
@@ -61,12 +62,13 @@ def read_learning_projection(read, cid: str, *, now: datetime) -> dict[str, Any]
     )'''
     attempts = [dict(r) for r in conn.execute(f'''{selector} SELECT q.rowid AS evidence_sequence,
         q.attempt_id,q.artifact_id,q.question_index,q.is_correct,q.score,q.created_at,
+        q.judgement_status,q.judgement_method,q.rule_version,q.answer_revealed,
         v.revision_parent FROM scoped_artifacts s CROSS JOIN quiz_attempts q
         ON q.artifact_id=s.artifact_id CROSS JOIN versions v
         ON v.artifact_id=q.artifact_id AND v.question_index=q.question_index
         ORDER BY q.created_at DESC,q.attempt_id''', (cid,))]
     wrongs = [dict(r) for r in conn.execute(f'''{selector} SELECT q.wrong_id,q.artifact_id,q.question_index,q.question,
-        q.mastered,q.next_review_at,q.updated_at,
+        q.mastered,q.next_review_at,q.updated_at,q.schedule_status,q.scheduler_version,
         v.revision_parent FROM scoped_artifacts s CROSS JOIN wrong_questions q
         ON q.artifact_id=s.artifact_id CROSS JOIN versions v
         ON v.artifact_id=q.artifact_id AND v.question_index=q.question_index
@@ -109,7 +111,7 @@ def read_learning_projection(read, cid: str, *, now: datetime) -> dict[str, Any]
     for record in attempts:
         key = (record['revision_parent'] or record['artifact_id'], record['question_index'])
         stamp = parse_time(record['created_at'])
-        good = (not record['revision_parent'] and stamp is not None and stamp <= now and key in valid
+        good = (trusted_attempt(record) and not record['revision_parent'] and stamp is not None and stamp <= now and key in valid
                 and _after_question_revision(record, artifacts[key[0]]))
         if good:
             valid_attempt_pairs.add(key)
@@ -139,7 +141,9 @@ def read_learning_projection(read, cid: str, *, now: datetime) -> dict[str, Any]
             item['wrongs'][record['wrong_id']] = {
                 'wrong_id': record['wrong_id'], 'artifact_id': key[0], 'question_index': key[1],
                 'mastered': bool(record['mastered']), 'next_review_at': record['next_review_at'],
-                'updated_at': record['updated_at'], 'due': not record['mastered'] and due is not None and due <= now,
+                'updated_at': record['updated_at'], 'due': record['schedule_status'] == 'active'
+                and (record['scheduler_version'] == 'review-interval-v2' or not record['mastered'])
+                and due is not None and due <= now,
             }
     for plan in plans:
         root = snapshot.member_to_root.get(plan['concept_id'])

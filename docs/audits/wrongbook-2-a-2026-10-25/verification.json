@@ -1,0 +1,56 @@
+{
+  "phase": "A",
+  "scope": "audit and proposed design only",
+  "baseline": "9f06d1d79d777e50c113908481cbdaf57fb79705",
+  "synthetic_only": true,
+  "backend": {
+    "tests": "145",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "1",
+    "time": "52.030",
+    "passed": 144
+  },
+  "characterization": {
+    "tests": "5",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "4.301",
+    "passed": 5
+  },
+  "frontend": {
+    "tests": 13,
+    "pass": 13,
+    "fail": 0,
+    "files": [
+      "filemate/web/tests/course-learning-state.test.mjs",
+      "filemate/web/tests/course-practice-component.test.mjs"
+    ],
+    "exit_code": 0
+  },
+  "first_command": {
+    "exit_code": 1,
+    "setup_errors": 145,
+    "cause": "pytest basetemp parent directory absent; no business test executed",
+    "original_log": "_working/wrongbook-a-regression.log",
+    "corrective_action": "create parent and use fresh basetemp without changing product code"
+  },
+  "public": {
+    "release_status": 200,
+    "correct_ready_status": 200,
+    "initial_wrong_ready_path_status": 404,
+    "correct_ready_path": "/api/ready",
+    "writes": false
+  },
+  "not_executed": [
+    "full scripts/verify.ps1",
+    "production database row scan",
+    "browser visual run",
+    "real model calls",
+    "physical devices",
+    "production load test",
+    "real student study"
+  ],
+  "protected_original_tests": 24
+}

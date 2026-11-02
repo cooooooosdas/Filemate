@@ -1,0 +1,30 @@
+"""Original 500ms gate against the owned, unchanged 9992-date synthetic fixture."""
+import json,math,sys,time
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+root=Path.cwd();sys.path.insert(0,str(root))
+from filemate.execution.storage import SQLiteStorage
+from filemate.wrongbook.queries import ReviewFilter,ReviewQueries
+out=root/'_working/wrongbook-p2-20261030'
+label=sys.argv[1]
+output=out/(label+'.json')
+assert not output.exists()
+assert label.replace('-','').isalnum()
+expected=json.loads((out/'before.json').read_text(encoding='utf-8'))
+store=SQLiteStorage(root/'_working/review2-incremental-b-20261030/unique-time-clone/filemate.db')
+query=ReviewQueries(store)
+def sample(_):
+    start=time.perf_counter();page=query.page(ReviewFilter(sort='recommended'))
+    assert page['total']==9995 and [r['wrong_id'] for r in page['items']]==expected['expected_wrong_ids']
+    return round((time.perf_counter()-start)*1000,2)
+warm=[sample(0) for _ in range(5)]
+with ThreadPoolExecutor(max_workers=4) as pool:
+    parallel=sorted(pool.map(sample,range(20)))
+store.close()
+report={'synthetic':True,'transport':'direct storage service','count':10000,'distinct_due_timestamps':9992,
+ 'concurrency':4,'target_p95_ms':500,'warm_samples_ms':warm,'concurrent_samples_ms':parallel,
+ 'p95_ms':parallel[math.ceil(len(parallel)*.95)-1]}
+report['meets_target']=report['p95_ms']<=500
+output.write_bytes(json.dumps(report,indent=2).encode('utf-8'))
+print(json.dumps(report),flush=True)
+assert report['meets_target'],'P2: original 500ms P95 target not met'

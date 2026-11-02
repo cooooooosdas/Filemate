@@ -1,0 +1,39 @@
+✔ session planner invalidates preview on budget and applied filter changes (85.3003ms)
+✔ mounted focus resumes only, or consumes exact checked references, never auto-starts another page (33.5735ms)
+✔ new-answer revision clears old previews but preserves the real editable task draft (78.9041ms)
+✔ mounted learning hub preserves manual diagnosis and focuses its actual confirmation region (16.5561ms)
+✔ the hub cannot start undo while evidence is still loading (13.1413ms)
+✔ mounted question allows exact input recovery after refresh but locks an in-memory unknown request (12.037ms)
+✔ historical analysis renders its own quote even when the current context has different text (11.8515ms)
+✔ learning artifact switching and refresh both protect its real answer draft (37.2503ms)
+✔ mounted review entries invalidate before reopening after a restore or expired identity (6.8338ms)
+✔ graph leave permission is reset by the actual review answer, not the removed legacy input (17.5503ms)
+✔ departing course workspace must not reinterpret the destination query or prompt again (37.7488ms)
+✖ post-save delayed background failure never unmounts the next real focus draft (15.4386ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 11
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 843.8033
+
+✖ failing tests:
+
+test at tests\wrongbook-component-wiring.test.mjs:120:1
+✖ post-save delayed background failure never unmounts the next real focus draft (15.4386ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  '' !== '下一题尚未提交的正文'
+  
+      at TestContext.<anonymous> (file:///C:/Users/%E8%83%A1%E5%B8%8C/.codex/worktrees/release-alpha3/FileMate-Project/filemate/web/tests/wrongbook-component-wiring.test.mjs:133:9)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: '下一题尚未提交的正文',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

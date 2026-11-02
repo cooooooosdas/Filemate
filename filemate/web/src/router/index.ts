@@ -28,7 +28,7 @@ const routes: RouteRecordRaw[] = [
     path: '/today',
     name: 'Today',
     component: () => import('../views/Today.vue'),
-    meta: { title: '今日学习' }
+    meta: { title: '今日行动' }
   },
   {
     path: '/import',

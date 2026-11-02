@@ -1,0 +1,23 @@
+{
+  "scope": "static A design artifacts, not product UI",
+  "results": [
+    {
+      "name": "today-action",
+      "source": "docs/design/learning-orchestrator-a/today-action.svg",
+      "screenshot": "docs/design/learning-orchestrator-a/today-action.png",
+      "text_count": 26,
+      "canvas_bounds_pass": true,
+      "screenshot_sha256": "b68ab34c5bea7d53c421735efae9a9365b6e861b72e0a0c2ab9d8ba534b9f75e"
+    },
+    {
+      "name": "goal-route",
+      "source": "docs/design/learning-orchestrator-a/goal-route.svg",
+      "screenshot": "docs/design/learning-orchestrator-a/goal-route.png",
+      "text_count": 26,
+      "canvas_bounds_pass": true,
+      "screenshot_sha256": "c0b839b0e13ab14a31cfcf039bb15762e3e7524e16145e2e449a3ee8eafeefc8"
+    }
+  ],
+  "rendering": "Playwright msedge; unchanged SVG embedded in HTML; viewport 1600x1000",
+  "limitations": "Static design render only; not implemented product UI, responsive, interaction or performance testing."
+}

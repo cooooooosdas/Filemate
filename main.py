@@ -255,63 +255,73 @@ async def process_single(
     calendar = CalendarBuilder()
     file_ops = FileOps()
     storage = SQLiteStorage(db_path)
-    storage.init_schema()  # 初始化数据库表
     archiver = Archiver(Path.cwd() / "archive", file_ops)
 
-    # 构造 session
-    session_id = uuid.uuid4().hex[:12]
-    session = ProcessingSession(session_id=session_id, source_path=path)
-    storage.create_session(session_id, path)
+    try:
+        storage.init_schema()  # 初始化数据库表
 
-    # 运行阶段链
-    session.transition(SessionStatus.PROCESSING)
-    stages = _make_stages(
-        parser,
-        classifier,
-        extractor,
-        detector,
-        namer,
-        calendar,
-        archiver,
-        storage,
-        llm,
-        skip_calendar=skip_calendar,
-    )
-    for stage in stages:
+        # 构造 session
+        session_id = uuid.uuid4().hex[:12]
+        session = ProcessingSession(session_id=session_id, source_path=path)
+        storage.create_session(session_id, path)
+
+        # 运行阶段链
+        session.transition(SessionStatus.PROCESSING)
+        stages = _make_stages(
+            parser,
+            classifier,
+            extractor,
+            detector,
+            namer,
+            calendar,
+            archiver,
+            storage,
+            llm,
+            skip_calendar=skip_calendar,
+        )
+        for stage in stages:
+            try:
+                session = await asyncio.to_thread(stage, session)
+            except Exception as exc:  # noqa: BLE001 - 阶段边界必须收敛第三方异常
+                session.error = f"{getattr(stage, '__name__', 'unknown')} 失败: {exc}"
+                session.transition(SessionStatus.FAILED)
+                logger.error("[%s] 阶段失败: %s", session.session_id, session.error)
+                break
+
+        # 终态
+        if session.status == SessionStatus.PROCESSING:
+            session.transition(SessionStatus.DONE)
+
+        session_dict = session.to_dict()
+        # update_session 只接受部分字段，过滤 + 序列化复杂类型
+        _allowed = {
+            "status",
+            "category",
+            "confidence",
+            "suggested_name",
+            "entities",
+            "milestones",
+            "error",
+            "user_modified",
+        }
+        filtered = {}
+        for k, v in session_dict.items():
+            if k not in _allowed:
+                continue
+            if isinstance(v, (dict, list)):
+                filtered[k] = json.dumps(v, ensure_ascii=False)
+            else:
+                filtered[k] = v
+        storage.update_session(session_id, **filtered)
+        return session
+    finally:
+        # 每次调用都新建实例；不关闭会让线程本地连接随上传次数累积，
+        # 并长期占着 WAL 写锁与文件句柄。请求被取消时后台阶段线程可能
+        # 仍在用连接，关闭失败只记日志，不能覆盖已得到的处理结果。
         try:
-            session = await asyncio.to_thread(stage, session)
-        except Exception as exc:  # noqa: BLE001 - 阶段边界必须收敛第三方异常
-            session.error = f"{getattr(stage, '__name__', 'unknown')} 失败: {exc}"
-            session.transition(SessionStatus.FAILED)
-            logger.error("[%s] 阶段失败: %s", session.session_id, session.error)
-            break
-
-    # 终态
-    if session.status == SessionStatus.PROCESSING:
-        session.transition(SessionStatus.DONE)
-
-    session_dict = session.to_dict()
-    # update_session 只接受部分字段，过滤 + 序列化复杂类型
-    _allowed = {
-        "status",
-        "category",
-        "confidence",
-        "suggested_name",
-        "entities",
-        "milestones",
-        "error",
-        "user_modified",
-    }
-    filtered = {}
-    for k, v in session_dict.items():
-        if k not in _allowed:
-            continue
-        if isinstance(v, (dict, list)):
-            filtered[k] = json.dumps(v, ensure_ascii=False)
-        else:
-            filtered[k] = v
-    storage.update_session(session_id, **filtered)
-    return session
+            storage.close()
+        except Exception:  # noqa: BLE001 - 连接被在途线程占用时交由进程回收
+            logger.warning("临时存储连接未能及时关闭，由进程回收")
 
 
 def main() -> None:

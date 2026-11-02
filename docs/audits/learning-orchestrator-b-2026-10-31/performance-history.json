@@ -1,0 +1,378 @@
+{
+  "synthetic": true,
+  "note": "保留优化前失败测量；并发运行其他验证会影响延迟，容量仅指本机条件。最终原生日期排序测量单列。",
+  "failed_runs": [
+    {
+      "raw_path": "_working/orchestrator-b-20261031/performance-distinct-compact/result.json",
+      "sha256": "da700c1e5dcce74538c905a69c04e17003b100e113f835dbc022248e69a30500",
+      "status": "P2",
+      "scope_results": [
+        {
+          "scope_wrong_count": 100,
+          "foreign_wrong_count": 100,
+          "distinct_due_times_per_scope": 100,
+          "warm": {
+            "p50_ms": 11.656700000457931,
+            "p95_ms": 25.439900004130322,
+            "max_ms": 25.439900004130322,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 53.50970000290545,
+            "p95_ms": 71.92360000044573,
+            "max_ms": 71.92360000044573,
+            "samples": 16
+          },
+          "status": "PASS"
+        },
+        {
+          "scope_wrong_count": 1000,
+          "foreign_wrong_count": 1000,
+          "distinct_due_times_per_scope": 1000,
+          "warm": {
+            "p50_ms": 15.572199998132419,
+            "p95_ms": 18.15340000030119,
+            "max_ms": 18.15340000030119,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 97.54989999782993,
+            "p95_ms": 123.40199999744073,
+            "max_ms": 123.40199999744073,
+            "samples": 16
+          },
+          "status": "PASS"
+        },
+        {
+          "scope_wrong_count": 10000,
+          "foreign_wrong_count": 10000,
+          "distinct_due_times_per_scope": 10000,
+          "warm": {
+            "p50_ms": 229.99249999702442,
+            "p95_ms": 283.5087999992538,
+            "max_ms": 283.5087999992538,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 986.4271000042208,
+            "p95_ms": 1157.9592000052799,
+            "max_ms": 1157.9592000052799,
+            "samples": 16
+          },
+          "status": "P2"
+        }
+      ]
+    },
+    {
+      "raw_path": "_working/orchestrator-b-20261031/performance-distinct-final/result.json",
+      "sha256": "a84d1a4d2494ed922bbec294729554f3b7609293b23efe7df822da45a52f5513",
+      "status": "P2",
+      "scope_results": [
+        {
+          "scope_wrong_count": 100,
+          "foreign_wrong_count": 100,
+          "distinct_due_times_per_scope": 100,
+          "warm": {
+            "p50_ms": 11.282599996775389,
+            "p95_ms": 22.459199994045775,
+            "max_ms": 22.459199994045775,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 42.66849999839906,
+            "p95_ms": 73.13179999619024,
+            "max_ms": 73.13179999619024,
+            "samples": 16
+          },
+          "status": "PASS"
+        },
+        {
+          "scope_wrong_count": 1000,
+          "foreign_wrong_count": 1000,
+          "distinct_due_times_per_scope": 1000,
+          "warm": {
+            "p50_ms": 17.535200000565965,
+            "p95_ms": 21.689699999114964,
+            "max_ms": 21.689699999114964,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 67.65939999604598,
+            "p95_ms": 103.29959999944549,
+            "max_ms": 103.29959999944549,
+            "samples": 16
+          },
+          "status": "PASS"
+        },
+        {
+          "scope_wrong_count": 10000,
+          "foreign_wrong_count": 10000,
+          "distinct_due_times_per_scope": 10000,
+          "warm": {
+            "p50_ms": 488.5824999946635,
+            "p95_ms": 550.5364999989979,
+            "max_ms": 550.5364999989979,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 1270.2461000008043,
+            "p95_ms": 1832.741400001396,
+            "max_ms": 1832.741400001396,
+            "samples": 16
+          },
+          "status": "P2"
+        }
+      ]
+    },
+    {
+      "raw_path": "_working/orchestrator-b-20261031/performance-distinct-jsoncompact/result.json",
+      "sha256": "a1ab6730de8b23402ac203748e90de2010bb722710ccd3f026a134e4bc134620",
+      "status": "P2",
+      "scope_results": [
+        {
+          "scope_wrong_count": 100,
+          "foreign_wrong_count": 100,
+          "distinct_due_times_per_scope": 100,
+          "warm": {
+            "p50_ms": 12.090600001101848,
+            "p95_ms": 24.798000005830545,
+            "max_ms": 24.798000005830545,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 73.43869999749586,
+            "p95_ms": 94.12200000224402,
+            "max_ms": 94.12200000224402,
+            "samples": 16
+          },
+          "status": "PASS"
+        },
+        {
+          "scope_wrong_count": 1000,
+          "foreign_wrong_count": 1000,
+          "distinct_due_times_per_scope": 1000,
+          "warm": {
+            "p50_ms": 14.053999999305233,
+            "p95_ms": 15.95919999817852,
+            "max_ms": 15.95919999817852,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 57.67840000044089,
+            "p95_ms": 81.6147000005003,
+            "max_ms": 81.6147000005003,
+            "samples": 16
+          },
+          "status": "PASS"
+        },
+        {
+          "scope_wrong_count": 10000,
+          "foreign_wrong_count": 10000,
+          "distinct_due_times_per_scope": 10000,
+          "warm": {
+            "p50_ms": 201.62819999677595,
+            "p95_ms": 234.92180000175722,
+            "max_ms": 234.92180000175722,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 490.73490000591846,
+            "p95_ms": 538.7160999962362,
+            "max_ms": 538.7160999962362,
+            "samples": 16
+          },
+          "status": "P2"
+        }
+      ]
+    },
+    {
+      "raw_path": "_working/orchestrator-b-20261031/performance-distinct-udf/result.json",
+      "sha256": "a75590984c0b9db4e04aa09b5c51b5ce827337ea5bcd536da04d8034906a7fe0",
+      "status": "P2",
+      "scope_results": [
+        {
+          "scope_wrong_count": 100,
+          "foreign_wrong_count": 100,
+          "distinct_due_times_per_scope": 100,
+          "warm": {
+            "p50_ms": 11.060500000894535,
+            "p95_ms": 24.864099999831524,
+            "max_ms": 24.864099999831524,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 63.65139999979874,
+            "p95_ms": 76.43000000098255,
+            "max_ms": 76.43000000098255,
+            "samples": 16
+          },
+          "status": "PASS"
+        },
+        {
+          "scope_wrong_count": 1000,
+          "foreign_wrong_count": 1000,
+          "distinct_due_times_per_scope": 1000,
+          "warm": {
+            "p50_ms": 13.895900003262796,
+            "p95_ms": 15.037200006190687,
+            "max_ms": 15.037200006190687,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 88.62820000649663,
+            "p95_ms": 121.40760000329465,
+            "max_ms": 121.40760000329465,
+            "samples": 16
+          },
+          "status": "PASS"
+        },
+        {
+          "scope_wrong_count": 10000,
+          "foreign_wrong_count": 10000,
+          "distinct_due_times_per_scope": 10000,
+          "warm": {
+            "p50_ms": 204.98590000352124,
+            "p95_ms": 261.99590000032913,
+            "max_ms": 261.99590000032913,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 1290.1694000029238,
+            "p95_ms": 2146.7243999941275,
+            "max_ms": 2146.7243999941275,
+            "samples": 16
+          },
+          "status": "P2"
+        }
+      ]
+    },
+    {
+      "raw_path": "_working/orchestrator-b-20261031/performance-final-bulk/result.json",
+      "sha256": "47863cdc9ee67853e77bf4b588e5ac05317ecc000246b2e577a9aed0a119d74e",
+      "status": "P2",
+      "scope_results": [
+        {
+          "scope_wrong_count": 100,
+          "foreign_wrong_count": 100,
+          "distinct_due_times_per_scope": 100,
+          "warm": {
+            "p50_ms": 13.298400001076516,
+            "p95_ms": 26.324000005843118,
+            "max_ms": 26.324000005843118,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 62.28459999692859,
+            "p95_ms": 77.10409999708645,
+            "max_ms": 77.10409999708645,
+            "samples": 16
+          },
+          "status": "PASS"
+        },
+        {
+          "scope_wrong_count": 1000,
+          "foreign_wrong_count": 1000,
+          "distinct_due_times_per_scope": 1000,
+          "warm": {
+            "p50_ms": 17.553800003952347,
+            "p95_ms": 20.509399997536093,
+            "max_ms": 20.509399997536093,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 62.71689999994123,
+            "p95_ms": 77.06229999894276,
+            "max_ms": 77.06229999894276,
+            "samples": 16
+          },
+          "status": "PASS"
+        },
+        {
+          "scope_wrong_count": 10000,
+          "foreign_wrong_count": 10000,
+          "distinct_due_times_per_scope": 10000,
+          "warm": {
+            "p50_ms": 107.50089999783086,
+            "p95_ms": 221.596800001862,
+            "max_ms": 221.596800001862,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 371.61919999925885,
+            "p95_ms": 677.5328000003356,
+            "max_ms": 677.5328000003356,
+            "samples": 16
+          },
+          "status": "P2"
+        }
+      ]
+    },
+    {
+      "raw_path": "_working/orchestrator-b-20261031/performance-profile-compact/result.json",
+      "sha256": "0a14437ad08b5221c4af932b4a1b6ecf5bc718c7e174fea870a77da40e3222d3",
+      "status": "P2",
+      "scope_results": []
+    },
+    {
+      "raw_path": "_working/orchestrator-b-20261031/performance-release-candidate/result.json",
+      "sha256": "a127b443e5f136b09f0b1fa8ab584fb4a5d1e19fc9adb96b804b30dd29a36d5c",
+      "status": "P2",
+      "scope_results": [
+        {
+          "scope_wrong_count": 100,
+          "foreign_wrong_count": 100,
+          "distinct_due_times_per_scope": 100,
+          "warm": {
+            "p50_ms": 12.341200010268949,
+            "p95_ms": 22.34240001416765,
+            "max_ms": 22.34240001416765,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 43.07330001029186,
+            "p95_ms": 47.178900000290014,
+            "max_ms": 47.178900000290014,
+            "samples": 16
+          },
+          "status": "PASS"
+        },
+        {
+          "scope_wrong_count": 1000,
+          "foreign_wrong_count": 1000,
+          "distinct_due_times_per_scope": 1000,
+          "warm": {
+            "p50_ms": 14.404300003661774,
+            "p95_ms": 16.139100000145845,
+            "max_ms": 16.139100000145845,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 52.346399999805726,
+            "p95_ms": 57.657199999084696,
+            "max_ms": 57.657199999084696,
+            "samples": 16
+          },
+          "status": "PASS"
+        },
+        {
+          "scope_wrong_count": 10000,
+          "foreign_wrong_count": 10000,
+          "distinct_due_times_per_scope": 10000,
+          "warm": {
+            "p50_ms": 176.82539999077562,
+            "p95_ms": 275.913200006471,
+            "max_ms": 275.913200006471,
+            "samples": 10
+          },
+          "four_concurrent": {
+            "p50_ms": 677.1263999980874,
+            "p95_ms": 876.1591999937082,
+            "max_ms": 876.1591999937082,
+            "samples": 16
+          },
+          "status": "P2"
+        }
+      ]
+    }
+  ]
+}

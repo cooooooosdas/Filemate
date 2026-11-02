@@ -1,0 +1,25 @@
+✔ V2 review filter changes reuse the mounted workspace while legacy and explicit refresh still remount (0.5016ms)
+✔ interview session query synchronization preserves the running page (0.0861ms)
+✔ draft protection covers typed answers, recordings and preparation without treating saved answers as drafts (0.1182ms)
+✔ today links open the selected plan and preserve other task destinations (0.0844ms)
+✔ course_graph_browsing_preserves_the_live_workspace_but_legacy_links_remount (0.1242ms)
+✔ clearing a confirmed empty selection removes the old writable question and ignores a late detail (6.1239ms)
+✔ after an answer refresh detail revision without losing receipt or unsaved diagnosis (1.6299ms)
+✔ late answer detail refresh cannot replace another selection (0.6285ms)
+✔ failed post-answer refresh preserves success and blocks stale revision writes until retry (0.4961ms)
+✔ deep links select their actual id, and missing ids never fall back to first (0.5569ms)
+✔ deleting the final page returns to the final valid offset, including empty library (0.1654ms)
+✔ late detail and source responses cannot replace the selected question (0.5147ms)
+✔ detail and history failures can be retried independently (0.4991ms)
+✔ cleared diagnosis sends an empty list, conflict preserves the draft (0.6938ms)
+✔ schedule confirms exactly the previewed command; retry preserves key and token (0.6821ms)
+✔ saved writes followed by failed refresh are described as saved (0.9668ms)
+✔ capability failure blocks writing and switching identity discards old UI application (0.3695ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 150.9055

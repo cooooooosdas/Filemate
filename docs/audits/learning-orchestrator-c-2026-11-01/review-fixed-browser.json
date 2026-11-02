@@ -1,0 +1,568 @@
+{
+  "phase": "review-fixed",
+  "synthetic_only": true,
+  "checks": [
+    {
+      "name": "fresh_signed_backup_restored_through_actual_ui",
+      "status": "PASS"
+    },
+    {
+      "name": "lost_confirm_then_other_tab_undo_recovers_terminal_receipt",
+      "status": "PASS"
+    },
+    {
+      "name": "new_preview_usable_after_terminal_recovery",
+      "status": "PASS"
+    },
+    {
+      "name": "actual_concurrent_undo_409_ends_definitely_rejected_request",
+      "status": "PASS"
+    },
+    {
+      "name": "new_arrangement_unblocked_after_rejected_undo",
+      "status": "PASS"
+    },
+    {
+      "name": "public_client_normalized_422_clears_new_pending",
+      "status": "PASS"
+    },
+    {
+      "name": "public_client_normalized_429_clears_new_pending",
+      "status": "PASS"
+    },
+    {
+      "name": "pending_survives_leaving_today_before_real_restore",
+      "status": "PASS"
+    },
+    {
+      "name": "restore_off_today_clears_this_tab_locator",
+      "status": "PASS"
+    },
+    {
+      "name": "restore_epoch_invalidates_other_tab_locator",
+      "status": "PASS"
+    },
+    {
+      "name": "same_identity_usable_after_off_route_restore",
+      "status": "PASS"
+    },
+    {
+      "name": "no_uncaught_page_errors",
+      "status": "PASS"
+    }
+  ],
+  "responses": [
+    {
+      "path": "/api/privacy/boundary",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/privacy/restore-preview",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/privacy/restore",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/goal-options",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/operations/5302eae9-9753-429a-8b4e-45e6e72fd5c0",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/confirm",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/operations/learning-operation-a80d46d4705afc389d90d34c3d7600e8c4eb2d3437b53bab3723933330f352b2/undo-preview",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/operations/learning-operation-a80d46d4705afc389d90d34c3d7600e8c4eb2d3437b53bab3723933330f352b2/undo-confirm",
+      "method": "POST",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/confirm",
+      "method": "POST",
+      "status": 422
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/confirm",
+      "method": "POST",
+      "status": 429
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/confirm",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/privacy/boundary",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/privacy/restore-preview",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/privacy/restore",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/privacy/boundary",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/goal-options",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST",
+      "status": 200
+    }
+  ],
+  "api_requests": [
+    {
+      "path": "/api/health",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/trust/overview",
+      "method": "GET"
+    },
+    {
+      "path": "/api/privacy/boundary",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/privacy/restore-preview",
+      "method": "POST"
+    },
+    {
+      "path": "/api/privacy/restore",
+      "method": "POST"
+    },
+    {
+      "path": "/trust/overview",
+      "method": "GET"
+    },
+    {
+      "path": "/api/privacy/boundary",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/health",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/capabilities",
+      "method": "GET"
+    },
+    {
+      "path": "/api/llm/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/goal-options",
+      "method": "POST"
+    },
+    {
+      "path": "/api/knowledge-graph/courses",
+      "method": "GET"
+    },
+    {
+      "path": "/api/knowledge-graph/courses/e7b7a60e-28e6-470d-8daf-43c3b122df72",
+      "method": "GET"
+    },
+    {
+      "path": "/api/knowledge-graph/courses/e7b7a60e-28e6-470d-8daf-43c3b122df72",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST"
+    },
+    {
+      "path": "/api/knowledge-graph/courses/e7b7a60e-28e6-470d-8daf-43c3b122df72",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/confirm",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/operations/5302eae9-9753-429a-8b4e-45e6e72fd5c0",
+      "method": "GET"
+    },
+    {
+      "path": "/api/llm/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/confirm",
+      "method": "POST"
+    },
+    {
+      "path": "/api/llm/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/operations/learning-operation-a80d46d4705afc389d90d34c3d7600e8c4eb2d3437b53bab3723933330f352b2/undo-preview",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/operations/learning-operation-a80d46d4705afc389d90d34c3d7600e8c4eb2d3437b53bab3723933330f352b2/undo-confirm",
+      "method": "POST"
+    },
+    {
+      "path": "/api/llm/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/confirm",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/confirm",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/confirm",
+      "method": "POST"
+    },
+    {
+      "path": "/api/llm/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/confirm",
+      "method": "POST"
+    },
+    {
+      "path": "/api/health",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/trust/overview",
+      "method": "GET"
+    },
+    {
+      "path": "/api/health",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/trust/overview",
+      "method": "GET"
+    },
+    {
+      "path": "/api/privacy/boundary",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/privacy/restore-preview",
+      "method": "POST"
+    },
+    {
+      "path": "/api/privacy/restore",
+      "method": "POST"
+    },
+    {
+      "path": "/trust/overview",
+      "method": "GET"
+    },
+    {
+      "path": "/api/privacy/boundary",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/health",
+      "method": "GET"
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/capabilities",
+      "method": "GET"
+    },
+    {
+      "path": "/api/llm/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST"
+    },
+    {
+      "path": "/api/learning/orchestrator/goal-options",
+      "method": "POST"
+    },
+    {
+      "path": "/api/knowledge-graph/courses",
+      "method": "GET"
+    },
+    {
+      "path": "/api/knowledge-graph/courses/e7b7a60e-28e6-470d-8daf-43c3b122df72",
+      "method": "GET"
+    },
+    {
+      "path": "/api/knowledge-graph/courses/e7b7a60e-28e6-470d-8daf-43c3b122df72",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/snapshot",
+      "method": "POST"
+    },
+    {
+      "path": "/api/knowledge-graph/courses/e7b7a60e-28e6-470d-8daf-43c3b122df72",
+      "method": "GET"
+    },
+    {
+      "path": "/api/learning/orchestrator/preview",
+      "method": "POST"
+    }
+  ],
+  "page_errors": [],
+  "console_errors": [
+    "[API Error] Network Error",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: the server responded with a status of 409 (Conflict)",
+    "[API Error] schedule_changed_since_operation",
+    "Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)",
+    "[API Error] SYNTHETIC_KNOWN_REJECTION",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "[API Error] SYNTHETIC_KNOWN_REJECTION",
+    "[API Error] Network Error",
+    "Failed to load resource: net::ERR_FAILED"
+  ],
+  "console_warnings": [],
+  "status": "PASS"
+}

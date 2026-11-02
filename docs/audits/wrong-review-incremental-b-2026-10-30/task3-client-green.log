@@ -1,0 +1,11 @@
+✔ session preview uses the shared read client, full filter and explicit timeout (49.1158ms)
+✔ readiness posts only references and the preview filter, without model credentials (16.0365ms)
+✔ transport and API failures surface once, preserving the callers preview (15.6819ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 327.1665

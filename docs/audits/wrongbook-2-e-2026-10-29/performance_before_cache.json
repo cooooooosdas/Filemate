@@ -1,0 +1,109 @@
+{
+  "synthetic": true,
+  "target_p95_ms": 500,
+  "first_request_definition": "fresh API process and first query per workspace/mode; OS cache not flushed",
+  "rows": [
+    {
+      "count": 100,
+      "search": false,
+      "process_first_ms": 281.12,
+      "warm": {
+        "samples": 20,
+        "p50_ms": 83.5,
+        "p95_ms": 95.69
+      },
+      "concurrent_4": {
+        "samples": 20,
+        "p50_ms": 183.86,
+        "p95_ms": 261.07
+      },
+      "warm_meets_500ms_p95": true,
+      "concurrent_4_meets_500ms_p95": true
+    },
+    {
+      "count": 100,
+      "search": true,
+      "process_first_ms": 101.8,
+      "warm": {
+        "samples": 20,
+        "p50_ms": 76.41,
+        "p95_ms": 88.94
+      },
+      "concurrent_4": {
+        "samples": 20,
+        "p50_ms": 201.34,
+        "p95_ms": 221.17
+      },
+      "warm_meets_500ms_p95": true,
+      "concurrent_4_meets_500ms_p95": true
+    },
+    {
+      "count": 1000,
+      "search": false,
+      "process_first_ms": 165.99,
+      "warm": {
+        "samples": 20,
+        "p50_ms": 99.38,
+        "p95_ms": 109.75
+      },
+      "concurrent_4": {
+        "samples": 20,
+        "p50_ms": 270.74,
+        "p95_ms": 310.79
+      },
+      "warm_meets_500ms_p95": true,
+      "concurrent_4_meets_500ms_p95": true
+    },
+    {
+      "count": 1000,
+      "search": true,
+      "process_first_ms": 88.66,
+      "warm": {
+        "samples": 20,
+        "p50_ms": 100.99,
+        "p95_ms": 112.05
+      },
+      "concurrent_4": {
+        "samples": 20,
+        "p50_ms": 226.25,
+        "p95_ms": 249.87
+      },
+      "warm_meets_500ms_p95": true,
+      "concurrent_4_meets_500ms_p95": true
+    },
+    {
+      "count": 10000,
+      "search": false,
+      "process_first_ms": 345.2,
+      "warm": {
+        "samples": 20,
+        "p50_ms": 286.53,
+        "p95_ms": 299.16
+      },
+      "concurrent_4": {
+        "samples": 20,
+        "p50_ms": 1316.77,
+        "p95_ms": 1369.96
+      },
+      "warm_meets_500ms_p95": true,
+      "concurrent_4_meets_500ms_p95": false
+    },
+    {
+      "count": 10000,
+      "search": true,
+      "process_first_ms": 335.61,
+      "warm": {
+        "samples": 20,
+        "p50_ms": 328.07,
+        "p95_ms": 348.64
+      },
+      "concurrent_4": {
+        "samples": 20,
+        "p50_ms": 591.98,
+        "p95_ms": 639.16
+      },
+      "warm_meets_500ms_p95": true,
+      "concurrent_4_meets_500ms_p95": false
+    }
+  ]
+}

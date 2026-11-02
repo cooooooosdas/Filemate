@@ -1,0 +1,63 @@
+import hashlib,json,platform,re,sqlite3,sys
+from datetime import datetime,timezone
+from pathlib import Path
+root=Path.cwd()
+sys.path.insert(0,str(root))
+from scripts.acceptance.wrongbook_learning_evidence import source_hashes
+raw=root/'_working/wrongbook-p2-20261030'
+assert (raw/'full-gate-exit.txt').read_text(encoding='utf-8-sig').strip()=='0'
+log=(raw/'full-gate.log').read_text(encoding='utf-8-sig')
+backend=re.findall(r'(\d+) passed, (\d+) skipped, (\d+) deselected',log)
+assert backend and 'failed,' not in log
+front=re.findall(r'(?:#|ℹ) pass (\d+)',log)
+assert front and re.search(r'(?:#|ℹ) fail 0',log)
+assert 'Build complete' in log or 'built in' in log
+performance=[]
+for name in ('http-complete-performance.json','http-complete-new-performance.json'):
+    data=json.loads((raw/name).read_text(encoding='utf-8'))
+    assert data['synthetic'] and data['target_p95_ms']==500
+    assert all(row[phase]['p95_ms']<=500 for row in data['rows'] for phase in ('warm','concurrent_4'))
+    performance.extend(data['rows'])
+assert len(performance)==17
+protected=json.loads((root/'_working/wrongbook-a-20261025/preserved-tests.json').read_text(encoding='utf-8-sig'))
+assert len(protected)==24 and all(hashlib.sha256((root/name).read_bytes()).hexdigest()==value for name,value in protected.items())
+audit=root/'docs/audits/wrongbook-p2-2026-10-30'
+assert not audit.exists()
+audit.mkdir(parents=True)
+names=['before.json','before-clean.json','before-clean.log','before-clean-exit.txt','before-profile.txt',
+       'after.json','after.log','after-exit.txt','after-aggregate.json','after-aggregate.log','after-aggregate-exit.txt',
+       'after-final.json','after-final.log','after-final-exit.txt',
+       'contracts-before.log','targeted.log','aggregate-targeted.log','hex-targeted.log','wrongbook-final.log','blob-guard.log',
+       'sqlite326-key-compatibility.json','sqlite326-nul.log','review.md','preserved-tests-check.json',
+       'full-gate.log','full-gate-exit.txt','after-profile.txt']
+for label in ('http-after','http-final','http-complete'):
+    names.extend(label+suffix for suffix in ('-performance.json','-new-performance.json','-explain.json','-profile.txt','.log','-exit.txt'))
+names.extend(['capacity-gate.py','http-measure.py','sqlite326-check.py','closeout.py'])
+evidence={}
+for name in names:
+    original=(raw/name).read_bytes()
+    encoding='utf-16' if original.startswith((b'\xff\xfe',b'\xfe\xff')) else 'utf-8-sig'
+    archived=original.decode(encoding).replace('\r\n','\n').replace('\r','\n').encode('utf-8')
+    dest=name+'.txt' if name.endswith('.py') else name
+    (audit/dest).write_bytes(archived)
+    evidence[dest]={'raw_path':(raw/name).relative_to(root).as_posix(),
+                    'raw_sha256':hashlib.sha256(original).hexdigest(),
+                    'archived_sha256':hashlib.sha256(archived).hexdigest()}
+sources=source_hashes()
+report={'recorded_at':datetime.now(timezone.utc).isoformat(),'status':'CONDITIONAL PASS',
+        'issue':'P2-INC-B-01','local_capacity':'PASS','source_base_commit':'7a31071',
+        'source_scope':'current working tree, includes 24 byte-preserved pre-existing test modifications',
+        'runtime':{'python':platform.python_version(),'sqlite':sqlite3.sqlite_version,'platform':platform.platform()},
+        'backend':dict(zip(('passed','skipped','deselected'),map(int,backend[-1]))),
+        'frontend_passed':int(front[-1]),'full_gate_exit':0,
+        'performance':{'synthetic':True,'max_count':10000,'distinct_due_timestamps':9992,'concurrency':4,
+                       'target_p95_ms':500,'http_scenarios':17,'max_http_concurrent_p95_ms':max(row['concurrent_4']['p95_ms'] for row in performance),
+                       'direct_final':json.loads((raw/'after-final.json').read_text(encoding='utf-8'))},
+        'review':{'actionable_findings':0,'scope':'latest query diff and contract tests, independent read-only, no timing'},
+        'protected_test_files':{'count':24,'all_byte_hashes_unchanged':True},
+        'limitations':['Production Linux and full legacy Python/SQLite capacity remain unverified',
+                       'No-JSON1 capacity unchanged and unverified','No C UI integration or production deployment',
+                       'Synthetic regressions do not establish real learning effectiveness'],
+        'source_hashes':sources,'evidence_hashes':evidence}
+(audit/'verification.json').write_bytes(json.dumps(report,ensure_ascii=False,indent=2).encode('utf-8'))
+print(json.dumps({'backend':report['backend'],'frontend':report['frontend_passed'],'source_count':len(sources),'evidence_count':len(evidence),'max_http_p95':report['performance']['max_http_concurrent_p95_ms']},ensure_ascii=False))

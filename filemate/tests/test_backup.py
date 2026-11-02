@@ -62,7 +62,7 @@ def test_preview_and_three_databases_restore(managed: Path, tmp_path: Path) -> N
         entry["database"]["schema_version"]
         for entry in report["manifest"]["entries"]
         if entry["kind"] == "database"
-    } == {34}
+    } == {36}
     target = tmp_path / "staged"
     restore_plan = backup.plan_restore(snapshot, target)
     assert not target.exists()
@@ -83,7 +83,23 @@ def test_preview_and_three_databases_restore(managed: Path, tmp_path: Path) -> N
     }
 
 
-def test_committed_wal_is_included(managed: Path, tmp_path: Path) -> None:
+def test_restore_drops_stale_action_tokens(managed: Path, tmp_path: Path) -> None:
+    """快照里的旧确认令牌不能随恢复回流，否则可绕过重新预览边界。"""
+    with closing(sqlite3.connect(managed / "filemate.db")) as conn:
+        conn.execute(
+            "INSERT INTO data_action_previews"
+            "(token_hash, action, resource_id, revision, expires_at, result)"
+            " VALUES ('stale', 'orchestrator_confirm', 'res', 'rev', 9999999999, NULL)"
+        )
+        conn.commit()
+    snapshot = tmp_path / "backup"
+    _create(managed, snapshot)
+    target = tmp_path / "staged"
+    restore_plan = backup.plan_restore(snapshot, target)
+    result = backup.restore_backup(snapshot, target, restore_plan["confirmation"])
+    assert result["passed"] is True
+    with closing(sqlite3.connect(target / "filemate.db")) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM data_action_previews").fetchone()[0] == 0
     with closing(sqlite3.connect(managed / "filemate.db")) as writer:
         writer.execute("PRAGMA journal_mode=WAL")
         writer.execute(
@@ -305,3 +321,30 @@ def test_admin_restore_rotates_interview_draft_version(managed: Path, tmp_path: 
         restored.save_draft(DraftContent(target_role='旧页面'), before['revision'], 'admin-draft-request02', before['version_token'])
     assert restored.read_draft()['content']['target_role'] == '合成目标'
     restored_storage.close()
+
+
+def test_admin_restore_interrupts_review_analysis_and_rotates_epoch(managed: Path, tmp_path: Path, monkeypatch) -> None:
+    from filemate.wrongbook.analysis_repository import ReviewAnalysisRepository
+    from filemate.wrongbook.learning_context import ReviewLearningContext
+    from filemate.wrongbook.repository import ReviewRepository
+
+    monkeypatch.setenv('FILEMATE_ENABLE_WRONGBOOK_V2', '1')
+    monkeypatch.setenv('FILEMATE_ENABLE_WRONGBOOK_AI', '1')
+    store = SQLiteStorage(managed/'filemate.db')
+    sid = store.save_source(original_name='合成', source_path=str(managed/'inbox/原创复习资料.txt'))
+    question = {'question_type': 'fill', 'stem': '数组下标起点', 'answer': '0'}
+    aid = store.save_artifact(source_id=sid, artifact_type='questions', content=[question])
+    attempt = ReviewRepository(store).submit({'artifact_id': aid, 'question_index': 0,
+        'expected_question': question, 'user_answer': '1', 'request_key': 'admin-review-answer-0001'})
+    context = ReviewLearningContext(store).build(attempt['wrong_id'], attempt['attempt_id'])
+    view, _, epoch = ReviewAnalysisRepository(store).claim(context, 'admin-review-analysis-0001')
+    store.close()
+    snapshot, target = tmp_path/'review-backup', tmp_path/'review-staged'
+    _create(managed, snapshot)
+    plan = backup.plan_restore(snapshot, target)
+    backup.restore_backup(snapshot, target, plan['confirmation'])
+    restored = SQLiteStorage(target/'filemate.db')
+    repo = ReviewAnalysisRepository(restored)
+    assert repo.get(attempt['wrong_id'], view['analysis_id'])['status'] == 'interrupted'
+    assert not repo.finish(view['analysis_id'], epoch, {}, {})
+    restored.close()

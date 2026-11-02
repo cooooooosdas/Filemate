@@ -1,6 +1,8 @@
 import { saveDownload } from './downloads'
 import type { CoachSnapshot, CoachMutationResult, CoachAnswer, CoachAnalysis, CoachAdvance, CoachConsent, CoachAttempts, CoachFocus } from '../types/interviewCoach'
 import axios from 'axios'
+import { installTodaySessionBoundary } from './today-session'
+installTodaySessionBoundary(window)
 import type { CourseActionPreview, CourseChapter, CourseConcept, CourseDecision, CourseDraft, CourseGraphPage, CourseMergePreview, CourseOperation, CourseReviewPreview, GraphConfirmation, GraphCourse, GraphMode, GraphPage } from '../types/courseGraph'
 import type { WorkspaceCanvas, WorkspaceChapterPath, WorkspaceCitation, WorkspaceConceptOptions, WorkspaceConceptPage, WorkspaceDetail, WorkspaceFilter, WorkspaceNavigation, WorkspaceNavigationOptions } from '../types/courseWorkspace'
 import type { LearningEvidence, LearningPreview, LearningReceipt, LearningWork, PathOptions, PathPreview, PracticeDecision, PracticeOptions, QuestionCandidate, QuestionRef, RelatedCourse, RelatedInput } from '../types/courseLearning'
@@ -179,7 +181,7 @@ export interface PersonalRestorePreview { backup_id: string; confirmation_token:
 export const exportPersonalData = async (format: 'backup' | 'json') => api.get('/api/privacy/export', { params: { format }, responseType: 'blob', timeout: 120000 })
 export const previewPersonalRestore = async (file: File) => { const body = new FormData(); body.append('file', file); return (await api.post<unknown, ApiResponse<PersonalRestorePreview>>('/api/privacy/restore-preview', body, { timeout: 120000, headers: { 'Content-Type': 'multipart/form-data' } })).data! }
 export const restorePersonalData = async (preview: PersonalRestorePreview) => {
-  const result = (await api.post<unknown, ApiResponse<{ restored: boolean; cleanup_pending?: boolean }>>('/api/privacy/restore', { backup_id: preview.backup_id, confirmation_token: preview.confirmation_token, confirmed: true }, { timeout: 120000 })).data!
+  const result = (await api.post<unknown, ApiResponse<{ restored: boolean; cleanup_pending?: boolean; review_evidence_rebound?: number; review_evidence_notice?: string | null }>>('/api/privacy/restore', { backup_id: preview.backup_id, confirmation_token: preview.confirmation_token, confirmed: true }, { timeout: 120000 })).data!
   if (result.restored) window.dispatchEvent(new Event('filemate:data-restored'))
   return result
 }
@@ -308,6 +310,7 @@ export async function loginAccount(email: string, password: string, remember: bo
 }
 export async function logoutAccount(): Promise<void> {
   await api.post('/api/auth/logout', {}, accountOptions)
+  window.dispatchEvent(new Event('filemate:session-reset'))
 }
 export async function recoverAccount(email: string, recovery_code: string, password: string): Promise<string> {
   return (await api.post<any, ApiResponse<{ recovery_code: string }>>('/api/auth/recover', { email, recovery_code, password }, accountOptions)).data!.recovery_code
@@ -1393,7 +1396,7 @@ export interface TodayReviewItem {
   day_index?: number
   artifact_id?: string
   question_index?: number
-  question_snapshot?: object
+  question_snapshot?: Record<string, unknown>
   wrong_id?: string
   explanation?: string
   error_cause?: WrongErrorCause
@@ -1863,6 +1866,7 @@ export interface StudyCheckpoint {
 }
 
 export interface StudyPlan {
+  review_learning?: { ref?: { wrong_id: string }; attempt_id?: string; context_revision?: string; goal_id?: string | null; basis?: unknown[] }
   warnings?: string[]
   title: string
   exam_date: string
@@ -2010,3 +2014,36 @@ export const focusInterviewCoach=(id:string,input:CoachFocus):Promise<CoachMutat
 
 export const prepareInterviewRuntime=(content:import('../types/interviewConfiguration').InterviewDraftContent,request_key:string):Promise<CoachSnapshot>=>coachResult(api.post<unknown,ApiResponse<CoachSnapshot>>('/interviews/runtime',{content,request_key},{timeout:15000}))
 export const commandInterviewRuntime=(id:string,input:import('../types/interviewRuntime').RuntimeCommand):Promise<CoachMutationResult>=>coachResult(api.post<unknown,ApiResponse<CoachMutationResult>>(`/interviews/${encodeURIComponent(id)}/runtime/commands`,input,{timeout:20000}))
+
+
+// 复盘接口通过同一认证客户端按需加载。
+export const reviewHTTP = api
+
+export const loadOrchestratorClient = (): Promise<import('../types/orchestrator').OrchestratorClient> => import('./orchestrator-api')
+export async function getOrchestratorCapabilities(): Promise<import('../types/orchestrator').OrchestratorCapabilities> {
+  return (await loadOrchestratorClient()).getOrchestratorCapabilities()
+}
+export async function getOrchestratorGoalOptions(request: import('../types/orchestrator').GoalOptionsRequest): Promise<import('../types/orchestrator').GoalOptionsPage> {
+  return (await loadOrchestratorClient()).getOrchestratorGoalOptions(request)
+}
+export async function readOrchestratorSnapshot(scope: import('../types/orchestrator').ScopeRequest): Promise<import('../types/orchestrator').OrchestratorSnapshot> {
+  return (await loadOrchestratorClient()).readOrchestratorSnapshot(scope)
+}
+export async function previewOrchestratorSchedule(request: import('../types/orchestrator').PreviewRequest): Promise<import('../types/orchestrator').SchedulePreview> {
+  return (await loadOrchestratorClient()).previewOrchestratorSchedule(request)
+}
+export async function confirmOrchestratorSchedule(request: import('../types/orchestrator').ConfirmRequest): Promise<import('../types/orchestrator').OperationReceipt> {
+  return (await loadOrchestratorClient()).confirmOrchestratorSchedule(request)
+}
+export async function getOrchestratorToday(): Promise<import('../types/orchestrator').DayView> {
+  return (await loadOrchestratorClient()).getOrchestratorToday()
+}
+export async function findOrchestratorOperation(requestKey: string): Promise<import('../types/orchestrator').OperationReceipt> {
+  return (await loadOrchestratorClient()).findOrchestratorOperation(requestKey)
+}
+export async function previewOrchestratorUndo(operationId: string): Promise<import('../types/orchestrator').UndoPreview> {
+  return (await loadOrchestratorClient()).previewOrchestratorUndo(operationId)
+}
+export async function confirmOrchestratorUndo(operationId: string, request: import('../types/orchestrator').UndoConfirmRequest): Promise<import('../types/orchestrator').OperationReceipt> {
+  return (await loadOrchestratorClient()).confirmOrchestratorUndo(operationId, request)
+}

@@ -1,0 +1,44 @@
+{
+  "sqlite_version": "3.26.0",
+  "scope": "actual JSON1 raw aggregation, key decoding and native hex join; not full Python application runtime",
+  "old_key_expected_hex": "323032362D31302D32350032333A35393A35392E3132333435362B30333A3330",
+  "old_key_actual_hex": "323032362D31302D3235",
+  "old_key_preserved": false,
+  "new_relation_cases": [
+    {
+      "separator_unicode_escape": "T",
+      "matched": 1,
+      "legacy_raw_aggregation_roundtrip": true
+    },
+    {
+      "separator_unicode_escape": " ",
+      "matched": 1,
+      "legacy_raw_aggregation_roundtrip": true
+    },
+    {
+      "separator_unicode_escape": "'",
+      "matched": 1,
+      "legacy_raw_aggregation_roundtrip": true
+    },
+    {
+      "separator_unicode_escape": "\"",
+      "matched": 1,
+      "legacy_raw_aggregation_roundtrip": true
+    },
+    {
+      "separator_unicode_escape": "\\x00",
+      "matched": 1,
+      "legacy_raw_aggregation_roundtrip": true
+    },
+    {
+      "separator_unicode_escape": "\\u2028",
+      "matched": 1,
+      "legacy_raw_aggregation_roundtrip": true
+    },
+    {
+      "separator_unicode_escape": "\\U00010400",
+      "matched": 1,
+      "legacy_raw_aggregation_roundtrip": true
+    }
+  ]
+}

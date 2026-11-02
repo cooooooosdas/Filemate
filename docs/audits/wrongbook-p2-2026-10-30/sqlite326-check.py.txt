@@ -1,0 +1,33 @@
+import json,sqlite3,subprocess,sys
+from pathlib import Path
+root=Path.cwd();sys.path.insert(0,str(root))
+from filemate.wrongbook.queries import ReviewFilter,_time_relation
+out=root/'_working/wrongbook-p2-20261030'
+cli=root/'_working/wrongbook-e-20261029/sqlite3.exe'
+def execute(sql):
+    return subprocess.run([str(cli),':memory:',sql],capture_output=True,text=True,encoding='utf-8',check=True).stdout.strip()
+version=execute('SELECT sqlite_version();')
+assert version=='3.26.0'
+results=[]
+for separator in ['T',' ',"'",'"','\x00','\u2028','\U00010400']:
+    raw=f'2026-10-25{separator}23:59:59.123456+03:30'
+    with sqlite3.connect(':memory:') as conn:
+        conn.execute('CREATE TABLE wrong_questions(next_review_at TEXT)')
+        conn.execute('INSERT INTO wrong_questions VALUES(?)',(raw,))
+        packet=_time_relation(conn,None,ReviewFilter())
+    packet_sql=packet.replace("'","''")
+    sql="WITH rt AS (SELECT CAST(key AS TEXT) AS raw FROM json_each('"+packet_sql+"') GROUP BY key), w AS (SELECT CAST(X'"+raw.encode('utf-8').hex()+"' AS TEXT) AS value) SELECT COUNT(*) FROM w JOIN rt ON typeof(w.value)='text' AND rt.raw IS hex(w.value);"
+    assert execute(sql)=='1'
+    aggregate=execute("SELECT json_group_array(CAST(X'"+raw.encode('utf-8').hex()+"' AS TEXT));")
+    assert json.loads(aggregate)==[raw]
+    results.append({'separator_unicode_escape':separator.encode('unicode_escape').decode(),'matched':1,'legacy_raw_aggregation_roundtrip':True})
+raw='2026-10-25\x0023:59:59.123456+03:30'
+old_packet=json.dumps({raw:[1,2]}).replace("'","''")
+old=execute("SELECT hex(key) FROM json_each('"+old_packet+"');")
+report={'sqlite_version':version,'scope':'actual JSON1 raw aggregation, key decoding and native hex join; not full Python application runtime',
+        'old_key_expected_hex':raw.encode('utf-8').hex().upper(),'old_key_actual_hex':old,
+        'old_key_preserved':old==raw.encode('utf-8').hex().upper(),'new_relation_cases':results}
+assert report['old_key_preserved'] is False
+(out/'sqlite326-key-compatibility.json').write_bytes(json.dumps(report,ensure_ascii=False,indent=2).encode('utf-8'))
+(out/'sqlite326-nul.log').write_bytes((old+'\n').encode('utf-8'))
+print('Actual SQLite3.26 old NUL-key regression reproduced; final date relation and raw aggregation pass all7 cases.')

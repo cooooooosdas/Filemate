@@ -1,0 +1,120 @@
+"""Characterize the unchanged release using isolated synthetic records only."""
+
+import json
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+
+from filemate.study.generator import check_answer
+from filemate.tests.test_server_persistence import server_module  # noqa: F401
+
+OUTPUT = Path(__file__).parent / 'observations.json'
+FACTS = {'synthetic': True, 'product_code_changed': False, 'observations': {}}
+
+
+@pytest.fixture(autouse=True)
+def isolated_ledger(tmp_path, monkeypatch):
+    monkeypatch.setenv('FILEMATE_DATA_DIR', str(tmp_path / 'data'))
+    yield
+    OUTPUT.write_text(json.dumps(FACTS, ensure_ascii=False, indent=2), encoding='utf-8')
+
+
+def seed(store, count=1):
+    sid = store.save_source(original_name='A阶段原创合成课程.txt', source_path='synthetic.txt',
+                            raw_text='栈后进先出；队列先进先出。')
+    questions = [{'question_type': 'fill', 'stem': f'栈的顺序{i}？', 'answer': '后进先出',
+                  'analysis': '栈后进先出。', 'knowledge_point': '栈'} for i in range(count)]
+    aid = store.save_artifact(source_id=sid, artifact_type='questions', content=questions)
+    return sid, aid, questions
+
+
+def submit(client, aid, q, answer, key=None, index=0):
+    body = {'artifact_id': aid, 'question_index': index, 'user_answer': answer, 'expected_question': q}
+    if key:
+        body['request_key'] = key
+    response = client.post('/quiz/attempts', json=body)
+    assert response.status_code == 200, response.text
+    return response.json()['data']
+
+
+def test_immediate_mastery_and_independent_history(server_module):
+    module, store = server_module
+    _, aid, qs = seed(store)
+    with TestClient(module.app) as client:
+        submit(client, aid, qs[0], '先进先出')
+        first = store.list_wrong_questions()[0]
+        submit(client, aid, qs[0], '后进先出')
+        submit(client, aid, qs[0], '后进先出')
+        last = store.get_wrong_question(first['wrong_id'])
+        rows = store._conn().execute('SELECT attempt_id,is_correct,user_answer,created_at FROM quiz_attempts ORDER BY rowid').fetchall()
+        assert len(rows) == 3 and last['mastered'] == 1
+        FACTS['observations']['immediate_mastery'] = {
+            'attempts': [dict(r) for r in rows], 'first_review_count': first['review_count'],
+            'last_review_count': last['review_count'], 'correct_streak': last['correct_streak'],
+            'mastered': last['mastered'], 'interval_days': last['interval_days'],
+            'due_after_mastery': client.get('/review/today').json()['data']['pending_wrong_count'],
+        }
+
+
+def test_keyed_and_unkeyed_replays(server_module):
+    module, store = server_module
+    _, aid, qs = seed(store)
+    with TestClient(module.app) as client:
+        first = submit(client, aid, qs[0], '先进先出', 'audit-replay-key-0001')
+        replay = submit(client, aid, qs[0], '先进先出', 'audit-replay-key-0001')
+        a = submit(client, aid, qs[0], '先进先出')
+        b = submit(client, aid, qs[0], '先进先出')
+        wrong = store.list_wrong_questions()[0]
+        assert first['attempt_id'] == replay['attempt_id'] and a['attempt_id'] != b['attempt_id']
+        FACTS['observations']['request_replay'] = {'keyed_same_attempt': True,
+            'unkeyed_distinct_attempts': True, 'attempt_rows': 3, 'error_count': wrong['error_count']}
+
+
+def test_today_count_cap_and_snapshot_payload(server_module):
+    module, store = server_module
+    _, aid, qs = seed(store, 55)
+    with TestClient(module.app) as client:
+        for index, question in enumerate(qs):
+            submit(client, aid, question, '先进先出', index=index)
+        today = client.get('/review/today').json()['data']
+        page = client.get('/wrongbook/page').json()['data']
+        assert page['total'] == 55 and today['pending_wrong_count'] == 50
+        FACTS['observations']['today_count'] = {'real_due_total': page['total'],
+            'reported_pending_wrong_count': today['pending_wrong_count'], 'selected_items': len(today['items']),
+            'deferred_count': today['deferred_count'], 'answer_in_question_snapshot': 'answer' in today['items'][0]['question_snapshot'],
+            'queue_item_has_options_outside_snapshot': 'options' in today['items'][0]}
+
+
+def test_diagnosis_and_reopen(server_module):
+    module, store = server_module
+    _, aid, qs = seed(store)
+    with TestClient(module.app) as client:
+        submit(client, aid, qs[0], '先进先出')
+        wid = store.list_wrong_questions()[0]['wrong_id']
+        response = client.patch(f'/wrongbook/{wid}/diagnosis', json={'error_cause': 'memory_gap', 'note': '合成：忘记顺序'})
+        assert response.status_code == 200
+        unconfirmed = client.patch(f'/wrongbook/{wid}/diagnosis', json={'error_cause': 'unconfirmed', 'note': ''}).json()['data']
+        FACTS['observations']['diagnosis'] = {'cleared_cause': unconfirmed['error_cause'],
+            'cleared_source': unconfirmed['error_cause_source'], 'cleared_confidence': unconfirmed['error_cause_confidence'],
+            'dedicated_event_tables': [r[0] for r in store._conn().execute("SELECT name FROM sqlite_master WHERE type='table' AND (name LIKE '%wrong%' OR name LIKE '%review%')")]}
+
+
+def test_empty_and_long_answers_and_current_schema(server_module):
+    module, store = server_module
+    _, aid, qs = seed(store)
+    with TestClient(module.app) as client:
+        empty = submit(client, aid, qs[0], '')
+        long = submit(client, aid, qs[0], '合成文本' * 1250)
+        assert not empty['is_correct'] and not long['is_correct']
+    tables = ['sources', 'artifacts', 'quiz_attempts', 'wrong_questions', 'study_plans',
+              'kg_question_links', 'kg_course_plan_links', 'kg_learning_work']
+    conn = store._conn()
+    FACTS['schema'] = {'version': store.get_schema_version(), 'quick_check': conn.execute('PRAGMA quick_check').fetchone()[0],
+                      'foreign_key_violations': len(conn.execute('PRAGMA foreign_key_check').fetchall()), 'tables': {}}
+    for table in tables:
+        FACTS['schema']['tables'][table] = {'columns': [dict(r) for r in conn.execute(f'PRAGMA table_info({table})')],
+            'foreign_keys': [dict(r) for r in conn.execute(f'PRAGMA foreign_key_list({table})')],
+            'indexes': [dict(r) for r in conn.execute(f'PRAGMA index_list({table})')]}
+    FACTS['observations']['answer_validation'] = {'empty_saved_as_wrong': True, 'answer_5000_chars_accepted': True,
+        'short_answer_with_extra_wrong_claim_accepted': check_answer({'question_type': 'short_answer', 'answer': '后进先出'}, '栈后进先出，队列也是后进先出')}
