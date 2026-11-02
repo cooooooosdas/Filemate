@@ -1,0 +1,63 @@
+"""Verify release bytes and service health without changing the running app."""
+import json
+import subprocess
+from pathlib import Path
+
+out=Path('D:/FileMate-Project/_working/final-release-20261102')
+script=r'''
+import hashlib,json,subprocess,tarfile
+from datetime import datetime,timezone
+from pathlib import Path
+from urllib.request import urlopen,Request
+rid='alpha4-fdf6f406a5d1'
+base=Path('/opt/filemate/releases')/rid
+web=Path('/clouddream/nginx-proxy-manage/data/filemate/releases')/rid
+incoming=Path('/opt/filemate/incoming')/rid
+manifest=json.loads((incoming/'manifest.json').read_text())
+assert Path('/opt/filemate/current').resolve()==base
+assert Path('/clouddream/nginx-proxy-manage/data/filemate/current').resolve()==web
+assert manifest['commit']=='fdf6f406a5d1d691e60243908f7765d0127209a4'
+checked={}
+for name,target,key in [('backend.tar.gz',base,'backend_sha256'),('web.tar.gz',web,'web_sha256')]:
+ package=incoming/name
+ assert hashlib.sha256(package.read_bytes()).hexdigest()==manifest[key]
+ count=0
+ with tarfile.open(package,'r:gz') as tar:
+  for member in tar:
+   if not member.isfile(): continue
+   path=(target/member.name).resolve()
+   assert path.is_relative_to(target)
+   if name=='web.tar.gz' and Path(member.name).name=='release.json': continue
+   assert path.is_file(),member.name
+   assert hashlib.sha256(tar.extractfile(member).read()).digest()==hashlib.sha256(path.read_bytes()).digest(),member.name
+   count+=1
+ checked[name]=count
+state=subprocess.check_output(['systemctl','show','filemate-api','-p','ActiveState','-p','SubState','-p','NRestarts'],text=True)
+state=dict(line.split('=',1) for line in state.splitlines())
+assert state['ActiveState']=='active' and state['SubState']=='running'
+judge=subprocess.check_output(['systemctl','is-active','filemate-judge'],text=True).strip()
+assert judge=='active'
+checks=[]
+for path in ['/api/health','/api/ready','/wrongbook/v2/capabilities','/api/learning/orchestrator/capabilities','/release.json']:
+ with urlopen(Request('https://filemate.asia'+path,headers={'Accept':'application/json'}),timeout=20) as response:
+  assert response.status==200
+  value=json.loads(response.read())
+ if path in ('/api/health','/api/ready'): assert value['data']['version']=='1.3.0-alpha.4'
+ if path=='/wrongbook/v2/capabilities': assert value['data']['write_enabled'] is True
+ if path=='/api/learning/orchestrator/capabilities': assert value['data']['enabled'] is True
+ if path=='/release.json':
+  assert value['commit']==manifest['commit'] and value['status']=='LIVE_VERIFIED'
+  marker=value
+ checks.append(path)
+report=dict(passed=True,at=datetime.now(timezone.utc).isoformat(),release_id=rid,business_commit=manifest['commit'],
+   checked_release_files=checked,service=state,judge=judge,http_checks=checks,marker=marker,
+   scope='release file fingerprints and read-only health/capabilities; no real user database inspection; no new activation')
+print(json.dumps(report))
+'''
+ssh=['ssh','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=10','root@47.104.156.235']
+run=subprocess.run(ssh+['/opt/filemate/venvs/alpha4-fdf6f406a5d1/bin/python -'],input=script.encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+(out/'live-probe.log').write_bytes(run.stderr)
+assert run.returncode==0,run.stderr.decode(errors='replace')
+report=json.loads(run.stdout)
+(out/'live-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+print(json.dumps({k:v for k,v in report.items() if k!='marker'}))

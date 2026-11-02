@@ -1,0 +1,33 @@
+"""Verify the committed release tree without uncommitted user test edits."""
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import zipfile
+from pathlib import Path
+
+repo=Path('C:/Users/胡希/.codex/worktrees/release-alpha3/FileMate-Project')
+out=Path('D:/FileMate-Project/_working/final-release-20261102')
+git='D:/Git/cmd/git.exe'
+head=subprocess.check_output([git,'rev-parse','HEAD'],cwd=repo,text=True).strip()
+assert head=='ea95a5ceb522372eeda47a112d5ac6462a92bfc5'
+clean=out/'clean'
+assert not clean.exists()
+archive=out/'committed-source.zip'
+subprocess.run([git,'archive','--format=zip','-o',str(archive),head],cwd=repo,check=True)
+with zipfile.ZipFile(archive) as z:
+    assert z.testzip() is None
+    z.extractall(clean)
+baseline=json.loads(Path('D:/FileMate-Project/_working/learning-orchestrator-c/preserved-final.json').read_text(encoding='utf-8'))
+assert all(hashlib.sha256((repo/p).read_bytes()).hexdigest().upper()==h for p,h in baseline.items())
+environment=dict(os.environ,PYTHONUTF8='1',PYTHONIOENCODING='utf-8')
+environment['PATH']='D:/Git/cmd;'+environment['PATH']
+with (out/'full-verify.log').open('x',encoding='utf-8') as log:
+    process=subprocess.run([shutil.which('pwsh'),'-NoProfile','-File',str(clean/'scripts/verify.ps1'),'-IsolateFrontend'],cwd=clean,env=environment,stdout=log,stderr=subprocess.STDOUT)
+report=dict(source_commit=head,exit_code=process.returncode,clean_git_archive=True,
+    uncommitted_user_tests_included=False,user_files_unchanged=all(hashlib.sha256((repo/p).read_bytes()).hexdigest().upper()==h for p,h in baseline.items()))
+(out/'full-verify.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
+print(json.dumps(report))
+print((out/'full-verify.log').read_text(encoding='utf-8',errors='replace')[-2500:])
+raise SystemExit(process.returncode)

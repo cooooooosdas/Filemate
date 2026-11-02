@@ -1,0 +1,58 @@
+{
+  "passed": true,
+  "browser": "installed Microsoft Edge",
+  "scope": "public deployed UI read-only desktop and mobile smoke, not full user journey",
+  "errors": [],
+  "checks": [
+    "public homepage renders with verified HTTPS",
+    "new Today workspace/capability endpoint and empty goal state render",
+    "390px Today layout has no horizontal overflow",
+    "new wrongbook page and v2 capabilities render at 390px"
+  ],
+  "responses": [
+    {
+      "path": "/api/learning/orchestrator/capabilities",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/goal-options",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/capabilities",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/today",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/orchestrator/goal-options",
+      "status": 200
+    },
+    {
+      "path": "/wrongbook/v2/summary",
+      "status": 200
+    },
+    {
+      "path": "/wrongbook/v2/capabilities",
+      "status": 200
+    },
+    {
+      "path": "/wrongbook/v2/page?status=all&sort=due&direction=asc&limit=30&offset=0",
+      "status": 200
+    },
+    {
+      "path": "/wrongbook/v2/filter-options?kind=sources&q=&offset=0",
+      "status": 200
+    },
+    {
+      "path": "/wrongbook/v2/filter-options?kind=courses&q=&offset=0",
+      "status": 200
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+"""Read only an existing synthetic benchmark workspace and report timing."""
+import cProfile
+import io
+import json
+import os
+import pstats
+import subprocess
+import sys
+from pathlib import Path
+
+root = Path('D:/FileMate-Project/_working/wrongbook-linux-capacity-20261102')
+script = r'''
+import cProfile, io, json, os, pstats, sys
+from pathlib import Path
+release=Path('/opt/filemate/releases/alpha4-fdf6f406a5d1')
+root=release/'_working/wrongbook-linux-capacity-20261102-02/fixture'
+assert root.is_dir()
+os.environ.update(FILEMATE_ENV='development',FILEMATE_DATA_DIR=str(root),LLM_API_KEY='',DEEPSEEK_API_KEY='')
+sys.path.insert(0,str(release))
+from filemate.execution.storage import SQLiteStorage
+from filemate.wrongbook.queries import ReviewQueries,ReviewFilter
+import filemate.wrongbook.queries as queries
+manifest=json.loads((root/'manifest.json').read_text())
+user=next(u for u in manifest['users'] if u['wrong_count']==10000)
+store=SQLiteStorage(root/'users'/user['workspace']/'filemate.db')
+try:
+ for mode in ('native','forced_no_json1'):
+  original=queries._has_json1
+  if mode!='native': queries._has_json1=lambda _:False
+  try:
+   profiler=cProfile.Profile()
+   profiler.enable()
+   page=ReviewQueries(store).page(ReviewFilter(sort='recommended'))
+   profiler.disable()
+   assert page['total']==9995
+   stream=io.StringIO()
+   pstats.Stats(profiler,stream=stream).strip_dirs().sort_stats('cumtime').print_stats(22)
+   print(mode,stream.getvalue(),flush=True)
+  finally: queries._has_json1=original
+finally: store.close()
+'''
+ssh=['ssh','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=10','root@47.104.156.235']
+run=subprocess.run(ssh+['/opt/filemate/venvs/alpha4-fdf6f406a5d1/bin/python -'],input=script.encode(),stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+output=run.stdout.decode('utf-8',errors='replace')
+(root/'profile.log').write_text(output,encoding='utf-8')
+print(output)
+raise SystemExit(run.returncode)

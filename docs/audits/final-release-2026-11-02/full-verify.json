@@ -1,0 +1,7 @@
+{
+  "source_commit": "ea95a5ceb522372eeda47a112d5ac6462a92bfc5",
+  "exit_code": 1,
+  "clean_git_archive": true,
+  "uncommitted_user_tests_included": false,
+  "user_files_unchanged": true
+}

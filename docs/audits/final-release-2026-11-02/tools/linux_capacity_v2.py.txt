@@ -1,0 +1,138 @@
+"""Bounded synthetic capacity on the current Linux runtime; no production data."""
+import asyncio,hashlib,json,math,os,platform,secrets,socket,sqlite3,subprocess,sys,time
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime,timedelta,timezone
+from pathlib import Path
+
+release=Path('/opt/filemate/releases/alpha4-fdf6f406a5d1')
+assert Path.cwd().resolve()==release
+root=release/'_working/wrongbook-linux-capacity-20261102-02'
+assert not root.exists()
+root.mkdir(parents=True,mode=0o700)
+data=root/'fixture'
+password=secrets.token_urlsafe(32)+'A9'
+os.environ.update(FILEMATE_AUDIT_PASSWORD=password,FILEMATE_ENV='development',
+    FILEMATE_DATA_DIR=str(data),FILEMATE_DB_PATH=str(data/'filemate.db'),
+    FILEMATE_UPLOAD_DIR=str(data/'inbox'),FILEMATE_ARCHIVE_DIR=str(data/'archive'),
+    FILEMATE_IDENTITY_MODE='anonymous',FILEMATE_ENABLE_WRONGBOOK_V2='1',
+    LLM_API_KEY='',DEEPSEEK_API_KEY='',OPENAI_API_KEY='',
+    PYTHON_KEYRING_BACKEND='keyring.backends.null.Keyring',PYTHONUTF8='1')
+sys.path.insert(0,str(release))
+import httpx
+from scripts.acceptance.wrongbook_release_fixture import prepare_managed
+from scripts.acceptance.wrongbook_release_performance import measure
+from filemate.execution.storage import SQLiteStorage
+from filemate.wrongbook.queries import ReviewFilter,ReviewQueries
+import filemate.wrongbook.queries as queries
+async def measure_new(base, origin, fixture, output):
+    rows = []
+    for mode in ('recommended', 'preview'):
+        for user in sorted(fixture['users'], key=lambda u: u['wrong_count']):
+            for search in ([False, True] if mode == 'recommended' and user['wrong_count'] == 10000 else [False]):
+                async with httpx.AsyncClient(base_url=base, timeout=30) as client:
+                    login = await client.post('/api/auth/login',
+                        headers={'Origin': origin, 'X-FileMate-Action': 'account'},
+                        json={'email': user['email'], 'password': os.environ['FILEMATE_AUDIT_PASSWORD'], 'remember': False})
+                    assert login.status_code == 200
+                    async def query():
+                        params = {'limit': 30, 'sort': 'recommended'} if mode == 'recommended' else {'available_minutes': 12}
+                        if search:
+                            params['q'] = '合成复盘10000'
+                        path = '/wrongbook/v2/page' if mode == 'recommended' else '/wrongbook/v2/session-preview'
+                        start = time.perf_counter()
+                        response = await client.get(path, params=params)
+                        assert response.status_code == 200, response.text
+                        data = response.json()['data']
+                        expected = 1 if search else max(0, user['wrong_count']-5)
+                        assert data['total' if mode == 'recommended' else 'eligible_count'] == expected
+                        assert len(data['items']) <= (30 if mode == 'recommended' else 3)
+                        return (time.perf_counter()-start)*1000
+                    first = await query()
+                    warm = [await query() for _ in range(20)]
+                    parallel = []
+                    for _ in range(5):
+                        parallel.extend(await asyncio.gather(*(query() for _ in range(4))))
+                    def distribution(values):
+                        values = sorted(values)
+                        return {'samples': len(values), 'p50_ms': round(values[len(values)//2],2),
+                                'p95_ms': round(values[math.ceil(len(values)*.95)-1],2)}
+                    row = {'count': user['wrong_count'], 'mode': mode, 'search': search,
+                        'process_first_ms': round(first,2), 'warm': distribution(warm), 'concurrent_4': distribution(parallel)}
+                    row['warm_meets_500ms_p95'] = row['warm']['p95_ms'] <= 500
+                    row['concurrent_4_meets_500ms_p95'] = row['concurrent_4']['p95_ms'] <= 500
+                    rows.append(row)
+    report = {'synthetic': True, 'target_p95_ms': 500, 'rows': rows,
+        'first_request_definition': 'one fresh API process, then first request per workspace/mode; OS cache not flushed'}
+    output.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+    return report
+
+fixture=prepare_managed(data,password)
+large=max(fixture['users'],key=lambda u:u['wrong_count'])
+large_db=data/'users'/large['workspace']/'filemate.db'
+with sqlite3.connect(large_db) as conn:
+    entries=conn.execute('SELECT wrong_id,question_index FROM wrong_questions WHERE question_index>=10').fetchall()
+    before=datetime.now(timezone.utc)-timedelta(days=1)
+    conn.executemany('UPDATE wrong_questions SET next_review_at=? WHERE wrong_id=?',
+        [((before+timedelta(microseconds=index)).isoformat(),wid) for wid,index in entries])
+    conn.commit()
+    distinct=conn.execute('SELECT COUNT(DISTINCT next_review_at) FROM wrong_questions').fetchone()[0]
+print(json.dumps(dict(stage='seeded',synthetic=True,distinct_due_timestamps=distinct)),flush=True)
+with socket.socket() as sock:
+    sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
+base=f'http://127.0.0.1:{port}'
+origin='http://127.0.0.1:5198'
+env=dict(os.environ,FILEMATE_CORS_ORIGINS=origin,FILEMATE_ALLOWED_HOSTS='127.0.0.1,localhost')
+with (root/'synthetic-server.log').open('w',encoding='utf-8') as log:
+    process=subprocess.Popen([sys.executable,'-m','uvicorn','server:app','--host','127.0.0.1',
+        '--port',str(port),'--log-level','warning'],env=env,stdout=log,stderr=subprocess.STDOUT)
+    try:
+        for _ in range(100):
+            assert process.poll() is None,'synthetic API startup failed'
+            try:
+                if httpx.get(base+'/api/ready',timeout=1,trust_env=False).status_code==200:break
+            except httpx.HTTPError:pass
+            time.sleep(.2)
+        else:raise RuntimeError('synthetic API not ready')
+        a=asyncio.run(measure(base,origin,data/'manifest.json',root/'http-page.json'))
+        b=asyncio.run(measure_new(base,origin,fixture,root/'http-recommended.json'))
+    finally:
+        process.terminate()
+        try:process.wait(timeout=10)
+        except subprocess.TimeoutExpired:process.kill();process.wait(timeout=10)
+direct=[]
+store=SQLiteStorage(large_db)
+real_json1=queries._has_json1(store._conn())
+try:
+    for mode in ('native','forced_no_json1'):
+        original=queries._has_json1
+        if mode=='forced_no_json1':queries._has_json1=lambda _:False
+        try:
+            expected=None
+            def sample(_):
+                start=time.perf_counter()
+                page=ReviewQueries(store).page(ReviewFilter(sort='recommended'))
+                assert page['total']==9995 and len(page['items'])==30
+                ids=[x['wrong_id'] for x in page['items']]
+                if expected is not None:assert ids==expected
+                return (time.perf_counter()-start)*1000,ids
+            cold=sample(0);expected=cold[1]
+            warm=[sample(0)[0] for _ in range(5)]
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                concurrent=sorted(row[0] for row in pool.map(sample,range(20)))
+            p95=concurrent[18]
+            direct.append(dict(mode=mode,cold_ms=cold[0],warm_samples_ms=warm,
+                concurrent_samples_ms=concurrent,p95_ms=p95,meets_500ms=p95<=500,
+                total=9995,page_count=30,first_page_ids_sha256=hashlib.sha256(json.dumps(expected).encode()).hexdigest()))
+        finally:queries._has_json1=original
+finally:store.close()
+rows=a['rows']+b['rows']
+passed=all(row['warm_meets_500ms_p95'] and row['concurrent_4_meets_500ms_p95'] for row in rows)
+report=dict(synthetic=True,status='PASS' if passed and all(d['meets_500ms'] for d in direct) else 'P2',
+    business_source='fdf6f406a5d1d691e60243908f7765d0127209a4',python=platform.python_version(),
+    sqlite=sqlite3.sqlite_version,native_json1=real_json1,distinct_due_timestamps=distinct,
+    target_p95_ms=500,http_scenarios=len(rows),http_rows=rows,direct=direct,
+    live_data_accessed=False,formal_service_changed=False,synthetic_server_stopped=process.poll() is not None,
+    limits='same host with nice10; loopback synthetic API; no public traffic SLA or learning-effect inference')
+(root/'result.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+print(json.dumps({k:v for k,v in report.items() if k not in ('http_rows','direct')},ensure_ascii=False),flush=True)
+print(json.dumps(dict(direct=[dict(mode=d['mode'],p95_ms=d['p95_ms']) for d in direct])),flush=True)
