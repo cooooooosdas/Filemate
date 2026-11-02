@@ -42,3 +42,11 @@ def test_real_old_engine_works_under_unicode_candidate(tmp_path):
         pytest.skip('actual Windows SQLite 3.26 engine is an external validation dependency')
     result = runtime().engine_subset(engine, tmp_path / '中文候选')
     assert result['status'] == 'PASS' and result['full_target_application_verified'] is False
+
+
+def test_full_application_proves_c_contracts_and_nonempty_protected_evidence(tmp_path):
+    report = runtime().self_test(tmp_path)
+    assert report['c_read_contracts'] and all(report['c_read_contracts'].values())
+    assert report['protected_evidence_counts']
+    assert all(value > 0 for value in report['protected_evidence_counts'].values())
+    assert report['domain_fingerprint_unchanged']

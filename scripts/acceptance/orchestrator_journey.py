@@ -29,7 +29,12 @@ from filemate.study.orchestrator.models import (
 )
 from filemate.study.orchestrator.repository import OrchestratorRepository
 
-from .orchestrator_runtime import domain_fingerprints, output_path, write_json
+from .orchestrator_runtime import (
+    domain_fingerprints,
+    output_path,
+    seed_protected_evidence,
+    write_json,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 API = '/api/learning/orchestrator'
@@ -82,6 +87,29 @@ def wait_ready(url, process):
             pass
         time.sleep(.15)
     raise TimeoutError('owned_service_startup_timeout')
+
+
+def restore_safety_state(store):
+    conn = store._conn()
+    return {
+        'coach': {row['interview_id']: dict(row) for row in conn.execute(
+            'SELECT interview_id,revision,consent_revision,external_consent,updated_at FROM interview_coach_state')},
+        'review': {row['interview_id']: dict(row) for row in conn.execute(
+            'SELECT interview_id,revision,input_digest FROM interview_review_state')},
+    }
+
+
+def safety_state_rotated(before, after):
+    from datetime import datetime
+    if set(before['coach']) != set(after['coach']) or set(before['review']) != set(after['review']):
+        return False
+    for key, original in before['coach'].items():
+        current = after['coach'][key]
+        if (current['revision'] != original['revision'] + 1 or current['consent_revision'] != original['consent_revision'] + 1
+                or current['external_consent'] != 0 or datetime.fromisoformat(current['updated_at']) < datetime.fromisoformat(original['updated_at'])):
+            return False
+    return all(after['review'][key]['revision'] == row['revision'] + 1 and after['review'][key]['input_digest'] == ''
+               for key, row in before['review'].items())
 
 
 def run_journey(root: Path):
@@ -149,21 +177,51 @@ def run_journey(root: Path):
                     response.raise_for_status()
                     checks[key] = 'application/json' in response.headers['content-type'] and response.json()['success']
 
-                def arrange(minutes, key):
+                catalog = call('POST', API + '/goal-options', json={'q': '', 'offset': 0})
+                checks['c_goal_options_metadata_only'] = catalog['limit'] == 30 and catalog['total'] == 2 and all(
+                    set(row) == {'goal_id', 'title', 'goal_type', 'deadline', 'source_id', 'valid'} for row in catalog['items'])
+                new_snapshot = call('POST', API + '/snapshot', json=scope)['snapshot']
+                checks['c_snapshot_labels_and_contract_version'] = (
+                    call('GET', API + '/capabilities')['ui_contract'] == 'today-workspace-v1'
+                    and new_snapshot['facts']['goal']['title'] == '原创合成数据结构目标'
+                    and new_snapshot['facts']['sources'][0]['original_name'] == 'synthetic-0.md')
+
+                def arrange(minutes, key, discard_ack=False):
                     snap = call('POST', API + '/snapshot', json=scope)['snapshot']
                     body = {'scope': scope, 'expected_evidence_revision': snap['evidence_revision'], 'options': {'available_minutes': minutes}}
                     preview = call('POST', API + '/preview', json=body)
                     if preview['estimated_minutes'] > minutes or len({t['task_id'] for t in preview['selected']}) != len(preview['selected']):
                         raise AssertionError('budget_or_dedup_failed')
                     request = body | {'confirmation_token': preview['confirmation_token'], 'request_key': key, 'confirmed': True}
+                    if discard_ack:
+                        with client.stream('POST', API + '/confirm', json=request) as response:
+                            response.raise_for_status()
+                            steps.append({'method': 'POST', 'path': API + '/confirm', 'status': response.status_code, 'response_body_intentionally_discarded': True})
+                        return request, call('GET', API + '/operations/' + key)
                     return request, call('POST', API + '/confirm', json=request)
                 store = SQLiteStorage(data / 'filemate.db')
+                protected_counts = seed_protected_evidence(store)
                 before = domain_fingerprints(store)
-                first_request, first = arrange(45, 'synthetic-journey-confirm-1')
+                first_request, first = arrange(45, 'synthetic-journey-confirm-1', discard_ack=True)
+                checks['lost_ack_original_key_recovered_once'] = first['request_key'] == first_request['request_key'] and store._conn().execute(
+                    'SELECT count(*) FROM artifacts WHERE artifact_id=?', (first['operation_id'],)).fetchone()[0] == 1
                 assert call('GET', API + '/operations/' + first['request_key']) == first
                 assert call('POST', API + '/confirm', json=first_request) == first
                 _, second = arrange(15, 'synthetic-journey-confirm-2')
                 checks['schedule_commands_preserve_domain_fingerprints'] = before == domain_fingerprints(store)
+                from filemate.study.orchestrator.repository import day_id
+                conn = store._conn()
+                saved = conn.execute('SELECT content FROM artifacts WHERE artifact_id=?', (day_id(second['study_date']),)).fetchone()[0]
+                legacy = json.loads(saved)
+                legacy.pop('last_operation_id', None)
+                try:
+                    with conn:
+                        conn.execute('UPDATE artifacts SET content=? WHERE artifact_id=?', (json.dumps(legacy), day_id(second['study_date'])))
+                    legacy_day = call('GET', API + '/today')
+                    checks['legacy_day_without_pointer_still_readable'] = legacy_day['latest_operation'] is None and legacy_day['scope'] == scope and legacy_day['status'] == 'confirmed'
+                finally:
+                    with conn:
+                        conn.execute('UPDATE artifacts SET content=? WHERE artifact_id=?', (saved, day_id(second['study_date'])))
                 store.close()
                 call('PATCH', f'/goals/{goals[0]}/tasks/review-source', json={'completed': True})
                 completed = call('GET', API + '/today')
@@ -194,6 +252,8 @@ def run_journey(root: Path):
                     checks['network_outage_preserves_data'] = True
                 store = SQLiteStorage(data / 'filemate.db')
                 frozen = domain_fingerprints(store)
+                frozen_business = domain_fingerprints(store, restored=True)
+                frozen_safety = restore_safety_state(store)
                 store.close()
                 plan = plan_backup(data)
                 create_backup(data, root / 'managed-backup', plan['confirmation'], quiesced=True)
@@ -201,7 +261,9 @@ def run_journey(root: Path):
                 restore_plan = plan_restore(root / 'managed-backup', target)
                 restore_backup(root / 'managed-backup', target, restore_plan['confirmation'])
                 restored = SQLiteStorage(target / 'filemate.db')
-                checks['managed_restore_fingerprints_match'] = domain_fingerprints(restored) == frozen
+                # 全量业务字段相等；仅逐字段验证既定的安全修订提升，而非放宽所有状态。
+                checks['managed_restore_fingerprints_match'] = domain_fingerprints(restored, restored=True) == frozen_business
+                checks['managed_restore_safety_states_rotated'] = safety_state_rotated(frozen_safety, restore_safety_state(restored))
                 restored_commands = OrchestratorCommands(restored)
                 rejected = []
                 for action in (lambda: restored_commands.confirm(ConfirmRequest(**pending)),
@@ -225,7 +287,9 @@ def run_journey(root: Path):
                     checks['managed_restore_rejects_overwrite'] = True
                 backend = start(backend_args, env, ROOT, logs[0])
                 wait_ready(f'http://127.0.0.1:{api_port}/api/ready', backend)
-                checks['restart_preserves_completion'] = completed_id in [t['task_id'] for t in call('GET', API + '/today')['completed']]
+                restarted_day = call('GET', API + '/today')
+                checks['restart_preserves_completion'] = completed_id in [t['task_id'] for t in restarted_day['completed']]
+                checks['restart_keeps_verified_day_receipt'] = restarted_day['latest_operation'] == third
                 for index in (1, 0):
                     previous = call('GET', API + '/today')
                     preview = call('GET', f'/knowledge/sources/{sources[index]}/delete-preview')
@@ -246,6 +310,10 @@ def run_journey(root: Path):
                 personal = PersonalBackup(new_store, 'local', personal_root / 'inbox', personal_root / 'archive')
                 preview = personal.preview(exported.content)
                 personal.restore(preview['backup_id'], preview['confirmation_token'])
+                protected_tables = ('interview_turns', 'kg_relations', 'kg_evidence', 'quiz_attempts', 'wrong_questions', 'review_events', 'study_plans')
+                restored_fingerprints = domain_fingerprints(new_store)
+                checks['personal_restore_preserves_nonempty_feature_records'] = all(restored_fingerprints[name] == frozen[name] for name in protected_tables)
+                checks['personal_restore_safety_states_rotated'] = safety_state_rotated(frozen_safety, restore_safety_state(new_store))
                 repo = OrchestratorRepository(new_store)
                 view = repo.today(utc_now().astimezone(LOCAL_ZONE).date())
                 checks['personal_restore_keeps_refs'] = view.scope is not None and view.scope.goal_id == goals[0] and completed_id in [t.task_id for t in view.completed]
@@ -259,7 +327,7 @@ def run_journey(root: Path):
                 new_store.close()
             return {'status': 'PASS' if all(checks.values()) else 'FAIL', 'synthetic': True,
                     'fixture_setup': 'one original question artifact; domain actions via original HTTP',
-                    'checks': checks, 'steps': steps, 'domain_fingerprints_before_decision': before,
+                    'checks': checks, 'steps': steps, 'protected_evidence_counts': protected_counts, 'domain_fingerprints_before_decision': before,
                     'domain_fingerprints_at_backup': frozen, 'production_touched': False,
                     'shutdown_mode': 'owned_authenticated_graceful_stop'}
         finally:

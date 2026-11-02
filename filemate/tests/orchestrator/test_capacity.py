@@ -88,3 +88,36 @@ def test_date_helpers_never_parse_foreign_scope_dates(world, monkeypatch, json1)
         for sources in ((world['sources'][0],), ()):
             ReviewQueries(read).page_in_snapshot(read, ReviewFilter(sort='recommended'), as_of=world['now'][0], source_ids=sources)
     assert foreign_date not in seen
+
+
+def test_c_contract_bounded_metadata_and_ten_thousand_distinct_due_times(tmp_path):
+    import json
+    from datetime import datetime, timedelta, timezone
+
+    from filemate.study.orchestrator.context import read_goal_options
+    from filemate.study.orchestrator.models import GoalOptionsRequest, ScheduleOptions
+    from filemate.study.orchestrator.scheduler import build_schedule
+    store, scope = runtime().seed(tmp_path, count=10000)
+    try:
+        start = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        with store._conn() as conn:
+            conn.executemany('UPDATE wrong_questions SET next_review_at=? WHERE wrong_id=?',
+                [((start + timedelta(seconds=index + group * 10000)).isoformat(), f'synthetic-{group}-{index:06}')
+                 for group in (0, 1) for index in range(10000)])
+        for index in range(43):
+            store.save_artifact(artifact_type='reverse_goal_plan', title=f'original bounded goal {index}',
+                content={'title': f'original bounded goal {index}', 'tasks': [], 'private': 'must-not-leak'})
+        directory = read_goal_options(store, GoalOptionsRequest())
+        assert directory.total == 44 and len(directory.items) == directory.limit == 30
+        assert 'must-not-leak' not in directory.model_dump_json()
+        snap = module('snapshot').SnapshotReader(store).read(scope)
+        assert snap.coverage['reviews'] == {'total': 10000, 'returned': 100, 'truncated': True}
+        assert len({row['next_review_at'] for row in snap.facts['reviews']}) == 100
+        assert all(row['source_id'] == scope.source_ids[0] for row in snap.facts['reviews'])
+        projection = module('task_views').project_tasks(snap)
+        schedule = build_schedule(snap, projection, ScheduleOptions(available_minutes=60))
+        assert len(projection.tasks) <= 200 and len(schedule.selected) <= 20
+        response = {'snapshot': snap.model_dump(mode='json'), 'projection': projection.model_dump(mode='json')}
+        assert len(json.dumps(response, ensure_ascii=False).encode()) <= 524288
+    finally:
+        store.close()
