@@ -1,6 +1,6 @@
 {
   "stage": "C",
-  "status": "PENDING_FINAL_GATE_AND_REVIEW",
+  "status": "PASS_GATES_PENDING_INDEPENDENT_REVIEW",
   "base": "55f2c1161dccfaac798479f89c5f834f6f23530e",
   "implementation_head": "09727b6e2c22cfb9fa8f1cbcaea944e8532dc2f0",
   "tasks_1_to_7": "completed",
@@ -41,8 +41,25 @@
     "filemate/tests/test_perception.py": true
   },
   "full_gate": {
-    "status": "RUNNING",
-    "command": "powershell -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend"
+    "status": "PASS",
+    "exit_code": 0,
+    "command": "powershell -ExecutionPolicy Bypass -File scripts/verify.ps1 -IsolateFrontend",
+    "backend": {
+      "passed": 1928,
+      "skipped": 22,
+      "deselected": 5,
+      "warnings": 3
+    },
+    "backend_seconds": 1720.76,
+    "frontend": {
+      "tests": 368,
+      "pass": 368,
+      "fail": 0,
+      "skipped": 0
+    },
+    "type_build": "PASS",
+    "bundle": "bundle.json",
+    "log": "task-8-full-verify.log.gz"
   },
   "independent_review": {
     "status": "NOT_STARTED",
@@ -52,5 +69,6 @@
   "physical_mobile_IME": "NOT RUN",
   "physical_browser_200_percent_zoom": "NOT RUN; equivalent CSS viewport tested",
   "production_deployed": false,
-  "D_E_started": false
+  "D_E_started": false,
+  "tasks_1_to_8": "implementation and gates completed; final review outside task completion still pending"
 }
