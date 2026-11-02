@@ -116,3 +116,21 @@ def test_confirm_quota_preserves_last_receipt(client, world):
     response = client.post(ROOT + '/confirm', json=request.model_dump(mode='json'))
     assert response.status_code == 429
     assert client.get(ROOT + '/operations/' + last.request_key).json()['data']['operation_id'] == last.operation_id
+
+
+
+def test_concurrent_undo_rejection_exposes_public_machine_error(client, world):
+    from .test_commands import command, prepared
+
+    first = command(world).confirm(prepared(world))
+    preview = client.post(ROOT + f'/operations/{first.operation_id}/undo-preview', json={})
+    assert preview.status_code == 200
+    command(world).confirm(prepared(world).model_copy(update={'request_key': 'synthetic-later-arrangement'}))
+    response = client.post(ROOT + f'/operations/{first.operation_id}/undo-confirm', json={
+        'confirmation_token': preview.json()['data']['confirmation_token'],
+        'request_key': 'synthetic-definite-undo-rejection', 'confirmed': True,
+    })
+    assert response.status_code == 409
+    assert response.json() == {'success': False, 'data': {
+        'error_code': 'schedule_changed_since_operation'}, 'error': 'schedule_changed_since_operation'}
+    assert client.get(ROOT + '/operations/synthetic-definite-undo-rejection').status_code == 404

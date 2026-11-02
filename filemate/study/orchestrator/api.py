@@ -71,7 +71,7 @@ class DecisionRoute(APIRoute):
                 result.headers['Cache-Control'] = 'no-store'
                 return result
             except OrchestratorError as exc:
-                return response(status=exc.status_code, error=exc.code)
+                return response({'error_code': exc.code}, status=exc.status_code, error=exc.code)
             except RequestValidationError:
                 return response(status=422, error='invalid_request')
             except (ValidationError, ValueError):
