@@ -167,3 +167,25 @@ def test_generic_save_cannot_win_retyping_race(world, monkeypatch):
         assert other.get_artifact(target)['artifact_type'] == 'learning_orchestration_day'
     finally:
         other.close()
+
+
+def test_undo_authority_expires_at_shanghai_midnight_but_fresh_history_undo_and_replay_work(world):
+    from datetime import datetime, timezone
+
+    models = module('models')
+    world['now'][0] = datetime(2026, 10, 31, 15, 59, 30, tzinfo=timezone.utc)
+    cmd = command(world)
+    confirmed = cmd.confirm(prepared(world))
+    preview = cmd.preview_undo(confirmed.operation_id)
+    request = models.UndoConfirmRequest(confirmation_token=preview.confirmation_token,
+                                       request_key='synthetic-midnight-undo', confirmed=True)
+    world['now'][0] += timedelta(seconds=60)
+    with pytest.raises(models.OrchestratorError):
+        cmd.confirm_undo(confirmed.operation_id, request)
+    assert module('repository').OrchestratorRepository(world['store']).find_request(request.request_key) is None
+    fresh = cmd.preview_undo(confirmed.operation_id)
+    request = request.model_copy(update={'confirmation_token': fresh.confirmation_token})
+    receipt = cmd.confirm_undo(confirmed.operation_id, request)
+    assert receipt.status == 'undone'
+    world['now'][0] += timedelta(days=1)
+    assert cmd.confirm_undo(confirmed.operation_id, request) == receipt

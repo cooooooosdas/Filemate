@@ -1,10 +1,11 @@
+import { readHttpStatus } from './http-status.ts'
 import type { DayView, OrchestratorCapabilities, OrchestratorSnapshot, ScheduleOptions, ScopeRequest } from '../types/orchestrator.ts'
 import type { TodayReadPort, TodayState, TodayStorage } from '../types/today.ts'
 import { todayPendingKey } from './preferences.ts'
 
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 const id = (value: unknown, limit = 128): value is string => typeof value === 'string' && value.length > 0 && value.length <= limit && !/[\x00-\x1f]/.test(value)
-const status = (error: unknown): number | undefined => (error as { response?: { status?: number } } | null)?.response?.status
+const status = (error: unknown): number | undefined => readHttpStatus(error)
 const calendar = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' })
 const tasks = (value: unknown, limit: number): boolean => Array.isArray(value) && value.length <= limit && value.every(item =>
   item !== null && typeof item === 'object' && id(item.task_id, 512) && typeof item.status === 'string')

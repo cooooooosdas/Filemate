@@ -1,4 +1,5 @@
 import type { TodayPreferences, TodayStorage } from '../types/today.ts'
+import { TODAY_EPOCH_KEY } from '../services/today-session.ts'
 
 const PREFERENCES = 'filemate-today-preferences-v1:'
 const PENDING = 'filemate-today-pending-v1:'
@@ -15,7 +16,7 @@ function clean(value: unknown): TodayPreferences {
 export function createTodayStorage(local: TodayStorage, session: TodayStorage): TodayStorage {
   function area(key: string): TodayStorage {
     if (key.length <= 512 && key.startsWith(PENDING)) return session
-    if (key.length <= 512 && key.startsWith(PREFERENCES)) return local
+    if (key === TODAY_EPOCH_KEY || key.length <= 512 && key.startsWith(PREFERENCES)) return local
     throw new Error('不支持的今日行动存储项')
   }
   return { getItem: key => area(key).getItem(key), setItem: (key, value) => area(key).setItem(key, value),

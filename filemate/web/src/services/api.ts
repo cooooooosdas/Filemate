@@ -1,6 +1,8 @@
 import { saveDownload } from './downloads'
 import type { CoachSnapshot, CoachMutationResult, CoachAnswer, CoachAnalysis, CoachAdvance, CoachConsent, CoachAttempts, CoachFocus } from '../types/interviewCoach'
 import axios from 'axios'
+import { installTodaySessionBoundary } from './today-session'
+installTodaySessionBoundary(window)
 import type { CourseActionPreview, CourseChapter, CourseConcept, CourseDecision, CourseDraft, CourseGraphPage, CourseMergePreview, CourseOperation, CourseReviewPreview, GraphConfirmation, GraphCourse, GraphMode, GraphPage } from '../types/courseGraph'
 import type { WorkspaceCanvas, WorkspaceChapterPath, WorkspaceCitation, WorkspaceConceptOptions, WorkspaceConceptPage, WorkspaceDetail, WorkspaceFilter, WorkspaceNavigation, WorkspaceNavigationOptions } from '../types/courseWorkspace'
 import type { LearningEvidence, LearningPreview, LearningReceipt, LearningWork, PathOptions, PathPreview, PracticeDecision, PracticeOptions, QuestionCandidate, QuestionRef, RelatedCourse, RelatedInput } from '../types/courseLearning'
@@ -308,6 +310,7 @@ export async function loginAccount(email: string, password: string, remember: bo
 }
 export async function logoutAccount(): Promise<void> {
   await api.post('/api/auth/logout', {}, accountOptions)
+  window.dispatchEvent(new Event('filemate:session-reset'))
 }
 export async function recoverAccount(email: string, recovery_code: string, password: string): Promise<string> {
   return (await api.post<any, ApiResponse<{ recovery_code: string }>>('/api/auth/recover', { email, recovery_code, password }, accountOptions)).data!.recovery_code

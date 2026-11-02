@@ -1,8 +1,9 @@
+import { readHttpStatus } from './http-status.ts'
 import type { TodayMode } from '../types/today.ts'
 
 export function resolveTodayEntry(caps: unknown, error?: unknown): { view: 'loading' | 'legacy' | 'workspace' | 'error'; message: string } {
   if (error) {
-    const status = (error as { response?: { status?: number } })?.response?.status
+    const status = readHttpStatus(error)
     return { view: 'error', message: status === 401 ? '登录已过期，请重新登录后重试。' : status === 429 ? '请求较多，请稍后手动重试。' : '暂时无法读取今日行动，请检查连接后重试。' }
   }
   if (caps === null || caps === undefined) return { view: 'loading', message: '' }

@@ -1,12 +1,15 @@
+import { readHttpStatus } from './http-status.ts'
 import type { OperationReceipt, OrchestratorClient, PreviewRequest, ScopeRequest, UndoPreview } from '../types/orchestrator.ts'
 import type { PendingLocator, TodayState, TodayStorage } from '../types/today.ts'
 import { todayPendingKey } from './preferences.ts'
+import { TODAY_EPOCH_KEY } from '../services/today-session.ts'
+const clockDay = () => new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 const id = (value: unknown, max = 128): value is string => typeof value === 'string' && value.length > 0 && value.length <= max && !/[\x00-\x1f]/.test(value)
 const keyValid = (value: unknown): value is string => typeof value === 'string' && /^[a-zA-Z0-9_-]{16,80}$/.test(value)
 const tokenValid = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value)
-const httpStatus = (error: unknown): number | undefined => (error as { response?: { status?: number } } | null)?.response?.status
+const httpStatus = (error: unknown): number | undefined => readHttpStatus(error)
 function dateValid(value: unknown): value is string {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
   const instant = Date.parse(`${value}T00:00:00Z`)
@@ -18,18 +21,20 @@ function scopeKey(value: ScopeRequest | null): string | null {
   return JSON.stringify([value.goal_id, value.course_id ?? null, [...value.source_ids].sort()])
 }
 class PendingStorageError extends Error {}
-type Flight = { kind: 'preview' | 'confirm' | 'recover' | 'undo_preview' | 'undo'; identity: string; generation: number }
-type Reviewed = { body: PreviewRequest; token: string; until: number; identity: string; generation: number; study_date: string }
-type ReviewedUndo = { value: UndoPreview; until: number; identity: string; generation: number; read_date: string; read_revision: number }
+type Flight = { kind: 'preview' | 'confirm' | 'recover' | 'undo_preview' | 'undo'; identity: string; generation: number; epoch: string | null }
+type Reviewed = { body: PreviewRequest; token: string; until: number; identity: string; generation: number; study_date: string; epoch: string | null }
+type ReviewedUndo = { value: UndoPreview; until: number; identity: string; generation: number; read_date: string; read_revision: number; epoch: string | null }
 
 /** Keep authorization in memory and persist only a stable per-tab recovery locator. */
 export function createTodayCommands(client: OrchestratorClient, state: TodayState, storage: TodayStorage, refresh: () => Promise<void>) {
   let disposed = false, flight: Flight | null = null, reviewed: Reviewed | null = null, undo: ReviewedUndo | null = null
-  const currentIdentity = (ticket: Flight): boolean => !disposed && state.identity === ticket.identity && flight === ticket
+  const epoch = () => { try { return storage.getItem(TODAY_EPOCH_KEY) ?? '' } catch { return null } }
+  let observedClockDay = clockDay()
+  const currentIdentity = (ticket: Flight): boolean => !disposed && state.identity === ticket.identity && flight === ticket && ticket.epoch === epoch()
   const current = (ticket: Flight): boolean => currentIdentity(ticket) && state.generation === ticket.generation
   function begin(kind: Flight['kind']): Flight | null {
     if (disposed || flight || state.phase !== 'ready' || !state.identity) return null
-    flight = { kind, identity: state.identity, generation: state.generation }
+    flight = { kind, identity: state.identity, generation: state.generation, epoch: epoch() }
     return flight
   }
   function finish(ticket: Flight): void { if (flight === ticket) flight = null }
@@ -41,15 +46,19 @@ export function createTodayCommands(client: OrchestratorClient, state: TodayStat
       if (raw.length > 1024) throw new Error()
       const value = JSON.parse(raw) as PendingLocator
       if (!value || typeof value !== 'object' || Array.isArray(value) ||
-        Object.keys(value).some(key => !['kind', 'request_key', 'study_date', 'operation_id'].includes(key)) ||
-        !keyValid(value.request_key) || !dateValid(value.study_date) ||
+        Object.keys(value).some(key => !['kind', 'request_key', 'study_date', 'operation_id', 'epoch'].includes(key)) ||
+        !keyValid(value.request_key) || !dateValid(value.study_date) || value.epoch !== undefined && !id(value.epoch, 80) ||
         !(value.kind === 'confirm' && value.operation_id === undefined || value.kind === 'undo' && id(value.operation_id))) throw new Error()
+      if ((value.epoch ?? '') !== epoch()) { storage.removeItem(todayPendingKey(identity)); return null }
       return copy(value)
     } catch { throw new PendingStorageError('无法读取请求存储，请核验已保存安排后重试。') }
   }
   function persist(identity: string, locator: PendingLocator): void {
     const previous = loadPending(identity)
     if (previous && (previous.request_key !== locator.request_key || previous.kind !== locator.kind || previous.operation_id !== locator.operation_id)) throw new PendingStorageError('另一个请求尚待核验，请先查回执。')
+    const currentEpoch = epoch()
+    if (currentEpoch === null) throw new PendingStorageError('无法读取本机同步状态，尚未发送请求，请允许本页存储后重试。')
+    locator = { ...locator, ...(currentEpoch ? { epoch: currentEpoch } : {}) }
     const encoded = JSON.stringify(locator)
     try {
       storage.setItem(todayPendingKey(identity), encoded)
@@ -81,7 +90,7 @@ export function createTodayCommands(client: OrchestratorClient, state: TodayStat
   }
   function receiptValid(value: OperationReceipt, pending: PendingLocator): boolean {
     return !!value && id(value.operation_id) && value.request_key === pending.request_key && dateValid(value.study_date) &&
-      Number.isSafeInteger(value.revision) && value.revision > 0 && value.status === (pending.kind === 'undo' ? 'undone' : 'confirmed') &&
+      Number.isSafeInteger(value.revision) && value.revision > 0 && (pending.kind === 'undo' ? value.status === 'undone' : value.status === 'confirmed' || value.status === 'undone') &&
       !!value.affected && typeof value.affected === 'object' && !Array.isArray(value.affected) &&
       Object.values(value.affected).every(amount => Number.isSafeInteger(amount) && amount >= 0)
   }
@@ -135,7 +144,7 @@ export function createTodayCommands(client: OrchestratorClient, state: TodayStat
         !Array.isArray(value.completed) || value.completed.length > 200 || !Array.isArray(value.deferred) || value.deferred.length > 200) throw new Error('invalid_preview')
       state.draft = copy(body); state.preview = copy(value); state.write_status = 'idle'
       reviewed = { body: copy(body), token: value.confirmation_token, until: sentAt + value.expires_in_seconds * 1000,
-        identity: ticket.identity, generation: ticket.generation, study_date: value.study_date }
+        identity: ticket.identity, generation: ticket.generation, study_date: value.study_date, epoch: ticket.epoch }
     } catch (error) {
       if (current(ticket)) { clearAuthority(); state.write_status = state.pending ? 'unknown' : 'idle'; problem(error, ticket, '无法预览当前范围，草稿保留，请重新读取后预览。') }
     } finally { finish(ticket) }
@@ -144,6 +153,13 @@ export function createTodayCommands(client: OrchestratorClient, state: TodayStat
     if (!current(ticket)) return
     clearAuthority()
     if (httpStatus(error) === 401) { expire(ticket.identity); return }
+    if (!hadPending && pending.kind === 'undo' && httpStatus(error) === 409 &&
+      (error as { code?: string })?.code === 'schedule_changed_since_operation') {
+      removePending(ticket.identity, pending.request_key); state.write_status = 'idle'
+      try { await refresh() } catch { /* The definite rejection still ends this new request. */ }
+      if (currentIdentity(ticket)) state.error = '原安排已变化，本次撤销未执行；请核对当前安排后继续。'
+      return
+    }
     if (httpStatus(error) === 409) { state.write_status = 'unknown'; await lookup(pending, ticket); return }
     if (!hadPending && [400, 403, 413, 422, 429].includes(httpStatus(error) ?? 0)) {
       removePending(ticket.identity, pending.request_key); state.write_status = 'idle'
@@ -151,11 +167,12 @@ export function createTodayCommands(client: OrchestratorClient, state: TodayStat
     } else { state.write_status = 'unknown'; problem(error, ticket, '请求结果待核验，请查回执；不要重复创建保存请求。') }
   }
   async function confirm(): Promise<void> {
+    if (observedClockDay !== clockDay()) { await checkDayBoundary(); return }
     const ticket = begin('confirm')
     if (!ticket) return
     try {
       const review = reviewed
-      if (!review || review.identity !== ticket.identity || review.generation !== ticket.generation || Date.now() >= review.until ||
+      if (!review || review.identity !== ticket.identity || review.generation !== ticket.generation || review.epoch !== ticket.epoch || Date.now() >= review.until ||
         state.preview?.confirmation_token !== review.token || JSON.stringify(state.draft) !== JSON.stringify(review.body) ||
         state.snapshot?.snapshot.evidence_revision !== review.body.expected_evidence_revision || state.snapshot.snapshot.study_date !== review.study_date) {
         clearAuthority(); state.write_status = state.pending ? 'unknown' : state.receipt ? 'saved' : 'idle'
@@ -204,17 +221,18 @@ export function createTodayCommands(client: OrchestratorClient, state: TodayStat
         !Number.isSafeInteger(value.day_revision) || value.day_revision < 0 || !Number.isInteger(value.expires_in_seconds) ||
         value.expires_in_seconds < 1 || value.expires_in_seconds > 900 || !state.day) throw new Error('invalid_undo_preview')
       undo = { value: copy(value), until: sentAt + value.expires_in_seconds * 1000, identity: ticket.identity,
-        generation: ticket.generation, read_date: state.day.study_date, read_revision: state.day.revision }
+        generation: ticket.generation, read_date: state.day.study_date, read_revision: state.day.revision, epoch: ticket.epoch }
       state.undo_preview = copy(value); state.write_status = 'undo_preview'
     } catch (error) { if (current(ticket)) { clearAuthority(); state.write_status = state.pending ? 'unknown' : 'idle'; problem(error, ticket, '撤销预览暂不可用，请重新读取当前回执。') } }
     finally { finish(ticket) }
   }
   async function confirmUndo(): Promise<void> {
+    if (observedClockDay !== clockDay()) { await checkDayBoundary(); return }
     const ticket = begin('undo')
     if (!ticket) return
     try {
       const review = undo
-      if (!review || review.identity !== ticket.identity || review.generation !== ticket.generation || Date.now() >= review.until ||
+      if (!review || review.identity !== ticket.identity || review.generation !== ticket.generation || review.epoch !== ticket.epoch || Date.now() >= review.until ||
         state.undo_preview?.confirmation_token !== review.value.confirmation_token || state.day?.study_date !== review.read_date || state.day?.revision !== review.read_revision) {
         clearAuthority(); state.write_status = state.pending ? 'unknown' : state.receipt ? 'saved' : 'idle'
         state.error = '撤销依据已变化或预览已过期，请重新预览撤销。'; return
@@ -236,11 +254,18 @@ export function createTodayCommands(client: OrchestratorClient, state: TodayStat
     if (flight && flight.kind !== 'confirm' && flight.kind !== 'undo') flight = null
     if (state.write_status !== 'confirming' && state.write_status !== 'undoing' && state.write_status !== 'saved') state.write_status = state.pending ? 'unknown' : 'idle'
   }
+  async function checkDayBoundary(): Promise<boolean> {
+    if (disposed || observedClockDay === clockDay()) return false
+    observedClockDay = clockDay(); invalidate()
+    state.error = '日期可能已变化，旧预览已失效，请按服务端日期重新预览。'
+    if (!flight && state.identity && state.phase === 'ready') { try { await refresh() } catch { /* Keep authorization revoked if refresh fails. */ } }
+    return true
+  }
   function dispose(): void {
     if (disposed) return
     clearAuthority(); state.pending = null
     if (state.write_status === 'confirming' || state.write_status === 'undoing') state.write_status = 'unknown'
     disposed = true; flight = null
   }
-  return { preview, confirm, recover, previewUndo, confirmUndo, invalidate, dispose }
+  return { preview, confirm, recover, previewUndo, confirmUndo, checkDayBoundary, invalidate, dispose }
 }

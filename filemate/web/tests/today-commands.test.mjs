@@ -382,3 +382,152 @@ test('a malformed or foreign preview cannot authorize a confirmation', async () 
     assert.ok(x.state.error)
   }
 })
+
+
+async function publicError(status, code = 'synthetic_rejection') {
+  const ts = (await import('typescript')).default
+  const { readFileSync } = await import('node:fs')
+  const source = readFileSync(new URL('../src/services/api.ts', import.meta.url), 'utf8')
+  const tree = ts.createSourceFile('api.ts', source, ts.ScriptTarget.Latest, true)
+  const statement = tree.statements.find(node => node.getText(tree).startsWith('api.interceptors.response.use('))
+  assert.ok(statement, 'exercise the actual public response normalizer')
+  let rejected
+  const api = { interceptors: { response: { use: (_success, error) => { rejected = error } } } }
+  const compiled = ts.transpileModule(statement.getText(tree).replaceAll('import.meta.env.DEV', 'false'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText
+  new Function('api', 'window', 'Event', compiled)(api, { dispatchEvent() {} }, Event)
+  try { await rejected({ response: { status, data: { error: 'synthetic rejection', data: { error_code: code } } } }) }
+  catch (error) { assert.equal(error.status, status); return error }
+  throw new Error('normalizer manufactured success')
+}
+
+test('public_normalized_rejections_are_classified_by_the_actual_controller', async () => {
+  for (const status of [422, 429]) {
+    const x = fixture(), error = await publicError(status)
+    x.handlers.confirm = async () => { throw error }
+    await x.commands.preview(); await x.commands.confirm()
+    assert.equal(x.state.write_status, 'idle', `public HTTP ${status} is a definite first rejection`)
+    assert.equal(x.store.getItem(pendingKey), null)
+    if (status === 429) assert.match(x.state.error, /次数/)
+    assert.equal(x.calls.confirm.length, 1)
+  }
+  const x = fixture()
+  x.handlers.confirm = async request => { x.accept(request); throw await publicError(409) }
+  await x.commands.preview(); await x.commands.confirm()
+  assert.equal(x.calls.find.length, 1)
+  assert.equal(x.state.write_status, 'saved')
+})
+
+test('confirmed_then_undone_receipt_is_a_verified_terminal_outcome', async () => {
+  const x = fixture()
+  x.handlers.confirm = async request => { x.accept(request); throw new Error('lost ack') }
+  await x.commands.preview(); await x.commands.confirm()
+  const key = x.calls.confirm[0].request_key
+  x.server.receipts.set(key, { ...x.server.receipts.get(key), status: 'undone' })
+  x.server.day = { ...x.server.day, revision: 2, status: 'not_confirmed', scope: null, options: null, selected: [], latest_operation: null }
+  await x.commands.recover()
+  assert.equal(x.state.pending, null)
+  assert.equal(x.store.getItem(pendingKey), null)
+  assert.equal(x.state.receipt.status, 'undone')
+  await x.commands.preview()
+  assert.equal(x.calls.preview.length, 2)
+  assert.equal(x.calls.confirm.length, 1)
+})
+
+test('first_undo_definitely_rejected_by_concurrent_revision_does_not_deadlock', async () => {
+  const x = fixture()
+  await x.commands.preview(); await x.commands.confirm()
+  await x.commands.previewUndo(x.state.day.latest_operation.operation_id)
+  x.server.day.revision = 2
+  x.handlers.undo = async () => { throw await publicError(409, 'schedule_changed_since_operation') }
+  await x.commands.confirmUndo()
+  assert.equal(x.state.pending, null)
+  assert.equal(x.store.getItem(pendingKey), null)
+  await x.commands.preview()
+  assert.equal(x.calls.preview.length, 2)
+  assert.equal(x.calls.undo.length, 1)
+})
+
+test('unknown_previous_undo_plus_404_still_keeps_the_original_key', async () => {
+  const x = fixture()
+  await x.commands.preview(); await x.commands.confirm()
+  const operation = x.state.day.latest_operation.operation_id
+  await x.commands.previewUndo(operation)
+  x.handlers.undo = async () => { throw new Error('lost before outcome known') }
+  await x.commands.confirmUndo()
+  const key = x.calls.undo[0].body.request_key
+  await x.commands.previewUndo(operation)
+  x.handlers.undo = async () => { throw await publicError(409, 'schedule_changed_since_operation') }
+  await x.commands.confirmUndo()
+  assert.equal(x.state.pending.request_key, key)
+  assert.equal(x.state.write_status, 'unknown')
+  assert.equal(x.calls.find.length, 1)
+})
+
+test('cross_midnight_old_undo_authority_never_sends_a_write', async () => {
+  const original = Date.now
+  let clock = Date.parse('2026-11-01T15:59:30Z')
+  Date.now = () => clock
+  try {
+    const x = fixture()
+    await x.commands.preview(); await x.commands.confirm()
+    await x.commands.previewUndo(x.state.day.latest_operation.operation_id)
+    clock += 60000
+    await x.commands.confirmUndo()
+    assert.equal(x.calls.undo.length, 0)
+    assert.equal(x.state.undo_preview, null)
+    assert.ok(x.calls.refresh >= 2, 'date boundary re-reads authoritative server state')
+  } finally { Date.now = original }
+})
+
+test('kept_open_midnight_check_revokes_preview_without_user_submission', async () => {
+  const original = Date.now
+  let clock = Date.parse('2026-11-01T15:59:30Z')
+  Date.now = () => clock
+  try {
+    const x = fixture()
+    await x.commands.preview()
+    assert.equal(typeof x.commands.checkDayBoundary, 'function')
+    clock += 60000
+    await x.commands.checkDayBoundary()
+    assert.equal(x.state.preview, null)
+    assert.equal(x.calls.confirm.length, 0)
+    assert.equal(x.calls.refresh, 1)
+  } finally { Date.now = original }
+})
+
+
+test('normalized_auth_entry_and_exact_goal_errors_retain_public_meaning', async () => {
+  const { resolveTodayEntry } = await import('../src/today/entry-state.ts')
+  const { loadExactTodayGoal } = await import('../src/today/navigation.ts')
+  assert.match(resolveTodayEntry(null, await publicError(429)).message, /请求较多/)
+  assert.match(resolveTodayEntry(null, await publicError(401)).message, /登录已过期/)
+  const missing = await loadExactTodayGoal('missing-goal', [], async () => { throw await publicError(404) })
+  assert.equal(missing.goal, null)
+  assert.match(missing.notice, /不存在或当前账号/)
+  const x = fixture()
+  x.handlers.confirm = async () => { throw await publicError(401) }
+  await x.commands.preview(); await x.commands.confirm()
+  assert.equal(x.state.phase, 'expired')
+  assert.equal(x.state.identity, null)
+})
+
+test('shared_restore_epoch_rejects_an_old_tab_locator_even_before_storage_event_delivery', async () => {
+  const { TODAY_EPOCH_KEY } = await import('../src/services/today-session.ts')
+  const x = fixture()
+  x.handlers.confirm = async () => { throw new Error('lost acknowledgement') }
+  await x.commands.preview(); await x.commands.confirm()
+  const oldKey = x.calls.confirm[0].request_key
+  x.commands.dispose()
+  x.store.setItem(TODAY_EPOCH_KEY, 'synthetic-restore-generation')
+  const next = x.fresh()
+  await next.recover()
+  assert.equal(x.calls.find.length, 0)
+  assert.equal(x.store.getItem(pendingKey), null)
+  x.handlers.confirm = async request => x.accept(request)
+  await next.preview(); await next.confirm()
+  assert.equal(x.state.write_status, 'saved')
+  assert.notEqual(x.calls.confirm[1].request_key, oldKey)
+  assert.equal(x.store.getItem(TODAY_EPOCH_KEY), 'synthetic-restore-generation')
+})

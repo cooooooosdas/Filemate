@@ -15,7 +15,7 @@ export interface TodayReadPort {
   client: OrchestratorClient; getCourseBrowserScope: typeof getCourseBrowserScope
   listGraphCourses: typeof listGraphCourses; getGraphCourse: typeof getGraphCourse
 }
-export interface PendingLocator { kind: 'confirm' | 'undo'; request_key: string; study_date: string; operation_id?: string }
+export interface PendingLocator { kind: 'confirm' | 'undo'; request_key: string; study_date: string; operation_id?: string; epoch?: string }
 export interface TodayState {
   phase: 'loading' | 'legacy' | 'ready' | 'error' | 'expired'; identity: string | null
   snapshot: OrchestratorSnapshot | null; day: DayView | null; draft: PreviewRequest | null

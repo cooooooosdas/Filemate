@@ -76,9 +76,11 @@ async function initialize() { reading.value = true; try { await workspace.initia
 async function refresh() { if (busy.value || reading.value) return; commands.invalidate(); reading.value = true; try { await workspace.refresh() } finally { if (!disposed) reading.value = false } }
 async function preview() { await commands.preview() }
 function invalidate() { commands.invalidate(); workspace.resetIdentity() }
-function visible() { if (document.visibilityState === 'visible' && !busy.value && !reading.value && !state.dirty && !state.preview && !state.undo_preview && state.phase === 'ready') void refresh() }
+async function visible() { if (document.visibilityState !== 'visible' || await commands.checkDayBoundary()) return; if (document.visibilityState === 'visible' && !busy.value && !reading.value && !state.dirty && !state.preview && !state.undo_preview && state.phase === 'ready') void refresh() }
+let dayTimer: ReturnType<typeof setTimeout>
+function scheduleDayCheck() { dayTimer = setTimeout(async () => { await commands.checkDayBoundary(); if (!disposed) scheduleDayCheck() }, 86400000 - (Date.now() + 28800000) % 86400000 + 10) }
 function unload(event: BeforeUnloadEvent) { if (state.dirty || state.pending || busy.value) { event.preventDefault(); event.returnValue = '' } }
 onBeforeRouteLeave(() => !(state.dirty || state.pending || busy.value) || window.confirm(state.pending || busy.value ? '保存结果尚待核验，原请求编号会保留。确认离开今日行动吗？' : '当前安排调整尚未保存，确认离开吗？'))
-onMounted(() => { void initialize(); document.addEventListener('visibilitychange', visible); window.addEventListener('filemate:review-changed', visible); window.addEventListener('filemate:session-expired', invalidate); window.addEventListener('filemate:data-restored', invalidate); window.addEventListener('beforeunload', unload) })
-onBeforeUnmount(() => { disposed = true; commands.dispose(); workspace.dispose(); preferences?.clearMemory(); document.removeEventListener('visibilitychange', visible); window.removeEventListener('filemate:review-changed', visible); window.removeEventListener('filemate:session-expired', invalidate); window.removeEventListener('filemate:data-restored', invalidate); window.removeEventListener('beforeunload', unload) })
+onMounted(() => { void initialize(); scheduleDayCheck(); document.addEventListener('visibilitychange', visible); window.addEventListener('filemate:review-changed', visible); window.addEventListener('filemate:today-invalidated', invalidate); window.addEventListener('beforeunload', unload) })
+onBeforeUnmount(() => { disposed = true; clearTimeout(dayTimer); commands.dispose(); workspace.dispose(); preferences?.clearMemory(); document.removeEventListener('visibilitychange', visible); window.removeEventListener('filemate:review-changed', visible); window.removeEventListener('filemate:today-invalidated', invalidate); window.removeEventListener('beforeunload', unload) })
 </script>

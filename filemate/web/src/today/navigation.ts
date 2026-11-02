@@ -1,3 +1,4 @@
+import { readHttpStatus } from './http-status.ts'
 import type { KnowledgeArtifact, ReverseGoalPlan, ReverseGoalTask } from '../services/api.ts'
 import type { LocationQuery, LocationQueryRaw } from 'vue-router'
 import type { OrchestratorSnapshot, TaskView } from '../types/orchestrator.ts'
@@ -35,7 +36,7 @@ export async function loadExactTodayGoal(goalId: string, recent: ReverseGoalPlan
     const goal = artifact?.artifact_id === goalId ? readStoredGoal(artifact) : null
     return { goal, notice: goal ? '' : '指定目标记录无效，原数据保留，请重新选择或修复。' }
   } catch (error) {
-    return { goal: null, notice: (error as { response?: { status?: number } })?.response?.status === 404
+    return { goal: null, notice: readHttpStatus(error) === 404
       ? '指定目标不存在或当前账号无法访问，请重新选择。' : '暂时无法读取指定目标，请重试。' }
   }
 }

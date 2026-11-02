@@ -128,7 +128,7 @@ class OrchestratorCommands:
         with atomic(self.storage) as conn:
             _, day, revision = self._undo_target(conn, operation_id)
             self._quota(conn, day, preview=True)
-            token = data_actions.issue(conn, 'orchestrator_undo', day_id(day), data_actions.digest([operation_id, revision]))
+            token = data_actions.issue(conn, 'orchestrator_undo', day_id(day), data_actions.digest([operation_id, revision, aware(self.clock()).astimezone(LOCAL_ZONE).date().isoformat()]))
             return UndoPreview(operation_id=operation_id, study_date=day, day_revision=revision, confirmation_token=token)
 
     def confirm_undo(self, operation_id: str, request: UndoConfirmRequest) -> OperationReceipt:
@@ -142,7 +142,7 @@ class OrchestratorCommands:
             if replay:
                 return replay
             target, day, revision = self._undo_target(conn, operation_id)
-            binding = data_actions.digest([operation_id, revision])
+            binding = data_actions.digest([operation_id, revision, aware(self.clock()).astimezone(LOCAL_ZONE).date().isoformat()])
             if self._check(conn, 'orchestrator_undo', day_id(day), request.confirmation_token, binding):
                 raise OrchestratorError('token_already_used')
             oid = operation_key(request.request_key)
