@@ -92,3 +92,16 @@ test('API and transport failures propagate once without manufacturing a receipt 
     assert.equal(value.calls.length, 1)
   }
 })
+
+test('today identity transport preserves network and auth failures instead of treating offline as account removal', async () => {
+  const accepted = service({ success: true, data: { credential_scope: 'a'.repeat(64) } })
+  assert.equal(typeof accepted.internal.getOrchestratorBrowserScope, 'function', 'the real strict today reader must exist')
+  assert.equal(await accepted.internal.getOrchestratorBrowserScope(), 'a'.repeat(64))
+  assert.deepEqual(accepted.calls, [{ method: 'get', args: ['/api/llm/status', { timeout: 15000 }] }])
+  for (const credential_scope of [undefined, null, 'invalid', 'a'.repeat(65)]) {
+    assert.equal(await service({ success: true, data: { credential_scope } }).internal.getOrchestratorBrowserScope(), null)
+  }
+  for (const failure of [new Error('network offline'), Object.assign(new Error('expired'), { response: { status: 401 } })]) {
+    await assert.rejects(() => service(failure).internal.getOrchestratorBrowserScope(), error => error === failure)
+  }
+})

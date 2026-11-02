@@ -185,3 +185,13 @@ test('the existing review-evidence goal task keeps its original goal context', (
   assert.equal(target?.path, '/goals')
   assert.deepEqual(target.query, { goal: 'old-goal', task_id: 'review-evidence' })
 })
+
+test('course graph task links require the course frontend, instead of opening legacy graph with incompatible node IDs', () => {
+  assert.equal(typeof navigation?.todayTargetAvailable, 'function')
+  const paths = new Set(['/knowledge-graph', '/ai-tools', '/goals'])
+  assert.equal(navigation.todayTargetAvailable('/knowledge-graph', paths, false), false)
+  assert.equal(navigation.todayTargetAvailable('/knowledge-graph', paths, true), true)
+  assert.equal(navigation.todayTargetAvailable('/ai-tools', paths, false), true)
+  assert.equal(navigation.todayTargetAvailable('/goals', paths, false), true)
+  assert.equal(navigation.todayTargetAvailable('/programming', paths, true), false)
+})

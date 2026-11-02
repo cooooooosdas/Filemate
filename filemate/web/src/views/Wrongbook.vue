@@ -1,4 +1,5 @@
 <template>
+  <div class="wrongbook-shell">
   <main v-if="normalized.blocked || normalizeError" class="route-location">
     <h1>无法定位这道题</h1><p role="alert">{{ normalizeError || normalized.notice }}</p>
     <RouterLink to="/wrongbook">返回错题目录</RouterLink><RouterLink to="/today">返回今日行动</RouterLink>
@@ -11,6 +12,7 @@
     </aside>
     <component :is="Workspace" />
   </template>
+  </div>
 </template>
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onBeforeUnmount, ref, watch } from 'vue'

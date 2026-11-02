@@ -94,7 +94,7 @@
         <span :style="{ width: `${completionRate}%` }"></span>
       </div>
 
-      <div v-if="plan.topics.length" class="topic-row">
+      <div v-if="plan.topics?.length" class="topic-row">
         <span
           v-for="topic in plan.topics"
           :key="topic.name"

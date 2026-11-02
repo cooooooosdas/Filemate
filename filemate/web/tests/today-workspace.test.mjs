@@ -357,3 +357,25 @@ test('per-tab pending locators survive that tab refresh without crossing into an
   first.removeItem(pending)
   assert.equal(second.getItem(pending), '{"request_key":"second-tab-key"}')
 })
+
+test('identity read transport failure keeps the current draft readable, while explicit 401 clears it', async () => {
+  let failure = null
+  const x = fixture({ identity: () => { if (failure) throw failure; return 'account:one' } })
+  await x.workspace.initialize()
+  await x.workspace.selectScope({ goal_id: 'g1', source_ids: ['s1'] })
+  x.workspace.setOptions({ ...x.workspace.state.draft.options, available_minutes: 45 })
+  const snapshot = structuredClone(x.workspace.state.snapshot), draft = structuredClone(x.workspace.state.draft)
+  x.workspace.state.preview = { confirmation_token: 'synthetic-memory-only' }
+  failure = new Error('offline')
+  await x.workspace.refresh()
+  assert.deepEqual(x.workspace.state.snapshot, snapshot)
+  assert.deepEqual(x.workspace.state.draft, draft)
+  assert.equal(x.workspace.state.preview, null)
+  assert.equal(x.workspace.state.phase, 'ready')
+  failure = Object.assign(new Error('expired'), { response: { status: 401 } })
+  await x.workspace.refresh()
+  assert.equal(x.workspace.state.snapshot, null)
+  assert.equal(x.workspace.state.draft, null)
+  assert.equal(x.workspace.state.identity, null)
+  assert.equal(x.workspace.state.phase, 'expired')
+})

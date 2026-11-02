@@ -160,3 +160,7 @@ export function readStoredGoal(artifact: KnowledgeArtifact): ReverseGoalPlan | n
     return { ...structuredClone(content), goal_id: outer.artifact_id, created_at: outer.created_at, updated_at: outer.updated_at } as ReverseGoalPlan
   } catch { return null }
 }
+
+export function todayTargetAvailable(path: string, available: ReadonlySet<string>, courseGraphEnabled: boolean): boolean {
+  return available.has(path) && (path !== '/knowledge-graph' || courseGraphEnabled === true)
+}

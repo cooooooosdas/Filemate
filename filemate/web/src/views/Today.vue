@@ -1,7 +1,9 @@
 <template>
+  <div class="today-shell">
   <component v-if="entry.view === 'legacy'" :is="Legacy" />
   <component v-else-if="entry.view === 'workspace' && client && capabilities" :is="Workspace" :client="client" :capabilities="capabilities" />
   <main v-else class="today-entry" aria-live="polite"><h1>今日行动</h1><p v-if="entry.view === 'loading'">正在核对服务与账号…</p><template v-else><p role="alert">{{ entry.message }}</p><button type="button" @click="load">重新连接</button><RouterLink to="/trust">打开连接与账号设置</RouterLink></template></main>
+  </div>
 </template>
 <script setup lang="ts">
 import { computed, defineAsyncComponent, defineComponent, h, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'

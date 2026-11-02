@@ -7,6 +7,10 @@ function result<T>(response: ApiResponse<T>): T {
   if (response?.success === true && response.data != null) return response.data
   throw new Error(response?.error || '学习安排操作未完成')
 }
+export async function getOrchestratorBrowserScope(): Promise<string | null> {
+  const status = result(await api.get<unknown, ApiResponse<{ credential_scope?: unknown }>>('/api/llm/status', { timeout: 15000 }))
+  return typeof status.credential_scope === 'string' && /^[a-f0-9]{64}$/.test(status.credential_scope) ? status.credential_scope : null
+}
 export async function getOrchestratorCapabilities(): Promise<OrchestratorCapabilities> {
   return result(await api.get<unknown, ApiResponse<OrchestratorCapabilities>>(`${root}/capabilities`, { timeout: 15000 }))
 }

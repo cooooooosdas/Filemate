@@ -7,8 +7,8 @@
       <li v-for="(task, index) in ordered" :key="task.task_id" :class="{ 'is-excluded': options?.excluded_ids?.includes(task.task_id) }">
         <span class="action-order" aria-hidden="true">{{ index + 1 }}</span>
         <div class="action-task-content"><h3>{{ task.title }}</h3><p>{{ task.reason }}</p>
-          <p class="action-meta">{{ kindLabel(task.kind) }} · 预计 {{ task.estimated_minutes ?? '待核对' }} 分钟<span v-if="task.due_date"> · 截止 {{ task.due_date }}</span></p>
-          <p class="action-meta">{{ estimateLabel(task.estimate_source) }}，并非实际学习时长</p>
+          <p class="action-meta">{{ kindLabel(task.kind) }} · 预计 {{ options?.minute_overrides?.[task.task_id] ?? task.estimated_minutes ?? '待核对' }} 分钟<span v-if="task.due_date"> · 截止 {{ task.due_date }}</span></p>
+          <p class="action-meta">{{ estimateLabel(options?.minute_overrides?.[task.task_id] !== undefined ? 'user_estimate' : task.estimate_source) }}，并非实际学习时长</p>
           <div v-if="editable && options" class="action-controls">
             <button type="button" :disabled="busy || index === 0" :aria-label="`上移：${task.title}`" @click="move(index, -1)">上移</button>
             <button type="button" :disabled="busy || index === ordered.length - 1" :aria-label="`下移：${task.title}`" @click="move(index, 1)">下移</button>
@@ -18,6 +18,7 @@
           </div>
           <div class="action-controls"><RouterLink v-if="destination(task).primary && canOpen(destination(task).primary!.path)" class="action-link" :to="destination(task).primary!">{{ destination(task).primary!.label }}</RouterLink><p v-else class="action-help">{{ destination(task).primary ? '该功能当前关闭，可先查看对应资料或调整安排。' : destination(task).notice }}</p>
             <RouterLink v-for="link in destination(task).related.filter(link => canOpen(link.path))" :key="link.path + JSON.stringify(link.query)" :to="link">{{ link.label }}</RouterLink></div>
+          <p v-if="destination(task).related.some(link => link.path === '/knowledge-graph' && !canOpen(link.path))" class="action-help">课程图谱当前关闭，可先查看原资料与学习计划。</p>
           <details><summary>查看任务依据与原记录</summary><p>规则版本：{{ task.rule_version }} · 原领域状态：{{ task.status }}</p><pre>{{ evidence(task) }}</pre></details>
         </div>
       </li>

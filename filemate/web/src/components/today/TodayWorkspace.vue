@@ -28,7 +28,8 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { ArrowRight } from '../../icons'
-import { getCourseBrowserScope, getGraphCourse, listGraphCourses } from '../../services/api'
+import { getGraphCourse, listGraphCourses } from '../../services/api'
+import { getOrchestratorBrowserScope } from '../../services/orchestrator-api'
 import type { OrchestratorCapabilities, OrchestratorClient, ScheduleOptions, ScopeRequest } from '../../types/orchestrator'
 import type { TodayMode, TodayStorage } from '../../types/today'
 import { availableTools } from '../../navigation/catalog'
@@ -36,7 +37,7 @@ import { createTodayWorkspace } from '../../today/workspace-state'
 import { createTodayCommands } from '../../today/command-state'
 import { createTodayPreferences, createTodayStorage } from '../../today/preferences'
 import { presentToday } from '../../today/presentation'
-import { resolveTodayTask } from '../../today/navigation'
+import { resolveTodayTask, todayTargetAvailable } from '../../today/navigation'
 import { todayModes } from '../../today/entry-state'
 import TodayScope from './TodayScope.vue'
 import TodayTasks from './TodayTasks.vue'
@@ -46,7 +47,7 @@ import '../../today/today.css'
 const props = defineProps<{ client: OrchestratorClient; capabilities: OrchestratorCapabilities }>()
 function browserStorage(area: 'localStorage' | 'sessionStorage'): TodayStorage { return { getItem: key => window[area].getItem(key), setItem: (key, value) => window[area].setItem(key, value), removeItem: key => window[area].removeItem(key) } }
 const storage = createTodayStorage(browserStorage('localStorage'), browserStorage('sessionStorage'))
-const workspace = createTodayWorkspace({ client: props.client, getCourseBrowserScope, getGraphCourse, listGraphCourses }, storage, Date.now, value => reactive(value))
+const workspace = createTodayWorkspace({ client: props.client, getCourseBrowserScope: getOrchestratorBrowserScope, getGraphCourse, listGraphCourses }, storage, Date.now, value => reactive(value))
 const state = workspace.state, commands = createTodayCommands(props.client, state, storage, workspace.refresh)
 const editing = ref(true), reading = ref(false), mode = ref<TodayMode>('daily')
 const busy = computed(() => ['previewing', 'confirming', 'undoing'].includes(state.write_status))
@@ -58,7 +59,7 @@ const savedTasks = computed(() => {
   if (!state.snapshot || !state.day?.scope || scopeKey(state.day.scope) !== scopeKey(state.snapshot.snapshot.scope)) return []
   return state.day.selected.flatMap(saved => { const current = pendingTasks.value.find(task => task.task_id === saved.task_id && task.eligibility === 'eligible'); return current ? [{ ...current, estimated_minutes: saved.estimated_minutes, estimate_source: saved.estimate_source }] : [] })
 })
-const paths = new Set(availableTools(import.meta.env).map(tool => tool.path)), canOpen = (path: string) => paths.has(path)
+const paths = new Set(availableTools(import.meta.env).map(tool => tool.path)), canOpen = (path: string) => todayTargetAvailable(path, paths, import.meta.env.VITE_ENABLE_COURSE_GRAPH === 'true')
 const modes: { value: TodayMode; label: string }[] = [{ value: 'daily', label: '日常学习' }, { value: 'exam', label: '考前冲刺' }, { value: 'project', label: '项目／能力训练' }]
 const allowedModes = computed(() => todayModes(state.snapshot?.snapshot.facts.goal, state.snapshot?.snapshot.study_date ?? ''))
 const modeDescription = computed(() => mode.value === 'exam' ? '围绕当前考试目标行动，完成后回原题验证。' : mode.value === 'project' ? '围绕当前目标执行训练，选题与评价仍在原功能完成。' : '按自己的可用时间，逐项完成有依据的任务。')
