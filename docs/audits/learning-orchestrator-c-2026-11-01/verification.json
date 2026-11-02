@@ -1,6 +1,6 @@
 {
   "stage": "C",
-  "status": "FIXED_PENDING_FINAL_GATES",
+  "status": "ENGINEERING_PASS_RELEASE_AUTHORIZED",
   "base": "55f2c1161dccfaac798479f89c5f834f6f23530e",
   "implementation_head": "09727b6e2c22cfb9fa8f1cbcaea944e8532dc2f0",
   "tasks_1_to_7": "completed",
@@ -76,14 +76,46 @@
   "physical_browser_200_percent_zoom": "NOT RUN; equivalent CSS viewport tested",
   "production_deployed": false,
   "D_E_started": false,
-  "tasks_1_to_8": "implementation and gates completed; final review outside task completion still pending",
+  "tasks_1_to_8": "completed; original independent findings fixed by author, no re-review",
   "fix_verification": {
     "author_targeted_backend_passed": 13,
     "author_frontend_passed": 378,
     "type_build": "PASS",
     "initial_gzip": 143110,
     "unchanged_budget": 143360,
-    "full_gate": "PENDING",
-    "independent_re_review": false
-  }
+    "full_gate": "PASS on exact source final Linux CI",
+    "independent_re_review": false,
+    "important_fixed": 5,
+    "actual_http_error_contract": "RED→GREEN22/22 and browser confirmed"
+  },
+  "final_source": "fdf6f406a5d1d691e60243908f7765d0127209a4",
+  "final_ci": {
+    "status": "PASS",
+    "run": 41421814604,
+    "backend_passed": 1947,
+    "skipped": 19,
+    "deselected": 5,
+    "warnings": 3,
+    "frontend_passed": 378,
+    "type_build": "PASS",
+    "report": "ci-fixed-source.json"
+  },
+  "final_windows_integration": {
+    "status": "PASS",
+    "backend_passed": 1929,
+    "skipped": 22,
+    "deselected": 5,
+    "warnings": 3,
+    "seconds": 2572.23,
+    "frontend_passed": 378,
+    "scope": "same integration worktree; collected before final extra API test; final immutable-source proof is Linux CI",
+    "log": "final-release-verify.log.gz"
+  },
+  "final_browser_supplement": {
+    "status": "PASS",
+    "checks": 12,
+    "page_errors": 0,
+    "report": "review-fixed-browser.json"
+  },
+  "deployment_authorization": "2026-11-02 user: 继续 最后final推进 然后部署上推"
 }
