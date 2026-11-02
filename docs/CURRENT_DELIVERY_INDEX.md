@@ -1,5 +1,7 @@
 # FileMate 当前交付资源索引
 
+2026-11-02 学习教练D级：[完整设计](superpowers/specs/2026-11-02-learning-orchestrator-d-design.md)已由用户确认；[九项详细实施计划](superpowers/plans/2026-11-02-learning-orchestrator-d.md)已完成自审、等待计划审阅，尚未开始产品实现。沿用当前会话逐项实施、最后一次独立审阅；D验收、E及生产开关仍按阶段办理。第三版Linux容量P2见[实际调查](WRONGBOOK_LINUX_CAPACITY_INVESTIGATION_2026-11-02.md)，仍为未达标。
+
 2026-11-02 FINAL收口：现役API／Web仍为fdf6f40（schema36／治理3），本轮重新核验1618个发布文件及公网Edge4项；工程门禁以干净Linux CI为准，Windows全套未完成不计通过。旧运行时合成容量17场景中13项达标，万题4项仍超500ms，强制无JSON1亦超标，保留P2；不宣称D／E已实现。详见[最终收口回执](FINAL_RELEASE_CLOSEOUT_2026-11-02.md)。本轮只归档证据、固定版本和上推文档，不重复切换相同业务包。
 
 2026-11-02 已推送main并上线：第三版错题复盘2.0与第四版A—C今日行动，API／Web均fdf6f40、业务schema36／治理3。主分支CI1947后端／378前端通过，公网13组及Edge桌面／手机4项通过；431库／1146文件正式备份与恢复迁移演练通过。详见[发布回执](LEARNING_ORCHESTRATOR_RELEASE_2026-11-02.md)。整体CONDITIONAL PASS，第四版D／E、真人效果与实体设备仍未完成；以下旧记录保留其当时语境。
