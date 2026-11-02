@@ -582,7 +582,7 @@ AI 生成接口成功时同时返回 `ctx_id`、`source_id`、`artifact_id`。�
 | `GET` | `/study-plans` | 查询学习计划列表 | 无 |
 | `GET` | `/study-plans/{plan_id}` | 查询单个学习计划 | 无 |
 | `PATCH` | `/study-plans/{plan_id}/days/{day_index}` | 更新每日完成状态 | 写入 `study_plans.completed_days` |
-| `POST` | `/goals/reverse-plan` | 从目标和当前学习证据反推缺口与任务；选定资料有未掌握错题时附加口头解释任务及证据引用 | 写入 `reverse_goal_plan` Artifact、Agent 轨迹和摘要记忆 |
+| `POST` | `/goals/reverse-plan` | 从目标和当前学习证据反推缺口与任务；支持能力训练（skill）及旧五类目标；选定资料有未掌握错题时附加口头解释任务及证据引用 | 写入 `reverse_goal_plan` Artifact、Agent 轨迹和摘要记忆 |
 | `GET` | `/goals` | 列出已保存的目标反推计划，并实时标记证据已失效的口头训练任务 | 无 |
 | `PATCH` | `/goals/{goal_id}/tasks/{task_id}` | 更新目标任务完成状态；证据失效时返回 409 | 更新目标 Artifact |
 | `POST` | `/goals/{goal_id}/replan` | 读取最新证据重新规划、保留仍有效的已完成任务，并归档旧建议失效原因 | 更新目标 Artifact 和 Agent 轨迹 |
@@ -1336,3 +1336,15 @@ C级审阅修复：客户端消费公共顶层status/code错误合同（适配�
 跨上海自然日撤销旧预览：服务端撤销令牌绑定签发时的上海日期，新日拒绝未使用旧令牌；已成功写入的原键回执仍幂等可查。历史安排在新日可经新的显式预览授权撤销，并不批量禁止历史读取。前端日界定时、前台恢复及提交时仅触发失效与服务端重读，本机时间不授权新日期。合同不新增字段或migration；部署前旧未使用撤销预览须重新获取。
 
 2026-11-02 发布前真实双页复验补充：学习决策接口的 OrchestratorError 在失败响应中附带 `data.error_code`（同 error 的有限机器码），供公共客户端归一化为顶层 code。success 仍为 false，原 HTTP 状态及 error 保留；客户端只针对明确的新撤销拒绝终止待决，不能凭 404 或一般网络错误抛弃请求。
+
+### D级学习教练：最小证据合同（2026-11-03，本地实现中）
+
+`POST /goals/reverse-plan`的`goal_type`支持`exam/competition/job/postgraduate/custom/skill`；`skill`在界面显示“能力训练”。新建、列表、重规划和目标选择沿用现役接口，不迁移旧记录，业务schema仍为36。
+
+当前仅实现内部只读服务，尚未新增教练HTTP入口：`CoachContextReader.read(CoachInput)`在同一SQLite读事务内校验当前目标、课程和最多20份资料，并读取用户明确选择的证据。选择上限为3场面试、10次提交、5个概念、3组错题、3项反馈；求职目标另可选择同空间已保存岗位及最多5条要求。原答／问题／反馈摘录至多500字，岗位原句至多400字，只有用户确认的错因能作为错因事实；模型反馈明确保留其来源，不作为掌握率或岗位胜任分。编程只接受题目版本有效、completed且active的可信编译器结果，不发送代码或AI评分。
+
+外发预览体限制为24000字符和60000字节，为后续64KiB消息总量预留空间；超出部分显式计入omitted_facts／omitted_tasks，预览摘要绑定确切内容。当前没有模型外发。上下文修订包含完整被选原记录、实际上海日期及恢复epoch，修改500字摘录以外的内容同样使旧修订失效；精准采样时钟不进入稳定摘要。
+
+内部选择目录固定30条／页，支持interview／submission／concept／wrong／position、普通文本q（最多120字）和offset（0—1000000）。目录只返回id、label、updated_at、revision、valid、source_id；无实际修改时间的概念返回updated_at=null。正文只对当前页或显式选择的ID做有界核验，损坏记录标为valid=false。现役岗位标题只存在JSON中，岗位搜索以SQLite文本匹配已保存岗位JSON，至多将当前页30份有界岗位内容加载并解析，不读取其他模块正文，也不联网抓取；此兼容路径不承诺结构化标题索引性能。
+
+无来源计划只在明确关联当前goal_id、且所有资料／课程依赖仍在所选范围内时读取。教练新增计划与旧普通计划按身份合并；source_id=null不表示允许读取全空间计划。目录与上下文读取均不写库、不调用模型、不创建学习计划。认证由后续HTTP适配层沿用现役账号空间，不允许请求指定workspace、用户ID或数据库路径。

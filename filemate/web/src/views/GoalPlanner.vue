@@ -27,6 +27,7 @@
             <option value="competition">竞赛答辩</option>
             <option value="exam">课程考试</option>
             <option value="job">求职面试</option>
+            <option value="skill">能力训练</option>
             <option value="postgraduate">保研复试</option>
             <option value="custom">自定义目标</option>
           </select>
@@ -208,7 +209,7 @@ const completionRate = computed(() => activeGoal.value?.tasks.length ? Math.roun
 const openGapCount = computed(() => activeGoal.value?.gaps.filter(gap => gap.status === 'gap').length || 0)
 
 const formatDate = (value: string) => new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric' }).format(new Date(`${value}T00:00:00`))
-const goalTypeLabel = (type: ReverseGoalType) => ({ exam: '课程考试', competition: '竞赛答辩', job: '求职面试', postgraduate: '保研复试', custom: '自定义目标' }[type])
+const goalTypeLabel = (type: ReverseGoalType) => ({ exam: '课程考试', competition: '竞赛答辩', job: '求职面试', postgraduate: '保研复试', custom: '自定义目标', skill: '能力训练' }[type])
 
 let loadEpoch = 0, disposed = false
 async function locateCurrentTask(): Promise<void> {

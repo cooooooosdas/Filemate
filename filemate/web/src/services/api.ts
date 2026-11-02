@@ -1477,7 +1477,7 @@ export interface KnowledgeSource {
   created_at: string
 }
 
-export type ReverseGoalType = 'exam' | 'competition' | 'job' | 'postgraduate' | 'custom'
+export type ReverseGoalType = 'exam' | 'competition' | 'job' | 'postgraduate' | 'custom' | 'skill'
 
 export interface ReverseGoalGap {
   name: string

@@ -7,19 +7,17 @@ from weakref import WeakValueDictionary
 from filemate.execution.data_actions import digest
 from filemate.wrongbook.queries import ReviewFilter, ReviewQueries
 
-from .context import display_label
+from .context import display_label, resolve_scope
 from .models import (
     LOCAL_ZONE,
     Clock,
     EvidenceSnapshot,
-    OrchestratorError,
     ScopeRequest,
     aware,
     utc_now,
 )
 from .snapshot_queries import (
     coverage,
-    object_json,
     read_evidence,
     read_interviews,
     read_plan_links,
@@ -53,40 +51,9 @@ class SnapshotReader:
     def _read_locked(self, read, scope: ScopeRequest, *, as_of: datetime) -> EvidenceSnapshot:
         as_of = aware(as_of)
         conn = read._conn()
-        row = conn.execute("SELECT source_id,CASE WHEN length(content)<=1048576 THEN content END AS content FROM artifacts WHERE artifact_id=? AND artifact_type='reverse_goal_plan'", (scope.goal_id,)).fetchone()
-        if row is None:
-            raise OrchestratorError('goal_not_found', 404)
-        goal = object_json(row['content'])
-        if goal is None or not isinstance(goal.get('tasks', []), list):
-            raise OrchestratorError('invalid_goal_evidence')
-        ids = scope.source_ids or ([row['source_id']] if row['source_id'] else [])
-        if row['source_id'] and row['source_id'] not in ids:
-            raise OrchestratorError('goal_source_outside_scope', 422)
-        if not scope.course_id and len(ids) > 1:
-            raise OrchestratorError('explicit_course_required', 422)
-        shared = [r[0] for r in conn.execute(
-            'SELECT s.source_id FROM kg_course_sources s JOIN kg_courses c ON c.course_id=s.course_id '
-            'WHERE s.active=1 AND c.archived=0 AND s.source_id IN (' + ','.join('?' for _ in ids)
-            + ') GROUP BY s.source_id HAVING count(*)>1 ORDER BY s.source_id', ids)] if ids else []
-        if shared and not scope.course_id:
-            raise OrchestratorError('explicit_course_required', 422)
-        course_ref = None
-        if scope.course_id:
-            course = conn.execute('SELECT revision FROM kg_courses WHERE course_id=? AND archived=0', (scope.course_id,)).fetchone()
-            if course is None:
-                raise OrchestratorError('course_not_found', 404)
-            members = {r['source_id'] for r in conn.execute('SELECT source_id FROM kg_course_sources WHERE course_id=? AND active=1', (scope.course_id,))}
-            if not set(ids) <= members:
-                raise OrchestratorError('source_outside_course', 422)
-            course_ref = {'course_id': scope.course_id, 'revision': course['revision']}
-        sources = []
-        for sid in sorted(ids):
-            source = conn.execute('SELECT source_id,substr(original_name,1,240) AS original_name,updated_at FROM sources WHERE source_id=?', (sid,)).fetchone()
-            if source is None:
-                raise OrchestratorError('source_not_found', 404)
-            sources.append(dict(source))
-        resolved = ScopeRequest(goal_id=scope.goal_id, course_id=scope.course_id, source_ids=sorted(ids))
-        plans, plan_coverage = read_plans(conn, ids, scope.course_id)
+        resolved, goal, sources, course_ref, shared = resolve_scope(read, scope)
+        ids = resolved.source_ids
+        plans, plan_coverage = read_plans(conn, ids, scope.course_id, goal_id=scope.goal_id)
         semester, semester_coverage = read_semester(conn, ids)
         attempts, attempt_coverage, graph, graph_coverage = read_evidence(read, ids, scope.course_id)
         plan_links, link_coverage = read_plan_links(conn, ids, scope.course_id)
@@ -97,7 +64,7 @@ class SnapshotReader:
                        'scheduler_version', 'data_error', 'read_only_snapshot', 'revision')
         compact = [{k: r.get(k) for k in review_keys} for r in reviews['items']]
         goal_tasks = [t for item in goal.get('tasks', [])[:200] if (t := safe_task(item))]
-        facts = {'goal': {'goal_id': scope.goal_id, 'source_id': row['source_id'],
+        facts = {'goal': {'goal_id': scope.goal_id, 'source_id': conn.execute('SELECT source_id FROM artifacts WHERE artifact_id=?', (scope.goal_id,)).fetchone()[0],
                           'title': display_label(goal.get('title'), 160, '未命名目标'),
                           'deadline': goal.get('deadline'), 'goal_type': goal.get('goal_type'), 'tasks': goal_tasks},
                  'sources': sources, 'course': course_ref, 'plans': plans, 'semester': semester,

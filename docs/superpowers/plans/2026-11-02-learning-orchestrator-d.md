@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.11、FastAPI、Pydantic 2、SQLite 3.26兼容、Vue 3、TypeScript、现有BoundedLLMRunner和Node测试工具；不新增依赖、外部服务或默认付费调用。
 
-**Spec:** [2026-11-02-learning-orchestrator-d-design.md](../specs/2026-11-02-learning-orchestrator-d-design.md)。原任务书为 `C:/Users/胡希/.codex/attachments/7841a6a3-3b50-45cd-8996-97b11c136836/pasted-text-1.txt` 的D1—D8、D级验收和第04节。用户已确认完整设计；**本详细计划待审阅，全部任务尚未实施**。
+**Spec:** [2026-11-02-learning-orchestrator-d-design.md](../specs/2026-11-02-learning-orchestrator-d-design.md)。原任务书为 `C:/Users/胡希/.codex/attachments/7841a6a3-3b50-45cd-8996-97b11c136836/pasted-text-1.txt` 的D1—D8、D级验收和第04节。用户已确认完整设计及本九项详细计划；**当前会话连续逐项实施，最后一次独立审阅，不在任务间重复询问。** 当前执行账本为`_working/learning-coach-d/progress.md`；未勾选项仍待完成。
 
 ## Global Constraints
 
@@ -86,7 +86,7 @@ Python公共类型统一定义在`coach/models.py`，请求继承现役StrictReq
 
 测试夹具在本任务conftest.py定义：`coach_case`返回本空间storage、可控aware clock、合法CoachInput、另一课程／空间的拒绝用ID；复用上级world的真实SQLite／原始合成资料。后续`coach_context`由真实reader生成，`coach_request`由该上下文构造，`ready_run`由真实rule服务生成；confirm_body由真实预览构造，不用固定成功回执替代。
 
-- [ ] **1.1 写RED测试**：`test_selected_context_is_one_snapshot_and_minimal`断言另一课程／空间的ID拒绝，改首500字之外的原答也改变修订；未选择不返回secret原答／代码／视频／简历。`test_empty_scope_reads_only_linked_goal_plans`断言无资料时只出现当前goal_id的无来源关联计划；有资料时任一依赖越界则排除。`test_feedback_needs_selected_current_attempt`断言重答后旧feedback_refs拒绝。`test_catalog_pages_metadata_only`断言30条、稳定分页、q按字面匹配，损坏记录标无效，禁止整库正文扫描。`test_skill_goal_round_trip_and_legacy_goal_types`断言skill标签“能力训练”、新建／重读及旧五类不变；schema仍36。
+- [x] **1.1 写RED测试**：`test_selected_context_is_one_snapshot_and_minimal`断言另一课程／空间的ID拒绝，改首500字之外的原答也改变修订；未选择不返回secret原答／代码／视频／简历。`test_empty_scope_reads_only_linked_goal_plans`断言无资料时只出现当前goal_id的无来源关联计划；有资料时任一依赖越界则排除。`test_feedback_needs_selected_current_attempt`断言重答后旧feedback_refs拒绝。`test_catalog_pages_metadata_only`断言30条、稳定分页、q按字面匹配，损坏记录标无效，禁止整库正文扫描。`test_skill_goal_round_trip_and_legacy_goal_types`断言skill标签“能力训练”、新建／重读及旧五类不变；schema仍36。
 
 ```python
 def test_selected_context_is_one_snapshot_and_minimal(coach_case):
@@ -95,10 +95,10 @@ def test_selected_context_is_one_snapshot_and_minimal(coach_case):
     assert 'synthetic-secret-code' not in json.dumps(context.external_payload)
     assert len(json.dumps(context.external_payload, ensure_ascii=False).encode('utf-8')) <= 65536
 ```
-- [ ] **1.2 运行RED**：`uv run pytest filemate/tests/orchestrator/coach/test_context.py filemate/tests/orchestrator/coach/test_catalog.py -q`。预期新接口不存在或上述行为断言失败；先修测试环境错误，不能把环境错误当业务RED。
-- [ ] **1.3 实现最小读取**：在一个只读事务内复用SnapshotReader，针对显式ID分别SELECT有界原记录；编程只采信completed且active、题目版本仍有效的服务端compiler结果，不调用会读取全部代码的CodingRepository.evidence。面试取最后实际回答及选定反馈版本，不改变分数；错因只采信人工确认。岗位只从同空间CareerRepository保存记录读取用户选中的要求和来源／版本，不取比较分、画像或全量职位描述，不发起爬取；岗位关闭／删除／要求修改使旧上下文失效，未选岗位明确未关联。对超限返回422，对越权／删除返回不泄露存在性的404或scope_changed409。
-- [ ] **1.4 验证GREEN**：运行1.2及`uv run pytest filemate/tests/orchestrator/test_context.py filemate/tests/orchestrator/test_snapshot.py filemate/tests/test_career_planning.py -q`；证明上下文24000字符／消息64KiB、片段上限和覆盖说明，无法容纳的内容不静默发送。来源选择与目录读取均零模型调用。
-- [ ] **1.5 提交**：仅暂存本任务自有路径，提交`feat(coach): 接通显式目标与最小学习证据`。保留RED／GREEN摘要于`_working/learning-coach-d/task1/`。
+- [x] **1.2 运行RED**：`uv run pytest filemate/tests/orchestrator/coach/test_context.py filemate/tests/orchestrator/coach/test_catalog.py -q`。预期新接口不存在或上述行为断言失败；先修测试环境错误，不能把环境错误当业务RED。
+- [x] **1.3 实现最小读取**：在一个只读事务内复用SnapshotReader，针对显式ID分别SELECT有界原记录；编程只采信completed且active、题目版本仍有效的服务端compiler结果，不调用会读取全部代码的CodingRepository.evidence。面试取最后实际回答及选定反馈版本，不改变分数；错因只采信人工确认。岗位只从同空间CareerRepository保存记录读取用户选中的要求和来源／版本，不取比较分、画像或全量职位描述，不发起爬取；岗位关闭／删除／要求修改使旧上下文失效，未选岗位明确未关联。对超限返回422，对越权／删除返回不泄露存在性的404或scope_changed409。
+- [x] **1.4 验证GREEN**：运行1.2及`uv run pytest filemate/tests/orchestrator/test_context.py filemate/tests/orchestrator/test_snapshot.py filemate/tests/test_career_planning.py -q`；证明上下文24000字符／消息64KiB、片段上限和覆盖说明，无法容纳的内容不静默发送。来源选择与目录读取均零模型调用。
+- [x] **1.5 提交**：仅暂存本任务自有路径，提交`feat(coach): 接通显式目标与最小学习证据`。保留RED／GREEN摘要于`_working/learning-coach-d/task1/`。
 
 ## Task 2: 规则建议、结构化增强与真实日期调度
 

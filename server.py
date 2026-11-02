@@ -2891,7 +2891,7 @@ class DailyCoachPreferencesRequest(BaseModel):
 
 class ReverseGoalRequest(BaseModel):
     title: str = Field(min_length=2, max_length=160)
-    goal_type: Literal["exam", "competition", "job", "postgraduate", "custom"]
+    goal_type: Literal["exam", "competition", "job", "postgraduate", "custom", "skill"]
     deadline: date
     target_score: int | None = Field(default=None, ge=0, le=100)
     source_id: str | None = Field(default=None, max_length=64)

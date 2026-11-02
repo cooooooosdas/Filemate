@@ -65,10 +65,30 @@ def _plan_course(raw, kind):
     return '' if cid is None else cid if isinstance(cid, str) else None
 
 
-def read_plans(conn, source_ids: list[str], course_id=None) -> tuple[list[dict], dict]:
+def _coach_goal(raw):
+    metadata = object_json(raw) if isinstance(raw, str) and len(raw) <= 1048576 else None
+    if metadata is None:
+        return None
+    coach = metadata.get('learning_coach')
+    if coach is None:
+        return ''
+    return coach.get('goal_id') if isinstance(coach, dict) and isinstance(coach.get('goal_id'), str) else None
+
+
+def _coach_course(raw):
+    metadata = object_json(raw) if isinstance(raw, str) and len(raw) <= 1048576 else None
+    coach = metadata.get('learning_coach') if metadata else None
+    if not isinstance(coach, dict):
+        return None
+    course = coach.get('course_id')
+    return '' if course is None else course if isinstance(course, str) else None
+
+
+def _read_source_plans(conn, source_ids: list[str], course_id=None, *, exclude_coach=False) -> tuple[list[dict], dict]:
     if not source_ids:
         return [], coverage(0, 0)
     conn.create_function('filemate_orchestrator_course', 2, _plan_course)
+    conn.create_function('filemate_coach_goal', 1, _coach_goal)
     slots = ','.join('?' for _ in source_ids)
     source_where = 'p.source_id IN (' + slots + ')'
     candidates = conn.execute('SELECT COUNT(*) FROM study_plans p WHERE ' + source_where, source_ids).fetchone()[0]
@@ -78,11 +98,17 @@ def read_plans(conn, source_ids: list[str], course_id=None) -> tuple[list[dict],
         AND NOT EXISTS(SELECT 1 FROM kg_learning_artifact_sources r WHERE r.artifact_id=p.artifact_id
             AND r.source_id NOT IN (''' + slots + '))'
     params = [*source_ids, course_id or '', course_id or '', course_id or '', *source_ids]
+    if exclude_coach:
+        where += " AND filemate_coach_goal(COALESCE(a.metadata,'{}'))=''"
     joined = 'study_plans p LEFT JOIN artifacts a ON a.artifact_id=p.artifact_id'
     total = conn.execute('SELECT COUNT(*) FROM ' + joined + ' WHERE ' + where, params).fetchone()[0]
     rows = conn.execute('SELECT p.plan_id,p.source_id,p.exam_date,p.daily_minutes,p.status,p.completed_days,'
                         'CASE WHEN length(p.plan_data)<=1048576 THEN p.plan_data END AS plan_data '
                         'FROM ' + joined + ' WHERE ' + where + ' ORDER BY p.plan_id LIMIT 100', params).fetchall()
+    return _project_plans(rows, total, candidates=candidates)
+
+
+def _project_plans(rows, total, *, candidates=None):
     result, remaining, invalid = [], 200, 0
     for row in rows:
         plan = dict(row)
@@ -103,8 +129,44 @@ def read_plans(conn, source_ids: list[str], course_id=None) -> tuple[list[dict],
                             'composite': True})
         remaining -= len(compact)
         result.append(plan | {'days': compact, 'day_total': len(days)})
-    return result, coverage(total, len(result)) | {'invalid': invalid, 'scope_excluded': candidates - total,
+    return result, coverage(total, len(result)) | {'invalid': invalid, 'scope_excluded': (candidates - total) if candidates is not None else 0,
         'days_truncated': any(p['day_total'] > len(p['days']) for p in result)}
+
+
+def read_goal_plans(conn, goal_id: str, source_ids: list[str], course_id: str | None) -> tuple[list[dict], dict]:
+    """Read only plans explicitly linked to this goal and entirely inside its scope."""
+    conn.create_function('filemate_coach_goal', 1, _coach_goal)
+    conn.create_function('filemate_coach_course', 1, _coach_course)
+    conn.create_function('filemate_orchestrator_course', 2, _plan_course)
+    slots = ','.join('?' for _ in source_ids) or 'NULL'
+    where = f"""a.artifact_type='study_plan' AND filemate_coach_goal(a.metadata)=?
+        AND (p.source_id IS NULL OR p.source_id IN ({slots}))
+        AND filemate_orchestrator_course(p.plan_data,'plan') IN ('',?)
+        AND filemate_orchestrator_course(a.metadata,'metadata') IN ('',?)
+        AND filemate_coach_course(a.metadata) IN ('',?)
+        AND NOT EXISTS(SELECT 1 FROM kg_course_plan_links l WHERE l.plan_id=p.plan_id AND l.course_id!=?)
+        AND NOT EXISTS(SELECT 1 FROM kg_learning_artifact_sources d WHERE d.artifact_id=p.artifact_id
+            AND d.source_id NOT IN ({slots}))"""
+    # NOT IN(NULL) is UNKNOWN, so an empty scope needs an explicit dependency ban.
+    if not source_ids:
+        where += ' AND NOT EXISTS(SELECT 1 FROM kg_learning_artifact_sources d WHERE d.artifact_id=p.artifact_id)'
+    args = [goal_id, *source_ids, *([course_id or ''] * 4), *source_ids]
+    joined = 'study_plans p JOIN artifacts a ON a.artifact_id=p.artifact_id'
+    total = conn.execute('SELECT count(*) FROM ' + joined + ' WHERE ' + where, args).fetchone()[0]
+    rows = conn.execute('SELECT p.plan_id,p.source_id,p.exam_date,p.daily_minutes,p.status,p.completed_days,'
+                        'CASE WHEN length(p.plan_data)<=1048576 THEN p.plan_data END AS plan_data '
+                        'FROM ' + joined + ' WHERE ' + where + ' ORDER BY p.plan_id LIMIT 100', args).fetchall()
+    return _project_plans(rows, total)
+
+
+def read_plans(conn, source_ids: list[str], course_id=None, *, goal_id=None) -> tuple[list[dict], dict]:
+    plans, cov = _read_source_plans(conn, source_ids, course_id, exclude_coach=goal_id is not None)
+    if goal_id is None:
+        return plans, cov
+    linked, linked_cov = read_goal_plans(conn, goal_id, source_ids, course_id)
+    return plans + linked, {'total': cov['total'] + linked_cov['total'], 'returned': len(plans) + len(linked),
+        'truncated': cov['truncated'] or linked_cov['truncated'], 'invalid': cov.get('invalid', 0) + linked_cov['invalid'],
+        'scope_excluded': cov.get('scope_excluded', 0), 'days_truncated': cov.get('days_truncated', False) or linked_cov['days_truncated']}
 
 
 def read_semester(conn, source_ids: list[str]) -> tuple[list[dict], dict]:
