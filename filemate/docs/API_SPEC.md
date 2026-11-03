@@ -1348,3 +1348,7 @@ C级审阅修复：客户端消费公共顶层status/code错误合同（适配�
 内部选择目录固定30条／页，支持interview／submission／concept／wrong／position、普通文本q（最多120字）和offset（0—1000000）。目录只返回id、label、updated_at、revision、valid、source_id；无实际修改时间的概念返回updated_at=null。正文只对当前页或显式选择的ID做有界核验，损坏记录标为valid=false。现役岗位标题只存在JSON中，岗位搜索以SQLite文本匹配已保存岗位JSON，至多将当前页30份有界岗位内容加载并解析，不读取其他模块正文，也不联网抓取；此兼容路径不承诺结构化标题索引性能。
 
 无来源计划只在明确关联当前goal_id、且所有资料／课程依赖仍在所选范围内时读取。教练新增计划与旧普通计划按身份合并；source_id=null不表示允许读取全空间计划。目录与上下文读取均不写库、不调用模型、不创建学习计划。认证由后续HTTP适配层沿用现役账号空间，不允许请求指定workspace、用户ID或数据库路径。
+
+D任务2增加内部纯函数`build_rule_proposal`与`validate_enhancement`，版本分别为`learning-coach-rules-v1`和`learning-coach-v1`。五类请求共用现役调度器，原任务和建议动作共同计算预算；最多7条新动作、7个上海自然日，同一待办／复习周期在批次内只安排一次。无估时不按0分钟处理，固定项不能保留时返回pinned_task_conflict，不静默延期。未来安排保持事实as_of不变；临时的前序计划依赖不会进入实际完成记录。
+
+模型输出仅允许explanations、task_order、new_actions，原因和方法采用固定适用矩阵；事实、原任务、目标身份与版本由服务器核验，action_key由服务器生成，拒绝分数、自由正文、URL、工具和额外字段。解释文字由固定模板生成，编译事实不能附到无关的阅读任务上。仅补充解释时保留规则动作；任何无效增强均整份拒绝，原规则方案保持不变。新动作只有排入共同预算才进入提议，无法排入的模型动作返回model_actions_unschedulable；真实模型请求及失败状态持久化由任务3接入，当前不进行上游调用。

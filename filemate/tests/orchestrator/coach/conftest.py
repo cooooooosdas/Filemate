@@ -103,3 +103,8 @@ def graph_evidence(case):
                 ("coach-e-" + key, cid, sid, revision, concept, relation, "原创合成引用", 0, 6),
             )
     return ["coach-stack", "coach-dfs"]
+
+
+@pytest.fixture
+def coach_context(coach_case):
+    return read_context(coach_case)

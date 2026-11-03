@@ -106,7 +106,7 @@ def test_selected_context_is_one_snapshot_and_minimal(coach_case):
 
 **Interfaces:** `build_rule_proposal(context: CoachContext) -> CoachProposal`；`build_model_messages(context: CoachContext) -> list[dict[str,str]]`；`validate_enhancement(context: CoachContext, baseline: CoachProposal, raw: object) -> CoachProposal`；`render_explanation(reason_code: str, method_code: str, facts: list[CoachFact]) -> str`。`CoachModelOutput`及原因／方法适用矩阵定义于output.py，Prompt版本`learning-coach-v1`，规则版本`learning-coach-rules-v1`。
 
-- [ ] **2.1 写RED测试**：`test_five_intents_keep_evidence_and_budget`参数化五种请求、0／40／1440分钟；已固定不能移动，已完成不返待办，任务无估时不得靠0分钟塞入预算。`test_future_date_keeps_real_as_of`断言今天+6合法、+7与昨日拒绝，未来复习标届时计划、当前仍not_due。`test_duplicate_action_reuses_origin_and_cycle`断言换标题／顺序不产生第二动作，新复习周期可有不同action_key。`test_invalid_enhancement_preserves_rule_result`参数化未知ID、跨课依赖、未确认错因、个人分数、URL、额外字段、重复项和第8个新动作，整份增强拒绝。`test_selected_feedback_and_compiler_result_are_not_ability_scores`断言只生成练习方法，不改变课程排序或能力值。
+- [x] **2.1 写RED测试**：`test_five_intents_keep_evidence_and_budget`参数化五种请求、0／40／1440分钟；已固定不能移动，已完成不返待办，任务无估时不得靠0分钟塞入预算。`test_future_date_keeps_real_as_of`断言今天+6合法、+7与昨日拒绝，未来复习标届时计划、当前仍not_due。`test_duplicate_action_reuses_origin_and_cycle`断言换标题／顺序不产生第二动作，新复习周期可有不同action_key。`test_invalid_enhancement_preserves_rule_result`参数化未知ID、跨课依赖、未确认错因、个人分数、URL、额外字段、重复项和第8个新动作，整份增强拒绝。`test_selected_feedback_and_compiler_result_are_not_ability_scores`断言只生成练习方法，不改变课程排序或能力值。
 
 ```python
 def test_five_intents_keep_evidence_and_budget(coach_context):
@@ -115,10 +115,10 @@ def test_five_intents_keep_evidence_and_budget(coach_context):
     assert all(day.schedule.estimated_minutes <= day.options.available_minutes for day in proposal.days)
     assert len({action.action_key for action in proposal.new_actions}) == len(proposal.new_actions)
 ```
-- [ ] **2.2 运行RED**：`uv run pytest filemate/tests/orchestrator/coach/test_rules.py filemate/tests/orchestrator/coach/test_output.py -q`，记录缺失行为。
-- [ ] **2.3 实现规则与校验**：既有任务复用project_tasks和build_schedule；新动作只来自允许的typed fact和固定方法，action_key绑定目标／课程／真实原ID／动作／复习周期。无证据明确不足，不给假错因。未来日单独重排可在届时使用的候选，证据截止保持当前时刻；规则和模型都按同一预算／去重／固定／依赖校验，现有任务加新动作共同计入日预算和20项上限。同一待办／周期不能在七天内重复安排。已固定项超预算或原安排不能保留时返回需用户解决的冲突，不静默延期固定项；普通复合计划仅列可能重叠，不自动判断等价。
-- [ ] **2.4 验证GREEN**：运行2.2和`uv run pytest filemate/tests/orchestrator/test_scheduler.py filemate/tests/orchestrator/test_task_views.py -q`。测试上海23:59→00:00、微秒到期及来源失效；模型无自由文本字段可伪造个人统计。输出携带覆盖与版本；规则结果在增强失败后仍可采纳。
-- [ ] **2.5 提交**：`feat(coach): 生成有依据的规则与受限模型建议`，证据存`_working/learning-coach-d/task2/`。
+- [x] **2.2 运行RED**：`uv run pytest filemate/tests/orchestrator/coach/test_rules.py filemate/tests/orchestrator/coach/test_output.py -q`，记录缺失行为。
+- [x] **2.3 实现规则与校验**：既有任务复用project_tasks和build_schedule；新动作只来自允许的typed fact和固定方法，action_key绑定目标／课程／真实原ID／动作／复习周期。无证据明确不足，不给假错因。未来日单独重排可在届时使用的候选，证据截止保持当前时刻；规则和模型都按同一预算／去重／固定／依赖校验，现有任务加新动作共同计入日预算和20项上限。同一待办／周期不能在七天内重复安排。已固定项超预算或原安排不能保留时返回需用户解决的冲突，不静默延期固定项；普通复合计划仅列可能重叠，不自动判断等价。
+- [x] **2.4 验证GREEN**：运行2.2和`uv run pytest filemate/tests/orchestrator/test_scheduler.py filemate/tests/orchestrator/test_task_views.py -q`。测试上海23:59→00:00、微秒到期及来源失效；模型无自由文本字段可伪造个人统计。输出携带覆盖与版本；规则结果在增强失败后仍可采纳。
+- [x] **2.5 提交**：`feat(coach): 生成有依据的规则与受限模型建议`，证据存`_working/learning-coach-d/task2/`。
 
 ## Task 3: 持久请求、真实模型调用、准入与取消
 

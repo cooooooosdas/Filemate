@@ -10,6 +10,7 @@ from ..models import (  # noqa: F401 -- Public shared domain error.
     Identifier,
     OrchestratorError,
     ScheduleOptions,
+    ScheduleResult,
     ScopeRequest,
     StrictRequest,
     TaskProjection,
@@ -254,3 +255,111 @@ class CoachCatalogPage(BaseModel):
     total: int
     offset: int
     limit: int = 30
+
+
+CoachReason = Literal[
+    "due_review",
+    "confirmed_cause",
+    "confirmed_dependency",
+    "selected_feedback",
+    "compiler_result",
+    "selected_requirement",
+    "goal_step",
+]
+CoachMethod = Literal[
+    "reread", "trace_error", "compare_cases", "retry_independently", "rehearse", "practice"
+]
+ActionKind = Literal[
+    "read_source", "review_question", "train_concept", "rehearse_interview", "practice_problem"
+]
+
+
+class CoachTarget(StrictRequest):
+    kind: Literal["source", "question", "concept", "interview", "problem"]
+    id: Identifier
+    revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    artifact_id: Identifier | None = None
+    question_index: int | None = Field(default=None, ge=0, le=1000000)
+    course_id: Identifier | None = None
+    attempt_id: Identifier | None = None
+    problem_version: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def exact_target_shape(self):
+        extras = {"artifact_id", "question_index", "course_id", "attempt_id", "problem_version"}
+        required = {
+            "source": set(),
+            "question": {"artifact_id", "question_index"},
+            "concept": {"course_id"},
+            "interview": {"attempt_id"},
+            "problem": {"problem_version"},
+        }[self.kind]
+        if {name for name in extras if getattr(self, name) is not None} != required:
+            raise ValueError("invalid_target_shape")
+        return self
+
+
+class CoachActionSpec(StrictRequest):
+    action: ActionKind
+    target_ref: CoachTarget
+    method_code: CoachMethod
+    study_date: str
+    minutes: int = Field(ge=1, le=240)
+    fact_ids: list[str] = Field(min_length=1, max_length=8)
+
+    @model_validator(mode="after")
+    def valid_action(self):
+        kinds = {
+            "read_source": "source",
+            "review_question": "question",
+            "train_concept": "concept",
+            "rehearse_interview": "interview",
+            "practice_problem": "problem",
+        }
+        if kinds[self.action] != self.target_ref.kind:
+            raise ValueError("action_target_mismatch")
+        if (
+            len(self.study_date) != 10
+            or date.fromisoformat(self.study_date).isoformat() != self.study_date
+        ):
+            raise ValueError("invalid_study_date")
+        if len(self.fact_ids) != len(set(self.fact_ids)):
+            raise ValueError("duplicate_fact_ids")
+        return self
+
+
+class CoachAction(CoachActionSpec):
+    action_key: str = Field(min_length=1, max_length=512, pattern=r"^[^\x00-\x1f]+$")
+
+
+class CoachExplanationSpec(StrictRequest):
+    task_id: str | None = None
+    fact_ids: list[str] = Field(min_length=1, max_length=8)
+    reason_code: CoachReason
+    method_code: CoachMethod
+
+    @model_validator(mode="after")
+    def unique_facts(self):
+        if len(set(self.fact_ids)) != len(self.fact_ids):
+            raise ValueError("duplicate_fact_ids")
+        return self
+
+
+class CoachExplanation(CoachExplanationSpec):
+    text: str
+
+
+class CoachProposalDay(CoachDayInput):
+    schedule: ScheduleResult
+
+
+class CoachProposal(BaseModel):
+    rule_version: str
+    prompt_version: str
+    facts: list[CoachFact]
+    explanations: list[CoachExplanation]
+    days: list[CoachProposalDay] = Field(min_length=1, max_length=7)
+    new_actions: list[CoachAction] = Field(max_length=7)
+    coverage: dict
+    overlaps: list[dict]
+    limitations: list[str]
