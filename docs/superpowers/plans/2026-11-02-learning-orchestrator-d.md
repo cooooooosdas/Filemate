@@ -206,7 +206,7 @@ def test_restore_rotates_epoch(coach_case):
 | POST `/operations/{operation_id}/undo-confirm` | UndoConfirmRequest → CoachReceipt；允许撤销关闭前已有操作，仍受全部保护条件约束 |
 | POST `/day` | 严格`{study_date}` → DayView；关闭后可读已有保存结果，禁止用此入口生成新安排 |
 
-- [ ] **6.1 写RED测试**：`test_coach_api_auth_origin_and_tenant_isolation`覆盖游客／账号、另一身份ID、未知记录及Origin；`test_strict_body_and_safe_errors`覆盖重复键、NaN、布尔minutes、超长／超64KiB、任意workspace/db_path/model_url、坏存储，响应不回显秘密。`test_flags_preserve_reads_cancel_and_safe_undo`覆盖两个后端开关AND关系、默认关闭及只读／取消／撤销。`test_only_requests_accepts_ephemeral_model_key`断言仅POST requests匹配白名单，其他读／确认／撤销不转发、不存密钥；无授权绝不调用。
+- [x] **6.1 写RED测试**：`test_coach_api_auth_origin_and_tenant_isolation`覆盖游客／账号、另一身份ID、未知记录及Origin；`test_strict_body_and_safe_errors`覆盖重复键、NaN、布尔minutes、超长／超64KiB、任意workspace/db_path/model_url、坏存储，响应不回显秘密。`test_flags_preserve_reads_cancel_and_safe_undo`覆盖两个后端开关AND关系、默认关闭及只读／取消／撤销。`test_only_requests_accepts_ephemeral_model_key`断言仅POST requests匹配白名单，其他读／确认／撤销不转发、不存密钥；无授权绝不调用。
 
 ```python
 def test_only_requests_accepts_ephemeral_model_key():
@@ -215,10 +215,10 @@ def test_only_requests_accepts_ephemeral_model_key():
     assert not is_model_request('POST', prefix + '/proposals/confirm')
     assert not is_model_request('POST', prefix + '/context')
 ```
-- [ ] **6.2 运行RED**：`uv run pytest filemate/tests/orchestrator/coach/test_api.py -q`。
-- [ ] **6.3 实现API与文档**：`FILEMATE_ENABLE_LEARNING_COACH=1`且原ORCHESTRATOR开启才允许新建议／确认，默认0；保留历史控制操作。固定错误码包括model_consent_required、context_changed、scope_changed、request_key_conflict、preview_expired_or_changed、schedule_changed_since_operation、coach_request_limit、coach_model_busy、coach_disabled；分别映射422／409／429／503，未授权401、越权记录404。runner异常只返回安全码，不含供应商异常。API_SPEC记录每字段上限、返回状态、只读与取消行为；仅requests加入现役模型凭据白名单。
-- [ ] **6.4 验证GREEN**：运行6.2与`uv run pytest filemate/tests/orchestrator/test_api.py filemate/tests/test_p1_account_privacy.py filemate/tests/test_llm_client.py -q`；读取OpenAPI与实际测试核对路径和模型，不凭手写文档宣称接通。
-- [ ] **6.5 提交**：`feat(coach): 接通严格API与单次模型授权`，证据存`_working/learning-coach-d/task6/`。
+- [x] **6.2 运行RED**：`uv run pytest filemate/tests/orchestrator/coach/test_api.py -q`。
+- [x] **6.3 实现API与文档**：`FILEMATE_ENABLE_LEARNING_COACH=1`且原ORCHESTRATOR开启才允许新建议／确认，默认0；保留历史控制操作。固定错误码包括model_consent_required、context_changed、scope_changed、request_key_conflict、preview_expired_or_changed、schedule_changed_since_operation、coach_request_limit、coach_model_busy、coach_disabled；分别映射422／409／429／503，未授权401、越权记录404。runner异常只返回安全码，不含供应商异常。API_SPEC记录每字段上限、返回状态、只读与取消行为；仅requests加入现役模型凭据白名单。
+- [x] **6.4 验证GREEN**：运行6.2与`uv run pytest filemate/tests/orchestrator/test_api.py filemate/tests/test_p1_account_privacy.py filemate/tests/test_llm_client.py -q`；读取OpenAPI与实际测试核对路径和模型，不凭手写文档宣称接通。
+- [x] **6.5 提交**：`feat(coach): 接通严格API与单次模型授权`，证据存`_working/learning-coach-d/task6/`。
 
 ## Task 7: 今日行动按需教练、证据预览与建议阅读
 

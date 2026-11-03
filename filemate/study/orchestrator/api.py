@@ -3,6 +3,7 @@
 import json
 import sqlite3
 from collections.abc import Callable
+from typing import ClassVar
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from fastapi.encoders import jsonable_encoder
@@ -47,7 +48,15 @@ def unique_object(pairs):
     return result
 
 
+def invalid_constant(value):
+    raise ValueError('non_finite_json')
+
+
 class DecisionRoute(APIRoute):
+    max_body_bytes = 262144
+    error_aliases: ClassVar[dict[str, str]] = {}
+    public_validation_errors: ClassVar[frozenset[str]] = frozenset()
+
     def get_route_handler(self):
         handler = super().get_route_handler()
 
@@ -58,21 +67,26 @@ class DecisionRoute(APIRoute):
                 if request.method == 'POST':
                     body = bytearray()
                     async for chunk in request.stream():
-                        if len(body) + len(chunk) > 262144:
+                        if len(body) + len(chunk) > self.max_body_bytes:
                             raise OrchestratorError('request_too_large', 413)
                         body.extend(chunk)
                     raw = bytes(body)
                     request._body = raw
                     try:
-                        json.loads(raw, object_pairs_hook=unique_object)
+                        json.loads(raw, object_pairs_hook=unique_object, parse_constant=invalid_constant)
                     except (ValueError, UnicodeError, RecursionError):
                         raise OrchestratorError('invalid_json', 422) from None
                 result = await handler(request)
                 result.headers['Cache-Control'] = 'no-store'
                 return result
             except OrchestratorError as exc:
-                return response({'error_code': exc.code}, status=exc.status_code, error=exc.code)
-            except RequestValidationError:
+                code = self.error_aliases.get(exc.code, exc.code)
+                return response({'error_code': code}, status=exc.status_code, error=code)
+            except RequestValidationError as exc:
+                for item in exc.errors():
+                    code = str(item.get('ctx', {}).get('error', ''))
+                    if code in self.public_validation_errors:
+                        return response({'error_code': code}, status=422, error=code)
                 return response(status=422, error='invalid_request')
             except (ValidationError, ValueError):
                 return response(status=409, error='stored_evidence_invalid')

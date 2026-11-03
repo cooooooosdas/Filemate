@@ -19,6 +19,7 @@ MODEL_PATHS = (
     r"/api/programming/submissions/[^/]+/review",
     r"/api/resume/generate",
     r"/wrongbook/v2/[^/]+/analyses",
+    r"/api/learning/orchestrator/coach/requests",
 )
 
 

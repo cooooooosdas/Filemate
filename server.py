@@ -575,13 +575,30 @@ async def isolate_model_credentials(request: Request, call_next):
     ):
         return JSONResponse(status_code=403, content={
             "success": False, "data": None, "error": "密钥仅允许用于受信页面的模型请求",
-        })
+        }, headers={'Cache-Control': 'no-store'})
     try:
         value = validate_api_key(value)
     except ValueError as exc:
         return JSONResponse(status_code=422, content={
             "success": False, "data": None, "error": str(exc),
-        })
+        }, headers={'Cache-Control': 'no-store'})
+    if request.url.path == '/api/learning/orchestrator/coach/requests':
+        raw = bytearray()
+        async for chunk in request.stream():
+            if len(raw) + len(chunk) > 65536:
+                return JSONResponse(status_code=413, content={
+                    'success': False, 'data': {'error_code': 'request_too_large'}, 'error': 'request_too_large',
+                }, headers={'Cache-Control': 'no-store'})
+            raw.extend(chunk)
+        request._body = bytes(raw)
+        try:
+            body = json.loads(request._body)
+        except (ValueError, UnicodeError, RecursionError):
+            body = None
+        if not isinstance(body, dict) or body.get('mode') != 'llm':
+            return JSONResponse(status_code=403, content={
+                'success': False, 'data': None, 'error': '本地规则不接收模型密钥',
+            }, headers={'Cache-Control': 'no-store'})
     if request.url.path.startswith('/api/knowledge-graph/courses/'):
         try:
             body = await request.json()
@@ -620,6 +637,7 @@ async def reject_untrusted_browser_origins(request: Request, call_next):
                 "data": None,
                 "error": "请求来源不受信任",
             },
+            headers={'Cache-Control': 'no-store'},
         )
     return await call_next(request)
 
@@ -651,7 +669,7 @@ async def isolate_anonymous_workspace(request: Request, call_next):
     } and request.method != "OPTIONS":
         return JSONResponse(status_code=401, content={
             "success": False, "data": None, "error": "登录已过期，请重新登录或退出后以游客继续",
-        })
+        }, headers={'Cache-Control': 'no-store'})
     identity_id = _verify_identity_cookie(
         request.cookies.get(IDENTITY_COOKIE_NAME)
     )
@@ -1794,6 +1812,10 @@ from filemate.study.orchestrator.api import create_router as _orchestrator_route
 
 app.include_router(_orchestrator_router(lambda: _storage))
 
+from filemate.study.orchestrator.coach.api import create_router as _learning_coach_router
+
+app.include_router(_learning_coach_router(lambda: _storage))
+
 
 def _require_graph_enabled() -> None:
     if os.getenv("FILEMATE_ENABLE_KNOWLEDGE_GRAPH", "1") == "0":
@@ -2229,7 +2251,9 @@ def _artifact_integrity(artifact: dict[str, Any]) -> dict[str, Any]:
 def get_knowledge_artifact(artifact_id: str):
     """读取可编辑的学习产物详情。"""
     artifact = _storage.get_artifact(artifact_id)
-    if artifact is None:
+    if artifact is None or artifact['artifact_type'] in {
+        'learning_coach_request', 'learning_coach_result', 'learning_coach_runtime', 'learning_coach_operation',
+    }:
         raise HTTPException(status_code=404, detail="学习产物不存在")
     return ApiResponse(success=True, data=_artifact_integrity(artifact))
 
