@@ -21,18 +21,31 @@ def project_tasks(snapshot: EvidenceSnapshot) -> TaskProjection:
     scope, facts = snapshot.scope, snapshot.facts
     pending, completed, unavailable, overlaps = [], [], [], []
     actions = {}
-    total = 0
+    total, deduplicated, omitted = 0, 0, 0
 
     def add(task):
-        nonlocal total
+        nonlocal total, deduplicated, omitted
         total += 1
-        if task.action_key and task.action_key in actions:
+        deduplicate = task.eligibility != 'archived' or task.status == 'completed'
+        if deduplicate and task.action_key and task.action_key in actions:
             actions[task.action_key].origin_refs.extend(task.origin_refs)
+            deduplicated += 1
             return
+        children = [ref['id'] for ref in task.origin_refs if ref.get('kind') == 'coach_action'] if deduplicate else []
+        for key in children:
+            previous = actions.get(key)
+            if previous and previous.kind != 'plan' and previous.status != 'completed':
+                pending[:] = [item for item in pending if item.task_id != previous.task_id]
+                task.origin_refs.extend(previous.origin_refs)
+                task.evidence_refs.extend(previous.evidence_refs)
+                deduplicated += 1
         if len(pending) + len(completed) >= 200:
+            omitted += 1
             return
-        if task.action_key:
+        if deduplicate and task.action_key:
             actions[task.action_key] = task
+        for key in children:
+            actions[key] = task
         if task.kind == 'review':
             task.reason = f'下次复习：{task.due_date}；错题记录累计错误{task.recorded_errors}次。估时来自规则，不代表能力评分。'
         elif task.kind == 'goal':
@@ -91,14 +104,20 @@ def project_tasks(snapshot: EvidenceSnapshot) -> TaskProjection:
             ref = {'kind': 'plan', 'id': plan['plan_id'], 'day_index': day['day_index']}
             done = day['completed']
             minutes = day.get('duration_minutes')
-            if type(minutes) is not int or not 1 <= minutes <= 240:
+            if type(minutes) is not int or not 1 <= minutes <= (1440 if day.get('coach_group') else 240):
                 minutes = None
-            add(view(tid, 'plan', f"学习计划第{day['day']}天", ref,
+            task = view(tid, 'plan', f"学习计划第{day['day']}天", ref,
                      '/study-plan?' + urlencode({'plan': plan['plan_id'], 'day': day['day']}),
                      source_id=plan['source_id'], due_date=day.get('date') or plan.get('exam_date'),
                      estimated_minutes=minutes, estimate_source='domain_estimate' if minutes else None,
                      status='completed' if done else 'pending', completion_ref=ref if done else None,
-                     eligibility='eligible' if plan['status'] != 'archived' else 'archived'))
+                     eligibility='eligible' if plan['status'] != 'archived' else 'archived')
+            if day.get('coach_group'):
+                task.action_key = 'coach-group-' + digest(day['coach_action_keys'])
+                task.origin_refs.extend({'kind': 'coach_action', 'id': key} for key in day['coach_action_keys'])
+                if task.eligibility == 'eligible' and day['date'] > snapshot.study_date:
+                    task.eligibility = 'not_due'
+            add(task)
     for row in facts['semester']:
         if not row.get('task_id'):
             continue
@@ -144,4 +163,5 @@ def project_tasks(snapshot: EvidenceSnapshot) -> TaskProjection:
                 task.dependency_ids = sorted(set(task.dependency_ids) | candidates)
     return TaskProjection(tasks=pending, completed=completed, unavailable=unavailable[:100], overlaps=overlaps,
                           coverage={'candidate_origins': total, 'returned': len(pending) + len(completed),
-                                    'truncated': total > len(pending) + len(completed), 'evidence': snapshot.coverage})
+                                    'truncated': omitted > 0, 'deduplicated_origins': deduplicated,
+                                    'evidence': snapshot.coverage})

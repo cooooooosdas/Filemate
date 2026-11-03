@@ -98,6 +98,20 @@ def test_completed_unknown_estimate_and_pinned_order_are_preserved(coach_case):
     assert any(t.task_id == original.task_id for t in result.days[0].schedule.completed)
 
 
+def test_completed_pinned_task_does_not_block_or_reopen_a_new_zero_budget_plan(coach_case):
+    context = read_context(coach_case)
+    task = context.projection.tasks.pop(0)
+    task.status = "completed"
+    context.projection.completed = [task]
+    options = context.input.days[0].options
+    options.available_minutes = 0
+    options.item_order = [task.task_id]
+    options.pinned_ids = [task.task_id]
+    result = coach_module("rules").build_rule_proposal(context)
+    assert not result.days[0].schedule.selected
+    assert [t.task_id for t in result.days[0].schedule.completed] == [task.task_id]
+
+
 def test_duplicate_action_ignores_display_name_and_new_cycle_has_new_identity(coach_case):
     store, w = coach_case["storage"], coach_case["world"]
     wid = wrong(w)

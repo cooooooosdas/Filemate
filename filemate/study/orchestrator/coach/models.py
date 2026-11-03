@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 from ..models import (  # noqa: F401 -- Public shared domain error.
+    Confirmation,
     EvidenceSnapshot,
     Identifier,
     OrchestratorError,
@@ -399,3 +400,67 @@ class CoachRunView(BaseModel):
     provider: str | None = None
     model: str | None = None
     quota_window: Literal["rolling_24h"] = "rolling_24h"
+
+
+class CoachOverlapChoice(StrictRequest):
+    original_task_id: str = Field(min_length=1, max_length=512)
+    keep: Literal["original", "proposed"]
+
+
+class CoachDraft(StrictRequest):
+    work_id: Identifier
+    expected_context_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    days: list[CoachDayInput] = Field(min_length=1, max_length=7)
+    new_actions: list[CoachAction] = Field(max_length=7)
+    overlap_choices: list[CoachOverlapChoice] = Field(default_factory=list, max_length=200)
+
+    @model_validator(mode="after")
+    def unique_actions_and_days(self):
+        days = [day.study_date for day in self.days]
+        keys = [action.action_key for action in self.new_actions]
+        choices = [choice.original_task_id for choice in self.overlap_choices]
+        if (
+            days != sorted(set(days))
+            or len(keys) != len(set(keys))
+            or len(choices) != len(set(choices))
+        ):
+            raise ValueError("duplicate_or_unordered_draft")
+        if any(action.study_date not in days for action in self.new_actions):
+            raise ValueError("action_day_outside_draft")
+        return self
+
+
+class CoachPreview(BaseModel):
+    draft: CoachDraft
+    as_of: datetime
+    issued_study_date: str
+    day_revisions: dict[str, int]
+    new_plan_id: str | None
+    new_artifact_id: str | None
+    resolved_actions: list[dict]
+    changes: dict
+    confirmation_token: str
+    expires_in_seconds: int = 900
+
+
+class CoachConfirm(CoachDraft, Confirmation):
+    pass
+
+
+class CoachReceipt(BaseModel):
+    operation_id: str
+    request_key: str
+    status: Literal["confirmed", "undone"]
+    study_dates: list[str]
+    day_revisions: dict[str, int]
+    plan_id: str | None = None
+    affected: dict[str, int]
+
+
+class CoachUndoPreview(BaseModel):
+    operation_id: str
+    issued_study_date: str
+    day_revisions: dict[str, int]
+    plan_revision: str | None
+    confirmation_token: str
+    expires_in_seconds: int = 900

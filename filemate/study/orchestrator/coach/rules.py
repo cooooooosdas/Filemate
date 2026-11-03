@@ -151,7 +151,14 @@ def action_candidates(context: CoachContext) -> list[CoachAction]:
 
 def _existing(context: CoachContext, action: CoachAction) -> TaskView | None:
     for task in context.projection.tasks + context.projection.completed:
+        if task.eligibility == "archived" and task.status != "completed":
+            continue
         if task.action_key == action.action_key:
+            return task
+        if any(
+            ref.get("kind") == "coach_action" and ref.get("id") == action.action_key
+            for ref in task.origin_refs
+        ):
             return task
         if (
             action.action == "read_source"
@@ -304,7 +311,7 @@ def assemble_proposal(
         for task in tasks:
             if (
                 day.study_date > context.snapshot.study_date
-                and task.kind == "review"
+                and task.kind in {"review", "plan"}
                 and task.eligibility == "not_due"
                 and task.due_date
             ):
@@ -333,7 +340,7 @@ def assemble_proposal(
         snapshot = context.snapshot.model_copy(update={"study_date": day.study_date})
         schedule = build_schedule(snapshot, projected, options)
         chosen_ids = {t.task_id for t in schedule.selected}
-        if not set(options.pinned_ids) <= chosen_ids:
+        if not set(options.pinned_ids) <= chosen_ids | {t.task_id for t in completed}:
             raise OrchestratorError("pinned_task_conflict")
         # Do not present a previously scheduled task as an actual completed record.
         schedule.completed = completed

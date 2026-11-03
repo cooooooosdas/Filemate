@@ -148,7 +148,7 @@ def test_rule_replay_is_persistent(coach_service, coach_request):
 
 **Interfaces:** `CoachCommands(storage, *, clock=None).preview(draft: CoachDraft) -> CoachPreview`、`confirm(body: CoachConfirm) -> CoachReceipt`、`find(request_key: str) -> CoachReceipt | None`、`preview_undo(operation_id: str) -> CoachUndoPreview`、`confirm_undo(operation_id: str, body: UndoConfirmRequest) -> CoachReceipt`；`CoachDayReader(storage, *, clock=None).read(study_date: str) -> DayView`。`build_short_plan(context: CoachContext, draft: CoachDraft, *, plan_id: str, artifact_id: str) -> dict`返回现役StudyPlan格式；`write_short_plan(conn, plan: dict) -> None`要求现有事务，不自行commit。
 
-- [ ] **4.1 写RED测试**：`test_preview_creates_no_study_plan`；`test_joint_confirm_rolls_back_every_write`在计划、来源绑定、第二日安排、回执、审计处逐一注入失败，断言全部业务写入为零、旧计划哈希不变。`test_two_tabs_compare_all_day_revisions`断言两个coach或coach与C同日竞争仅一个成功；`test_replay_before_revalidation_returns_original_receipt`在证据变化／跨日后同键恢复仍原回执。`test_undo_rejects_any_started_plan_or_changed_day`断言完成任一日、保存原功能执行证据、后改任一日或编辑新计划后整体拒绝，不部分撤销。`test_plan_day_grouping_and_goal_link`断言同日多动作只一学习日、正确completed_days含义、无来源／多来源计划读取隔离。
+- [x] **4.1 写RED测试**：`test_preview_creates_no_study_plan`；`test_joint_confirm_rolls_back_every_write`在计划、来源绑定、第二日安排、回执、审计处逐一注入失败，断言全部业务写入为零、旧计划哈希不变。`test_two_tabs_compare_all_day_revisions`断言两个coach或coach与C同日竞争仅一个成功；`test_replay_before_revalidation_returns_original_receipt`在证据变化／跨日后同键恢复仍原回执。`test_undo_rejects_any_started_plan_or_changed_day`断言完成任一日、保存原功能执行证据、后改任一日或编辑新计划后整体拒绝，不部分撤销。`test_plan_day_grouping_and_goal_link`断言同日多动作只一学习日、正确completed_days含义、无来源／多来源计划读取隔离。
 
 ```python
 def test_preview_creates_no_study_plan(coach_case, coach_draft):
@@ -158,11 +158,11 @@ def test_preview_creates_no_study_plan(coach_case, coach_draft):
     assert preview.expires_in_seconds == 900
     assert storage._conn().execute('SELECT count(*) FROM study_plans').fetchone()[0] == before
 ```
-- [ ] **4.2 运行RED**：`uv run pytest filemate/tests/orchestrator/coach/test_commands.py filemate/tests/orchestrator/coach/test_plans.py -q`。
-- [ ] **4.3 实现联合命令**：预览为有限新计划／Artifact／动作预分配稳定ID，保存于受保护建议结果中，并将全部待写正文摘要、原任务修订、重叠选择、目标、来源、完成／固定、epoch、签发上海日期及所有日CAS绑定到令牌。一个BEGIN IMMEDIATE事务内写至多一份新StudyPlan、来源关联、原day_id(date)的日Artifact、不可变coach回执及data_actions.finish；任一步失败回滚。跨日拒绝未用令牌；原键先查回执，禁止重复创建或挪到今日。
-- [ ] **4.4 实现读取／撤销**：当日C工作台能投影coach所建原格式计划和最新操作定位，未知旧字段保持兼容；新短计划沿用原按日执行单位，内部training_actions定位原功能，不能再把同一动作重复投影成第二个独立待办。未来目标日读取用显式date，as_of仍真实。允许用户编辑days／预算后基于原work输入重新核验证据，再按新draft重算并绑定新预览，不要求为人工改预算再调用模型。撤销预览绑定全部日修订／新计划内容和实际执行证据；确认仅归档本批尚未开始的新计划并恢复本批未后改的安排。原计划、答题、面试和编程结果不删除；“自报完成学习日”不增加答对次数。
-- [ ] **4.5 验证GREEN**：运行4.2与`uv run pytest filemate/tests/orchestrator/test_commands.py filemate/tests/orchestrator/test_journey.py filemate/tests/orchestrator/test_task_views.py -q`；增加SQLite提交失败后的同键重试与未用撤销令牌跨上海日失效测试，确认旧C操作不会误撤销coach日写入。
-- [ ] **4.6 提交**：`feat(coach): 原子确认短计划与多日安排`，证据存`_working/learning-coach-d/task4/`。
+- [x] **4.2 运行RED**：`uv run pytest filemate/tests/orchestrator/coach/test_commands.py filemate/tests/orchestrator/coach/test_plans.py -q`。
+- [x] **4.3 实现联合命令**：预览为有限新计划／Artifact／动作预分配稳定ID，保存于受保护建议结果中，并将全部待写正文摘要、原任务修订、重叠选择、目标、来源、完成／固定、epoch、签发上海日期及所有日CAS绑定到令牌。一个BEGIN IMMEDIATE事务内写至多一份新StudyPlan、来源关联、原day_id(date)的日Artifact、不可变coach回执及data_actions.finish；任一步失败回滚。跨日拒绝未用令牌；原键先查回执，禁止重复创建或挪到今日。
+- [x] **4.4 实现读取／撤销**：当日C工作台能投影coach所建原格式计划和最新操作定位，未知旧字段保持兼容；新短计划沿用原按日执行单位，内部training_actions定位原功能，不能再把同一动作重复投影成第二个独立待办。未来目标日读取用显式date，as_of仍真实。允许用户编辑days／预算后基于原work输入重新核验证据，再按新draft重算并绑定新预览，不要求为人工改预算再调用模型。撤销预览绑定全部日修订／新计划内容和实际执行证据；确认仅归档本批尚未开始的新计划并恢复本批未后改的安排。原计划、答题、面试和编程结果不删除；“自报完成学习日”不增加答对次数。
+- [x] **4.5 验证GREEN**：运行4.2与`uv run pytest filemate/tests/orchestrator/test_commands.py filemate/tests/orchestrator/test_journey.py filemate/tests/orchestrator/test_task_views.py -q`；增加SQLite提交失败后的同键重试与未用撤销令牌跨上海日失效测试，确认旧C操作不会误撤销coach日写入。
+- [x] **4.6 提交**：`feat(coach): 原子确认短计划与多日安排`，证据存`_working/learning-coach-d/task4/`。
 
 ## Task 5: 多来源、面试／作答／代码依赖的删除与恢复
 

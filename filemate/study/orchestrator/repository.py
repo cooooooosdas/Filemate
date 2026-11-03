@@ -91,6 +91,9 @@ def latest_operation(conn: sqlite3.Connection, saved: dict[str, Any] | None, day
     if not isinstance(identifier, str):
         return None
     try:
+        if identifier.startswith('learning-coach-operation-'):
+            from .coach.commands import native_operation_receipt
+            return native_operation_receipt(conn, identifier, day, saved['revision'])
         record = load(conn, identifier, OP_TYPE)
         if record is None:
             return None
@@ -123,6 +126,9 @@ class OrchestratorRepository:
             if not saved or saved.get('config') is None:
                 return DayView(study_date=day, revision=saved['revision'] if saved else 0, status='not_confirmed', latest_operation=latest)
             config = saved['config']
+            if config.get('learning_coach'):
+                from .coach.commands import CoachDayReader
+                return CoachDayReader(self.storage, clock=self.clock).read_in_transaction(read, day, saved)
             scope = ScopeRequest.model_validate(config['scope'])
             options = ScheduleOptions.model_validate(config['options'])
             try:

@@ -2826,31 +2826,47 @@ class SQLiteStorage:
     ) -> dict[str, Any]:
         """更新单个学习日状态，并自动维护计划状态。"""
         with self._write_lock:
-            plan = self.get_study_plan(plan_id)
-            if plan is None:
-                raise ValueError("学习计划不存在")
-            if plan["status"] == "archived":
-                raise ValueError("学习计划已撤销，请先恢复后再更新进度")
-            days = plan["plan_data"].get("daily_plan", [])
-            if not 0 <= day_index < len(days):
-                raise ValueError("学习日序号无效")
-
-            completed_days = {int(item) for item in plan["completed_days"]}
-            if completed:
-                completed_days.add(day_index)
-            else:
-                completed_days.discard(day_index)
-            normalized = sorted(completed_days)
-            status = (
-                "completed" if days and len(normalized) == len(days) else "active"
-            )
             connection = self._conn()
-            connection.execute(
-                """UPDATE study_plans SET completed_days=?, status=?, updated_at=?
-                   WHERE plan_id=?""",
-                (self._dump_json(normalized), status, _now_iso(), plan_id),
-            )
-            connection.commit()
+            try:
+                connection.execute('BEGIN IMMEDIATE')
+                plan = self.get_study_plan(plan_id)
+                if plan is None:
+                    raise ValueError("学习计划不存在")
+                if plan["status"] == "archived":
+                    raise ValueError("学习计划已撤销，请先恢复后再更新进度")
+                days = plan["plan_data"].get("daily_plan", [])
+                if not 0 <= day_index < len(days):
+                    raise ValueError("学习日序号无效")
+                completed_days = {int(item) for item in plan["completed_days"]}
+                if completed:
+                    completed_days.add(day_index)
+                else:
+                    completed_days.discard(day_index)
+                normalized = sorted(completed_days)
+                status = "completed" if days and len(normalized) == len(days) else "active"
+                if normalized == plan['completed_days'] and status == plan['status']:
+                    connection.rollback()
+                    return plan
+                connection.execute(
+                    """UPDATE study_plans SET completed_days=?, status=?, updated_at=?
+                       WHERE plan_id=?""",
+                    (self._dump_json(normalized), status, _now_iso(), plan_id),
+                )
+                artifact = self.get_artifact(plan['artifact_id'])
+                metadata = artifact.get('metadata') if artifact else None
+                namespace = metadata.get('learning_coach') if isinstance(metadata, dict) else None
+                if isinstance(namespace, dict) and connection.execute(
+                    "SELECT 1 FROM artifacts WHERE artifact_id=? AND artifact_type='learning_coach_operation'",
+                    (namespace.get('operation_id'),),
+                ).fetchone():
+                    # 完成后再取消勾选仍保留执行痕迹，避免秒级时间相同导致整批误撤销。
+                    connection.execute('INSERT INTO data_action_audit(action,resource_id,affected) VALUES (?,?,?)',
+                        ('learning_coach_plan_progress', plan_id,
+                         self._dump_json({'day_index': day_index, 'completed': completed})))
+                connection.commit()
+            except BaseException:
+                connection.rollback()
+                raise
         updated = self.get_study_plan(plan_id)
         if updated is None:
             raise RuntimeError("学习计划更新失败")

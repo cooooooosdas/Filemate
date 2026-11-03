@@ -103,6 +103,7 @@ def _read_source_plans(conn, source_ids: list[str], course_id=None, *, exclude_c
     joined = 'study_plans p LEFT JOIN artifacts a ON a.artifact_id=p.artifact_id'
     total = conn.execute('SELECT COUNT(*) FROM ' + joined + ' WHERE ' + where, params).fetchone()[0]
     rows = conn.execute('SELECT p.plan_id,p.source_id,p.exam_date,p.daily_minutes,p.status,p.completed_days,'
+                        "CASE WHEN length(a.metadata)<=1048576 THEN a.metadata END AS metadata,"
                         'CASE WHEN length(p.plan_data)<=1048576 THEN p.plan_data END AS plan_data '
                         'FROM ' + joined + ' WHERE ' + where + ' ORDER BY p.plan_id LIMIT 100', params).fetchall()
     return _project_plans(rows, total, candidates=candidates)
@@ -113,6 +114,7 @@ def _project_plans(rows, total, *, candidates=None):
     for row in rows:
         plan = dict(row)
         content = object_json(plan.pop('plan_data'))
+        metadata = object_json(plan.pop('metadata', '{}'))
         completed = object_json(plan.pop('completed_days'), list)
         if content is None or completed is None or not isinstance(content.get('daily_plan'), list):
             invalid += 1
@@ -127,6 +129,11 @@ def _project_plans(rows, total, *, candidates=None):
                             'date': day.get('date'), 'duration_minutes': day.get('duration_minutes', plan['daily_minutes']),
                             'completed': i in completed,
                             'composite': True})
+            if metadata and content.get('learning_coach'):
+                from .coach.plans import projected_group
+                keys = projected_group(content, metadata, i)
+                if keys:
+                    compact[-1].update(coach_group=True, coach_action_keys=keys)
         remaining -= len(compact)
         result.append(plan | {'days': compact, 'day_total': len(days)})
     return result, coverage(total, len(result)) | {'invalid': invalid, 'scope_excluded': (candidates - total) if candidates is not None else 0,
@@ -154,6 +161,7 @@ def read_goal_plans(conn, goal_id: str, source_ids: list[str], course_id: str | 
     joined = 'study_plans p JOIN artifacts a ON a.artifact_id=p.artifact_id'
     total = conn.execute('SELECT count(*) FROM ' + joined + ' WHERE ' + where, args).fetchone()[0]
     rows = conn.execute('SELECT p.plan_id,p.source_id,p.exam_date,p.daily_minutes,p.status,p.completed_days,'
+                        "CASE WHEN length(a.metadata)<=1048576 THEN a.metadata END AS metadata,"
                         'CASE WHEN length(p.plan_data)<=1048576 THEN p.plan_data END AS plan_data '
                         'FROM ' + joined + ' WHERE ' + where + ' ORDER BY p.plan_id LIMIT 100', args).fetchall()
     return _project_plans(rows, total)
