@@ -145,6 +145,10 @@ class ReviewRepository:
         self.snapshot(interview_id)
         conn = self.storage._conn()
         with self.storage._write_lock, conn:
+            conn.execute("BEGIN IMMEDIATE")
+            from filemate.study.orchestrator.coach.privacy import invalidate_coach_dependencies
+
+            invalidate_coach_dependencies(conn, kind="interview", record_ids=[interview_id])
             changed = conn.execute(
                 "SELECT COUNT(*) FROM interview_turns WHERE interview_id=? AND "
                 "(visual_metrics!='{}' OR content_analysis!='{}' OR scoring_mode='llm')", (interview_id,),
@@ -179,6 +183,9 @@ class ReviewRepository:
         conn = self.storage._conn()
         counts = {label: conn.execute(f'SELECT COUNT(*) FROM {table} WHERE interview_id=?', (interview_id,)).fetchone()[0]
                   for label, table in [('answer_attempts','interview_answer_attempts'),('analysis_runs','interview_coach_analysis_runs'),('assessments','interview_assessments'),('coach_actions','interview_coach_actions'),('runtime_tasks','interview_tasks'),('runtime_events','interview_events')]}
+        from filemate.study.orchestrator.coach.privacy import coach_dependency_impact
+
+        counts.update(coach_dependency_impact(conn, kind="interview", record_ids=[interview_id]))
         coach = conn.execute('SELECT revision FROM interview_coach_state WHERE interview_id=?', (interview_id,)).fetchone()
         reports = len(self._report_ids(interview_id))
         token = hashlib.sha256(json.dumps([evidence_digest(interview),revision,coach[0] if coach else None,counts,reports],sort_keys=True).encode()).hexdigest()
@@ -198,6 +205,10 @@ class ReviewRepository:
             session = self.storage.get_interview(interview_id)
             run_id = session.get("agent_run_id")
             with conn:
+                conn.execute("BEGIN IMMEDIATE")
+                from filemate.study.orchestrator.coach.privacy import invalidate_coach_dependencies
+
+                invalidate_coach_dependencies(conn, kind="interview", record_ids=[interview_id])
                 for artifact_id in self._report_ids(interview_id):
                     conn.execute("DELETE FROM artifacts WHERE artifact_id=?", (artifact_id,))
                 conn.execute("DELETE FROM agent_memories WHERE scope_id=?", (interview_id,))

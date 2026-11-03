@@ -163,7 +163,8 @@ const confirmDelete = async (source: KnowledgeSource) => {
   deletingSource.value = source.source_id
   try {
     const preview = await previewKnowledgeSourceDeletion(source.source_id)
-    await ElMessageBox.confirm(`删除「${source.original_name}」及 ${preview.affected.artifacts} 个学习产物、${preview.affected.wrong_questions} 条错题？不可撤销，外部原文件保留。`, '确认删除范围', { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning' })
+    const coachImpact = preview.affected.learning_coach_results || preview.affected.learning_coach_plans ? `另清除${preview.affected.learning_coach_results || 0}份教练建议、${preview.affected.learning_coach_plans || 0}份采纳短计划。` : ''
+    await ElMessageBox.confirm(`删除「${source.original_name}」及 ${preview.affected.artifacts} 个学习产物、${preview.affected.wrong_questions} 条错题？${coachImpact}不可撤销，外部原文件保留。`, '确认删除范围', { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning' })
     const result = await deleteKnowledgeSource(source.source_id, preview.confirmation_token)
     sources.value = sources.value.filter(item => item.source_id !== source.source_id)
     if (expandedSource.value === source.source_id) { artifactEpoch++; expandedSource.value = ''; artifacts.value = []; lineage.value = null }

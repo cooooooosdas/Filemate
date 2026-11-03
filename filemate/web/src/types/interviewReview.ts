@@ -36,4 +36,4 @@ export interface InterviewReport {
   suggestions: string[]; privacy: Record<string, string>
 }
 export interface InterviewReviewEvent { event_id: number; action: string; detail: string; created_at: string }
-export interface InterviewDeletePreview { interview_id: string; answers: number; answer_attempts?: number; analysis_runs?: number; coach_actions?: number; reports: number; confirmation_token: string; scope: string }
+export interface InterviewDeletePreview { interview_id: string; answers: number; answer_attempts?: number; analysis_runs?: number; coach_actions?: number; reports: number; learning_coach_results?: number; learning_coach_plans?: number; confirmation_token: string; scope: string }

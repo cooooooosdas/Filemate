@@ -1053,7 +1053,7 @@ async function remove() {
     const id = selected.value.position_id,
       preview = await previewCareerDelete(id);
     await ElMessageBox.confirm(
-      `将删除本岗位、${preview.training_count}份求职训练/对比快照和${preview.learning_plan_count}份岗位学习计划及进度。${preview.scope} 此操作不可恢复。`,
+      `将删除本岗位、${preview.training_count}份求职训练/对比快照和${preview.learning_plan_count}份岗位学习计划及进度。${preview.scope}${preview.learning_coach_results || preview.learning_coach_plans ? `另清除${preview.learning_coach_results || 0}份教练建议、${preview.learning_coach_plans || 0}份采纳短计划。` : ''} 此操作不可恢复。`,
       "删除影响预览",
       {
         confirmButtonText: "确认删除岗位",

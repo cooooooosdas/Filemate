@@ -162,7 +162,7 @@ async function eraseSubmission() {
   const row = current.value; busy.value = 'delete'; error.value = ''
   try {
     const preview = await previewCodingDeletion(row.submission_id)
-    await ElMessageBox.confirm(`将删除此提交的源码与反馈，并移除${preview.related_reports}份关联报告、解除${preview.profile_links}处个人事实关联。${preview.notice}`, '彻底删除编程提交', { confirmButtonText: '确认彻底删除', cancelButtonText: '取消' })
+    await ElMessageBox.confirm(`将删除此提交的源码与反馈，并移除${preview.related_reports}份关联报告、解除${preview.profile_links}处个人事实关联。${preview.notice}${preview.learning_coach_results || preview.learning_coach_plans ? `另清除${preview.learning_coach_results || 0}份教练建议、${preview.learning_coach_plans || 0}份采纳短计划。` : ''}`, '彻底删除编程提交', { confirmButtonText: '确认彻底删除', cancelButtonText: '取消' })
     if (disposed) return
     await deleteCodingSubmission(row.submission_id, preview.confirmation_token)
     stopPolling(); drafts.delete(row.problem_id); pending = null

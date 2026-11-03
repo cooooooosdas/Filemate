@@ -408,6 +408,8 @@ class CoachCommands:
         record = load(conn, identifier, OP_TYPE)
         if not record or record.get("undo_of"):
             raise OrchestratorError("operation_not_found", 404)
+        if record.get("dependency_erased"):
+            raise OrchestratorError("execution_evidence_changed")
         receipt = _receipt(conn, record)
         if receipt.status == "undone":
             raise OrchestratorError("operation_already_undone")

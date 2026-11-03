@@ -95,12 +95,18 @@ class CoachContextReader:
             )
 
     def read_in_transaction(
-        self, read: SQLiteStorage, input: CoachInput, *, as_of: datetime, restore_epoch: str
+        self,
+        read: SQLiteStorage,
+        input: CoachInput,
+        *,
+        as_of: datetime,
+        restore_epoch: str,
+        historical_read: bool = False,
     ) -> CoachContext:
         input = CoachInput.model_validate(input)
         as_of = aware(as_of)
         today = as_of.astimezone(LOCAL_ZONE).date()
-        if any(
+        if not historical_read and any(
             not 0 <= (datetime.fromisoformat(item.study_date).date() - today).days <= 6
             for item in input.days
         ):
@@ -120,7 +126,7 @@ class CoachContextReader:
             fact(
                 "goal",
                 input.scope.goal_id,
-                dict(original),
+                {"content": decode(original["content"]), "updated_at": original["updated_at"]},
                 {k: goal.get(k) for k in ("title", "goal_type", "deadline")},
                 observed_at=original["updated_at"],
                 label="当前目标",

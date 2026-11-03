@@ -158,7 +158,15 @@ def build_short_plan(
         else None,
         "source_ids": context.input.scope.source_ids,
         "plan_data": data,
-        "metadata": {"learning_coach": namespace},
+        "metadata": {
+            "learning_coach": namespace,
+            "dependencies": {
+                "goal": context.input.scope.goal_id,
+                "sources": context.input.scope.source_ids,
+                **context.input.selection.model_dump(mode="json"),
+                "attempt_ids": [f.record_id for f in context.facts if f.kind == "attempt"],
+            },
+        },
     }
 
 

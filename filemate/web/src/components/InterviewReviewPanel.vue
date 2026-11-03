@@ -105,7 +105,7 @@ async function download(format: 'pdf' | 'json' | 'markdown') {
   finally { mutating.value = false }
 }
 async function clear() {
-  try { await ElMessageBox.confirm('清空内容评分、视觉观察和复盘报告，保留原回答与语音节奏。确认继续？', '清空分析', { confirmButtonText: '确认清空', cancelButtonText: '保留分析' }) }
+  try { await ElMessageBox.confirm('清空内容评分、视觉观察、复盘报告及依赖本场的学习教练建议和短计划，保留原回答与语音节奏。确认继续？', '清空分析', { confirmButtonText: '确认清空', cancelButtonText: '保留分析' }) }
   catch { return }
   mutating.value = true
   try { const updated = await clearInterviewAnalysis(props.session.interview_id); emit('updated', updated); emit('cleared'); report.value = null; await load() }
@@ -114,7 +114,7 @@ async function clear() {
 }
 async function remove() {
   mutating.value = true
-  try { const preview = await previewInterviewDelete(props.session.interview_id); await ElMessageBox.confirm(`将删除${preview.answers}条回答、${preview.reports}份报告及本场节奏、观察、关联Agent记录。${preview.scope} 当前页面的本场录像也将清除。`, '删除影响预览', { confirmButtonText: '确认删除本场练习', cancelButtonText: '保留练习', type: 'warning' }); await deleteInterviewSession(props.session.interview_id, preview.confirmation_token); emit('deleted') }
+  try { const preview = await previewInterviewDelete(props.session.interview_id); await ElMessageBox.confirm(`将删除${preview.answers}条回答、${preview.reports}份报告及本场节奏、观察、关联Agent记录。${preview.scope}${preview.learning_coach_results || preview.learning_coach_plans ? `另清除${preview.learning_coach_results || 0}份教练建议、${preview.learning_coach_plans || 0}份采纳短计划。` : ''} 当前页面的本场录像也将清除。`, '删除影响预览', { confirmButtonText: '确认删除本场练习', cancelButtonText: '保留练习', type: 'warning' }); await deleteInterviewSession(props.session.interview_id, preview.confirmation_token); emit('deleted') }
   catch (e) { if (e !== 'cancel' && e !== 'close') error.value = message(e) }
   finally { mutating.value = false }
 }

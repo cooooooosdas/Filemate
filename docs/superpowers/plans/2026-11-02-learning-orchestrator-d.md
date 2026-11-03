@@ -170,7 +170,7 @@ def test_preview_creates_no_study_plan(coach_case, coach_draft):
 
 **Interfaces:** `normalize_restored_coach(conn) -> None`；`invalidate_coach_dependencies(conn, *, kind: str, record_ids: list[str]) -> dict[str,int]`，kind限source/interview/attempt/submission/position/goal；`coach_dependency_impact(conn, *, kind: str, record_ids: list[str]) -> dict[str,int]`用于既有删除预览。均复用调用方事务；严禁内部commit。未删除但重答／修改／移出课程时由上下文修订令建议stale，实际彻底删除时清除对应派生正文并保留去重墓碑。
 
-- [ ] **5.1 写RED测试**：`test_delete_either_source_purges_body_but_keeps_tombstone`覆盖两来源的无课程目标、请求运行中删除、私密句无法从结果／导出／历史回执取得。`test_interview_clear_and_attempt_delete_invalidate_derivatives`覆盖清空分析／删除场次／重答／错题清空／代码删除；迟到runner不可恢复正文。`test_generic_artifact_paths_cannot_forge_coach_authority`覆盖通用保存／编辑／导入／批量删除受保护Artifact；合法备份读取继续工作。`test_restore_rotates_epoch_without_resuming_or_refunding`覆盖running→interrupted、清令牌、旧结果不发布、原记录仍可读；备份故意含坏coach JSON不崩全站。
+- [x] **5.1 写RED测试**：`test_delete_either_source_purges_body_but_keeps_tombstone`覆盖两来源的无课程目标、请求运行中删除、私密句无法从结果／导出／历史回执取得。`test_interview_clear_and_attempt_delete_invalidate_derivatives`覆盖清空分析／删除场次／重答／错题清空／代码删除；迟到runner不可恢复正文。`test_generic_artifact_paths_cannot_forge_coach_authority`覆盖通用保存／编辑／导入／批量删除受保护Artifact；合法备份读取继续工作。`test_restore_rotates_epoch_without_resuming_or_refunding`覆盖running→interrupted、清令牌、旧结果不发布、原记录仍可读；备份故意含坏coach JSON不崩全站。
 
 ```python
 def test_restore_rotates_epoch(coach_case):
@@ -180,10 +180,10 @@ def test_restore_rotates_epoch(coach_case):
         normalize_restored_coach(transaction)
     assert read_restore_epoch(conn) != before
 ```
-- [ ] **5.2 运行RED**：`uv run pytest filemate/tests/orchestrator/coach/test_privacy.py filemate/tests/orchestrator/coach/test_restore.py -q`。
-- [ ] **5.3 实现派生与恢复接线**：来源关联复用kg_learning_artifact_sources，同步source_impact计数和显示标签；移出课程只使范围／引用失效，沿用已确认的“移出／彻底删除”区别。面试、原答、编程删除在原事务中移除依赖正文，不能仅在下次打开时隐藏。恢复转新epoch、清未用coach令牌、运行中改interrupted，并将个人恢复阻断条件扩展到活跃coach调用；关闭开关仍能导出、删除和重读。遍历派生记录要覆盖全部匹配项，不用LIMIT漏删。
-- [ ] **5.4 验证GREEN**：运行5.2和`uv run pytest filemate/tests/course_graph/test_privacy.py filemate/tests/test_interview_coach_privacy.py filemate/tests/test_p1_personal_backup.py filemate/tests/test_p1_coding_privacy.py -q`。验证SQLite外键、旧schema36合成备份往返、来源依赖数与实际派生内容一致；若复用实体不能满足则按Global Constraints报告迁移差异。
-- [ ] **5.5 提交**：`fix(coach): 阻断删除恢复后的旧建议与迟到写入`，证据存`_working/learning-coach-d/task5/`。
+- [x] **5.2 运行RED**：`uv run pytest filemate/tests/orchestrator/coach/test_privacy.py filemate/tests/orchestrator/coach/test_restore.py -q`。
+- [x] **5.3 实现派生与恢复接线**：来源关联复用kg_learning_artifact_sources，同步source_impact计数和显示标签；移出课程只使范围／引用失效，沿用已确认的“移出／彻底删除”区别。面试、原答、编程删除在原事务中移除依赖正文，不能仅在下次打开时隐藏。恢复转新epoch、清未用coach令牌、运行中改interrupted，并将个人恢复阻断条件扩展到活跃coach调用；关闭开关仍能导出、删除和重读。遍历派生记录要覆盖全部匹配项，不用LIMIT漏删。
+- [x] **5.4 验证GREEN**：运行5.2和`uv run pytest filemate/tests/course_graph/test_privacy.py filemate/tests/test_interview_coach_privacy.py filemate/tests/test_p1_personal_backup.py filemate/tests/test_p1_coding_privacy.py -q`。验证SQLite外键、旧schema36合成备份往返、来源依赖数与实际派生内容一致；若复用实体不能满足则按Global Constraints报告迁移差异。
+- [x] **5.5 提交**：`fix(coach): 阻断删除恢复后的旧建议与迟到写入`，证据存`_working/learning-coach-d/task5/`。
 
 ## Task 6: HTTP合同、开关与可信请求凭据
 

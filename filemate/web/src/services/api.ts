@@ -236,7 +236,7 @@ export async function saveCodingNotes(id: string, notes: string): Promise<Coding
   return (await api.post<any, ApiResponse<CodingSubmission>>(`/api/programming/submissions/${id}/notes`, { notes }, { timeout: 15000 })).data!
 }
 
-export const previewCodingDeletion = async (id: string) => (await api.get<unknown, ApiResponse<{ confirmation_token: string; related_reports: number; profile_links: number; notice: string }>>(`/api/programming/submissions/${encodeURIComponent(id)}/delete-preview`)).data!
+export const previewCodingDeletion = async (id: string) => (await api.get<unknown, ApiResponse<{ confirmation_token: string; related_reports: number; profile_links: number; notice: string; learning_coach_results?: number; learning_coach_plans?: number }>>(`/api/programming/submissions/${encodeURIComponent(id)}/delete-preview`)).data!
 export const deleteCodingSubmission = async (id: string, token: string) => api.delete(`/api/programming/submissions/${encodeURIComponent(id)}`, { data: { confirmed: true, confirmation_token: token } })
 
 export async function checkHealth(): Promise<boolean> {
@@ -1763,6 +1763,8 @@ export interface SourceDeletionResult {
   source_id: string
   affected: {
     artifacts: number
+    learning_coach_results?: number
+    learning_coach_plans?: number
     chunks: number
     contexts: number
     quiz_attempts: number
@@ -1969,7 +1971,7 @@ export const getCareerTraining = (id: string) => careerRequest<CareerTraining>('
 export const answerCareerWritten = (id: string, answers: Record<string, number>) => careerRequest<CareerTraining>('post', `/trainings/${encodeURIComponent(id)}/answers`, { answers })
 export const getCareerEvents = () => careerRequest<CareerEvent[]>('get', '/events')
 export const getCareerOverview = () => careerRequest<CareerOverview>('get', '/overview')
-export const previewCareerDelete = (id: string) => careerRequest<{ training_count: number; learning_plan_count: number; confirmation_token: string; scope: string }>('get', `/positions/${encodeURIComponent(id)}/delete-preview`)
+export const previewCareerDelete = (id: string) => careerRequest<{ training_count: number; learning_plan_count: number; learning_coach_results?: number; learning_coach_plans?: number; confirmation_token: string; scope: string }>('get', `/positions/${encodeURIComponent(id)}/delete-preview`)
 export const deleteCareerPosition = (id: string, token: string) => careerRequest<{ deleted: boolean }>('delete', `/positions/${encodeURIComponent(id)}`, { confirmed: true, confirmation_token: token })
 export const exportCareerTraining = (id: string, format: 'json' | 'markdown') => api.get<any, Blob>(`/api/career/trainings/${encodeURIComponent(id)}/export`, { params: { format }, responseType: 'blob', timeout: 20000 })
 export const previewCareerPlan = (id: string) => careerRequest<CareerPlanPreview>('get', `/positions/${encodeURIComponent(id)}/plan-preview`)

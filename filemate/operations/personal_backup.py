@@ -357,6 +357,10 @@ class PersonalBackup:
                     raise ValueError('有面试分析任务执行中，请结束后重新预览恢复')
                 if conn.execute("SELECT 1 FROM interview_assessments WHERE status IN ('running','cancelling') LIMIT 1").fetchone():
                     raise ValueError('有六维分析任务执行中，请结束后重新预览恢复')
+                from filemate.study.orchestrator.coach.privacy import has_active_coach
+
+                if has_active_coach(conn):
+                    raise ValueError("有学习教练任务执行中，请结束后重新预览恢复")
                 cache_file = self.cache / (identifier + '.zip'); _check_node(cache_file)
                 raw = cache_file.read_bytes()
                 if _sha(raw) != identifier:
@@ -405,6 +409,9 @@ class PersonalBackup:
                 from filemate.wrongbook.privacy import normalize_restored_wrongbook
 
                 normalize_restored_wrongbook(conn)
+                from filemate.study.orchestrator.privacy import normalize_restored_orchestrator
+
+                normalize_restored_orchestrator(conn)
                 # 旧备份缺失序号时无法复原题目版本边界，保留历史但不冒认其有效性。
                 rebound = 0
                 if not any('rowid' in row for row in content['tables'].get('quiz_attempts', [])):

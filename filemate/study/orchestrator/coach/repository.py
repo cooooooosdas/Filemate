@@ -120,8 +120,24 @@ class CoachRepository:
             else:
                 try:
                     proposal = CoachProposal.model_validate(saved["proposal"])
-                except (KeyError, ValidationError, TypeError):
+                    current = CoachContextReader(self.storage).read_in_transaction(
+                        self.storage,
+                        CoachInput.model_validate(saved["input"]),
+                        as_of=self._now(),
+                        restore_epoch=read_restore_epoch(conn),
+                        historical_read=True,
+                    )
+                    revisions = {
+                        (fact.kind, fact.record_id): fact.revision for fact in current.facts
+                    }
+                    if any(
+                        revisions.get((fact.kind, fact.record_id)) != fact.revision
+                        for fact in proposal.facts
+                    ):
+                        raise OrchestratorError("context_changed")
+                except (KeyError, ValidationError, TypeError, OrchestratorError):
                     self._terminal(conn, record, "stale", "context_changed")
+                    proposal = None
         fields = (
             "work_id",
             "request_key",
@@ -141,7 +157,7 @@ class CoachRepository:
             record = load(conn, work_id(request_key), REQUEST_TYPE)
             if record is None:
                 return None
-            if input_digest is not None and input_digest != record["input_digest"]:
+            if input_digest is not None and input_digest != record.get("input_digest"):
                 raise OrchestratorError("request_conflict")
             self._expire(conn, record)
             return self._view(conn, record)

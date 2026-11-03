@@ -35,7 +35,10 @@ class CodingPrivacy:
                 matched = identifier in artifact['content']
             if matched:
                 related.append(dict(artifact))
-        return {'submission': dict(row),
+        from filemate.study.orchestrator.coach.privacy import coach_dependency_impact
+
+        return {'learning_coach': coach_dependency_impact(conn, kind="submission", record_ids=[identifier]),
+                'submission': dict(row),
                 'artifact': dict(conn.execute('SELECT * FROM artifacts WHERE artifact_id=?', (row['artifact_id'],)).fetchone() or {}),
                 'events': [dict(event) for event in conn.execute('SELECT * FROM coding_events WHERE submission_id=? ORDER BY event_id', (identifier,))],
                 'related': related}
@@ -48,7 +51,7 @@ class CodingPrivacy:
                 raise KeyError(identifier)
             if state['submission']['status'] in {'queued', 'running'}:
                 raise ValueError('请先取消或结束该提交的评测')
-            return {'submission_id': identifier, 'code_records': 1, 'feedback_and_events': len(state['events']),
+            return {**state['learning_coach'], 'submission_id': identifier, 'code_records': 1, 'feedback_and_events': len(state['events']),
                     'related_reports': sum(artifact['artifact_type'] != 'resume_profile' for artifact in state['related']),
                     'profile_links': sum(artifact['artifact_type'] == 'resume_profile' for artifact in state['related']),
                     'confirmation_token': data_actions.issue(conn, 'coding_delete', identifier, data_actions.digest(state)),
@@ -65,6 +68,9 @@ class CodingPrivacy:
                 return receipt
             if state['submission']['status'] in {'queued', 'running'}:
                 raise ValueError('评测仍在执行，请结束后重新预览')
+            from filemate.study.orchestrator.coach.privacy import invalidate_coach_dependencies
+
+            invalidate_coach_dependencies(conn, kind="submission", record_ids=[identifier])
             reports = 0; links = 0
             for artifact in state['related']:
                 if artifact['artifact_type'] == 'resume_profile':

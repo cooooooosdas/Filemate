@@ -442,10 +442,14 @@ class CareerRepository:
             )
         ]
         plans = CareerPlans(self).raw(identifier)
+        from filemate.study.orchestrator.coach.privacy import coach_dependency_impact
+
+        impact = coach_dependency_impact(self.storage._conn(), kind="position", record_ids=[identifier])
         return {
+            **impact,
             "training_count": len(trainings),
             "learning_plan_count": len(plans),
-            "confirmation_token": digest([row, trainings, plans]),
+            "confirmation_token": digest([row, trainings, plans, impact]),
             "scope": "本岗位、求职训练、对比快照及本岗位生成的学习计划和进度；保留原资料、图谱、编程提交、面试及其他学习计划。",
         }
 
@@ -459,8 +463,12 @@ class CareerRepository:
             preview = self.preview_delete(identifier)
             if token != preview["confirmation_token"]:
                 raise ValueError("岗位或训练已更新，请重新预览删除影响")
+            from filemate.study.orchestrator.coach.privacy import invalidate_coach_dependencies
+
             from .planning import CareerPlans
 
+            conn.execute("BEGIN IMMEDIATE")
+            invalidate_coach_dependencies(conn, kind="position", record_ids=[identifier])
             for plan in CareerPlans(self).raw(identifier):
                 conn.execute("DELETE FROM artifacts WHERE artifact_id=?", (plan["artifact_id"],))
             conn.execute(

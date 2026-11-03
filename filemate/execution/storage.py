@@ -1420,6 +1420,9 @@ class SQLiteStorage:
         from filemate.wrongbook.privacy import source_impact as review_source_impact
 
         counts.update(review_source_impact(self, source_id)['counts'])
+        from filemate.study.orchestrator.coach.privacy import coach_dependency_impact
+
+        counts.update(coach_dependency_impact(conn, kind="source", record_ids=[source_id]))
         return {
             "source_id": source_id,
             "original_name": source.get("original_name"),
@@ -1437,10 +1440,12 @@ class SQLiteStorage:
         preview = self.preview_source_deletion(source_id)
         if preview is None:
             return None
-        with self._write_lock:
-            conn = self._conn()
+        from filemate.study.orchestrator.coach.privacy import invalidate_coach_dependencies
+
+        with self._write_lock, self._conn() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            invalidate_coach_dependencies(conn, kind="source", record_ids=[source_id])
             cur = conn.execute("DELETE FROM sources WHERE source_id=?", (source_id,))
-            conn.commit()
         if cur.rowcount == 0:
             return None
         logger.info(
@@ -1510,6 +1515,9 @@ class SQLiteStorage:
                 result = {"source_id": source_id, "affected": preview["affected"],
                           "managed_file": staged.status,
                           "external_files_untouched": not staged.status["managed"]}
+                from filemate.study.orchestrator.coach.privacy import invalidate_coach_dependencies
+
+                invalidate_coach_dependencies(conn, kind="source", record_ids=[source_id])
                 conn.execute("DELETE FROM sources WHERE source_id=?", (source_id,))
                 data_actions.finish(conn, "source_delete", source_id, token, result)
                 staged.finish()
@@ -1539,10 +1547,18 @@ class SQLiteStorage:
                      'learning_coach_request', 'learning_coach_result', 'learning_coach_runtime', 'learning_coach_operation'}
         if artifact_type in protected:
             raise ValueError('学习安排及操作回执只能通过确认命令写入')
+        namespace = metadata.get("learning_coach") if isinstance(metadata, dict) else None
+        if isinstance(namespace, dict) and set(namespace) - {"goal_id"}:
+            raise ValueError("教练控制元数据只能由确认命令写入")
+        if isinstance(content, dict) and "learning_coach" in content:
+            raise ValueError("教练计划只能由确认命令写入")
         artifact_id = artifact_id or uuid.uuid4().hex
         now = _now_iso()
         with self._write_lock:
             existing = self.get_artifact(artifact_id)
+            existing_namespace = (existing.get("metadata") or {}).get("learning_coach") if existing and isinstance(existing.get("metadata"), dict) else None
+            if isinstance(existing_namespace, dict) and existing_namespace.get("operation_id"):
+                raise ValueError("教练计划不能通过通用保存接口覆盖")
             if existing and existing['artifact_type'] in protected:
                 raise ValueError('学习安排及操作回执不能通过通用保存接口覆盖')
             if existing and isinstance(existing.get("metadata"), dict) and existing["metadata"].get("read_only_snapshot"):
