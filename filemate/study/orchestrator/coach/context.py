@@ -71,8 +71,8 @@ def external_payload(
             "truncated": (len(items), len(tasks)) != totals,
         }
         encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
-        # Leave space for the trusted system prompt and message framing.
-        if len(encoded) <= 24000 and len(encoded.encode()) <= 60000:
+        # Reserve room for the adapter's schema instruction and escaped message framing.
+        if len(encoded) <= 24000 and len(encoded.encode()) <= 54000:
             return payload
         if tasks:
             tasks.pop()

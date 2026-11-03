@@ -243,9 +243,18 @@ class LLMClient:
         def invalid_constant(value: str) -> Any:
             raise ValueError
 
+        def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+            result: dict[str, Any] = {}
+            for key, value in pairs:
+                if key in result:
+                    raise ValueError('duplicate_json_key')
+                result[key] = value
+            return result
+
         try:
             result = json.loads(
                 cleaned, parse_float=finite_float, parse_constant=invalid_constant,
+                object_pairs_hook=unique_object,
             )
         except (ValueError, TypeError, RecursionError):
             raise LLMAPIError("模型返回内容无法解析为有效 JSON，请重试") from None

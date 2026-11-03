@@ -363,3 +363,39 @@ class CoachProposal(BaseModel):
     coverage: dict
     overlaps: list[dict]
     limitations: list[str]
+
+
+class CoachRequest(StrictRequest):
+    input: CoachInput
+    expected_context_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    request_key: str = Field(pattern=r"^[A-Za-z0-9_-]{16,80}$")
+    mode: Literal["rule", "llm"] = "rule"
+    allow_external_model: bool = False
+    consent_digest: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+
+    @model_validator(mode="after")
+    def single_request_consent(self):
+        if self.mode == "llm" and (not self.allow_external_model or self.consent_digest is None):
+            raise ValueError("model_consent_required")
+        if self.mode == "rule" and (self.allow_external_model or self.consent_digest is not None):
+            raise ValueError("rule_request_has_no_model_consent")
+        return self
+
+
+class CoachRunView(BaseModel):
+    work_id: str
+    request_key: str
+    status: Literal["running", "ready", "failed", "cancelled", "interrupted", "stale"]
+    requested_mode: Literal["rule", "llm"]
+    effective_mode: Literal["rule", "model", "rule_fallback"]
+    model_status: Literal[
+        "not_requested", "running", "succeeded", "failed", "cancelled", "interrupted"
+    ]
+    safe_error_code: str | None = None
+    context_revision: str
+    proposal: CoachProposal | None = None
+    rule_version: str = "learning-coach-rules-v1"
+    prompt_version: str = "learning-coach-v1"
+    provider: str | None = None
+    model: str | None = None
+    quota_window: Literal["rolling_24h"] = "rolling_24h"

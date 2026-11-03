@@ -126,7 +126,7 @@ def test_five_intents_keep_evidence_and_budget(coach_context):
 
 **Interfaces:** `CoachService(storage, *, clock=None, config_factory=None, runner=None)`；`request(body: CoachRequest) -> CoachRunView`、`get(request_key: str) -> CoachRunView`、`cancel(request_key: str) -> CoachRunView`。`CoachRepository(storage, *, clock=None)`提供`find(request_key, input_digest)`、`claim(body, context)`、`authorize_claim(work_id, claim_epoch, *, admitted: bool)`、`finish(work_id, claim_epoch, proposal, *, model_status, safe_error_code=None)`；返回的内部claim包含claimed、claim_epoch、lease_until，不能出现在API正文。模型调用复用BoundedLLMRunner.run的现役签名。
 
-- [ ] **3.1 写RED测试**：`test_same_key_never_calls_twice`用真实SQLite并发连接＋计数runner断言同键同正文只一次、冲突409；`test_pending_admission_race_does_not_interrupt_owner`在业务认领和独立账本准入之间阻塞，第二请求只能读取running，不得把首请求改interrupted。`test_admission_survives_restore_and_missing_local_receipt`断言固定教练桶第31次429、恢复后额度不回退，已准入但本地正文丢失时返回interrupted而非再调用。`test_model_does_not_hold_write_transaction`在慢runner执行中独立提交其他业务写入；`test_concurrent_models_are_per_space_and_bounded`断言同空间仅一个模型、其他空间独立。`test_cancel_or_expired_epoch_cannot_publish`覆盖取消、120秒租约过期、来源删除／恢复／跨日；`test_failure_has_real_status_and_rule_fallback`覆盖无密钥、坏JSON、配额、超时及供应商异常。
+- [x] **3.1 写RED测试**：`test_same_key_never_calls_twice`用真实SQLite并发连接＋计数runner断言同键同正文只一次、冲突409；`test_pending_admission_race_does_not_interrupt_owner`在业务认领和独立账本准入之间阻塞，第二请求只能读取running，不得把首请求改interrupted。`test_admission_survives_restore_and_missing_local_receipt`断言固定教练桶第31次429、恢复后额度不回退，已准入但本地正文丢失时返回interrupted而非再调用。`test_model_does_not_hold_write_transaction`在慢runner执行中独立提交其他业务写入；`test_concurrent_models_are_per_space_and_bounded`断言同空间仅一个模型、其他空间独立。`test_cancel_or_expired_epoch_cannot_publish`覆盖取消、120秒租约过期、来源删除／恢复／跨日；`test_failure_has_real_status_and_rule_fallback`覆盖无密钥、坏JSON、配额、超时及供应商异常。
 
 ```python
 def test_rule_replay_is_persistent(coach_service, coach_request):
@@ -136,11 +136,11 @@ def test_rule_replay_is_persistent(coach_service, coach_request):
     assert replay.model_status == 'not_requested'
     assert coach_service.get(coach_request.request_key).proposal == first.proposal
 ```
-- [ ] **3.2 运行RED**：`uv run pytest filemate/tests/orchestrator/coach/test_requests.py filemate/tests/orchestrator/coach/test_model_runtime.py -q`。
-- [ ] **3.3 实现工作流**：先读原键，再校验范围和用户所见context_revision／consent_digest；业务短事务先认领受保护请求／结果和120秒租约，记录内部admitting状态。唯一本次claim拥有者在事务外用default_scope身份及BudgetStore.admit_learning、固定桶`learning-coach:v1`准入；第二请求直接读原running，不再准入。账本仅含摘要；准入后再短事务authorize_claim核对claim_epoch／restore_epoch。准入已存在但本地原claim消失时中断，不重调；两个账本间崩溃只能消耗一次保守额度，不能产生未准入模型调用。模型在事务外同步执行，HTTP等待由线程池承载，不添加后台队列。每次只调用一次runner，worker内部最多重试一次；60秒硬截止且取消回收自己持有的子进程。完成时重新读取当前证据和epoch，过期或变化只记stale／interrupted，不写迟到正文。
-- [ ] **3.4 实现安全落盘**：请求控制Artifact仅保存正文摘要、状态／安全码／epoch等必要去重字段；结果Artifact保存最小依据与建议并登记全部来源依赖。来源删除后保留无正文墓碑，同键不能重新外发。失败不保存原异常／Prompt／密钥；ready+rule_fallback与model_status=failed明确分开。rule不调用config_factory或runner，断网仍能完成本地路径。
-- [ ] **3.5 验证GREEN**：运行3.2与现役`filemate/tests/wrongbook/test_analysis_privacy.py`、`filemate/tests/test_runtime_governance.py`、`filemate/tests/test_llm_client.py`。增加真实本地失败HTTP服务／私有worker测试，证明总尝试≤2、输出3500tokens、60秒墙钟上限及进程回收；只有mock的测试不算真实运行时证明。
-- [ ] **3.6 提交**：`feat(coach): 固定请求认领与有界模型工作流`，证据存`_working/learning-coach-d/task3/`。
+- [x] **3.2 运行RED**：`uv run pytest filemate/tests/orchestrator/coach/test_requests.py filemate/tests/orchestrator/coach/test_model_runtime.py -q`。
+- [x] **3.3 实现工作流**：先读原键，再校验范围和用户所见context_revision／consent_digest；业务短事务先认领受保护请求／结果和120秒租约，记录内部admitting状态。唯一本次claim拥有者在事务外用default_scope身份及BudgetStore.admit_learning、固定桶`learning-coach:v1`准入；第二请求直接读原running，不再准入。账本仅含摘要；准入后再短事务authorize_claim核对claim_epoch／restore_epoch。准入已存在但本地原claim消失时中断，不重调；两个账本间崩溃只能消耗一次保守额度，不能产生未准入模型调用。模型在事务外同步执行，HTTP等待由线程池承载，不添加后台队列。每次只调用一次runner，worker内部最多重试一次；60秒硬截止且取消回收自己持有的子进程。完成时重新读取当前证据和epoch，过期或变化只记stale／interrupted，不写迟到正文。
+- [x] **3.4 实现安全落盘**：请求控制Artifact仅保存正文摘要、状态／安全码／epoch等必要去重字段；结果Artifact保存最小依据与建议并登记全部来源依赖。来源删除后保留无正文墓碑，同键不能重新外发。失败不保存原异常／Prompt／密钥；ready+rule_fallback与model_status=failed明确分开。rule不调用config_factory或runner，断网仍能完成本地路径。
+- [x] **3.5 验证GREEN**：运行3.2与现役`filemate/tests/wrongbook/test_analysis_privacy.py`、`filemate/tests/test_runtime_governance.py`、`filemate/tests/test_llm_client.py`。增加真实本地失败HTTP服务／私有worker测试，证明总尝试≤2、输出3500tokens、60秒墙钟上限及进程回收；只有mock的测试不算真实运行时证明。
+- [x] **3.6 提交**：`feat(coach): 固定请求认领与有界模型工作流`，证据存`_working/learning-coach-d/task3/`。
 
 ## Task 4: 新短计划与未来安排的联合确认及保护式撤销
 
