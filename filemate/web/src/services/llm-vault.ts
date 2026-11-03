@@ -85,6 +85,7 @@ export function isModelRequest(method: string | undefined, path: string | undefi
 }
 
 export function requiresModelCredential(method: string | undefined, path: string | undefined, data?: { mode?: string; credential_mode?: string }): boolean {
+  if (path === '/api/learning/orchestrator/coach/requests') return method?.toUpperCase() === 'POST' && data?.mode === 'llm'
   if (!isModelRequest(method, path)) return false
   if (path?.startsWith('/wrongbook/v2/')) return data?.credential_mode === 'browser'
   return !(path === '/api/resume/generate' || path?.startsWith('/api/knowledge-graph/courses/')) || data?.mode === 'llm'

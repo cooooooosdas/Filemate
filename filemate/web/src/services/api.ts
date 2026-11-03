@@ -2020,6 +2020,7 @@ export const commandInterviewRuntime=(id:string,input:import('../types/interview
 
 // 复盘接口通过同一认证客户端按需加载。
 export const reviewHTTP = api
+export const loadLearningCoachClient = (): Promise<import('../types/learning-coach').LearningCoachClient> => import('./learning-coach-api')
 
 export const loadOrchestratorClient = (): Promise<import('../types/orchestrator').OrchestratorClient> => import('./orchestrator-api')
 export async function getOrchestratorCapabilities(): Promise<import('../types/orchestrator').OrchestratorCapabilities> {

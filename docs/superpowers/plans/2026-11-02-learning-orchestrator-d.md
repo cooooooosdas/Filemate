@@ -226,7 +226,7 @@ def test_only_requests_accepts_ephemeral_model_key():
 
 **Interfaces:** `loadLearningCoachClient(): Promise<LearningCoachClient>`为api.ts的懒加载出口；LearningCoachClient函数与任务6逐一同名对应：`capabilities/catalog/context/request/get/cancel/preview/confirm/operation/undoPreview/undoConfirm/day`，返回Promise对应固定合同。`CoachState`含phase:`closed/loading/ready/running/error/expired`、identity、generation、input、context、run、draft、preview、undo_preview、receipt、pending、dirty、error；input／context／run／draft／preview／undo_preview／receipt／pending可空，dirty为bool，error为安全文字。`createCoachWorkspace(client: LearningCoachClient, options: {identity:()=>string|null; wrap?:(state:CoachState)=>CoachState})`返回state与`open(input:CoachInput):Promise<void>`、`readContext(input:CoachInput):Promise<void>`、`submit(mode:'rule'|'llm'):Promise<void>`、`cancel():Promise<void>`、`close():void`、`invalidate():void`；提交只在授权数据匹配时发送，内部不自动重试。`presentCoach(run:CoachRunView):CoachPresentation`分离facts／rule_days／model_status／methods／coverage_notices五项，不从正文反推统计。
 
-- [ ] **7.1 写RED测试**：`opening_never_requests_model`、`consent_is_bound_to_exact_context_and_input`、`changed_identity_ignores_late_result`、`model_error_keeps_rule_proposal`、`raw_text_is_never_persisted`；断言取消后迟到响应不覆盖当前状态，身份切换清正文和授权。客户端断言GET／POST及≤65秒模型timeout正确，除requests外从不携带密钥；模型失败不显示“分析完成”。
+- [x] **7.1 写RED测试**：`opening_never_requests_model`、`consent_is_bound_to_exact_context_and_input`、`changed_identity_ignores_late_result`、`model_error_keeps_rule_proposal`、`raw_text_is_never_persisted`；断言取消后迟到响应不覆盖当前状态，身份切换清正文和授权。客户端断言GET／POST及≤65秒模型timeout正确，除requests外从不携带密钥；模型失败不显示“分析完成”。
 
 ```javascript
 test('rule request never requires browser credentials', () => {
@@ -235,10 +235,10 @@ test('rule request never requires browser credentials', () => {
   assert.equal(requiresModelCredential('POST', path, { mode: 'llm' }), true)
 })
 ```
-- [ ] **7.2 运行RED**：在`filemate/web`执行`node --test tests/learning-coach-api.test.mjs tests/learning-coach-state.test.mjs tests/learning-coach-presentation.test.mjs`。
-- [ ] **7.3 实现阅读路径**：入口“请教学习教练”位于当前目标／预算旁，`VITE_ENABLE_LEARNING_COACH=true`且能力响应有效才显示可用操作，懒加载Vue面板及客户端。五类快捷请求可编辑，默认“先用本地规则”；模型点击先展示确切外发字段／摘录／覆盖再授权一次。requiresModelCredential对新requests路由仅在data.mode为llm时返回true，规则请求不读取本地密钥库。前后端能力错误不能当默认关闭静默消失。沿用四主题、17px正文、至少44px动作和SVG，事实／建议层级清晰，不增加常驻聊天或另一排业务导航。
-- [ ] **7.4 验证GREEN**：运行7.2及`npm test`、`npm run build`、`npm run check:bundle`；检查coach未打开时没有新增模型或整库原答请求。检查长中文、长文件名、无数据、400／401／409／429／503状态的可读提示与焦点回到触发按钮。
-- [ ] **7.5 提交**：`feat(coach): 增加今日行动教练与外发依据预览`，证据存`_working/learning-coach-d/task7/`。
+- [x] **7.2 运行RED**：在`filemate/web`执行`node --test tests/learning-coach-api.test.mjs tests/learning-coach-state.test.mjs tests/learning-coach-presentation.test.mjs`。
+- [x] **7.3 实现阅读路径**：入口“请教学习教练”位于当前目标／预算旁，`VITE_ENABLE_LEARNING_COACH=true`且能力响应有效才显示可用操作，懒加载Vue面板及客户端。五类快捷请求可编辑，默认“先用本地规则”；模型点击先展示确切外发字段／摘录／覆盖再授权一次。requiresModelCredential对新requests路由仅在data.mode为llm时返回true，规则请求不读取本地密钥库。前后端能力错误不能当默认关闭静默消失。沿用四主题、17px正文、至少44px动作和SVG，事实／建议层级清晰，不增加常驻聊天或另一排业务导航。
+- [x] **7.4 验证GREEN**：运行7.2及`npm test`、`npm run build`、`npm run check:bundle`；检查coach未打开时没有新增模型或整库原答请求。检查长中文、长文件名、无数据、400／401／409／429／503状态的可读提示与焦点回到触发按钮。
+- [x] **7.5 提交**：`feat(coach): 增加今日行动教练与外发依据预览`，证据存`_working/learning-coach-d/task7/`。
 
 ## Task 8: 方案编辑、联合预览、回执恢复和未来安排
 
