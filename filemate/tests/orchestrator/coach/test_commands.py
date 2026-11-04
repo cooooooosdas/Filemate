@@ -12,6 +12,21 @@ from .test_plans import ready
 from .test_requests import service_case  # noqa: F401
 
 
+def test_preview_exposes_actual_per_day_impact_without_creating_plan(service_case):
+    case, _, draft = ready(service_case)
+    api = commands(case)
+    before = case["storage"]._conn().execute("SELECT COUNT(*) FROM study_plans").fetchone()[0]
+    preview = api.preview(draft)
+    summaries = preview.changes["days"]
+    assert [row["study_date"] for row in summaries] == [day.study_date for day in draft.days]
+    for row in summaries:
+        assert row["selected_count"] == len(row["selected"])
+        assert row["estimated_minutes"] == sum(t["estimated_minutes"] for t in row["selected"])
+        assert isinstance(row["deferred_counts"], dict)
+        assert row["preserves_completed"] is True
+    assert case["storage"]._conn().execute("SELECT COUNT(*) FROM study_plans").fetchone()[0] == before
+
+
 def test_future_native_group_is_not_scheduled_early_by_existing_today(service_case):
     from filemate.study.orchestrator.models import ScheduleOptions, ScopeRequest
     from filemate.study.orchestrator.scheduler import build_schedule

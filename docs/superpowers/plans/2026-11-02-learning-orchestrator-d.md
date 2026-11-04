@@ -246,7 +246,7 @@ test('rule request never requires browser credentials', () => {
 
 **Interfaces:** `createCoachCommands(client: LearningCoachClient, options: {state:CoachState; storage:TodayStorage; refresh:()=>Promise<void>})`返回`preview(draft:CoachDraft)`、`confirm()`、`recover()`、`previewUndo(operationId:string)`、`confirmUndo()`、`invalidate()`。恢复定位符固定`{kind:'request'|'confirm'|'undo',request_key,issued_study_date,operation_id?}`，按现役浏览器空间隔离；不存scope、问题、原答、token或整个draft。草稿仅内存，离开提示。
 
-- [ ] **8.1 写RED测试**：`lost_confirm_response_recovers_by_get_only`断言请求键在发出写请求前安全保存，失败恢复不POST；持久定位失败则阻止写。`tomorrow_receipt_does_not_replace_today`断言保存明日显示对应日期，原今日草稿／安排不丢；跨日重读同一日安排而不创建第二份。`editing_or_completing_invalidates_preview`、`double_click_cannot_duplicate_plan`、`expired_identity_clears_authority`；`undo_conflict_preserves_all_progress`展示整体拒绝，无局部“成功”假象。
+- [x] **8.1 写RED测试**：`lost_confirm_response_recovers_by_get_only`断言请求键在发出写请求前安全保存，失败恢复不POST；持久定位失败则阻止写。`tomorrow_receipt_does_not_replace_today`断言保存明日显示对应日期，原今日草稿／安排不丢；跨日重读同一日安排而不创建第二份。`editing_or_completing_invalidates_preview`、`double_click_cannot_duplicate_plan`、`expired_identity_clears_authority`；`undo_conflict_preserves_all_progress`展示整体拒绝，无局部“成功”假象。
 
 ```javascript
 test('lost response recovery reads the original operation', async () => {
@@ -260,10 +260,10 @@ test('lost response recovery reads the original operation', async () => {
 ```
 
 lostResponseHarness在本任务测试文件定义，pending由一次真实commands.confirm调用生成；只替换网络边界响应，不能直接给控制器塞成功receipt。
-- [ ] **8.2 运行RED**：在`filemate/web`执行`node --test tests/learning-coach-commands.test.mjs`。
-- [ ] **8.3 实现交互**：可调整有限时长、顺序、排除项、目标日期与重叠选择，显示新增／保留完成／固定／延期／替换安排的实际影响；预览与确认两步清晰。建议阶段不建StudyPlan；确认后返回原功能执行，完成事实只从原模块读取，回来刷新。保存响应不明时保留定位符并仅“查询保存结果”；查询404也不自动重发。明日与今日分别显示，已发生操作的撤销另预览，409引导重新读取。
-- [ ] **8.4 验证GREEN**：运行8.2及所有today、orchestrator与learning-coach前端测试；在真实Edge以1440／1024／390／320px执行选择→规则→编辑→确认→原功能完成→返回、双页竞争、响应丢失恢复、明日与跨日、取消／离线／401、恢复和删除。四主题抽样、键盘Tab／Escape／焦点、长文本与横向溢出留截图和请求证据；时钟测试显式标为受控日期，不伪称等候真实次日。
-- [ ] **8.5 提交**：`feat(coach): 完成短计划确认与失败恢复交互`，证据存`_working/learning-coach-d/task8/`。
+- [x] **8.2 运行RED**：在`filemate/web`执行`node --test tests/learning-coach-commands.test.mjs`。
+- [x] **8.3 实现交互**：可调整有限时长、顺序、排除项、目标日期与重叠选择，显示新增／保留完成／固定／延期／替换安排的实际影响；预览与确认两步清晰。建议阶段不建StudyPlan；确认后返回原功能执行，完成事实只从原模块读取，回来刷新。保存响应不明时保留定位符并仅“查询保存结果”；查询404也不自动重发。明日与今日分别显示，已发生操作的撤销另预览，409引导重新读取。
+- [x] **8.4 验证GREEN**：运行8.2及所有today、orchestrator与learning-coach前端测试；在真实Edge以1440／1024／390／320px执行选择→规则→编辑→确认→原功能完成→返回、双页竞争、响应丢失恢复、明日与跨日、取消／离线／401、恢复和删除。四主题抽样、键盘Tab／Escape／焦点、长文本与横向溢出留截图和请求证据；时钟测试显式标为受控日期，不伪称等候真实次日。
+- [x] **8.5 提交**：`feat(coach): 完成短计划确认与失败恢复交互`，证据存`_working/learning-coach-d/task8/`。
 
 ## Task 9: D级四目标验收、三条件对比与统一交付
 

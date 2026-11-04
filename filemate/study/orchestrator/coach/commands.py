@@ -274,6 +274,21 @@ class CoachCommands:
                     "daily_schedules": len(before),
                     "preserves_completed": True,
                     "groups_actions_by_date": True,
+                    "days": [
+                        {
+                            "study_date": day.study_date,
+                            "selected": [task.model_dump(mode="json") for task in day.schedule.selected],
+                            "selected_count": len(day.schedule.selected),
+                            "estimated_minutes": day.schedule.estimated_minutes,
+                            "deferred_count": day.schedule.deferred_count,
+                            "deferred_counts": day.schedule.deferred_counts,
+                            "completed_count": len(day.schedule.completed),
+                            "preserves_completed": True,
+                            "pinned_count": len(day.options.pinned_ids),
+                            "replaces_existing_schedule": before[day.study_date] is not None,
+                        }
+                        for day in proposal.days
+                    ],
                     "possible_overlaps": [
                         {
                             "original_task_id": task.task_id,

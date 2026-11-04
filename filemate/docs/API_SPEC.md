@@ -1378,6 +1378,9 @@ D任务5复用现有删除流程，不新增删除接口或数据库迁移。来
 - `POST /context`：CoachInput → CoachContext，返回选定事实、确切external_payload和external_digest，不外发模型。
 - `POST /requests`：CoachRequest → CoachRunView。首次完成200，已有running返回202；模型墙钟上限60秒。`GET /requests/{request_key}`读取原状态，未知404；`POST /requests/{request_key}/cancel`只接受空对象，不重新生成建议。
 - `POST /proposals/preview`：CoachDraft → CoachPreview。`POST /proposals/confirm`：CoachConfirm → CoachReceipt；原键幂等，不因重试重建计划。
+
+`CoachPreview.changes.days` 为本次服务器调度得到的逐日影响。每项提供 study_date、selected、selected_count、estimated_minutes、deferred_count、deferred_counts、completed_count、preserves_completed、pinned_count 和 replaces_existing_schedule。客户端使用这些结果核对调整后的实际安排。resolved_actions 只包含 action_key、study_date、minutes。撤销会产生独立 operation_id，按撤销请求键查询可取得该撤销回执。
+
 - `GET /operations/{request_key}`：CoachReceipt，未知404；`POST /operations/{operation_id}/undo-preview`只接受空对象，返回CoachUndoPreview；`POST /operations/{operation_id}/undo-confirm`接受UndoConfirmRequest。
 - `POST /day`：严格`{study_date: YYYY-MM-DD}` → DayView，只读指定日，不创建新安排。
 

@@ -1,7 +1,7 @@
 <template>
   <main class="action-workspace" :aria-busy="state.phase === 'loading' || busy">
     <header class="action-heading"><div><h1>今日行动</h1><p>{{ presentation?.goal_title ?? '先选一个目标，再决定今天的一步。' }}</p><p v-if="state.snapshot" class="action-meta">{{ state.snapshot.snapshot.study_date }} · {{ presentation?.scope_label }}</p></div><button type="button" :disabled="busy || reading || coachOpen" @click="refresh">{{ reading ? '正在读取…' : '刷新真实记录' }}</button></header>
-    <CoachPanel v-if="coachOpen && coachInput && state.identity" ref="coachPanel" :input="coachInput" :identity="state.identity" :goal-type="coachGoalType" @close="closeCoach" @busy="coachBusy = $event" />
+    <CoachPanel v-if="coachOpen && coachInput && state.identity" ref="coachPanel" :input="coachInput" :identity="state.identity" :goal-type="coachGoalType" :refresh="workspace.refresh" @close="closeCoach" @busy="coachBusy = $event" />
     <div v-if="state.error" role="alert" class="action-alert"><p>{{ state.error }}</p><button v-if="['expired', 'error'].includes(state.phase)" type="button" @click="initialize">重新读取当前账号</button></div>
     <p v-if="state.phase === 'loading'" role="status">正在读取当前账号与已保存安排…</p>
     <template v-if="state.phase === 'ready' && state.identity">

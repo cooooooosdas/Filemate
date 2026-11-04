@@ -1,3 +1,4 @@
+import type { CoachAction } from '../types/learning-coach'
 import { saveDownload } from './downloads'
 import type { CoachSnapshot, CoachMutationResult, CoachAnswer, CoachAnalysis, CoachAdvance, CoachConsent, CoachAttempts, CoachFocus } from '../types/interviewCoach'
 import axios from 'axios'
@@ -1859,7 +1860,7 @@ export interface StudyDay {
   tasks: string[]
   duration_minutes: number
   review_method: string
-  training_actions?: { label: string; route: string }[]
+  training_actions?: (CoachAction & { title: string; route: string })[]
 }
 
 export interface StudyCheckpoint {

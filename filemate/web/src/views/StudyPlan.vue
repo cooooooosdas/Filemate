@@ -141,7 +141,7 @@
             <ul>
               <li v-for="task in day.tasks" :key="task">{{ task }}</li>
             </ul>
-            <div v-if="trainingActions(day).length" class="training-actions"><router-link v-for="action in trainingActions(day)" :key="action.route" :to="action.route">{{ action.label }}</router-link></div>
+            <div v-if="studyTrainingActions(day).length" class="training-actions"><router-link v-for="action in studyTrainingActions(day)" :key="JSON.stringify(action.target)" :to="{ path: action.target.path, query: action.target.query }">{{ action.label }}</router-link></div>
           </div>
         </article>
       </div>
@@ -156,13 +156,12 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 import DataState from '../components/DataState.vue'
-import { locatePlanDay, readRouteReference } from '../today/navigation'
+import { locatePlanDay, readRouteReference, studyTrainingActions } from '../today/navigation'
 import {
   generateStudyPlan,
   getStudyPlan,
   getStudyPlans,
   updateStudyPlanDay,
-  type StudyDay,
   type StudyPlan
 } from '../services/api'
 
@@ -327,7 +326,6 @@ const exportCsv = () => {
   download(`\uFEFF日期,重点,任务,时长（分钟）,复习方法,状态\n${rows.join('\n')}`, 'text/csv;charset=utf-8', 'FileMate学习计划.csv')
 }
 
-const trainingActions = (day: StudyDay) => (Array.isArray(day.training_actions) ? day.training_actions : []).filter(action => action && typeof action.label === 'string' && typeof action.route === 'string' && action.route.startsWith('/') && !action.route.startsWith('//'))
 const retryPlan = () => route.query.plan || restoredTitle.value ? restoreLatestPlan() : createPlan()
 const escapeIcs = (value: string) => value.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;')
 const exportIcs = () => {

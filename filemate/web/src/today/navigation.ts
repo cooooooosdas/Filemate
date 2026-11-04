@@ -4,6 +4,27 @@ import type { LocationQuery, LocationQueryRaw } from 'vue-router'
 import type { OrchestratorSnapshot, TaskView } from '../types/orchestrator.ts'
 import type { TaskNavigation, TodayTarget } from '../types/today.ts'
 
+export function resolveCoachAction(action: unknown): TodayTarget | null {
+  const entry = record(action), ref = record(entry?.target_ref), referenceId = id(ref?.id)
+  if (!ref || !referenceId) return null
+  if (entry?.action === 'read_source' && ref.kind === 'source') return target('/ai-tools', { source: referenceId }, '打开原资料')
+  if (entry?.action === 'review_question' && ref.kind === 'question') return target('/wrongbook', { wrong_id: referenceId }, '打开原错题')
+  const course = id(ref.course_id)
+  if (entry?.action === 'train_concept' && ref.kind === 'concept' && course) return target('/knowledge-graph', { graph_scope: 'course', course, node: referenceId }, '打开原知识点')
+  if (entry?.action === 'rehearse_interview' && ref.kind === 'interview') return target('/interview', { interview: referenceId }, '打开原面试')
+  if (entry?.action === 'practice_problem' && ref.kind === 'problem') return target('/programming', { problem: referenceId }, '打开原编程题')
+  return null
+}
+
+export function studyTrainingActions(day: unknown): { label: string; target: TodayTarget }[] {
+  return rows(record(day)?.training_actions, 7).flatMap(action => {
+    const destination = resolveCoachAction(action)
+    if (!destination) return []
+    const label = typeof action.title === 'string' ? action.title.slice(0, 160) : destination.label
+    return [{ label, target: destination }]
+  })
+}
+
 type Row = Record<string, unknown>
 const record = (value: unknown): Row | undefined => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Row : undefined
 const rows = (value: unknown, limit = 200): Row[] => Array.isArray(value) ? value.slice(0, limit).flatMap(item => record(item) ? [item as Row] : []) : []
