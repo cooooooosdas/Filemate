@@ -136,6 +136,8 @@ jobs:
           cache-dependency-path: filemate/web/package-lock.json
       - name: Install dependencies
         run: npm ci
+      - name: Install isolated prerender browser
+        run: npx playwright-core install --with-deps chromium
       - name: Test, type-check and build
         run: npm test && npm run build && npm run check:bundle
 

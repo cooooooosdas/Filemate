@@ -6,7 +6,7 @@
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "dev": "vite",
-    "build": "vue-tsc -b && vite build",
+    "build": "node scripts/theme-init.mjs && vue-tsc -b && vite build && node scripts/prerender.mjs && node scripts/compress.mjs",
     "preview": "vite preview",
     "tauri": "tauri",
     "desktop:sidecar": "powershell -ExecutionPolicy Bypass -File ../../scripts/build_sidecar.ps1",
@@ -38,6 +38,7 @@
     "@types/node": "^24.13.2",
     "@vitejs/plugin-vue": "^6.0.7",
     "@vue/tsconfig": "^0.9.1",
+    "playwright-core": "1.63.0",
     "typescript": "~6.0.2",
     "unplugin-element-plus": "0.11.2",
     "unplugin-vue-components": "32.1.0",

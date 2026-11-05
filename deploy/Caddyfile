@@ -62,11 +62,15 @@
 		handle @spa {
 			root * /srv
 			try_files {path}/index.html /index.html
-			file_server
+			file_server {
+				precompressed br gzip
+			}
 		}
 		handle {
 			root * /srv
-			file_server
+			file_server {
+				precompressed br gzip
+			}
 		}
 	}
 	handle_errors 404 {

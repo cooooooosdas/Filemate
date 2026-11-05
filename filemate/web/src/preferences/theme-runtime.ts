@@ -14,6 +14,7 @@ export function initializeAppearance(): void {
     for (const [key, value] of Object.entries(theme.colors)) root.style.setProperty(`--${key}`, value)
     root.dataset.theme = theme.id
     root.style.colorScheme = theme.dark ? 'dark' : 'light'
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.colors['bg-base']!)
   })
   window.addEventListener('storage', event => { if (event.key === 'filemate-appearance' || event.key === null) controller?.sync(event.newValue) })
 }
