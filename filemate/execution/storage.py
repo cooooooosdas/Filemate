@@ -36,6 +36,36 @@ from filemate.wrongbook import schema as review_schema
 logger = logging.getLogger(__name__)
 
 
+def _reject_json_constant(value: str) -> None:
+    """Keep SQLite JSON validation strict about non-finite numeric literals."""
+    raise ValueError("non_finite_json_constant")
+
+
+def _sqlite_json_valid(value: Any) -> int:
+    """Validate the scalar CHECK constraints when the engine lacks JSON1."""
+    if value is None:
+        return 0
+    try:
+        if isinstance(value, bytes):
+            value = value.decode("utf-8")
+        elif isinstance(value, (int, float)):
+            value = json.dumps(value, allow_nan=False)
+        json.loads(value, parse_constant=_reject_json_constant)
+    except (ValueError, TypeError, UnicodeError, RecursionError):
+        return 0
+    return 1
+
+
+def _configure_json_validation(conn: sqlite3.Connection) -> None:
+    """Preserve released CHECK constraints on engines without JSON validation."""
+    try:
+        conn.execute("SELECT json_valid('{}')")
+    except sqlite3.OperationalError as error:
+        if "no such function: json_valid" not in str(error).lower():
+            raise
+        conn.create_function("json_valid", 1, _sqlite_json_valid, deterministic=True)
+
+
 class QuestionRevisionConflict(ValueError):
     """拒绝把过期题目上的判题结果写入新题目。"""
 
@@ -752,6 +782,7 @@ class SQLiteStorage:
                 timeout=10.0,
             )
             conn.row_factory = sqlite3.Row
+            _configure_json_validation(conn)
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA busy_timeout=10000")
             conn.execute("PRAGMA foreign_keys=ON")
@@ -781,6 +812,7 @@ class SQLiteStorage:
         conn = sqlite3.connect(self.db_path.resolve().as_uri() + "?mode=ro", uri=True,
                                check_same_thread=False, timeout=10)
         conn.row_factory = sqlite3.Row
+        _configure_json_validation(conn)
         conn.execute("PRAGMA query_only=ON")
         conn.execute("BEGIN")
         snapshot._local.conn = conn
