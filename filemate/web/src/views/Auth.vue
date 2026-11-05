@@ -66,7 +66,7 @@
               </template>
               <label v-if="!isRecover" class="check-row"><input v-model="rememberMe" type="checkbox" /><span>在这台设备上保持登录 30 天</span></label>
               <p v-if="error" id="auth-error" class="field-error" role="alert" tabindex="-1" ref="errorElement">{{ error }}</p>
-              <button class="primary-action" type="submit" :disabled="Boolean(serviceUnavailable)">{{ submitting ? '正在处理…' : isRecover ? '重设密码' : isRegister ? '创建账号' : '登录' }}<el-icon><Right /></el-icon></button>
+              <button class="primary-action" type="submit" :aria-disabled="Boolean(serviceUnavailable)" :disabled="Boolean(serviceUnavailable)">{{ submitting ? '正在处理…' : isRecover ? '重设密码' : isRegister ? '创建账号' : '登录' }}<el-icon><Right /></el-icon></button>
             </fieldset>
           </form>
           <div class="guest-divider"><span>先开始学习</span></div>
@@ -92,7 +92,7 @@ const route = useRoute()
 const isRegister = computed(() => route.name === 'Register')
 const isRecover = computed(() => route.name === 'Recover')
 const displayName = ref(''), account = ref(''), password = ref(''), confirmPassword = ref(''), recoveryCode = ref('')
-const accepted = ref(false), rememberMe = ref(true), keepGuestData = ref(true), showPassword = ref(false)
+const accepted = ref(false), rememberMe = ref(false), keepGuestData = ref(true), showPassword = ref(false)
 const submitting = ref(false), recoveryResult = ref(''), savedRecovery = ref(false), error = ref(''), serviceUnavailable = ref('')
 const errorElement = ref<HTMLElement | null>(null)
 const invalidField = ref('')
@@ -269,7 +269,7 @@ onUnmounted(() => { window.removeEventListener('beforeunload', beforeUnload); re
 .field-group > label,
 .field-label-row label { color: var(--text-primary); font-size: var(--type-meta); font-weight: 500; }
 .field-label-row { display: flex; justify-content: space-between; align-items: center; min-height: 30px; margin-top: -8px; }
-.field-control { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; margin-top: 9px; padding: 0 12px; min-height: 52px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: white; transition: border-color var(--motion-fast); }
+.field-control { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; margin-top: 9px; padding: 0 12px; min-height: 52px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--bg-surface); transition: border-color var(--motion-fast); }
 .field-control:focus-within { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 2px; }
 .field-control.invalid { border-color: var(--danger); }
 .field-control > .el-icon { color: var(--text-muted); font-size: 18px; }
@@ -293,7 +293,7 @@ onUnmounted(() => { window.removeEventListener('beforeunload', beforeUnload); re
 .guest-divider { display: flex; align-items: center; gap: 16px; margin: 22px 0 16px; color: var(--text-muted); font-size: var(--type-meta); }
 .guest-divider::before,
 .guest-divider::after { content: ''; flex: 1; height: 1px; background: var(--border-subtle); }
-.guest-action { border: 1px solid var(--border-strong); color: var(--text-primary); background: white; }
+.guest-action { border: 1px solid var(--border-strong); color: var(--text-primary); background: var(--bg-surface); }
 .guest-action:hover { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent); }
 .auth-boundary { display: flex; align-items: flex-start; gap: 8px; margin: 20px 0 0; padding: 12px; border-radius: var(--radius-control); background: var(--bg-base); color: var(--text-secondary); font-size: var(--type-meta); line-height: 1.8; }
 .auth-boundary .el-icon { flex-shrink: 0; margin-top: 3px; font-size: var(--type-copy); }

@@ -3,6 +3,7 @@
     <header class="intake-heading"><div><p class="eyebrow">资料入口</p><h1>添加<span>资料</span></h1><p>先选用途，再选择文件。已有资料可直接打开。</p></div><router-link to="/knowledge">打开已有资料 <el-icon><ArrowRight /></el-icon></router-link></header>
     <div class="intake-layout">
       <section class="intake-main" aria-label="添加资料">
+        <aside v-if="showExperience" class="experience-banner" aria-label="公开体验说明"><span>公开体验中。请勿上传敏感或未获授权的资料。</span><button type="button" aria-label="关闭体验提示" @click="dismissExperience"><el-icon><Close /></el-icon></button></aside>
         <PrivacyBoundaryNotice @ready="boundaryReady = $event" />
         <div class="purpose-options" aria-label="资料用途">
           <button v-for="option in purposes" :key="option.id" :aria-pressed="intent === option.id" :disabled="hasPending" @click="chooseIntent(option.id)"><el-icon><component :is="option.icon" /></el-icon><span><strong>{{ option.title }}</strong><small>{{ option.description }}</small></span><span class="selection-dot" aria-hidden="true" /></button>
@@ -13,7 +14,8 @@
           <div class="paper-stack" aria-hidden="true"><span /><span /><div><el-icon><DocumentAdd /></el-icon></div></div>
           <h2>{{ isUploading ? '正在解析资料' : '把课件或笔记放到这里' }}</h2>
           <p>{{ isUploading ? uploadingFileName : '拖入文件，或从设备中选择。每份最多 25 MB。' }}</p>
-          <button class="btn-primary" type="button" :disabled="!canUpload" @click="fileInput?.click()"><el-icon><Plus /></el-icon>{{ isUploading ? '正在处理…' : '选择资料' }}</button>
+          <button class="btn-primary" type="button" :aria-disabled="!canUpload" aria-describedby="upload-reason" :disabled="!canUpload" @click="fileInput?.click()"><el-icon><Plus /></el-icon>{{ isUploading ? '正在处理…' : '选择资料' }}</button>
+          <p v-if="!canUpload" id="upload-reason" role="status">{{ !boundaryReady ? '先确认上方的数据保存说明。' : isUploading ? '等待当前资料处理完成。' : '先勾选上方的模型授权。' }}</p>
           <p class="format-note">{{ intent === 'study' ? 'PDF · Word · PPT · 文本 · Markdown · 代码' : 'PDF · Word · PPT · TXT' }}</p>
           <p v-if="intent === 'archive' && !archiveConsent" class="consent-hint">先确认模型授权，即可添加。</p>
         </section>
@@ -28,7 +30,7 @@
           </article>
         </section>
       </section>
-      <aside class="next-step" aria-label="下一步指引"><span class="guide-label">{{ intent === 'study' ? '导入后可以做什么' : '归档前需要确认什么' }}</span><h2>{{ intent === 'study' ? '读原文，再按需生成笔记或练习。' : '先核对，再放到正确的位置。' }}</h2><ol><li v-for="(step, index) in currentSteps" :key="step.title"><span>{{ index + 1 }}</span><div><strong>{{ step.title }}</strong><p>{{ step.description }}</p></div></li></ol><p class="boundary-note"><el-icon><Lock /></el-icon>{{ intent === 'study' ? '导入与阅读不调用模型。讲解、笔记与练习由你在学习时授权。' : '生成建议后集中核对。归档前可预览，确认后执行，执行后可撤销。' }}</p></aside>
+      <aside class="next-step" aria-label="下一步指引"><span class="guide-label">{{ intent === 'study' ? '导入后可以做什么' : '归档前需要确认什么' }}</span><h2>{{ intent === 'study' ? '读原文，再按需生成笔记或练习。' : '先核对，再放到正确的位置。' }}</h2><ol><li v-for="(step, index) in currentSteps" :key="step.title"><span>{{ index + 1 }}</span><div><strong>{{ step.title }}</strong><p>{{ step.description }}</p></div></li></ol><p class="boundary-note"><el-icon><Lock /></el-icon>{{ intent === 'study' ? '从已有课件继续阅读，或在学习时选择下一步。' : '生成建议后集中核对。归档前可预览，确认后执行，执行后可撤销。' }}</p></aside>
     </div>
   </div>
 </template>
@@ -47,6 +49,10 @@ import PrivacyBoundaryNotice from '../components/PrivacyBoundaryNotice.vue'
 type Intent = 'study' | 'archive'
 type QueueItem = { id: number; file: File; name: string; size: number; intent: Intent; status: 'pending' | 'uploading' | 'success' | 'error'; error?: string; source?: KnowledgeSourceDetail; session?: ProcessingSession }
 const route = useRoute(), router = useRouter(), fileStore = useFileStore()
+const experienceKey = 'filemate-experience-notice-dismissed'
+const showExperience = ref(true)
+try { showExperience.value = localStorage.getItem(experienceKey) !== '1' } catch { /* Restricted storage keeps the notice visible. */ }
+function dismissExperience() { showExperience.value = false; try { localStorage.setItem(experienceKey, '1') } catch { /* Dismissal still works for this visit. */ } }
 const intent = computed<Intent>(() => route.query.intent === 'archive' ? 'archive' : 'study')
 const purposes = [{ id: 'study' as const, title: '阅读与学习', description: '读原文，继续讲解、笔记与练习', icon: Reading }, { id: 'archive' as const, title: '整理与归档', description: '核对分类、名称和日程，一次确认', icon: FolderOpened }]
 const studySteps = [{ title: '添加一份资料', description: '解析正文，保存到你的学习空间。' }, { title: '打开原文或提问', description: '读原文，带着问题获得讲解与引用。' }, { title: '留下笔记，练习巩固', description: '学习结果自动保存，下次接着学。' }]
@@ -115,6 +121,8 @@ onUnmounted(() => { window.removeEventListener('filemate:before-refresh', guardR
 </script>
 
 <style scoped>
+.experience-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;padding:10px 16px;background:var(--bg-elevated);border:1px solid var(--border-strong);border-radius:10px;font-size:15px;line-height:1.7}.experience-banner button{width:44px;min-width:44px;height:44px;border:0;background:transparent;color:var(--text-primary);display:grid;place-items:center}
+
 .import-page { max-width:1180px; margin:0 auto; }
 .intake-heading { display:flex; align-items:end; justify-content:space-between; gap:24px; margin:10px 0 36px; }
 .eyebrow,.guide-label { margin:0 0 16px; font-size:16px; font-weight:600; color:var(--accent); }
@@ -128,7 +136,7 @@ onUnmounted(() => { window.removeEventListener('filemate:before-refresh', guardR
 .upload-zone { position:relative; display:flex; flex-direction:column; align-items:center; overflow:hidden; padding:48px 28px 32px; border:1px dashed var(--accent-border); border-radius:20px; text-align:center; background:radial-gradient(ellipse at top,#e4edff 0,transparent 65%),var(--bg-surface); transition:background .2s,border-color .2s; }.upload-zone.is-dragover { border:2px solid var(--accent); background:var(--accent-soft); }
 .paper-stack { position:relative; width:90px; height:90px; margin-bottom:26px; }.paper-stack>span,.paper-stack>div { position:absolute; inset:0; border-radius:14px; border:1px solid var(--accent-border); background:#edf3ff; transform:rotate(-12deg) translate(-7px,4px); transition:transform .22s; }.paper-stack>span:nth-child(2) { transform:rotate(10deg) translate(8px,3px); background:#dae8ff; }.paper-stack>div { display:grid; place-items:center; background:var(--bg-surface); transform:none; color:var(--accent); font-size:40px; }.upload-zone:hover .paper-stack>span { transform:rotate(-18deg) translate(-12px,4px); }.upload-zone:hover .paper-stack>span:nth-child(2) { transform:rotate(16deg) translate(12px,3px); }
 .upload-zone h2 { font-size:24px; line-height:1.5; margin:0 0 12px; }.upload-zone p { font-size:16px; line-height:1.7; margin:0 0 24px; overflow-wrap:anywhere; max-width:100%; color:var(--text-secondary); }.upload-zone .format-note { margin:20px 0 0; font-size: var(--type-copy); }.upload-zone .consent-hint { margin:12px 0 0; color:var(--accent); }
-.btn-primary,.next-action { display:inline-flex; align-items:center; justify-content:center; gap:10px; border:0; border-radius:10px; background:var(--action-fill, var(--accent)); color:#fff; padding:0 24px; min-height:52px; font-size:18px; font-weight:600; cursor:pointer; text-decoration:none; }.btn-primary:hover,.next-action:hover { background:var(--action-hover, var(--accent-hover)); }button:disabled { opacity:.55; cursor:not-allowed; }
+.btn-primary,.next-action { display:inline-flex; align-items:center; justify-content:center; gap:10px; border:0; border-radius:10px; background:var(--action-fill, var(--accent)); color:#fff; padding:0 24px; min-height:52px; font-size:18px; font-weight:600; cursor:pointer; text-decoration:none; }.btn-primary:hover,.next-action:hover { background:var(--action-hover, var(--accent-hover)); }button:disabled { cursor:not-allowed; }
 .next-step { background:#152e63; color:#edf4ff; padding:32px 28px; border-radius:20px; }.guide-label { display:block; color:#c3d6f9; }.next-step h2 { white-space:pre-line; font-size:30px; line-height:1.45; margin:0 0 32px; letter-spacing:-.03em; }.next-step ol { list-style:none; margin:0; padding:0; }.next-step li { display:flex; gap:16px; margin-bottom:28px; }.next-step li>span { flex:0 0 32px; height:32px; border:1px solid #728cbd; border-radius:50%; display:grid; place-items:center; font-size:16px; }.next-step strong { font-size:18px; line-height:1.6; }.next-step p { margin:6px 0 0; color:#c3d6f9; font-size:16px; line-height:1.7; }.next-step .boundary-note { border-top:1px solid #496493; padding-top:22px; font-size: var(--type-copy); }.boundary-note .el-icon { margin-right:6px; vertical-align:middle; }
 .archive-consent { display:flex; align-items:start; gap:12px; padding:16px; margin:0 0 16px; background:var(--accent-soft); border-radius:10px; font-size:16px; line-height:1.6; color:var(--text-secondary); }.archive-consent input { width:18px; height:18px; margin:4px 0 0; flex-shrink:0; accent-color:var(--accent); }
 .queue-section { margin-top:28px; }.queue-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:14px; }.queue-heading h2 { margin:0; font-size:22px; }.queue-heading>span { font-size: var(--type-copy); color:var(--text-secondary); }.queue-item { display:flex; align-items:center; gap:14px; padding:18px 0; border-top:1px solid var(--border-default); }.file-mark { color:var(--accent); font-size:24px; }.queue-info { flex:1; min-width:0; }.queue-info strong { font-size:17px; overflow-wrap:anywhere; }.queue-info p { margin:8px 0 0; color:var(--text-secondary); font-size: var(--type-copy); line-height:1.5; }.queue-item .next-action { min-height:44px; padding:0 14px; font-size:16px; flex-shrink:0; }.queue-item>button:not(.next-action),.queue-error button { min-height:44px; background:transparent; color:var(--accent); border:0; cursor:pointer; font-size:16px; }.queue-item .dismiss { width:44px; padding:0; flex-shrink:0; }.queue-error,.queue-info .queue-error { color:#a32b39; font-size:16px; line-height:1.6; }

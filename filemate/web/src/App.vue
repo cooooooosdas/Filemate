@@ -60,10 +60,9 @@
 
       <div class="sidebar-foot">
         <div class="service-state" :class="{ online: backendConnected, checking: backendConnected === null }" aria-live="polite">
-          <span class="state-indicator" />
-          <span>{{ backendConnected === null ? '正在连接…' : backendConnected ? '服务已连接' : '服务未连接' }}</span>
+          <span class="state-indicator" :title="backendConnected ? '服务已连接' : undefined" />
+          <span :class="{ 'sr-only': backendConnected }">{{ backendConnected === null ? '正在连接…' : backendConnected ? '服务已连接' : '服务未连接' }}</span>
         </div>
-        <button class="version-label" title="整合版本 1.3.0-alpha.4" aria-label="打开应用设置" @click="openSettings">v1.3 α4</button>
       </div>
     </aside>
 
@@ -134,7 +133,6 @@
         <footer class="site-footer" aria-label="网站备案与使用说明">
           <span>© 2026 FileMate</span>
           <a href="https://beian.miit.gov.cn" target="_blank" rel="noopener noreferrer">皖ICP备2026029928号-1</a>
-          <span>公开体验环境，请勿上传敏感或未经授权的资料</span>
         </footer>
       </div>
     </main>

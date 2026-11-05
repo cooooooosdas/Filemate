@@ -9,7 +9,7 @@ const base = {
   'accent': '#254bc3', 'accent-hover': '#19388f', 'accent-soft': '#dfe7fa', 'accent-border': '#8fa5d8',
   'action-fill': '#254bc3', 'action-hover': '#19388f',
   'success': '#235c3f', 'warning': '#72460e', 'danger': '#8b3034',
-  'border-subtle': '#a5b3c8', 'border-default': '#7b8da9', 'border-strong': '#7b8da9',
+  'border-subtle': '#a5b3c8', 'border-default': '#5e708b', 'border-strong': '#5e708b',
   'panel-tint': '#d2deef', 'hero-background': '#183a7e', 'hero-highlight': '#bdd3fb',
   'hero-ink': '#f4f7fd', 'hero-copy': '#e0e8fb', 'header-surface': '#cdd7e5',
   'sidebar-surface': '#14243e', 'sidebar-hover': '#243c5e', 'sidebar-ink': '#f4f7fd',
