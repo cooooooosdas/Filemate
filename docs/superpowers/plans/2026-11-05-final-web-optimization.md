@@ -53,10 +53,10 @@
 
 **Interfaces:** 导出透明 LOGO SVG、220×294 吉祥物 WebP 及 PNG 兜底。组件显式声明真实宽高和按用途设置 lazy/async。
 
-- [ ] 写资源尺寸、字节预算、SVG 无内嵌整张 PNG 和图片宽高合同的失败测试，执行 `node --test filemate/web/tests/brand-assets.test.mjs`。
-- [ ] 从现有品牌资产导出，逐图记录原字节、输出字节、尺寸和引用位置。表达图按实际角色尺寸导出，低频图片懒加载。
-- [ ] 重跑测试及 `npm --prefix filemate/web run build`，1440与390截图检查透明边缘、文字、形象。
-- [ ] 显式提交本任务文件，记录首页真实传输测量，区分开发服务器与压缩生产产物。
+- [x] 写资源尺寸、字节预算、SVG 无内嵌整张 PNG 和图片宽高合同的失败测试，执行 `node --test filemate/web/tests/brand-assets.test.mjs`。
+- [x] 从现有品牌资产导出，逐图记录原字节、输出字节、尺寸和引用位置。表达图按实际角色尺寸导出，低频图片懒加载。
+- [x] 重跑测试及 `npm --prefix filemate/web run build`，1440与390截图检查透明边缘、文字、形象。
+- [x] 显式提交本任务文件，记录首页真实传输测量，区分开发服务器与压缩生产产物。
 
 ## Task 2 稳定外壳与数据加载
 

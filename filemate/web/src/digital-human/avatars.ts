@@ -1,5 +1,5 @@
-import campusImage from '../assets/filemate-mascot.png'
-import expressionsImage from '../assets/filemate-mascot-expressions.png'
+import campusImage from '../assets/optimized/filemate-mascot-tutor.webp'
+import expressionsImage from '../assets/optimized/filemate-mascot-expressions-tutor.webp'
 
 export interface DigitalHumanAvatar {
   avatarId: string

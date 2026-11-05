@@ -2,10 +2,11 @@
   <div class="logo-lockup">
     <img
       class="brand-lockup"
-      src="../assets/filemate-brand-lockup.png"
+      src="../assets/optimized/filemate-brand-lockup.svg"
       alt="FileMate，你的文件知识管理伙伴"
-      width="1872"
-      height="500"
+      width="432"
+      height="122"
+      decoding="async"
     />
   </div>
 </template>

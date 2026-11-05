@@ -132,7 +132,7 @@
         <div class="interviewer-panel">
           <div class="avatar-stage" :class="{ speaking }">
             <div class="pulse pulse-one" aria-hidden="true"></div><div class="pulse pulse-two" aria-hidden="true"></div>
-            <div class="avatar-face"><img :src="mascotUrl" alt="FileMate 形象伙伴" /></div>
+            <div class="avatar-face"><img :src="mascotUrl" alt="FileMate 形象伙伴" width="560" height="746" loading="lazy" decoding="async" /></div>
             <div class="voice-bars" aria-hidden="true"><i v-for="n in 7" :key="n"></i></div>
           </div>
           <div><p class="role">FileMate 面试伙伴</p><p class="online"><i></i>在线 · {{ session.scenario === '英语面' ? '英语训练' : '中文普通话' }}</p></div>
@@ -297,7 +297,7 @@ import { watchMediaEnvironment } from '../interview/media-lifecycle'
 import InterviewVideoPanel from '../components/InterviewVideoPanel.vue'
 import InterviewVideoLibrary from '../components/InterviewVideoLibrary.vue'
 import { publishCompanionEvent, type CompanionMood } from '../composables/useCompanion'
-import mascotUrl from '../assets/filemate-mascot.png'
+import mascotUrl from '../assets/optimized/filemate-mascot-tutor.webp'
 import '../styles/interview-practice.css'
 import { hasInterviewDraft } from '../navigation/route-state'
 import { ArrowRight, Briefcase, Code, Collection, Conversation, Document, Language, Reading, School, ShieldCheck, Trophy, VideoPlay } from '../icons'

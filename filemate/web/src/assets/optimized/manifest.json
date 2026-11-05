@@ -1,0 +1,100 @@
+{
+  "source_artwork": "Existing FileMate originals; no new generated illustration.",
+  "tools": {
+    "pillow": "12.3.0",
+    "vtracer": "0.6.15"
+  },
+  "assets": [
+    {
+      "source": "filemate-brand-lockup.png",
+      "source_bytes": 491610,
+      "source_sha256": "dc73e254a581fcb15d62dbfe1dac3ea4a46613a7a32c6d0f00aac51033dfac57",
+      "output": "filemate-brand-lockup.svg",
+      "output_bytes": 86808,
+      "output_sha256": "5dad952e2ef16af91a8fe4db910584473eca24df3921c970ae4935484e774d72",
+      "dimensions": [
+        1867,
+        526
+      ],
+      "format": "vector_paths"
+    },
+    {
+      "source": "filemate-mascot.png",
+      "source_bytes": 1250003,
+      "source_sha256": "128bd234668791128c7cfc4ab5f8c08d2a537d099b233ace6318dcee3a196d20",
+      "output": "filemate-mascot-home.webp",
+      "output_bytes": 21144,
+      "output_sha256": "be6b14639ee5c4305d4f778b7e6dfd5301df08897cb48f33c03f99c1984df860",
+      "dimensions": [
+        220,
+        294
+      ],
+      "quality": 92
+    },
+    {
+      "source": "filemate-mascot.png",
+      "source_bytes": 1250003,
+      "source_sha256": "128bd234668791128c7cfc4ab5f8c08d2a537d099b233ace6318dcee3a196d20",
+      "output": "filemate-mascot-home.png",
+      "output_bytes": 57239,
+      "output_sha256": "eda03908eb47e42e85ee4093eaa3c50448df8bc71f31575a6fdcf8b8075355c7",
+      "dimensions": [
+        220,
+        294
+      ],
+      "quality": 100
+    },
+    {
+      "source": "filemate-mascot.png",
+      "source_bytes": 1250003,
+      "source_sha256": "128bd234668791128c7cfc4ab5f8c08d2a537d099b233ace6318dcee3a196d20",
+      "output": "filemate-mascot-tutor.webp",
+      "output_bytes": 81424,
+      "output_sha256": "9443f70036548a439d853353c417440b03f55fac01df9b6fb464d0806ba56581",
+      "dimensions": [
+        560,
+        746
+      ],
+      "quality": 92
+    },
+    {
+      "source": "filemate-mascot-expressions.png",
+      "source_bytes": 2082939,
+      "source_sha256": "4cbd3216f00e333f72643cc96338062d9c2ed836c8f5b544c83e5919d42bec71",
+      "output": "filemate-mascot-expressions.webp",
+      "output_bytes": 115522,
+      "output_sha256": "3d81e4e130e7fd6af94a8b2cc4204501a7576d0a78421065365098acb3f6118e",
+      "dimensions": [
+        1040,
+        780
+      ],
+      "quality": 80
+    },
+    {
+      "source": "filemate-mascot-expressions.png",
+      "source_bytes": 2082939,
+      "source_sha256": "4cbd3216f00e333f72643cc96338062d9c2ed836c8f5b544c83e5919d42bec71",
+      "output": "filemate-mascot-expressions-tutor.webp",
+      "output_bytes": 267778,
+      "output_sha256": "18ad7cb23e9f9a91b4722a9c7b644afe1e690f33bb0bf03a5f5db0049944fefa",
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "quality": 90
+    },
+    {
+      "source": "filemate-app-icon-light.png",
+      "source_bytes": 882592,
+      "source_sha256": "bd5ffd3a9b7bdcea9048539cb95b2cb6ec77f335a639e1ee411ee7a7c48318ad",
+      "output": "filemate-app-icon-light.webp",
+      "output_bytes": 1662,
+      "output_sha256": "88930320bb09ebce09a06d0acff638b597fe14594a7f577928d7f7d56d6c8336",
+      "dimensions": [
+        128,
+        128
+      ],
+      "quality": 92
+    }
+  ]
+}

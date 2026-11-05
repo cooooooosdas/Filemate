@@ -11,6 +11,10 @@
           :src="expressionsUrl"
           alt=""
           aria-hidden="true"
+          width="1040"
+          height="780"
+          loading="lazy"
+          decoding="async"
         />
       </div>
       <span class="mood-chip">{{ moodLabel }}</span>
@@ -34,7 +38,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import expressionsUrl from '../assets/filemate-mascot-expressions.png'
+import expressionsUrl from '../assets/optimized/filemate-mascot-expressions.webp'
 import type { CompanionGrowth, CompanionMood } from '../composables/useCompanion'
 
 const props = withDefaults(defineProps<{
@@ -105,6 +109,7 @@ const portraitStyle = computed(() => ({
   top: 0;
   left: 0;
   width: 520px;
+  height: auto;
   max-width: none;
   transition: transform 360ms cubic-bezier(.2, .8, .2, 1);
 }

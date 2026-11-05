@@ -49,7 +49,7 @@
             <p class="today-summary">选定优先目标，安排可用时间，从有依据的下一步开始。</p>
             <router-link class="solid-link today-start" to="/today">打开今日行动<el-icon><ArrowRight /></el-icon></router-link>
           </section>
-          <section class="partner-note"><div><h2>最近学了什么？</h2><p>回看练习、面试和学习记录。</p><router-link to="/growth">查看学习记录<el-icon><ArrowRight /></el-icon></router-link></div><img src="../assets/filemate-mascot.png" alt="" aria-hidden="true" width="1086" height="1448" loading="lazy" /></section>
+          <section class="partner-note"><div><h2>最近学了什么？</h2><p>回看练习、面试和学习记录。</p><router-link to="/growth">查看学习记录<el-icon><ArrowRight /></el-icon></router-link></div><picture><source srcset="../assets/optimized/filemate-mascot-home.webp" type="image/webp" /><img src="../assets/optimized/filemate-mascot-home.png" alt="" aria-hidden="true" width="220" height="294" loading="lazy" decoding="async" /></picture></section>
           <router-link class="privacy-link" to="/trust"><el-icon><Lock /></el-icon><span>资料如何保存与使用</span><el-icon><ArrowRight /></el-icon></router-link>
         </aside>
       </div>
