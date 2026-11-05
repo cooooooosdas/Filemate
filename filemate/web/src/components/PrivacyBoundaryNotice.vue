@@ -12,7 +12,7 @@ import { computed, onMounted, ref } from 'vue'
 import { getPrivacyBoundary, type PrivacyBoundary } from '../services/api'
 const emit = defineEmits<{ ready: [boolean] }>()
 const boundary = ref<PrivacyBoundary | null>(null), error = ref('')
-const facts = computed(() => boundary.value ? [boundary.value.storage_notice, boundary.value.model_notice, boundary.value.retention_notice, boundary.value.key_notice, boundary.value.camera_notice, boundary.value.speech_notice].flatMap(text => text.split(/(?<=[。；;，])/u).filter(Boolean)) : [])
+const facts = computed(() => boundary.value ? [boundary.value.storage_notice, boundary.value.model_notice, boundary.value.retention_notice, boundary.value.key_notice, boundary.value.camera_notice, boundary.value.speech_notice].flatMap(text => text.split(/(?<=[。；;，：])/u).filter(Boolean)) : [])
 async function load() { error.value = ''; emit('ready', false); try { boundary.value = await getPrivacyBoundary(); emit('ready', true) } catch { boundary.value = null; error.value = '未能确认数据保存位置，请先连接服务并重试。' } }
 onMounted(load)
 </script>
