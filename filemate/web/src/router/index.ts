@@ -147,6 +147,7 @@ const routes: RouteRecordRaw[] = [
   ...(import.meta.env.VITE_ENABLE_CAREER === 'false' ? [{ path: '/career', redirect: '/ai-tools' }] : [{
     path: '/career', name: 'Career', component: () => import('../views/Career.vue'), meta: { title: '求职训练中心' }
   }])
+  , { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../views/NotFound.vue'), meta: { title: '页面不存在' } }
 ]
 
 const router = createRouter({

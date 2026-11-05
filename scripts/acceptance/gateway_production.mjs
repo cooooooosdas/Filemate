@@ -11,7 +11,7 @@ assert.equal(new URL(base).protocol, 'https:')
 assert.ok(['127.0.0.1', 'localhost'].includes(new URL(base).hostname))
 assert.equal(process.env.FILEMATE_ACCEPTANCE_INSECURE_TLS, '1')
 const routes = [...new Set([...fs.readFileSync('filemate/web/src/router/index.ts', 'utf8')
-  .matchAll(/path:\s*'([^']+)'/g)].map(match => match[1]))]
+  .matchAll(/path:\s*'([^']+)'/g)].map(match => match[1]).filter(route => !route.includes(':')))]
 const browser = await chromium.launch({ channel: process.env.FILEMATE_BROWSER_CHANNEL || 'msedge', headless: true })
 const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1440, height: 1000 },
   httpCredentials: { username: process.env.FILEMATE_ACCEPTANCE_BASIC_USER, password: process.env.FILEMATE_ACCEPTANCE_BASIC_PASSWORD },

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /$
+Allow: /login$
+Allow: /register$
+Allow: /trust$
+Disallow: /
+Sitemap: https://filemate.asia/sitemap.xml
