@@ -22,7 +22,7 @@ try{
     const snapshot=await page.evaluate(()=>{const app=document.querySelector('#app').cloneNode(true);app.querySelectorAll('input,textarea').forEach(n=>{n.removeAttribute('value');n.textContent=''});app.querySelectorAll('.welcome-meta time').forEach(n=>n.remove());const styles=[...document.querySelectorAll('link[rel="stylesheet"]')].map(n=>`<link rel="stylesheet" href="${new URL(n.href).pathname}">`);return {markup:app.innerHTML,styles}})
     validateSnapshot(snapshot.markup)
     const extraStyles=snapshot.styles.filter(link=>!spa.includes(link)).join('\n')
-    return spa.replace('<div id="app"></div>',`<div id="app" data-prerender-path="${config.path}">${snapshot.markup}</div>`).replace('</head>',extraStyles+'\n</head>')
+    return spa.replace('<div id="app"></div>',`<div id="app" data-prerender-path="${config.path}" inert aria-busy="true">${snapshot.markup}</div>`).replace('</head>',extraStyles+'\n</head>')
    }finally{await Promise.allSettled(held.map(r=>r.abort()));await context.close()}
   })
   const target=resolve(dist,config.path.slice(1),'index.html');await mkdir(resolve(target,'..'),{recursive:true});await writeFile(target,html);report.pages.push({path:config.path,prerendered:html.includes('data-prerender-path=')})

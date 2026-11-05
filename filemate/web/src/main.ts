@@ -16,4 +16,10 @@ app.use(createPinia())
 app.use(router)
 
 // Keep the public snapshot until its lazy route is ready to replace it.
-router.isReady().then(() => app.mount('#app')).catch(() => app.mount('#app'))
+function mountApplication(): void {
+  app.mount('#app')
+  const container = document.getElementById('app')
+  container?.removeAttribute('inert')
+  container?.removeAttribute('aria-busy')
+}
+router.isReady().then(mountApplication).catch(mountApplication)
