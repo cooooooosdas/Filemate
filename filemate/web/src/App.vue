@@ -119,15 +119,17 @@
       </header>
 
       <div v-if="navigationPending" class="navigation-loading" role="status">
-        <span class="navigation-track" aria-hidden="true" />正在打开页面…
+        <span class="navigation-track" aria-hidden="true" /><span class="sr-only">正在打开页面…</span>
       </div>
 
       <div class="content-scroll">
+        <div class="route-surface">
         <router-view v-slot="{ Component }">
           <transition name="page-fade" mode="out-in">
             <component :is="Component" :key="routeViewKey(route.path, route.fullPath, refreshToken, wrongbookV2Enabled)" />
           </transition>
         </router-view>
+        </div>
         <footer class="site-footer" aria-label="网站备案与使用说明">
           <span>© 2026 FileMate</span>
           <a href="https://beian.miit.gov.cn" target="_blank" rel="noopener noreferrer">皖ICP备2026029928号-1</a>
@@ -331,7 +333,7 @@ function isAuthPath(path: string): boolean {
 </script>
 
 <style scoped>
-.navigation-loading { position:relative; flex-shrink:0; padding:10px 24px 8px; font-size:15px; color:var(--accent); background:var(--bg-surface); overflow:hidden; }
+.navigation-loading { position:absolute; inset:0 0 auto; z-index:30; height:3px; color:var(--accent); overflow:hidden; pointer-events:none; }
 .navigation-track { position:absolute; inset:0 auto auto 0; width:30%; height:3px; background:var(--action-fill, var(--accent)); animation:navigation-progress 1.1s ease-in-out infinite alternate; }
 @keyframes navigation-progress { to { transform:translateX(230%); } }
 @media(prefers-reduced-motion:reduce) { .navigation-track { width:100%; animation:none; } }
@@ -569,6 +571,7 @@ function isAuthPath(path: string): boolean {
 }
 
 .workspace {
+  position: relative;
   min-width: 0;
   height: 100vh;
   display: flex;
@@ -719,6 +722,8 @@ function isAuthPath(path: string): boolean {
   overflow: auto;
   background: var(--workspace-background);
 }
+
+.route-surface { min-height:calc(100dvh - var(--topbar-height)); min-width:0; }
 
 .site-footer {
   width: min(1180px, 100%);

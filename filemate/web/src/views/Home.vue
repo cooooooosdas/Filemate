@@ -1,13 +1,12 @@
 <template>
-  <div class="dashboard">
+  <div class="dashboard" :aria-busy="loading">
     <header class="welcome">
       <div class="welcome-copy"><div class="welcome-meta"><span>{{ greeting }}</span><time>{{ todayLabel }}</time></div><h1>今天，<br />让知识<span class="title-dot">成形。</span></h1><p>打开课件，读原文、记笔记、做练习。</p><router-link class="solid-link hero-start" to="/ai-tools"><el-icon><Reading /></el-icon>开始学习<el-icon><ArrowRight /></el-icon></router-link></div>
       <HeroEncouragement />
       <StudyMotif class="welcome-motif" />
     </header>
-    <div v-if="loading" class="load-state" role="status"><el-icon class="loading-icon"><Loading /></el-icon>正在读取你的学习记录…</div>
-    <div v-else-if="errorMessage" class="load-state error" role="alert"><p>{{ errorMessage }}</p><el-button @click="loadDashboard">重新加载</el-button></div>
-    <template v-else>
+    <span v-if="loading" class="sr-only" role="status">正在读取你的学习记录…</span>
+    <div class="dashboard-workspace">
       <div class="desk-grid">
         <div class="desk-main">
           <section class="focus-sheet" aria-labelledby="focus-heading">
@@ -31,7 +30,11 @@
               <router-link to="/history"><span>待确认归档</span><strong :class="{ amber: metrics.pending > 0 }">{{ metrics.pending }}<small>份</small></strong><el-icon><ArrowRight /></el-icon></router-link>
               <div><span>已归档</span><strong>{{ metrics.confirmed }}<small>份</small></strong></div>
             </section>
-            <div v-if="!recentFiles.length" class="empty-files"><el-icon aria-hidden="true"><FolderOpened /></el-icon><h3>还没有归档处理记录</h3><p>这里记录分类与归档操作。已导入的学习资料可从知识库打开。</p><router-link to="/knowledge">打开我的资料<el-icon><ArrowRight /></el-icon></router-link></div>
+            <div v-if="!recentFiles.length" class="empty-files">
+              <template v-if="loading"><span class="history-skeleton" aria-hidden="true" /><span class="history-skeleton short" aria-hidden="true" /><span>正在读取归档记录…</span></template>
+              <template v-else-if="errorMessage"><h3>归档记录暂时无法读取</h3><p role="alert">{{ errorMessage }}</p><el-button @click="loadDashboard">重新加载</el-button></template>
+              <template v-else><el-icon aria-hidden="true"><FolderOpened /></el-icon><h3>还没有归档处理记录</h3><p>这里记录分类与归档操作。已导入的学习资料可从知识库打开。</p><router-link to="/knowledge">打开我的资料<el-icon><ArrowRight /></el-icon></router-link></template>
+            </div>
             <div v-else class="file-list">
               <div class="file-list-head"><span>文件</span><span>状态</span></div>
               <router-link v-for="file in recentFiles" :key="file.session_id" class="file-row" to="/history" :aria-label="`在处理记录中查看 ${getFileName(file.source_path)}`">
@@ -53,13 +56,13 @@
           <router-link class="privacy-link" to="/trust"><el-icon><Lock /></el-icon><span>资料如何保存与使用</span><el-icon><ArrowRight /></el-icon></router-link>
         </aside>
       </div>
-    </template>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { ArrowRight, Calendar, FolderOpened, Loading, Lock, Microphone, Reading } from '../icons'
+import { ArrowRight, Calendar, FolderOpened, Lock, Microphone, Reading } from '../icons'
 import StudyMotif from '../components/StudyMotif.vue'
 import HeroEncouragement from '../components/HeroEncouragement.vue'
 import { getHistory } from '../services/api'
@@ -158,8 +161,7 @@ a { color:inherit; text-decoration:none; }
 .today-empty { padding:12px 0 0; }.today-empty > .el-icon { font-size:32px; color:var(--accent); }.today-empty p { font-size:17px; color:var(--text-secondary); line-height:1.8; }.today-empty a,.partner-note a,.empty-files a { display:inline-flex; align-items:center; gap:12px; min-height:48px; color:var(--accent); font-size:17px; }
 .partner-note { position:relative; isolation:isolate; display:flex; min-height:230px; overflow:hidden; margin-top:24px; padding:16px 0; border-bottom:1px solid var(--border-subtle); }.partner-note > div { position:relative; z-index:1; max-width:72%; }.partner-note h2 { margin:8px 0 12px; font-size:24px; line-height:1.45; font-weight:600; }.partner-note p { font-size:17px; line-height:1.7; color:var(--text-secondary); margin:0 0 12px; }.partner-note img { position:absolute; width:110px; height:auto; right:-10px; bottom:12px; z-index:0; }
 .privacy-link { display:flex; gap:10px; align-items:center; min-height:64px; font-size:16px; color:var(--text-secondary); }.privacy-link > :last-child { margin-left:auto; }
-.load-state { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:12px; min-height:240px; color:var(--text-secondary); font-size:17px; }.error { color:var(--danger); }.loading-icon { animation:spin 1s linear infinite; }@keyframes spin { to { transform:rotate(360deg); } }
-.empty-files { display:grid; justify-items:start; gap:10px; padding:28px 0 12px; }.empty-files > .el-icon { font-size:28px; color:var(--accent); }.empty-files h3 { margin:4px 0 0; font-size:21px; font-weight:550; }.empty-files p { margin:0; font-size:17px; line-height:1.8; max-width:42em; color:var(--text-secondary); }.review-error { font-size:17px; color:var(--text-secondary); }.review-error button { min-height:44px; color:var(--accent); background:transparent; border:0; }
+.empty-files { min-height:220px; align-content:center; display:grid; justify-items:start; gap:10px; padding:28px 0 12px; }.empty-files > .el-icon { font-size:28px; color:var(--accent); }.empty-files h3 { margin:4px 0 0; font-size:21px; font-weight:550; }.empty-files p { margin:0; font-size:17px; line-height:1.8; max-width:42em; color:var(--text-secondary); }.history-skeleton { display:block; width:85%; max-width:420px; height:24px; border-radius:4px; background:var(--border-subtle); }.history-skeleton.short { width:58%; }.review-error { font-size:17px; color:var(--text-secondary); }.review-error button { min-height:44px; color:var(--accent); background:transparent; border:0; }
 @container(max-width:620px) { .overview { grid-template-columns:1fr 1fr; gap:22px 0; }.overview > :nth-child(2) { border:0; }.overview > :nth-child(3) { padding-left:0; } }
 @media(max-width:1150px) { .welcome { padding:32px; gap:28px; }.welcome h1 { font-size:52px; }.welcome p { font-size:18px; }.desk-grid { grid-template-columns:minmax(0,1fr) 270px; gap:20px; }.focus-sheet { padding:24px 20px 8px; }.task-entry-main { gap:12px; grid-template-columns:44px minmax(0,1fr) 20px; }.task-symbol { width:44px; height:48px; }.task-entry-copy strong { font-size:22px; }.task-entry-links { padding-left:64px; }.today-sheet { padding:24px; } }
 @media(max-width:1050px) { .desk-grid { grid-template-columns:1fr; }.desk-aside { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; }.partner-note { margin:0; }.privacy-link { grid-column:1 / -1; } }
