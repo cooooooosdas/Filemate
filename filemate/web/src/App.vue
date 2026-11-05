@@ -144,8 +144,8 @@
     </el-dialog>
     <el-dialog v-model="showSettings" title="应用设置" class="preferences-dialog" top="5vh" width="min(780px, calc(100vw - 32px))">
       <el-tabs v-model="settingsTab" class="preferences-tabs">
-        <el-tab-pane label="外观" name="appearance"><AppearanceSettings /></el-tab-pane>
-        <el-tab-pane label="保存位置" name="downloads" lazy><DownloadSettings /></el-tab-pane>
+        <el-tab-pane label="外观" name="appearance"><PreferencePanelLoader v-if="showSettings" kind="appearance" /></el-tab-pane>
+        <el-tab-pane label="保存位置" name="downloads" lazy><PreferencePanelLoader v-if="showSettings" kind="downloads" /></el-tab-pane>
         <el-tab-pane label="模型服务" name="model" lazy><SettingsPanelLoader v-if="showSettings" :backend-connected="backendConnected" :active="showSettings && settingsTab === 'model'" /></el-tab-pane>
         <el-tab-pane label="连接状态" name="connection" lazy>
           <section class="connection-settings"><h3>{{ backendConnected ? '学习服务已连接' : '学习服务暂未连接' }}</h3><p>{{ backendConnected ? '可以导入、查看和保存资料。' : '请检查网络或本机服务，再重新连接。' }}</p><el-button type="primary" :loading="serviceChecking" @click="loadShellState">重新连接</el-button><p>{{ accountState?.enabled ? '学习资料保存在账号的服务器私有空间；保存位置设置仅影响本机导出文件。' : '学习资料由本机服务保存；保存位置设置仅影响导出文件。' }}</p></section>
@@ -153,14 +153,14 @@
       </el-tabs>
       <template #footer><el-button @click="showSettings = false">完成</el-button></template>
     </el-dialog>
-    <el-dialog v-model="showFinder" title="查找功能" width="min(580px, calc(100vw - 32px))" @opened="finder?.focus()" @closed="finder?.reset()">
+    <el-dialog v-model="showFinder" title="查找功能" width="min(580px, calc(100vw - 32px))" @opened="finder?.focus?.()" @closed="finder?.reset?.()">
       <FeatureFinder ref="finder" :tools="tools" :icons="toolIcons" @select="openTool" />
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch, type Component } from 'vue'
+import { computed, defineAsyncComponent, defineComponent, h, nextTick, onMounted, onUnmounted, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import PageLoadError from './components/PageLoadError.vue'
@@ -193,15 +193,22 @@ import {
   ChevronDown
 } from './icons'
 import Logo from './components/Logo.vue'
-import FeatureFinder from './components/FeatureFinder.vue'
 import SettingsPanelLoader from './components/SettingsPanelLoader.vue'
-import AppearanceSettings from './components/AppearanceSettings.vue'
-import DownloadSettings from './components/DownloadSettings.vue'
+import PreferencePanelLoader from './components/PreferencePanelLoader.vue'
 import { availableTools, primaryGroups, primaryPath, childrenTools, type Tool } from './navigation/catalog'
 import { routeViewKey } from './navigation/route-state'
 import { navigationPending } from './router/load-errors'
 import { checkHealth, getAccountState, logoutAccount } from './services/api'
 import type { AccountState } from './types/account'
+
+const FeatureFinder = defineAsyncComponent({
+  loader: () => import('./components/FeatureFinder.vue'), delay: 0,
+  loadingComponent: defineComponent(() => () => h('p', { role: 'status' }, '正在打开功能查找…')),
+  errorComponent: defineComponent(() => () => h('section', { role: 'alert' }, [
+    h('p', '功能查找暂时无法加载。可以通过左侧导航继续。'),
+    h('button', { type: 'button', onClick: () => { if (window.dispatchEvent(new Event('filemate:before-refresh', { cancelable: true }))) window.location.reload() } }, '重新加载页面'),
+  ])),
+})
 
 const route = useRoute()
 const wrongbookV2Enabled = import.meta.env.VITE_ENABLE_WRONGBOOK_V2 === 'true'

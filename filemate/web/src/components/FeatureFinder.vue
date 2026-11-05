@@ -23,7 +23,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch, type Component } from 'vue'
+import { computed, nextTick, onMounted, ref, watch, type Component } from 'vue'
 import { ArrowRight, Search } from '../icons'
 import { searchTools, type Tool } from '../navigation/catalog'
 
@@ -54,6 +54,7 @@ function handleKey(event: KeyboardEvent): void {
 function open(item: Tool): void { emit('select', item) }
 function focus(): void { input.value?.focus() }
 function reset(): void { query.value = ''; activeIndex.value = 0 }
+onMounted(focus)
 defineExpose({ focus, reset })
 </script>
 

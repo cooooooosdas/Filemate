@@ -1,10 +1,22 @@
 <template>
   <div class="dashboard" :aria-busy="loading">
     <header class="welcome">
-      <div class="welcome-copy"><div class="welcome-meta"><span>{{ greeting }}</span><time>{{ todayLabel }}</time></div><h1>今天，<br />让知识<span class="title-dot">成形。</span></h1><p>打开课件，读原文、记笔记、做练习。</p><router-link class="solid-link hero-start" to="/ai-tools"><el-icon><Reading /></el-icon>开始学习<el-icon><ArrowRight /></el-icon></router-link></div>
+      <div class="welcome-copy"><div class="welcome-meta"><span>{{ greeting }}</span><time>{{ todayLabel }}</time></div><h1>今天，<br />让知识<span class="title-dot">成形。</span></h1><p>打开课件，读原文、记笔记、做练习。</p></div>
       <HeroEncouragement />
       <StudyMotif class="welcome-motif" />
     </header>
+    <section class="home-action" aria-label="开始这次学习" :aria-busy="homeStatus === 'loading'">
+      <div v-if="firstVisit" class="first-visit"><h2>把课件变成可追问、可练习的学习资料</h2><ol><li>导入课件</li><li>读懂与提问</li><li>练习与复习</li></ol></div>
+      <div class="home-action-row">
+        <button v-if="action.kind === 'sample'" class="solid-link hero-start" :disabled="sampleBusy" @click="trySample">{{ sampleBusy ? '正在导入原创示例…' : action.title }}<el-icon><ArrowRight /></el-icon></button>
+        <button v-else-if="action.kind === 'retry'" class="solid-link hero-start" @click="loadHomeState">{{ action.title }}</button>
+        <span v-else-if="action.kind === 'pending'" role="status">{{ action.title }}</span>
+        <router-link v-else class="solid-link hero-start" :to="action.route">{{ action.title }}<el-icon><ArrowRight /></el-icon></router-link>
+        <router-link v-if="firstVisit" to="/import?intent=study">直接导入我的课件</router-link>
+      </div>
+      <p v-if="firstVisit" class="sample-note">将原创示例保存到当前学习空间，不调用模型。</p>
+      <p v-if="homeError" role="alert">{{ homeError }}</p>
+    </section>
     <span v-if="loading" class="sr-only" role="status">正在读取你的学习记录…</span>
     <div class="dashboard-workspace">
       <div class="desk-grid">
@@ -13,12 +25,12 @@
             <div class="section-heading"><h2 id="focus-heading">这次想做什么？</h2><span class="section-hint">直接开始</span></div>
             <div class="task-entries">
               <article v-for="task in studyTasks" :key="task.id" class="task-entry">
-                <router-link class="task-entry-main" :to="task.route">
+                <component :is="action.route === task.route ? 'div' : RouterLink" class="task-entry-main" :to="action.route === task.route ? undefined : task.route">
                   <span class="task-symbol"><el-icon aria-hidden="true"><component :is="task.icon" /></el-icon></span>
                   <span class="task-entry-copy"><strong>{{ task.title }}</strong><span>{{ task.description }}</span></span>
                   <el-icon class="task-entry-arrow" aria-hidden="true"><ArrowRight /></el-icon>
-                </router-link>
-                <nav v-if="task.links.length" class="task-entry-links" :aria-label="`${task.title}的相关功能`"><router-link v-for="link in task.links" :key="link.route" :to="link.route">{{ link.label }}<el-icon aria-hidden="true"><ArrowRight /></el-icon></router-link></nav>
+                </component>
+                <details v-if="task.links.length" class="task-details"><summary>相关功能</summary><nav class="task-entry-links" :aria-label="`${task.title}的相关功能`"><router-link v-for="link in task.links" :key="link.route" :to="link.route">{{ link.label }}<el-icon aria-hidden="true"><ArrowRight /></el-icon></router-link></nav></details>
               </article>
             </div>
           </section>
@@ -50,7 +62,7 @@
           <section class="today-sheet" aria-labelledby="today-heading">
             <div class="section-heading"><h2 id="today-heading">今日行动</h2></div>
             <p class="today-summary">选定优先目标，安排可用时间，从有依据的下一步开始。</p>
-            <router-link class="solid-link today-start" to="/today">打开今日行动<el-icon><ArrowRight /></el-icon></router-link>
+            <router-link class="today-start" to="/today">打开今日行动<el-icon><ArrowRight /></el-icon></router-link>
           </section>
           <section class="partner-note"><div><h2>最近学了什么？</h2><p>回看练习、面试和学习记录。</p><router-link to="/growth">查看学习记录<el-icon><ArrowRight /></el-icon></router-link></div><picture><source srcset="../assets/optimized/filemate-mascot-home.webp" type="image/webp" /><img src="../assets/optimized/filemate-mascot-home.png" alt="" aria-hidden="true" width="220" height="294" loading="lazy" decoding="async" /></picture></section>
           <router-link class="privacy-link" to="/trust"><el-icon><Lock /></el-icon><span>资料如何保存与使用</span><el-icon><ArrowRight /></el-icon></router-link>
@@ -61,15 +73,51 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import { ArrowRight, Calendar, FolderOpened, Lock, Microphone, Reading } from '../icons'
 import StudyMotif from '../components/StudyMotif.vue'
 import HeroEncouragement from '../components/HeroEncouragement.vue'
-import { getHistory } from '../services/api'
+import { getHistory, getAccountState, getKnowledgeSources, listAIContexts, getWrongbookPage, getPrivacyBoundary, importLearningSource } from '../services/api'
+import { resolveHomeAction, createSampleImporter } from '../home/action'
 import type { HistoryItem, SessionStatus } from '../types'
 const loading = ref(true)
 const errorMessage = ref('')
 const history = ref<HistoryItem[]>([])
+const router = useRouter()
+const homeStatus = ref<'loading' | 'error' | 'ready'>('loading'), authenticated = ref<boolean | null>(null)
+const sourceId = ref<string | null>(null), due = ref(0), homeError = ref(''), sampleBusy = ref(false)
+const action = computed(() => resolveHomeAction({ status: homeStatus.value, authenticated: authenticated.value, sourceId: sourceId.value, due: due.value }))
+const firstVisit = computed(() => action.value.kind === 'sample')
+let stateRevision = 0, disposed = false
+async function loadHomeState() {
+  const revision = ++stateRevision
+  homeStatus.value = 'loading'; homeError.value = ''
+  try {
+    const [account, sources, reviews, sessions] = await Promise.all([getAccountState(), getKnowledgeSources(1), getWrongbookPage({ mastered: false, offset: 0, q: '', due_only: true }), listAIContexts(undefined, 1)])
+    if (disposed || revision !== stateRevision) return
+    authenticated.value = !!account.user; sourceId.value = sources.length ? sessions[0]?.source_id || sources[0]!.source_id : null; due.value = reviews.total
+    homeStatus.value = 'ready'
+  } catch {
+    if (disposed || revision !== stateRevision) return
+    homeStatus.value = 'error'; homeError.value = '学习状态暂时无法读取，请重试。'
+  }
+}
+const importSample = createSampleImporter(async () => {
+  await getPrivacyBoundary()
+  const { default: sampleText } = await import('../home/sample.md?raw')
+  return importLearningSource(new File([sampleText], '数据结构-队列-FileMate原创示例.md', { type: 'text/markdown' }))
+})
+async function trySample() {
+  if (sampleBusy.value || !firstVisit.value) return
+  sampleBusy.value = true; homeError.value = ''
+  try { const source = await importSample(); if (!disposed) await router.push({ path: '/ai-tools', query: { source: source.source_id } }) }
+  catch { if (!disposed) homeError.value = '示例导入未完成，请恢复连接后重试。' }
+  finally { sampleBusy.value = false }
+}
+function refreshHome() { void loadHomeState() }
+onMounted(() => { void loadHomeState(); window.addEventListener('focus', refreshHome); window.addEventListener('filemate:session-reset', refreshHome); window.addEventListener('filemate:data-restored', refreshHome) })
+onUnmounted(() => { disposed = true; stateRevision++; window.removeEventListener('focus', refreshHome); window.removeEventListener('filemate:session-reset', refreshHome); window.removeEventListener('filemate:data-restored', refreshHome) })
 const todayLabel = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }).format(new Date())
 const hour = new Date().getHours()
 const greeting = hour < 6 ? '夜深了' : hour < 11 ? '早上好' : hour < 14 ? '中午好' : hour < 18 ? '下午好' : '晚上好'
@@ -117,6 +165,7 @@ onMounted(loadDashboard)
 </script>
 
 <style scoped>
+.home-action{min-height:196px;margin:-8px 0 24px;padding:20px 0;display:flex;flex-direction:column;justify-content:center;gap:12px}.home-action h2{margin:0;font-size:22px;line-height:1.5}.first-visit ol{display:flex;flex-wrap:wrap;gap:12px 28px;margin:8px 0 0;padding-left:22px;color:var(--text-secondary);font-size:16px}.home-action-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px}.home-action-row>a:not(.solid-link){min-height:44px;display:inline-flex;align-items:center;color:var(--accent);font-size:17px}.sample-note{margin:0;font-size:14px;color:var(--text-secondary)}.home-action button{border:0;cursor:pointer}.home-action button:disabled{cursor:wait;box-shadow:none}.task-details summary{min-height:44px;align-content:center;cursor:pointer;font-size:16px;color:var(--text-secondary);margin-left:74px}.today-start{display:inline-flex;align-items:center;gap:12px;min-height:44px;font-size:17px;color:var(--accent)}
 .dashboard { max-width:1360px; margin:0 auto; min-width:0; }
 a { color:inherit; text-decoration:none; }
 .welcome { --quote-ink:#f4f7fd; --quote-secondary:#e0e8fb; --quote-line:#8199c5; position:relative; isolation:isolate; display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); align-items:center; gap:40px; overflow:hidden; padding:44px; margin-bottom:32px; background:var(--hero-background); color:var(--hero-ink); border:0; border-radius:16px; min-height:380px; }
