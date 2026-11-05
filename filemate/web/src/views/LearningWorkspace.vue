@@ -16,8 +16,8 @@
 
       <section class="conversation-pane" aria-label="资料对话">
         <header class="conversation-heading"><div><small>{{ source ? '正在学习' : '从一份资料开始' }}</small><h2>{{ source?.original_name || '今天，想弄懂什么？' }}</h2></div><span v-if="context" class="saved-indicator">会话可恢复</span></header>
-        <div v-if="loading" class="blank-state" role="status"><el-icon><Reading /></el-icon><h3>正在打开资料与学习记录…</h3></div>
-        <div v-else-if="!source" class="blank-state"><el-icon><Reading /></el-icon><h3>先打开一份学习资料</h3><p>添加资料后即可读原文。需要讲解时再开启模型，也可以打开已有笔记和练习。</p><router-link class="primary" to="/import?intent=study">添加第一份资料 <el-icon><ArrowRight /></el-icon></router-link><small>课件、Markdown、代码笔记 · 最大 25 MB</small></div>
+        <DataState v-if="loading" loading class="blank-state" />
+        <DataState v-else-if="!source" empty title="先打开一份学习资料" class="blank-state"><template #icon><el-icon aria-hidden="true"><Reading /></el-icon></template><template #empty><p>添加资料后即可读原文。需要讲解时再开启模型。</p><small>课件、Markdown、代码笔记 · 最大 25 MB</small></template><template #action><router-link class="primary" to="/import?intent=study">添加第一份资料 <el-icon><ArrowRight /></el-icon></router-link></template></DataState>
         <template v-else>
           <div ref="messageScroll" class="conversation-scroll" aria-live="polite">
             <div v-if="!context?.chat_history.length" class="conversation-intro"><span class="intro-line"></span><h3>想问这份资料里的什么？</h3><p>输入问题，或选择下面的提问。回答附有资料片段，可回到原文核对。</p><div class="starter-prompts"><button v-for="prompt in prompts" :key="prompt" @click="questionText = prompt; composer?.focus()">{{ prompt }}<el-icon><ArrowRight /></el-icon></button></div></div>
@@ -61,6 +61,7 @@
 
 <script setup lang="ts">
 import AnalysisWarnings from '../components/AnalysisWarnings.vue'
+import DataState from '../components/DataState.vue'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -345,6 +346,7 @@ onUnmounted(() => { epoch++; window.removeEventListener('filemate:before-refresh
 .resource-empty p, .blank-state p { font-size: 18px; margin: 0 0 24px; }
 .blank-state small { font-size: 15px; margin-top: 20px; }
 .source-reader pre { font-family: inherit; font-size: 18px; line-height: 2; white-space: pre-wrap; overflow-wrap: anywhere; }
+.source-reader pre{max-width:720px;margin-inline:auto}.blank-state.data-state{padding-block:48px;align-items:center;text-align:center}
 .source-reader h3 { font-size: 25px; margin: 0 0 14px; }
 .source-reader small { color: var(--text-secondary); font-size: 15px; }
 .citation-focus { padding: 20px; margin-bottom: 24px; background: var(--accent-soft); border-left: 3px solid var(--accent); line-height: 1.9; font-size: 18px; }

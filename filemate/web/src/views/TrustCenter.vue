@@ -12,7 +12,7 @@
       </div>
     </header>
 
-    <div v-if="loading" class="state" aria-live="polite">正在读取可信记录…</div>
+    <DataState v-if="loading" loading />
     <DataState v-else-if="error" :error="error" @retry="load" />
     <template v-else-if="data">
       <section class="guarantee-strip" aria-label="数据边界">
@@ -47,7 +47,7 @@
               </ol>
             </article>
           </div>
-          <div v-else class="empty">完成一场模拟面试或声明资料授权后，这里会显示处理过程。</div>
+          <DataState v-else empty title="还没有处理记录" empty-text="完成面试或声明资料授权后，可以回看处理过程。"><template #action><RouterLink to="/interview">开始一场模拟面试</RouterLink></template></DataState>
         </article>
 
         <aside class="panel roles-panel">
@@ -76,7 +76,7 @@
             <button type="button" :disabled="savingSource === source.source_id" @click="saveRights(source)">{{ savingSource === source.source_id ? '校验中…' : '保存声明' }}</button>
           </article>
         </div>
-        <div v-else class="empty">知识库暂无资料。导入后，系统会先按“未确认、仅自己可用”处理。</div>
+        <DataState v-else empty title="还没有学习资料" empty-text="导入后默认未确认授权，仅自己可用。"><template #action><RouterLink to="/import?intent=study">添加一份资料</RouterLink></template></DataState>
       </section>
 
       <section class="panel memory-panel">
@@ -92,7 +92,7 @@
             <button type="button" :disabled="deletingMemory === memory.memory_id" @click="removeMemory(memory)">{{ deletingMemory === memory.memory_id ? '撤销中…' : '撤销这条记忆' }}</button>
           </article>
         </div>
-        <div v-else class="empty">当前没有可复用的摘要记忆。</div>
+        <DataState v-else empty title="还没有摘要记忆" empty-text="你主动保存的摘要会显示在这里。"><template #action><RouterLink to="/knowledge">查看学习资料</RouterLink></template></DataState>
       </section>
     </template>
   </div>

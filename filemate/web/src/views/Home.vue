@@ -14,7 +14,7 @@
         <router-link v-else class="solid-link hero-start" :to="action.route">{{ action.title }}<el-icon><ArrowRight /></el-icon></router-link>
         <router-link v-if="firstVisit" to="/import?intent=study">直接导入我的课件</router-link>
       </div>
-      <p v-if="firstVisit" class="sample-note">将原创示例保存到当前学习空间，不调用模型。</p>
+      <p v-if="firstVisit" class="sample-note">原创示例会保存到当前空间，不调用模型。</p>
       <p v-if="homeError" role="alert">{{ homeError }}</p>
     </section>
     <span v-if="loading" class="sr-only" role="status">正在读取你的学习记录…</span>
@@ -42,11 +42,7 @@
               <router-link to="/history"><span>待确认归档</span><strong :class="{ amber: metrics.pending > 0 }">{{ metrics.pending }}<small>份</small></strong><el-icon><ArrowRight /></el-icon></router-link>
               <div><span>已归档</span><strong>{{ metrics.confirmed }}<small>份</small></strong></div>
             </section>
-            <div v-if="!recentFiles.length" class="empty-files">
-              <template v-if="loading"><span class="history-skeleton" aria-hidden="true" /><span class="history-skeleton short" aria-hidden="true" /><span>正在读取归档记录…</span></template>
-              <template v-else-if="errorMessage"><h3>归档记录暂时无法读取</h3><p role="alert">{{ errorMessage }}</p><el-button @click="loadDashboard">重新加载</el-button></template>
-              <template v-else><el-icon aria-hidden="true"><FolderOpened /></el-icon><h3>还没有归档处理记录</h3><p>这里记录分类与归档操作。已导入的学习资料可从知识库打开。</p><router-link to="/knowledge">打开我的资料<el-icon><ArrowRight /></el-icon></router-link></template>
-            </div>
+            <DataState v-if="!recentFiles.length" compact :loading="loading" :error="errorMessage" empty title="还没有归档处理记录" @retry="loadDashboard"><template #icon><el-icon aria-hidden="true"><FolderOpened /></el-icon></template><template #empty><p>这里记录分类与归档操作。</p></template><template #action><router-link to="/knowledge">打开我的资料<el-icon><ArrowRight /></el-icon></router-link></template></DataState>
             <div v-else class="file-list">
               <div class="file-list-head"><span>文件</span><span>状态</span></div>
               <router-link v-for="file in recentFiles" :key="file.session_id" class="file-row" to="/history" :aria-label="`在处理记录中查看 ${getFileName(file.source_path)}`">
@@ -78,6 +74,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { ArrowRight, Calendar, FolderOpened, Lock, Microphone, Reading } from '../icons'
 import StudyMotif from '../components/StudyMotif.vue'
 import HeroEncouragement from '../components/HeroEncouragement.vue'
+import DataState from '../components/DataState.vue'
 import { getHistory, getAccountState, getKnowledgeSources, listAIContexts, getWrongbookPage, getPrivacyBoundary, importLearningSource } from '../services/api'
 import { resolveHomeAction, createSampleImporter } from '../home/action'
 import type { HistoryItem, SessionStatus } from '../types'
@@ -166,14 +163,15 @@ onMounted(loadDashboard)
 
 <style scoped>
 .home-action{min-height:196px;margin:-8px 0 24px;padding:20px 0;display:flex;flex-direction:column;justify-content:center;gap:12px}.home-action h2{margin:0;font-size:22px;line-height:1.5}.first-visit ol{display:flex;flex-wrap:wrap;gap:12px 28px;margin:8px 0 0;padding-left:22px;color:var(--text-secondary);font-size:16px}.home-action-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px}.home-action-row>a:not(.solid-link){min-height:44px;display:inline-flex;align-items:center;color:var(--accent);font-size:17px}.sample-note{margin:0;font-size:14px;color:var(--text-secondary)}.home-action button{border:0;cursor:pointer}.home-action button:disabled{cursor:wait;box-shadow:none}.task-details summary{min-height:44px;align-content:center;cursor:pointer;font-size:16px;color:var(--text-secondary);margin-left:74px}.today-start{display:inline-flex;align-items:center;gap:12px;min-height:44px;font-size:17px;color:var(--accent)}
-.dashboard { max-width:1360px; margin:0 auto; min-width:0; }
+.dashboard { max-width:1440px; margin:0 auto; min-width:0; }
 a { color:inherit; text-decoration:none; }
 .welcome { --quote-ink:#f4f7fd; --quote-secondary:#e0e8fb; --quote-line:#8199c5; position:relative; isolation:isolate; display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); align-items:center; gap:40px; overflow:hidden; padding:44px; margin-bottom:32px; background:var(--hero-background); color:var(--hero-ink); border:0; border-radius:16px; min-height:380px; }
 .welcome::after { content:''; position:absolute; z-index:0; width:470px; height:470px; border:1px solid #7299e7; border-radius:50%; right:-240px; bottom:-315px; pointer-events:none; }
 .welcome-motif { position:absolute; width:210px; bottom:-55px; right:14px; z-index:0; pointer-events:none; transform:rotate(7deg); }
 .welcome :deep(.hero-encouragement) { padding-bottom:45px; }
 .welcome :deep(.hero-encouragement::before) { bottom:40px; }
-.welcome :deep(.encouragement-words) { font-family:var(--font-sans); font-size:clamp(28px,2.5vw,36px); line-height:1.65; }
+.welcome :deep(.encouragement-words) { font-family:var(--font-sans); font-size:28px; line-height:1.5; }
+.welcome :deep(.verse-line) { display:inline; }
 .welcome :deep(.verse-line:last-child) { font-weight:600; }
 .welcome-copy { position:relative; z-index:1; min-width:0; }
 .welcome-meta { display:flex; flex-wrap:wrap; gap:10px 18px; color:var(--hero-highlight); font-size:17px; font-weight:500; }
@@ -218,4 +216,8 @@ a { color:inherit; text-decoration:none; }
 @media(max-width:700px) { .welcome { padding:28px 24px; border-radius:14px; margin-bottom:24px; }.welcome h1 { font-size:44px; margin-top:20px; }.welcome p { font-size:18px; }.welcome-meta { font-size:16px; gap:8px 16px; }.overview { grid-template-columns:1fr 1fr; gap:20px 0; }.overview > :nth-child(3) { padding-left:0; }.overview > :nth-child(2) { border:0; }.desk-aside { display:block; }.focus-sheet { padding:22px 16px 6px; }.section-heading h2 { font-size:23px; }.section-hint { display:none; }.task-entry-main { padding:18px 0; gap:12px; }.task-entry-copy strong { font-size:22px; }.task-entry-copy > span { font-size:17px; }.task-entry-links { padding-left:0; gap:0 18px; }.file-row { grid-template-columns:36px minmax(0,1fr); gap:10px; }.file-status { grid-column:2; }.row-arrow,.file-list-head { display:none; }.partner-note { margin-top:20px; }.partner-note img { right:16px; } }
 @media(max-width:700px) { .welcome-motif { display:none; }.welcome :deep(.hero-encouragement) { padding-bottom:0; } }
 @media(prefers-reduced-motion:reduce) { .task-entry-arrow { transition:none; }.task-entry-main:hover .task-entry-arrow { transform:none; } }
+@media(max-width:700px) {
+ .welcome{display:block;padding:18px 20px;margin-bottom:16px;min-height:0}.welcome h1{font-size:clamp(26px,8vw,32px);line-height:1.24;margin:12px 0 10px;letter-spacing:-.04em}.welcome h1 br{display:none}.welcome-meta{font-size:14px;line-height:1.7;gap:6px 12px}.welcome p{font-size:16px;line-height:1.5;margin:0 0 10px}.welcome :deep(.hero-encouragement){margin-top:10px;padding-top:8px;padding-bottom:0}.home-action{min-height:188px;padding:8px 0;margin:0 0 16px;gap:8px}.home-action h2{font-size:18px;line-height:1.5}.first-visit ol{font-size:14px;gap:6px 23px;margin-top:6px}.home-action-row{gap:8px;flex-wrap:wrap}.home-action .solid-link{min-height:44px;padding:8px 12px;font-size:16px;gap:0}.home-action .solid-link>.el-icon{display:none}.home-action-row>a:not(.solid-link){font-size:15px;min-height:44px}.sample-note{font-size:14px;line-height:1.5}.task-entry-main{min-height:100px;padding:12px 0}.task-entry-copy strong{font-size:21px}.task-entry-copy>span{font-size:16px;line-height:1.6}.focus-sheet{padding-top:18px}.task-entries{margin-top:10px}.task-details summary{margin-left:0}.partner-note>div{max-width:calc(100% - 110px)}
+}
+@media(max-width:700px){.home-action{min-height:0;padding:8px 0 0;margin-bottom:8px}.first-visit{order:1}.sample-note{order:2}.home-action-row{order:3}.home-action>p[role=alert]{order:4}.focus-sheet{padding:12px 16px 6px}.focus-sheet>.section-heading{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%)}.task-entries{margin-top:0}}
 </style>

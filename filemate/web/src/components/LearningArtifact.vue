@@ -65,6 +65,7 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .primary { background: var(--action-fill, var(--accent)); color: white; margin-top: 20px; border-color: var(--accent); }
 h4 { font-size: 24px; line-height: 1.75; margin: 24px 0 18px; }
 .read-content, .note-content p { white-space: pre-wrap; line-height: 1.95; font-size: 18px; overflow-wrap: anywhere; }
+.read-content,.note-content{max-width:720px;margin-inline:auto}
 .note-content section { padding: 8px 0; }
 .choice { display: flex; align-items: flex-start; gap: 14px; padding: 18px 16px; margin: 12px 0; border: 1px solid var(--border-subtle); border-radius: 12px; font-size: 18px; line-height: 1.7; cursor: pointer; min-height: 54px; }
 .choice:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }

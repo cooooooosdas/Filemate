@@ -36,7 +36,7 @@
 
       <div class="space-caption"><span class="space-dot" />个人学习空间</div>
 
-      <nav class="nav-groups" aria-label="功能导航">
+      <nav ref="navigation" class="nav-groups" aria-label="功能导航" @scroll="updateNavScroll">
         <section v-for="group in navigationGroups" :key="group.label" class="nav-group">
           <p class="nav-group-label">{{ group.label }}</p>
           <div v-for="item in group.items" :key="item.path" class="nav-branch">
@@ -56,6 +56,7 @@
           </div>
         </section>
       </nav>
+      <p v-if="navOverflow" class="nav-scroll-hint">{{ navAtBottom ? '向上查看更多功能' : '向下查看更多功能' }}</p>
 
       <div class="sidebar-foot">
         <div class="service-state" :class="{ online: backendConnected, checking: backendConnected === null }" aria-live="polite">
@@ -143,14 +144,7 @@
       <template #footer><el-button @click="showAccount = false">关闭</el-button><el-button type="primary" :loading="loggingOut" @click="signOut">退出登录</el-button></template>
     </el-dialog>
     <el-dialog v-model="showSettings" title="应用设置" class="preferences-dialog" top="5vh" width="min(780px, calc(100vw - 32px))">
-      <el-tabs v-model="settingsTab" class="preferences-tabs">
-        <el-tab-pane label="外观" name="appearance"><PreferencePanelLoader v-if="showSettings" kind="appearance" /></el-tab-pane>
-        <el-tab-pane label="保存位置" name="downloads" lazy><PreferencePanelLoader v-if="showSettings" kind="downloads" /></el-tab-pane>
-        <el-tab-pane label="模型服务" name="model" lazy><SettingsPanelLoader v-if="showSettings" :backend-connected="backendConnected" :active="showSettings && settingsTab === 'model'" /></el-tab-pane>
-        <el-tab-pane label="连接状态" name="connection" lazy>
-          <section class="connection-settings"><h3>{{ backendConnected ? '学习服务已连接' : '学习服务暂未连接' }}</h3><p>{{ backendConnected ? '可以导入、查看和保存资料。' : '请检查网络或本机服务，再重新连接。' }}</p><el-button type="primary" :loading="serviceChecking" @click="loadShellState">重新连接</el-button><p>{{ accountState?.enabled ? '学习资料保存在账号的服务器私有空间；保存位置设置仅影响本机导出文件。' : '学习资料由本机服务保存；保存位置设置仅影响导出文件。' }}</p></section>
-        </el-tab-pane>
-      </el-tabs>
+      <PreferencePanelLoader v-if="showSettings" kind="preferences" v-model:tab="settingsTab" :backend-connected="backendConnected" :service-checking="serviceChecking" :accounts-enabled="!!accountState?.enabled" @reconnect="loadShellState" />
       <template #footer><el-button @click="showSettings = false">完成</el-button></template>
     </el-dialog>
     <el-dialog v-model="showFinder" title="查找功能" width="min(580px, calc(100vw - 32px))" @opened="finder?.focus?.()" @closed="finder?.reset?.()">
@@ -193,7 +187,6 @@ import {
   ChevronDown
 } from './icons'
 import Logo from './components/Logo.vue'
-import SettingsPanelLoader from './components/SettingsPanelLoader.vue'
 import PreferencePanelLoader from './components/PreferencePanelLoader.vue'
 import { availableTools, primaryGroups, primaryPath, childrenTools, type Tool } from './navigation/catalog'
 import { routeViewKey } from './navigation/route-state'
@@ -224,6 +217,9 @@ const backendConnected = ref<boolean | null>(null)
 const serviceChecking = ref(false)
 const refreshToken = ref(0)
 const showFinder = ref(false)
+const navigation = ref<HTMLElement>(), navOverflow = ref(false), navAtBottom = ref(false)
+function updateNavScroll() { const nav = navigation.value; if (!nav) return; navOverflow.value = nav.scrollHeight > nav.clientHeight + 2; navAtBottom.value = nav.scrollTop + nav.clientHeight >= nav.scrollHeight - 2 }
+watch(() => route.path, async () => { await nextTick(); updateNavScroll() })
 const finder = ref<{ focus: () => void; reset: () => void } | null>(null)
 const mobileMenuButton = ref<HTMLButtonElement | null>(null)
 let shellRevision = 0
@@ -320,6 +316,8 @@ function expireSession(): void {
 }
 
 onMounted(() => {
+  void nextTick(updateNavScroll)
+  window.addEventListener('resize', updateNavScroll)
   void router.isReady().then(() => {
     if (!isAuthPath(route.path)) void loadShellState()
   })
@@ -328,6 +326,7 @@ onMounted(() => {
   window.addEventListener('filemate:session-expired', expireSession)
 })
 onUnmounted(() => {
+  window.removeEventListener('resize', updateNavScroll)
   shellRevision += 1
   window.removeEventListener('keydown', handleShortcut)
   window.removeEventListener('resize', handleResize)
@@ -730,7 +729,7 @@ function isAuthPath(path: string): boolean {
   background: var(--workspace-background);
 }
 
-.route-surface { min-height:calc(100dvh - var(--topbar-height)); min-width:0; }
+.route-surface { min-height:calc(100dvh - var(--topbar-height)); min-width:0; width:100%;max-width:1440px;margin-inline:auto; }
 
 .site-footer {
   width: min(1180px, 100%);
@@ -1037,6 +1036,11 @@ function isAuthPath(path: string): boolean {
 
 <style scoped>
 .preferences-tabs{min-width:0}.preferences-tabs :deep(.el-tabs__item){font-size:17px;min-height:48px}.connection-settings h3{font-size:25px;line-height:1.5}.connection-settings p{font-size:17px;line-height:1.8;color:var(--text-secondary)}
+.topbar,.sidebar-head,.sidebar-foot,.space-caption{flex-shrink:0}.nav-groups{scrollbar-gutter:stable;scroll-padding-block:8px;min-height:0}.nav-scroll-hint{flex-shrink:0;margin:0;padding:4px 12px;text-align:center;font-size:14px;color:var(--sidebar-secondary);line-height:1.5}.sidebar-collapsed .nav-scroll-hint{display:none}
+.topbar-title>div{min-width:0}.page-title{display:block}
+@media(min-width:901px){.sidebar .nav-item{min-height:38px;height:38px;max-height:38px;font-size:16px;margin-bottom:2px}.sidebar .nav-children a{min-height:38px;padding-block:6px;font-size:15px}.sidebar-head{min-height:80px;padding-block:12px}.nav-group-label{margin-block:10px 6px}.space-caption{padding-bottom:10px}.nav-group+.nav-group{margin-top:6px}}
+@media(max-width:900px){.sidebar .nav-item,.sidebar .nav-children a{min-height:44px}.sidebar-collapsed .nav-scroll-hint{display:block}}
+@media(max-width:560px){.topbar-actions>.icon-button{display:inline-flex}.topbar-actions{gap:0}.topbar-title .page-title{max-width:68px;font-size:14px}.topbar-title{flex:1;min-width:0}.topbar{gap:0;padding-inline:8px}.topbar-actions>a,.topbar-actions>button{width:44px;min-width:44px;height:44px;min-height:44px}.sidebar .nav-item{min-height:44px}}
 </style>
 
 <style>
