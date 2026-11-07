@@ -1,5 +1,7 @@
 # FileMate 当前交付资源索引
 
+2026-11-07 验收后更新：用户已确认 D 阶段验收。新增 [验收后执行记录](POST_ACCEPTANCE_EXECUTION_2026-11-07.md)（真实 Edge 156 交互矩阵、两次容量复测）、[生产部署与开关启用清单](PRODUCTION_D_TRIAL_ACTIVATION_2026-11-07.md)、[E 级真人实验协议](LEARNING_ORCHESTRATOR_2_0_E_PROTOCOL_2026-11-07.md)。**生产未部署、生产开关未开启、E 级真人数据未采集、容量 P2 未关闭**；真实供应商调用（无密钥）、干净 Linux CI（WSL 被策略禁止）、Python3.11 旧运行时（本机无）按规则明确待验。容量两轮实测 6/8 场 PASS，万题 HTTP 四并发 P95 509–571ms 仍超 500ms。
+
 2026-11-07 最新：[试行版整合与 D 级工程验收最终收口](TRIAL_INTEGRATION_D_FINAL_DELIVERY_2026-11-07.md)。最终源码 `9ffe47d`（`codex/trial-integration-20261106`），统一门禁（后端 2163 通过、前端 441 通过、构建与 gzip 143360B 预算通过）、独立只读审阅无 P0/P1、23 份既有用户测试 git 层面未改动；发布包 `FileMate-20261107-trial-d-final.zip` 及同名 SHA256/manifest 已生成，旧包保留。阶段为 CONDITIONAL PASS 工程验收候选，**未部署生产、未开启 D 与试行开关、未实施 E 级真人实验**，须先取得 D 阶段用户验收。真实供应商调用、旧运行时整应用、真机联合矩阵与干净 Linux CI 仍按原计划待补。D1—D8 与四目标证据见 [D 级交付](LEARNING_ORCHESTRATOR_2_0_D_DELIVERY.md)。
 
 2026-11-02 学习教练D级：[完整设计](superpowers/specs/2026-11-02-learning-orchestrator-d-design.md)已由用户确认；[九项详细实施计划](superpowers/plans/2026-11-02-learning-orchestrator-d.md)已完成自审、等待计划审阅，尚未开始产品实现。沿用当前会话逐项实施、最后一次独立审阅；D验收、E及生产开关仍按阶段办理。第三版Linux容量P2见[实际调查](WRONGBOOK_LINUX_CAPACITY_INVESTIGATION_2026-11-02.md)，仍为未达标。

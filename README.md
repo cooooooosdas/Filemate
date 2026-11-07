@@ -1,5 +1,7 @@
 # FileMate
 
+2026-11-07 验收后：用户已确认 D 阶段验收。补充真实 Edge 交互矩阵（复盘→教练闭环、四主题、320–1440px、关闭开关降级）与两次容量复测；详见[验收后执行记录](docs/POST_ACCEPTANCE_EXECUTION_2026-11-07.md)、[部署与开关启用清单](docs/PRODUCTION_D_TRIAL_ACTIVATION_2026-11-07.md)、[E 级真人实验协议](docs/LEARNING_ORCHESTRATOR_2_0_E_PROTOCOL_2026-11-07.md)。**生产未部署、生产开关未开启、E 级真人数据未采集、容量 P2 未关闭**；真实供应商调用缺密钥、干净 Linux CI 与旧运行时缺环境，按规则不得伪造。
+
 2026-11-07 试行版整合与学习教练 D 级工程验收已收口：最终源码 `9ffe47d`，统一门禁（后端 2163 通过、前端 441 通过、构建与 gzip 143360B 预算通过）、一次独立只读审阅无 P0/P1、23 份既有用户测试未改动；`FileMate-20261107-trial-d-final.zip` 及 SHA256/manifest 已交付，旧包保留。阶段为 CONDITIONAL PASS 工程验收候选，**未部署生产、未开启 D 与试行开关、未实施 E 级真人实验**，须先取得 D 阶段用户验收；真实供应商调用、旧运行时整应用、真机联合矩阵与干净 Linux CI 仍待补。详见[最终收口报告](docs/TRIAL_INTEGRATION_D_FINAL_DELIVERY_2026-11-07.md)。
 
 2026-11-05 最终网页优化已上线，Web185f7b3、后端仍fdf6f40；本机2142后端／430前端、最终Linux2159后端／430前端通过。公网注册上传阅读与注销、真实404、六次冷加载通过。源码包含未启用的D候选，生产D／独立音视频继续关闭。详见[最终网页优化交付与回滚](docs/FINAL_WEB_OPTIMIZATION_DELIVERY_2026-11-05.md)。
