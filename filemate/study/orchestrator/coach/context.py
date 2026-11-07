@@ -8,7 +8,15 @@ from typing import Any
 from filemate.execution.data_actions import digest
 from filemate.execution.storage import SQLiteStorage
 
-from ..models import LOCAL_ZONE, Clock, EvidenceSnapshot, TaskProjection, aware, utc_now
+from ..models import (
+    LOCAL_ZONE,
+    Clock,
+    EvidenceSnapshot,
+    ScopeRequest,
+    TaskProjection,
+    aware,
+    utc_now,
+)
 from ..snapshot import SnapshotReader
 from ..task_views import project_tasks
 from .evidence import (
@@ -20,7 +28,9 @@ from .evidence import (
     selected_submissions,
     selected_wrongs,
 )
-from .models import CoachContext, CoachFact, CoachInput, OrchestratorError
+from .models import CoachContext, CoachFact, CoachInput, CoachProposal, OrchestratorError
+from .output import REASON_KINDS, REASON_METHODS, supported_task_facts
+from .prompts import PROMPT_VERSION, full_message_bytes
 
 RUNTIME_ID = "learning-coach-runtime"
 
@@ -45,34 +55,71 @@ def external_payload(
     projection: TaskProjection,
     facts: list[CoachFact],
 ) -> dict[str, Any]:
+    from .rules import (
+        RuleContext,
+        allowed_action_methods,
+        build_rule_proposal,
+        model_action_candidates,
+    )
+
+    planning = RuleContext(input, snapshot, projection, facts)
+    candidates = model_action_candidates(planning)
+    baseline = build_rule_proposal(planning) if any(f.kind == "goal" for f in facts) else None
     items = [item.model_dump(mode="json") for item in facts]
-    tasks = [
-        {
-            "task_id": task.task_id,
-            "title": task.title,
-            "estimated_minutes": task.estimated_minutes,
-            "status": task.status,
-            "eligibility": task.eligibility,
-        }
-        for task in projection.tasks
-    ]
+    tasks = list({task.task_id: task for task in projection.tasks + projection.completed}.values())
     totals = len(items), len(tasks)
     payload = {
+        "prompt_version": PROMPT_VERSION,
         "input": input.model_dump(mode="json"),
         "study_date": snapshot.study_date,
         "facts": items,
-        "tasks": tasks,
-        "coverage": {},
     }
     while True:
+        exposed = {row["fact_id"] for row in items}
+        visible_facts = [fact for fact in facts if fact.fact_id in exposed]
+        payload["tasks"] = [
+            {
+                "task_id": task.task_id,
+                "title": task.title,
+                "estimated_minutes": task.estimated_minutes,
+                "status": task.status,
+                "eligibility": task.eligibility,
+                "allowed_explanations": [
+                    {
+                        "fact_ids": [fact.fact_id for fact in support[:8]],
+                        "reason_code": reason,
+                        "method_codes": sorted(REASON_METHODS[reason]),
+                    }
+                    for reason in REASON_KINDS
+                    if (support := supported_task_facts(task, visible_facts, reason))
+                ],
+            }
+            for task in tasks
+        ]
+        payload["allowed_actions"] = [
+            {
+                "action": action.action,
+                "target_ref": action.target_ref.model_dump(mode="json"),
+                "fact_ids": action.fact_ids,
+                "method_codes": sorted(allowed_action_methods(planning, action)),
+                "default_minutes": action.minutes,
+            }
+            for action in candidates
+            if set(action.fact_ids) <= exposed
+        ]
+        payload["baseline"] = _external_baseline(baseline, exposed, {t.task_id for t in tasks})
         payload["coverage"] = {
             "omitted_facts": totals[0] - len(items),
             "omitted_tasks": totals[1] - len(tasks),
+            "omitted_actions": len(candidates) - len(payload["allowed_actions"]),
             "truncated": (len(items), len(tasks)) != totals,
         }
-        encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
-        # Reserve room for the adapter's schema instruction and escaped message framing.
-        if len(encoded) <= 24000 and len(encoded.encode()) <= 54000:
+        encoded = json.dumps(payload, ensure_ascii=False, allow_nan=False)
+        if (
+            len(encoded) <= 24000
+            and len(encoded.encode("utf-8")) <= 54000
+            and full_message_bytes(payload) <= 65536
+        ):
             return payload
         if tasks:
             tasks.pop()
@@ -80,6 +127,44 @@ def external_payload(
             items.pop()
         else:
             raise OrchestratorError("coach_input_too_large", 422)
+
+
+def _external_baseline(
+    baseline: CoachProposal | None, exposed_facts: set[str], exposed_tasks: set[str]
+) -> dict[str, Any]:
+    """Reserve every hidden allocation while exposing only closed action references."""
+    if baseline is None:
+        return {"new_actions": [], "days": []}
+    minutes = {
+        task.task_id: task.estimated_minutes
+        for day in baseline.days
+        for task in day.schedule.selected
+    }
+    visible = [action for action in baseline.new_actions if set(action.fact_ids) <= exposed_facts]
+    return {
+        "new_actions": [
+            action.model_dump(mode="json", exclude={"action_key"})
+            | {"minutes": minutes[action.action_key]}
+            for action in visible
+        ],
+        "days": [
+            {
+                "study_date": day.study_date,
+                "available_minutes": day.options.available_minutes,
+                "estimated_minutes": day.schedule.estimated_minutes,
+                "reserved_minutes": day.schedule.estimated_minutes
+                - sum(
+                    minutes[action.action_key]
+                    for action in visible
+                    if action.study_date == day.study_date
+                ),
+                "selected_task_ids": [
+                    task.task_id for task in day.schedule.selected if task.task_id in exposed_tasks
+                ],
+            }
+            for day in baseline.days
+        ],
+    }
 
 
 class CoachContextReader:
@@ -113,6 +198,15 @@ class CoachContextReader:
             raise OrchestratorError("target_day_outside_window", 422)
         snapshot = SnapshotReader(read).read_in_transaction(read, input.scope, as_of=as_of)
         input = input.model_copy(update={"scope": snapshot.scope})
+        reflection_revision = None
+        if input.reflection_id:
+            reflection = read.get_artifact(input.reflection_id)
+            if reflection is None or reflection['artifact_type'] != 'weekly_reflection':
+                raise OrchestratorError('reflection_not_found', 404)
+            saved_scope = ScopeRequest.model_validate(reflection['content'].get('scope'))
+            if saved_scope != snapshot.scope:
+                raise OrchestratorError('reflection_outside_scope', 422)
+            reflection_revision = digest(reflection['content'])
         goal = snapshot.facts["goal"]
         original = (
             read._conn()
@@ -185,6 +279,7 @@ class CoachContextReader:
                 "facts": [f.model_dump(mode="json") for f in facts],
                 "interviews": interview_bindings,
                 "restore_epoch": restore_epoch,
+                "reflection_revision": reflection_revision,
             }
         )
         return CoachContext(

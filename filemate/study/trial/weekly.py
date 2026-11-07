@@ -1,6 +1,6 @@
 """Read saved weekly arrangements against one current, authorized evidence snapshot."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from pydantic import ValidationError
 
@@ -100,8 +100,13 @@ class WeeklyReader:
             elif task is not None and task.eligibility in ("eligible", "not_due"):
                 status = "pending"
                 summary.pending_tasks += 1
-                if task.due_date and task.due_date[:10] < today.isoformat():
-                    summary.overdue_tasks += 1
+                if task.due_date:
+                    due = datetime.fromisoformat(task.due_date.replace("Z", "+00:00"))
+                    due_day = (
+                        due.astimezone(LOCAL_ZONE).date() if due.tzinfo is not None else due.date()
+                    )
+                    if due_day < today:
+                        summary.overdue_tasks += 1
             else:
                 summary.unresolved_tasks += 1
             items.append(WeeklyItem(task_id=identifier, status=status, dates=dates, task=task))

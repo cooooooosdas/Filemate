@@ -95,6 +95,18 @@
         128
       ],
       "quality": 92
+    },
+    {
+      "source": "optimized/filemate-brand-lockup.svg",
+      "output": "filemate-brand-navigation.svg",
+      "output_bytes": 26598,
+      "output_sha256": "5a37a6daedb633559d111cdd8c5345420a934288f0e2810aa7504f540c849f60",
+      "dimensions": [
+        936,
+        220
+      ],
+      "format": "vector_paths",
+      "derivation": "Original folder, face, sparkle and FileMate wordmark paths; tagline and tracing fragments omitted; transparent pale navigation variant."
     }
   ]
 }

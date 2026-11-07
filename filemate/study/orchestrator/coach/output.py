@@ -2,6 +2,7 @@
 
 from pydantic import Field, ValidationError
 
+from ..models import TaskView
 from .evidence import decode
 from .models import (
     CoachAction,
@@ -80,6 +81,25 @@ def render_explanation(reason_code: str, method_code: str, facts: list[CoachFact
     return REASON_TEXT[reason_code] + METHOD_TEXT[method_code]
 
 
+def supported_task_facts(
+    task: TaskView, facts: list[CoachFact], reason_code: str
+) -> list[CoachFact]:
+    """Use the same exact task-to-evidence binding for preview and validation."""
+    origin_ids = {ref.get("id") for ref in task.origin_refs}
+    return [
+        fact
+        for fact in facts
+        if fact.kind in REASON_KINDS[reason_code]
+        and (
+            fact.record_id in origin_ids
+            or fact.kind == "goal"
+            and fact.record_id == task.goal_id
+            or fact.kind == "source"
+            and fact.record_id == task.source_id
+        )
+    ]
+
+
 def validate_enhancement(
     context: CoachContext, baseline: CoachProposal, raw: object
 ) -> CoachProposal:
@@ -90,7 +110,12 @@ def validate_enhancement(
         data = CoachModelOutput.model_validate(decode(raw) if isinstance(raw, str) else raw)
     except (ValidationError, TypeError, ValueError):
         raise OrchestratorError("model_output_invalid", 422) from None
-    known_tasks = {t.task_id: t for t in context.projection.tasks + context.projection.completed}
+    exposed_tasks = {row["task_id"] for row in context.external_payload["tasks"]}
+    known_tasks = {
+        task.task_id: task
+        for task in context.projection.tasks + context.projection.completed
+        if task.task_id in exposed_tasks
+    }
     if len(data.task_order) != len(set(data.task_order)) or not set(data.task_order) <= set(
         known_tasks
     ):
@@ -136,16 +161,7 @@ def validate_enhancement(
         cited = [facts[key] for key in item.fact_ids]
         if item.task_id:
             task = known_tasks[item.task_id]
-            origin_ids = {ref.get("id") for ref in task.origin_refs}
-            primary = [f for f in cited if f.kind in REASON_KINDS[item.reason_code]]
-            if not any(
-                f.record_id in origin_ids
-                or f.kind == "goal"
-                and f.record_id == task.goal_id
-                or f.kind == "source"
-                and f.record_id == task.source_id
-                for f in primary
-            ):
+            if not supported_task_facts(task, cited, item.reason_code):
                 raise OrchestratorError("enhancement_evidence_mismatch", 422)
         explanations.append(
             CoachExplanation(

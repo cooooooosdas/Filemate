@@ -22,6 +22,7 @@ from .models import (
     CoachRunView,
     OrchestratorError,
 )
+from .prompts import PROMPT_VERSION
 from .rules import build_rule_proposal
 from .settings import LEASE_SECONDS, enabled
 
@@ -52,7 +53,10 @@ def result_id(identifier: str) -> str:
 
 
 def request_digest(body: CoachRequest) -> str:
-    return digest(body.model_dump(mode="json"))
+    payload = body.model_dump(mode="json")
+    if body.mode == "llm":
+        return digest({"request": payload, "prompt_version": PROMPT_VERSION})
+    return digest(payload)
 
 
 @dataclass(frozen=True)
@@ -150,7 +154,11 @@ class CoachRepository:
             "provider",
             "model",
         )
-        return CoachRunView(**{k: record.get(k) for k in fields}, proposal=proposal)
+        return CoachRunView(
+            **{k: record.get(k) for k in fields},
+            proposal=proposal,
+            prompt_version=record.get("prompt_version", "learning-coach-v1"),
+        )
 
     def find(self, request_key: str, input_digest: str | None = None) -> CoachRunView | None:
         with atomic(self.storage) as conn:
@@ -205,6 +213,7 @@ class CoachRepository:
                 "admission_status": "pending",
                 "provider": None,
                 "model": None,
+                "prompt_version": PROMPT_VERSION,
             }
             if body.mode == "llm":
                 runtime.update(
@@ -217,6 +226,7 @@ class CoachRepository:
             metadata = {
                 "dependencies": {
                     "goal": context.input.scope.goal_id,
+                    "reflection_id": context.input.reflection_id,
                     "sources": context.input.scope.source_ids,
                     **context.input.selection.model_dump(mode="json"),
                 }

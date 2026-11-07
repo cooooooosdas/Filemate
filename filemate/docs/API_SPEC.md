@@ -1343,19 +1343,25 @@ C级审阅修复：客户端消费公共顶层status/code错误合同（适配�
 
 证据读取服务为：`CoachContextReader.read(CoachInput)`在同一SQLite读事务内校验当前目标、课程和最多20份资料，并读取用户明确选择的证据。选择上限为3场面试、10次提交、5个概念、3组错题、3项反馈；求职目标另可选择同空间已保存岗位及最多5条要求。原答／问题／反馈摘录至多500字，岗位原句至多400字，只有用户确认的错因能作为错因事实；模型反馈明确保留其来源，不作为掌握率或岗位胜任分。编程只接受题目版本有效、completed且active的可信编译器结果，不发送代码或AI评分。
 
-外发预览体限制为24000字符和54000字节，为适配器追加的完整JSON Schema及消息转义预留空间，上游完整消息总量不超过64KiB；超出部分显式计入omitted_facts／omitted_tasks，预览摘要绑定确切内容。模型请求通过下述D级HTTP接口显式发起；阶段测试包括内部服务及自有回环HTTP。上下文修订包含完整被选原记录、实际上海日期及恢复epoch，修改500字摘录以外的内容同样使旧修订失效；精准采样时钟不进入稳定摘要。
+外发预览体限制为24000字符和54000字节，并在裁剪阶段核对适配器追加的完整JSON Schema与实际消息转义，上游完整消息总量不超过64KiB。超出部分显式计入omitted_facts／omitted_tasks／omitted_actions，预览摘要绑定确切内容。模型请求通过下述D级HTTP接口显式发起；阶段测试包括内部服务及自有回环HTTP。上下文修订包含完整被选原记录、实际上海日期及恢复epoch，修改500字摘录以外的内容同样使旧修订失效；精准采样时钟不进入稳定摘要。
+
+2026-11-06模型提示版本为`learning-coach-v2`。外发体增加prompt_version、allowed_actions、tasks.allowed_explanations与baseline，全部进入原external_digest及单次consent_digest核验。allowed_actions由真实规则动作目录生成，列出完整target_ref、必须逐字复制的精确fact_ids集合、同时满足动作／原因适用矩阵的method_codes及默认分钟数；已由原任务表示的动作由原任务解释选项承接。每个任务的解释选项使用实际origin_refs／goal_id／source_id与已显示事实进行相同绑定。fact_id包含修订后缀，禁止用record_id或自行拼接值代替。
+
+baseline列出规则已安排的可见短任务及逐日available_minutes、estimated_minutes、reserved_minutes和可见selected_task_ids。reserved_minutes保留未列入短任务清单的实际占用，省略某条模型动作会保留原规则动作。裁剪后重新生成可选目录，全部引用仅指向可见事实／任务，隐藏分配仍计入预算占用。服务端继续进行完整身份、精确支持集合、固定位置、完成保护、依赖和共同预算核验。
 
 内部选择目录固定30条／页，支持interview／submission／concept／wrong／position、普通文本q（最多120字）和offset（0—1000000）。目录只返回id、label、updated_at、revision、valid、source_id；无实际修改时间的概念返回updated_at=null。正文只对当前页或显式选择的ID做有界核验，损坏记录标为valid=false。现役岗位标题只存在JSON中，岗位搜索以SQLite文本匹配已保存岗位JSON，至多将当前页30份有界岗位内容加载并解析，不读取其他模块正文，也不联网抓取；此兼容路径不承诺结构化标题索引性能。
 
 无来源计划只在明确关联当前goal_id、且所有资料／课程依赖仍在所选范围内时读取。教练新增计划与旧普通计划按身份合并；source_id=null不表示允许读取全空间计划。目录与上下文读取均不写库、不调用模型、不创建学习计划。认证沿用现役账号空间，不允许请求指定workspace、用户ID或数据库路径。
 
-D任务2增加内部纯函数`build_rule_proposal`与`validate_enhancement`，版本分别为`learning-coach-rules-v1`和`learning-coach-v1`。五类请求共用现役调度器，原任务和建议动作共同计算预算；最多7条新动作、7个上海自然日，同一待办／复习周期在批次内只安排一次。无估时不按0分钟处理，固定项不能保留时返回pinned_task_conflict，不静默延期。未来安排保持事实as_of不变；临时的前序计划依赖不会进入实际完成记录。
+D任务2增加内部纯函数`build_rule_proposal`与`validate_enhancement`，当前规则版本为`learning-coach-rules-v1`、模型提示版本为`learning-coach-v2`。五类请求共用现役调度器，原任务和建议动作共同计算预算；最多7条新动作、7个上海自然日，同一待办／复习周期在批次内只安排一次。无估时不按0分钟处理，固定项不能保留时返回pinned_task_conflict，不静默延期。未来安排保持事实as_of不变；临时的前序计划依赖不会进入实际完成记录。
 
 模型输出仅允许explanations、task_order、new_actions，原因和方法采用固定适用矩阵；事实、原任务、目标身份与版本由服务器核验，action_key由服务器生成，拒绝分数、自由正文、URL、工具和额外字段。解释文字由固定模板生成，编译事实不能附到无关的阅读任务上。仅补充解释时保留规则动作；任何无效增强均整份拒绝，原规则方案保持不变。新动作只有排入共同预算才进入提议，无法排入的模型动作返回model_actions_unschedulable；真实模型请求及失败状态持久化见任务3，工程验证使用自有回环Provider。
 
 D任务3接入内部`CoachService.request/get/cancel`及受保护的请求、结果、运行态和操作类型，不新增迁移。`FILEMATE_ENABLE_LEARNING_COACH=0`默认关闭，且需同时启用今日行动开关；关闭后历史读取、原键回执与取消仍可使用。HTTP合同见下文，默认开关仍关闭。请求严格包含input、expected_context_revision、request_key、mode、allow_external_model及consent_digest；模型模式必须单次授权且预览摘要匹配，规则模式不读取凭据、不调用模型。
 
 同键先读原状态并核验正文摘要，拒绝冲突；业务短事务认领后，只有拥有者在事务外使用固定桶`learning-coach:v1`准入。全空间滚动24小时最多30次新请求，同空间最多1个模型运行，租约120秒。额度记录位于独立治理库，不随个人业务库备份恢复；已准入但本地回执丢失时中断，不再次外发。准入待定期间，重复请求只读取running，不抢占或中断拥有者。
+
+新模型请求的去重摘要同时绑定Prompt版本。提示版本变化后，使用旧键提交模型请求返回request_key_conflict，用户须重新读取预览并使用新键授权。历史GET按原请求保存的提示版本返回，早期缺少版本字段的记录按learning-coach-v1读取；规则请求沿用原去重摘要。
 
 模型复用现役Provider及BoundedLLMRunner，固定60秒截止、工作进程单次上游超时最多20秒、输出3500tokens；当前适配器以一次尝试执行，满足不超过两次上限，不承诺自动重试。真实回环HTTP测试核验完整上游消息、调用次数、故障降级与进程回收。模型在业务事务外运行；完成时重新校验完整证据、实际日期和恢复epoch，取消、过期或来源变化后的迟到结果不发布。规则可用而模型失败时为ready＋rule_fallback＋model_status=failed，安全错误码不包含供应商原文。凭据只传入私有进程管道，不进入请求控制Artifact、命令行或子进程环境；最小建议正文与来源依赖单独持久化，原键控制记录仅保留摘要及状态。共享结构化适配器同步拒绝任何层级的重复JSON键，不能在转换成dict后再假装完成此项核验。
 
@@ -1391,3 +1397,17 @@ CoachInput：question为1—2000字；scope为一目标、一可选课程、至�
 模型模式仅当allow_external_model=true且consent_digest匹配当前外发体时执行；规则模式不读取凭据。只有POST /requests属于临时X-FileMate-LLM-Key白名单，并要求受信Origin、X-FileMate-Action:model及mode=llm；其他端点和规则请求拒绝密钥。临时密钥只在当前请求配置与私有worker中传递，不进入响应或Artifact；治理quota不随个人恢复重置。来源于模拟runner的凭据边界测试不代表真实供应商连通性。
 
 常见错误：422 invalid_request／invalid_json／model_consent_required；409 context_changed、scope_changed、request_key_conflict、preview_expired_or_changed、schedule_changed_since_operation或执行／恢复边界冲突；429 coach_request_limit／coach_model_busy；503 coach_disabled、治理或数据不可用；401会话失效、404未知或越权记录。HTTP错误不回显请求正文、密钥或供应商异常。通用GET /knowledge/artifacts/{id}不再提供教练控制／结果Artifact；历史建议与操作分别走专用接口，授权个人导出和备份继续包含本人数据。
+
+## 2026-11-06 试行版复盘与反馈
+
+`FILEMATE_ENABLE_TRIAL_WORKSPACE=0`为默认值，前端新建入口受`VITE_ENABLE_TRIAL_WORKSPACE=false`控制。`GET /api/trial/capabilities`返回enabled和trial-workspace-v1合同。关闭后仍允许读取、导出和删除历史记录。
+
+`POST /api/trial/weekly/context`接收现役ScopeRequest，在上海自然周内读取当前目标截至今天已保存的最多7天安排。任务按原ID去重，完成状态来自原领域当前记录。未知引用单列，最多展示200项，返回revision及截断/范围说明。
+
+`POST /api/trial/reflections`接收scope、expected_revision、request_key、confirmed严格true、reason及1—2000字notes。保存前在同一事务重新核对revision，变化409。`POST /api/trial/feedback`接收request_key、confirmed严格true、category=bug|suggestion|other、固定module、20—2000字description、至多2000字steps及至多100字client_version。服务端另记权威server_version。新反馈每天每空间最多10条，已删除记录仍计入该日准入数。
+
+保存写入不可变weekly_reflection/trial_feedback Artifact及无正文trial_record_request墓碑。原键同正文重放返回原回执，同键异内容409，已删除原键410。`GET /api/trial/requests/{request_key}`只读恢复saved/deleted回执，404不能证明在途写入未发生。删除操作使用独立request_key，同样通过此接口恢复。
+
+`GET /api/trial/records`接受可选kind=reflection|feedback、limit默认20且最大50、offset最大10000，只返回摘要。`GET /api/trial/records/{id}`按需读正文。删除先`POST /api/trial/records/{id}/delete-preview`发送空对象，再`POST .../delete-confirm`发送request_key、confirmation_token和confirmed严格true。操作绑定当前记录与派生影响，删除与无正文终态、data_actions审计回执原子提交。旧令牌在个人恢复后失效，墓碑随个人备份恢复。
+
+CoachInput新增可空reflection_id。引用复盘必须属于当前目标/课程/资料范围，复盘内容摘要参与context_revision，并登记为教练依赖。复盘删除预览显示相应教练结果和派生计划数量，确认后按现役依赖清理合同清除相关正文。反思属于用户自述，现有模型外发逐次授权仍适用。

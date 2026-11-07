@@ -23,7 +23,7 @@ def test_five_intents_keep_evidence_and_budget(coach_case, intent, minutes):
         days=[{"study_date": "2026-10-31", "options": {"available_minutes": minutes}}],
     )
     assert result.rule_version == "learning-coach-rules-v1"
-    assert result.prompt_version == "learning-coach-v1"
+    assert result.prompt_version == "learning-coach-v2"
     assert len(result.new_actions) <= 7
     assert all(d.schedule.estimated_minutes <= d.options.available_minutes for d in result.days)
     assert len({a.action_key for a in result.new_actions}) == len(result.new_actions)

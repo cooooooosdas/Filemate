@@ -12,7 +12,7 @@ from .context import RUNTIME_ID
 from .models import CoachProposal, CoachRunView
 from .repository import REQUEST_TYPE, RESULT_TYPE, RUNTIME_TYPE, result_id
 
-KINDS = {"source", "interview", "attempt", "submission", "position", "goal"}
+KINDS = {"source", "interview", "attempt", "submission", "position", "goal", "reflection"}
 
 
 def _object(raw: str | None) -> dict[str, Any]:
@@ -44,6 +44,7 @@ def _matches(
     fields = {
         "source": [dependencies.get("sources"), scope.get("source_ids")],
         "goal": [dependencies.get("goal"), scope.get("goal_id")],
+        "reflection": [dependencies.get("reflection_id"), input_data.get("reflection_id")],
         "interview": [dependencies.get("interview_ids"), selection.get("interview_ids")],
         "submission": [dependencies.get("submission_ids"), selection.get("submission_ids")],
         "position": [dependencies.get("position_id"), selection.get("position_id")],

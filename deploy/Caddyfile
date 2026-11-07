@@ -26,7 +26,7 @@
 		not header Accept text/html*
 	}
 	# BEGIN GENERATED SPA ROUTES
-	@spa path / /ai-tools /career /classification /digital-human /goals /growth /history /import /interview /interview-bank /knowledge /knowledge-graph /login /naming /programming /recover /register /resume /schedule /semester /skills /study-plan /today /trust /wrongbook
+	@spa path / /ai-tools /career /classification /digital-human /goals /growth /history /import /interview /interview-bank /knowledge /knowledge-graph /login /naming /programming /recover /register /resume /schedule /semester /skills /study-plan /today /trial-feedback /trust /wrongbook
 	# END GENERATED SPA ROUTES
 	@robots path /robots.txt
 	@sitemap path /sitemap.xml

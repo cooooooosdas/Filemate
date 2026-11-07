@@ -78,6 +78,7 @@ class CoachDayInput(StrictRequest):
 
 class CoachInput(StrictRequest):
     scope: ScopeRequest
+    reflection_id: Identifier | None = None
     selection: CoachSelection = Field(default_factory=CoachSelection)
     intent: Literal["budget", "exam", "error_cause", "tomorrow", "next_step"]
     question: str = Field(min_length=1, max_length=2000)
@@ -396,7 +397,7 @@ class CoachRunView(BaseModel):
     context_revision: str
     proposal: CoachProposal | None = None
     rule_version: str = "learning-coach-rules-v1"
-    prompt_version: str = "learning-coach-v1"
+    prompt_version: str = "learning-coach-v2"
     provider: str | None = None
     model: str | None = None
     quota_window: Literal["rolling_24h"] = "rolling_24h"

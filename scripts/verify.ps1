@@ -46,7 +46,7 @@ try {
         filemate/tests/test_server_persistence.py `
         filemate/tests/test_retrieval.py `
         filemate/tests/test_study.py `
-        filemate/study filemate/wrongbook filemate/tests/wrongbook filemate/tests/orchestrator `
+        filemate/study filemate/wrongbook filemate/tests/wrongbook filemate/tests/orchestrator filemate/tests/trial `
         scripts/acceptance/orchestrator_runtime.py scripts/acceptance/orchestrator_performance.py scripts/acceptance/orchestrator_journey.py `
         scripts/acceptance/learning_coach_fixture.py scripts/acceptance/learning_coach_journey.py scripts/acceptance/learning_coach_runtime.py scripts/acceptance/learning_coach_performance.py evaluation/evaluate_learning_coach.py `
         filemate/course_graph filemate/tests/course_graph `

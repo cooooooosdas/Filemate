@@ -138,6 +138,9 @@ def test_model_order_cannot_move_a_pinned_position(coach_case):
     options = context.input.days[0].options
     options.item_order = [first.task_id, other.task_id]
     options.pinned_ids = [first.task_id]
+    context.external_payload = coach_module("context").external_payload(
+        context.input, context.snapshot, context.projection, context.facts
+    )
     raw["task_order"] = [other.task_id, first.task_id]
     with pytest.raises(coach_module("models").OrchestratorError, match="pinned_task_conflict"):
         coach_module("output").validate_enhancement(context, baseline, raw)

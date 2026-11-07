@@ -1,23 +1,27 @@
 """Evidence-bound local proposals with one shared budget and dependency scheduler."""
 
+from dataclasses import dataclass, field
+from typing import Any
 from urllib.parse import urlencode
 
 from filemate.execution.data_actions import digest
 from filemate.wrongbook.engine import parse_time
 
-from ..models import LOCAL_ZONE, ScheduleOptions, TaskProjection, TaskView
+from ..models import LOCAL_ZONE, EvidenceSnapshot, ScheduleOptions, TaskProjection, TaskView
 from ..scheduler import build_schedule
 from ..task_views import review_key
 from .models import (
     CoachAction,
     CoachContext,
     CoachExplanation,
+    CoachFact,
+    CoachInput,
     CoachProposal,
     CoachProposalDay,
     CoachTarget,
     OrchestratorError,
 )
-from .output import render_explanation
+from .output import ACTION_METHODS, REASON_METHODS, render_explanation
 from .prompts import PROMPT_VERSION
 
 RULE_VERSION = "learning-coach-rules-v1"
@@ -37,7 +41,21 @@ ACTION_LABELS = {
 }
 
 
-def action_candidates(context: CoachContext) -> list[CoachAction]:
+@dataclass(frozen=True)
+class RuleContext:
+    """Read-only planning inputs shared with the exact external preview."""
+
+    input: CoachInput
+    snapshot: EvidenceSnapshot
+    projection: TaskProjection
+    facts: list[CoachFact]
+    coverage: dict[str, Any] = field(default_factory=dict)
+
+
+PlanningContext = CoachContext | RuleContext
+
+
+def action_candidates(context: PlanningContext) -> list[CoachAction]:
     """Map only typed selected facts to real targets and canonical action identities."""
     result = {}
     causes = {f.record_id: f for f in context.facts if f.kind == "cause"}
@@ -149,7 +167,7 @@ def action_candidates(context: CoachContext) -> list[CoachAction]:
     return sorted(result.values(), key=lambda a: (rank[a.action], a.action_key))
 
 
-def _existing(context: CoachContext, action: CoachAction) -> TaskView | None:
+def _existing(context: PlanningContext, action: CoachAction) -> TaskView | None:
     for task in context.projection.tasks + context.projection.completed:
         if task.eligibility == "archived" and task.status != "completed":
             continue
@@ -172,6 +190,11 @@ def _existing(context: CoachContext, action: CoachAction) -> TaskView | None:
     return None
 
 
+def model_action_candidates(context: PlanningContext) -> list[CoachAction]:
+    """Expose only new actions whose identity is absent from original task state."""
+    return [action for action in action_candidates(context) if _existing(context, action) is None]
+
+
 def _route(action: CoachAction) -> str:
     target = action.target_ref
     root, query = {
@@ -184,7 +207,7 @@ def _route(action: CoachAction) -> str:
     return root + "?" + urlencode(query)
 
 
-def _view(context: CoachContext, action: CoachAction) -> TaskView:
+def _view(context: PlanningContext, action: CoachAction) -> TaskView:
     ref = {"kind": "coach_action", "id": action.action_key}
     return TaskView(
         task_id=action.action_key,
@@ -203,7 +226,7 @@ def _view(context: CoachContext, action: CoachAction) -> TaskView:
     )
 
 
-def _reason(context: CoachContext, action: CoachAction) -> str:
+def _reason(context: PlanningContext, action: CoachAction) -> str:
     kinds = {f.kind for f in context.facts if f.fact_id in action.fact_ids}
     if action.action == "review_question":
         return "confirmed_cause" if "cause" in kinds else "due_review"
@@ -217,8 +240,13 @@ def _reason(context: CoachContext, action: CoachAction) -> str:
     }[action.action]
 
 
+def allowed_action_methods(context: PlanningContext, action: CoachAction) -> set[str]:
+    """Expose methods accepted by both the action and its server-rendered reason."""
+    return ACTION_METHODS[action.action] & REASON_METHODS[_reason(context, action)]
+
+
 def assemble_proposal(
-    context: CoachContext,
+    context: PlanningContext,
     candidates: list[CoachAction],
     *,
     task_order: list[str] | None = None,
@@ -393,6 +421,6 @@ def assemble_proposal(
     )
 
 
-def build_rule_proposal(context: CoachContext) -> CoachProposal:
+def build_rule_proposal(context: PlanningContext) -> CoachProposal:
     """Produce usable local suggestions without provider setup, I/O or writes."""
     return assemble_proposal(context, action_candidates(context))

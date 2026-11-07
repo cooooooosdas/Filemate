@@ -22,6 +22,7 @@ from .models import (
     CoachRequest,
     OrchestratorError,
 )
+from .prompts import PROMPT_VERSION
 from .service import CoachService
 from .settings import HARD_TIMEOUT_SECONDS, MAX_REQUESTS_PER_WINDOW, enabled
 
@@ -68,7 +69,7 @@ def create_router(get_storage: Callable[[], SQLiteStorage]) -> APIRouter:
                 "enabled": enabled(),
                 "contract_version": "learning-coach-v1",
                 "rule_version": "learning-coach-rules-v1",
-                "prompt_version": "learning-coach-v1",
+                "prompt_version": PROMPT_VERSION,
                 "quota_window": "rolling_24h",
                 "limits": {
                     "sources": 20,

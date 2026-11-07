@@ -7,7 +7,7 @@ export function installTodaySessionBoundary(win: Window): () => void {
     try {
       for (let index = win.sessionStorage.length - 1; index >= 0; index--) {
         const key = win.sessionStorage.key(index)
-        if (key?.startsWith(pendingPrefix) || key?.startsWith('filemate-coach-pending-v1:')) win.sessionStorage.removeItem(key)
+        if (key?.startsWith(pendingPrefix) || key?.startsWith('filemate-coach-pending-v1:') || key?.startsWith('filemate-trial-pending-v1:')) win.sessionStorage.removeItem(key)
       }
     } catch { /* Stored write locators are also checked against the shared epoch. */ }
     if (broadcast) {

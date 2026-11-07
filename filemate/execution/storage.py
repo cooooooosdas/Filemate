@@ -1576,7 +1576,7 @@ class SQLiteStorage:
         if not artifact_type.strip():
             raise ValueError("artifact_type 不能为空")
         protected = {'learning_orchestration_day', 'learning_orchestration_operation',
-                     'learning_coach_request', 'learning_coach_result', 'learning_coach_runtime', 'learning_coach_operation'}
+                     'learning_coach_request', 'learning_coach_result', 'learning_coach_runtime', 'learning_coach_operation', 'weekly_reflection', 'trial_feedback', 'trial_record_request'}
         if artifact_type in protected:
             raise ValueError('学习安排及操作回执只能通过确认命令写入')
         namespace = metadata.get("learning_coach") if isinstance(metadata, dict) else None
@@ -1614,7 +1614,7 @@ class SQLiteStorage:
                        updated_at=?
                    WHERE artifacts.artifact_type NOT IN
                        ('learning_orchestration_day','learning_orchestration_operation',
-                        'learning_coach_request','learning_coach_result','learning_coach_runtime','learning_coach_operation')""",
+                        'learning_coach_request','learning_coach_result','learning_coach_runtime','learning_coach_operation','weekly_reflection','trial_feedback','trial_record_request')""",
                 (
                     artifact_id,
                     workspace_id,
@@ -1671,7 +1671,7 @@ class SQLiteStorage:
                     connection.rollback()
                     return None
                 if artifact['artifact_type'] in {'learning_orchestration_day', 'learning_orchestration_operation',
-                       'learning_coach_request', 'learning_coach_result', 'learning_coach_runtime', 'learning_coach_operation'}:
+                       'learning_coach_request', 'learning_coach_result', 'learning_coach_runtime', 'learning_coach_operation', 'weekly_reflection', 'trial_feedback', 'trial_record_request'}:
                     raise ValueError('学习安排及操作回执不能通过通用编辑接口修改')
                 metadata = artifact.get("metadata")
                 metadata = dict(metadata) if isinstance(metadata, dict) else {}

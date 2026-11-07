@@ -64,7 +64,7 @@ jobs:
           filemate/tests/test_programming.py
           filemate/tests/test_linux_judge.py
           filemate/tests/test_interview_review.py
-          filemate/study
+          filemate/study filemate/tests/trial
           scripts/acceptance/learning_coach_fixture.py scripts/acceptance/learning_coach_journey.py scripts/acceptance/learning_coach_runtime.py scripts/acceptance/learning_coach_performance.py evaluation/evaluate_learning_coach.py
           filemate/programming
           filemate/interview_review

@@ -20,7 +20,7 @@
     <aside id="main-navigation" class="sidebar" aria-label="主导航" :role="mobileNavOpen ? 'dialog' : undefined" :aria-modal="mobileNavOpen ? 'true' : undefined" @keydown.esc="closeMobileNav" @keydown.tab="trapMobileFocus">
       <div class="sidebar-head">
         <router-link class="brand-link" to="/" @click="finishMobileNavigation">
-          <Logo />
+          <Logo variant="navigation" />
         </router-link>
         <button
           class="icon-button collapse-button"
@@ -274,6 +274,7 @@ async function handleShortcut(event: KeyboardEvent): Promise<void> {
   }
 }
 watch(() => route.fullPath, () => {
+  showSettings.value = false
   if (mobileNavOpen.value) void finishMobileNavigation()
   if (route.meta.layout !== 'auth') void loadShellState()
   else { showFinder.value = false; showSettings.value = false; showAccount.value = false }
@@ -991,7 +992,7 @@ function isAuthPath(path: string): boolean {
   background: var(--bg-surface);
   border-color: #14243e;
 }
-.sidebar .brand-link { padding: 9px 8px; background: #fffdf8; border-radius: 9px; }
+.sidebar .brand-link { display: flex; align-items: center; min-height: 44px; padding: 0 8px; background: transparent; }
 .sidebar .version-label { border: 0; background: transparent; min-height: 44px; padding: 0; }
 .sidebar .nav-item.nav-selected { color: #fffdf8; background: var(--action-fill); }
 .sidebar .nav-item:hover:not(.nav-selected) { color: #fffdf8; background: var(--sidebar-hover); }

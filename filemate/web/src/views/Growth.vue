@@ -1,6 +1,6 @@
 <template>
   <div class="growth-page">
-    <header><div><h1>成长数据</h1><p>最近学了什么、哪些还要练，在这里回顾。</p></div><button type="button" @click="load">刷新数据</button></header>
+    <header><div><h1>成长数据</h1><RouterLink to="/trial-feedback">反馈体验与查看复盘记录</RouterLink><p>最近学了什么、哪些还要练，在这里回顾。</p></div><button type="button" @click="load">刷新数据</button></header>
     <div v-if="loading" class="state" aria-live="polite">正在汇总学习数据…</div>
     <DataState v-else-if="error" :error="error" @retry="load" />
     <template v-else-if="data">

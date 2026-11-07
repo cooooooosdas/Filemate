@@ -3,6 +3,8 @@
 import json
 from datetime import datetime, timezone
 
+import pytest
+
 from filemate.study.orchestrator.models import ScopeRequest
 from filemate.study.orchestrator.repository import DAY_TYPE, atomic, day_id, put
 
@@ -105,3 +107,19 @@ def test_large_saved_week_reports_unresolved_and_explicit_truncation(world):
     assert len(result.items) == 200
     assert result.coverage["omitted_items"] == 100
     assert result.coverage["truncated"] is True
+
+
+@pytest.mark.parametrize("due,overdue", [
+    ("2026-10-30T16:30:00Z", 0),
+    ("2026-10-30T15:59:59+00:00", 1),
+    ("2026-10-31", 0),
+    ("2026-10-30", 1),
+])
+def test_overdue_uses_shanghai_calendar_date(world, due, overdue):
+    with atomic(world["store"]) as conn:
+        row = conn.execute("SELECT content FROM artifacts WHERE artifact_id=?", (world["goal"],)).fetchone()
+        goal = json.loads(row["content"])
+        goal["tasks"][0]["due_date"] = due
+        conn.execute("UPDATE artifacts SET content=? WHERE artifact_id=?", (json.dumps(goal), world["goal"]))
+    save_day(world, "2026-10-31", [f"goal:{world['goal']}:review-source"])
+    assert reader(world).read(scope(world)).summary.overdue_tasks == overdue

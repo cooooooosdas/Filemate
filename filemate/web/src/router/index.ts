@@ -2,6 +2,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { navigationPending, pageLoadFailure } from './load-errors'
 
 const routes: RouteRecordRaw[] = [
+  { path: '/trial-feedback', name: 'TrialFeedback', component: () => import('../components/TrialFeedback.vue'), meta: { title: '试用反馈与复盘记录' } },
   {
     path: '/recover', name: 'Recover', component: () => import('../views/Auth.vue'),
     meta: { title: '找回密码', layout: 'auth' }

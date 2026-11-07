@@ -1816,6 +1816,10 @@ from filemate.study.orchestrator.coach.api import create_router as _learning_coa
 
 app.include_router(_learning_coach_router(lambda: _storage))
 
+from filemate.study.trial.api import create_router as _trial_router
+
+app.include_router(_trial_router(lambda: _storage))
+
 
 def _require_graph_enabled() -> None:
     if os.getenv("FILEMATE_ENABLE_KNOWLEDGE_GRAPH", "1") == "0":

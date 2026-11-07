@@ -29,6 +29,7 @@ export interface CoachDayInput {
   options: ScheduleOptions
 }
 export interface CoachInput {
+  reflection_id?: string | null
   scope: ScopeRequest
   selection: CoachSelection
   intent: CoachIntent

@@ -57,13 +57,16 @@ class DecisionRoute(APIRoute):
     error_aliases: ClassVar[dict[str, str]] = {}
     public_validation_errors: ClassVar[frozenset[str]] = frozenset()
 
+    def validate_query(self, request: Request) -> None:
+        if request.query_params:
+            raise OrchestratorError('unexpected_query_parameters', 422)
+
     def get_route_handler(self):
         handler = super().get_route_handler()
 
         async def guarded(request: Request):
             try:
-                if request.query_params:
-                    raise OrchestratorError('unexpected_query_parameters', 422)
+                self.validate_query(request)
                 if request.method == 'POST':
                     body = bytearray()
                     async for chunk in request.stream():

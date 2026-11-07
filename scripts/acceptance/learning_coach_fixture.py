@@ -104,7 +104,8 @@ def protected_history(store: SQLiteStorage) -> dict[str, str]:
         "kg_concepts",
         "kg_relations",
         "kg_evidence",
-        "interview_turns",
+        "interview_answer_attempts",
+        "interview_coach_analysis_runs",
         "study_plans",
     ):
         for row in store._conn().execute(f"SELECT rowid AS protected_rowid,* FROM {table}"):
@@ -319,6 +320,7 @@ def seed_coach_records(root: Path, goal_type: str, count: int) -> dict[str, Any]
         "now": now,
         "root": root,
         "wrong_artifact": wrong["artifact_id"],
+        "original_submission_id": submission["submission_id"],
         "goal_type": goal_type,
         "data_type": "synthetic",
         "compiler_execution": "synthetic_record_only",
