@@ -9,7 +9,7 @@
 | 部署脚本须在服务器本机 root 执行 | `scripts/deploy_existing.py` 断言 `os.geteuid() == 0`，且读写 `/opt/filemate/current/.env.production`、`/var/backups/filemate`、systemd unit、nginx 配置；Windows 开发机无法满足。 |
 | 无生产主机与凭据配置 | `~/.ssh/config` 只配置 `github.com`；仓库内无 `.env.production`（仅 `.env.production.example`）；无目标主机别名、无 release 上传通道。 |
 | 公网当前不可达 | `https://filemate.asia/api/health` 在本机网络下无响应，无法做部署前后健康对比。 |
-| 无真实供应商密钥 | 6 个常见模型密钥环境变量均为 unset；`LLM_API_KEY` 模板为空。开启依赖模型的教练能力前必须配置并记录 usage。 |
+| 无真实供应商密钥 | 6 个常见模型密钥环境变量均为 unset；`LLM_API_KEY` 模板为空。既有 2026-11-06 一次真实调用（`deepseek-v4-flash`）结果为 `invalid_output` / `rule_fallback`、`passed=false`。开启依赖模型的教练能力前必须配置密钥、重跑真实调用并记录 usage。 |
 
 按项目规则「文件操作先预览确认；失败可回滚」，在没有健康基线、备份快照与回滚路径的情况下静默覆盖生产属于高风险不可逆操作，不应由本地会话代做。
 

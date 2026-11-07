@@ -47,7 +47,7 @@
 
 | 项 | 实测阻塞 |
 |---|---|
-| 最小真实供应商调用 + 治理 usage | 6 个常见模型密钥环境变量均 unset，`deploy/.env.production.example` 的 `LLM_API_KEY` 为空；按任务 9.5 无密钥/费用授权须明确待验 |
+| 最小真实供应商调用 + 治理 usage | 本会话 6 个常见模型密钥环境变量均 unset、无 `.env` / `.env.production`，无法复跑。既有 `coach-real-provider.json`（2026-11-06）记录过 1 次真实调用：`deepseek` / `deepseek-v4-flash`，transport 成功但 `model_status=failed`、`safe_error_code=invalid_output`、`effective_mode=rule_fallback`、`passed=false`，合成账号已清理。**故该项为「曾实测但未通过」，不是通过，也不能计入验收。** 按任务 9.5 须在补齐密钥与费用授权后重跑并核对真实 usage。 |
 | 干净 Linux CI | WSL 被本机安全策略禁止且不可绕过，无 Docker |
 | Python 3.11 / SQLite 3.26 整应用 | 本机仅 Python 3.13/3.14，无 3.11 |
 | 生产部署与开关 | `scripts/deploy_existing.py` 断言 `os.geteuid()==0` 并依赖 `/opt/filemate/...` 服务器路径；`~/.ssh/config` 仅 github.com；无 `.env.production`；`https://filemate.asia/api/health` 无响应 |
