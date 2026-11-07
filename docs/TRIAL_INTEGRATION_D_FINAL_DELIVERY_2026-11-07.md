@@ -4,9 +4,9 @@
 
 ## 固定源码与发布包
 
-- 最终提交 `9ffe47deed5dc8311f16701edadc7e8a65794199`（`fix(web): 补齐 lock 文件缺失的可选 peer 依赖以恢复 npm ci`），其父提交 `e4cee07` 为试行版整合与 D 级验收收口。
+- 实现源码最终提交 `9ffe47deed5dc8311f16701edadc7e8a65794199`（`fix(web): 补齐 lock 文件缺失的可选 peer 依赖以恢复 npm ci`），其父提交 `e4cee07` 为试行版整合与 D 级验收收口；文档归档提交为 `f0a116a`。
 - 干净检出 `D:/FileMate-Project/_working/trial-final-e4cee07`（detached `9ffe47d`，工作区干净）用于门禁与构建。
-- `FileMate-20261107-trial-d-final.zip`（54,354,681 B，1687 条目），SHA256 `853ae6b46541ce61eba19f711ef49d6247188a0f5a6a12df538a3fc3b2691c78`，同名 `.sha256` 与 `.manifest.json` 一并交付。旧包全部保留。
+- `FileMate-20261107-trial-d-final.zip` 与同名 `.sha256`、`.manifest.json` 一并交付，ZIP 的字节数、SHA256、条目数及源码/产物摘要以这两个同名文件为准（避免报告内自引用）。旧包全部保留。
 - 包内仅 `git archive` 跟踪源码 + 已验证的 `release/web.tar.gz`（452 文件，SHA256 `fce0b2e13160637951d2c722521e51e90795391bee22d04d3b2994c2f1e6e103`）+ 产物清单 + 发布说明。不含 `.venv`、`node_modules`、`_working` 证据、密钥、`.env`、数据库、真实用户资料或未提交的用户改动。
 - 线上 Web 仍为 `185f7b3`、API 为 `fdf6f40`；业务 schema 36、治理 schema 3，本轮未做数据库迁移。
 
