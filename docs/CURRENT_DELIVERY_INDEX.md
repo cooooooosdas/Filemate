@@ -1,5 +1,7 @@
 # FileMate 当前交付资源索引
 
+2026-11-10 最新工程状态见[试行版收尾与迁移](TRIAL_RELEASE_CLOSEOUT_2026-11-10.md)。源码 `7bf8d20` 的 Linux CI 通过 2191 后端、444 前端，Windows 编译器资源问题的 8 项复测通过。开发与桌面数据已使用 D 盘，历史缓存还有 3.47GB 待迁。生产切换等待 SSH 及供应商复测，容量 P2 和真人研究依赖保留。
+
 2026-11-07 验收后更新：用户已确认 D 阶段验收。新增 [验收后执行记录](POST_ACCEPTANCE_EXECUTION_2026-11-07.md)（真实 Edge 156 交互矩阵、两次容量复测）、[生产部署与开关启用清单](PRODUCTION_D_TRIAL_ACTIVATION_2026-11-07.md)、[E 级真人实验协议](LEARNING_ORCHESTRATOR_2_0_E_PROTOCOL_2026-11-07.md)。**生产未部署、生产开关未开启、E 级真人数据未采集、容量 P2 未关闭**；真实供应商调用（无密钥）、干净 Linux CI（WSL 被策略禁止）、Python3.11 旧运行时（本机无）按规则明确待验。容量两轮实测 6/8 场 PASS，万题 HTTP 四并发 P95 509–571ms 仍超 500ms。
 
 2026-11-07 最新：[试行版整合与 D 级工程验收最终收口](TRIAL_INTEGRATION_D_FINAL_DELIVERY_2026-11-07.md)。最终源码 `9ffe47d`（`codex/trial-integration-20261106`），统一门禁（后端 2163 通过、前端 441 通过、构建与 gzip 143360B 预算通过）、独立只读审阅无 P0/P1、23 份既有用户测试 git 层面未改动；发布包 `FileMate-20261107-trial-d-final.zip` 及同名 SHA256/manifest 已生成，旧包保留。阶段为 CONDITIONAL PASS 工程验收候选，**未部署生产、未开启 D 与试行开关、未实施 E 级真人实验**，须先取得 D 阶段用户验收。真实供应商调用、旧运行时整应用、真机联合矩阵与干净 Linux CI 仍按原计划待补。D1—D8 与四目标证据见 [D 级交付](LEARNING_ORCHESTRATOR_2_0_D_DELIVERY.md)。
