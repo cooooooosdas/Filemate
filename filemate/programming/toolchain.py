@@ -64,11 +64,17 @@ def prepare_toolchain() -> Path:
 
 def compiler_environment(root: Path, directory: Path) -> dict[str, str]:
     """仅向编译器提供标准库位置和私有临时路径。"""
+    languages = sorted(
+        resource.parent.name
+        for resource in (root / "bin").glob("*/clui.dll")
+        if resource.parent.name.isdecimal()
+    )
+    language = "1033" if "1033" in languages or not languages else languages[0]
     return {
         "SystemRoot": os.environ.get("SystemRoot", "C:/Windows"),
         "PATH": str(root / "bin"), "TEMP": str(directory), "TMP": str(directory),
         "INCLUDE": ";".join(str(root / path) for path in
                             ("msvc/include", "sdk/include/ucrt", "sdk/include/shared", "sdk/include/um")),
         "LIB": ";".join(str(root / path) for path in ("msvc/lib", "sdk/lib/ucrt", "sdk/lib/um")),
-        "VSLANG": "1033",
+        "VSLANG": language,
     }
