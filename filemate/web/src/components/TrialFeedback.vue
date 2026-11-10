@@ -196,10 +196,24 @@ async function save() {
   }
 }
 async function recover() {
-  await writer.value?.recover();
-  if (writer.value?.state.receipt) {
-    saved.value = JSON.stringify(form);
+  const ticket = generation;
+  const currentWriter = writer.value;
+  const currentClient = client.value;
+  if (!currentWriter || !currentClient) return;
+  await currentWriter.recover();
+  const receipt = currentWriter.state.receipt;
+  if (ticket !== generation || receipt?.kind !== "feedback" || receipt.status !== "saved") return;
+  try {
+    const record = await currentClient.detail(receipt.record_id);
+    if (ticket !== generation || currentWriter !== writer.value || record.kind !== "feedback") return;
+    const persisted = Object.fromEntries(
+      Object.keys(blank()).map(key => [key, record.content[key]]),
+    );
+    saved.value = JSON.stringify(persisted);
     preview.value = false;
+  } catch {
+    if (ticket === generation)
+      error.value = "已找到保存回执，正文尚未核对。当前填写内容仍待保存，请查看历史记录后再离开。";
   }
 }
 function dirty() {

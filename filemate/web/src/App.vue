@@ -992,7 +992,7 @@ function isAuthPath(path: string): boolean {
   background: var(--bg-surface);
   border-color: #14243e;
 }
-.sidebar .brand-link { display: flex; align-items: center; min-height: 44px; padding: 0 8px; background: transparent; }
+.sidebar .brand-link { align-items: center; min-height: 44px; padding: 0 8px; background: transparent; }
 .sidebar .version-label { border: 0; background: transparent; min-height: 44px; padding: 0; }
 .sidebar .nav-item.nav-selected { color: #fffdf8; background: var(--action-fill); }
 .sidebar .nav-item:hover:not(.nav-selected) { color: #fffdf8; background: var(--sidebar-hover); }

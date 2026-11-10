@@ -183,6 +183,7 @@ const notes = ref(""),
   history = ref<{ needsLeaveConfirmation(): boolean } | null>(null);
 const fingerprint = () =>
   JSON.stringify({ notes: notes.value, reason: reason.value });
+let generation = 0;
 const blocked = computed(
   () => controller.state.busy || !!controller.state.pending,
 );
@@ -222,22 +223,30 @@ async function save() {
   }
 }
 async function recover() {
+  const ticket = generation;
+  const draft = fingerprint();
   await controller.recover();
   const receipt = controller.state.receipt;
-  if (receipt?.kind !== "reflection" || receipt.status !== "saved") return;
+  if (ticket !== generation || receipt?.kind !== "reflection" || receipt.status !== "saved") return;
   try {
     const value = await client.detail(receipt.record_id);
+    if (ticket !== generation) return;
     if (JSON.stringify(value.content.scope) !== JSON.stringify(props.scope))
       throw new Error("scope changed");
-    notes.value = String(value.content.notes ?? "");
-    reason.value = value.content.reason as ReflectionDraft["reason"];
-    saved.value = fingerprint();
+    const persistedNotes = String(value.content.notes ?? "");
+    const persistedReason = value.content.reason as ReflectionDraft["reason"];
+    if (!notes.value.trim() && fingerprint() === draft) {
+      notes.value = persistedNotes;
+      reason.value = persistedReason;
+    }
+    saved.value = JSON.stringify({ notes: persistedNotes, reason: persistedReason });
     preview.value = false;
   } catch {
-    controller.state.error = "请在已保存记录中核对这份复盘。";
+    if (ticket === generation) controller.state.error = "请在已保存记录中核对这份复盘。";
   }
 }
 function invalidate() {
+  generation++;
   controller.invalidate();
   notes.value = "";
   saved.value = "";
@@ -262,6 +271,6 @@ onMounted(async () => {
   await nextTick();
   heading.value?.focus();
 });
-onBeforeUnmount(() => controller.bind(null));
+onBeforeUnmount(() => { generation++; controller.bind(null); });
 defineExpose({ needsLeaveConfirmation: dirty, invalidate });
 </script>

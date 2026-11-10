@@ -2,7 +2,7 @@
   <section class="trial-panel" aria-labelledby="trial-history-heading">
     <header>
       <h2 id="trial-history-heading">已保存记录</h2>
-      <button :disabled="loading" @click="load">刷新记录</button>
+      <button :disabled="loading || selectionLocked" @click="load">刷新记录</button>
     </header>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="controller.state.error" role="status">
@@ -26,7 +26,7 @@
             }}</strong>
             <p>{{ item.title }} · {{ displayTime(item.created_at) }}</p>
           </div>
-          <button @click="read(item.record_id)">查看记录</button>
+          <button :disabled="selectionLocked" @click="read(item.record_id)">查看记录</button>
         </header>
       </li>
     </ul>
@@ -46,7 +46,7 @@
     <article v-if="detail" class="trial-notice">
       <header>
         <h3>{{ detail.kind === "reflection" ? "复盘内容" : "反馈内容" }}</h3>
-        <button @click="detail = null">收起详情</button>
+        <button :disabled="controller.state.busy || !!controller.state.pending" @click="closeDetail">收起详情</button>
       </header>
       <p class="trial-detail">
         {{ detail.content.notes ?? detail.content.description }}
@@ -78,6 +78,8 @@
     </section>
     <section v-if="controller.state.deletion" class="trial-notice">
       <h3>确认删除这条记录</h3>
+      <p class="trial-detail">记录编号 {{ controller.state.deletion.record_id }}</p>
+      <p v-if="detail">{{ detail.kind === "reflection" ? "本周复盘" : "试用反馈" }} · {{ displayTime(detail.created_at) }}</p>
       <p>
         关联教练结果
         {{
@@ -104,7 +106,7 @@
   </section>
 </template>
 <script setup lang="ts">
-import { onBeforeUnmount, reactive, ref, watch } from "vue";
+import { computed, onBeforeUnmount, reactive, ref, watch } from "vue";
 import type {
   RecordKind,
   TrialClient,
@@ -133,11 +135,16 @@ const page = ref<TrialPage | null>(null),
   exportPreview = ref(false);
 let generation = 0,
   detailGeneration = 0;
+const selectionLocked = computed(() =>
+  controller.state.busy || !!controller.state.pending || !!controller.state.deletion,
+);
 const displayTime = (value: string) =>
   new Date(
     /[zZ]|[+-]\d\d:\d\d$/.test(value) ? value : value + "Z",
   ).toLocaleString("zh-CN");
 async function load() {
+  if (selectionLocked.value) return;
+  closeDetail();
   const ticket = ++generation;
   loading.value = true;
   error.value = "";
@@ -166,6 +173,13 @@ async function read(id: string) {
       error.value = "记录已变化或暂时无法读取，请刷新列表。";
   }
 }
+function closeDetail() {
+  if (controller.state.busy || controller.state.pending) return;
+  detailGeneration++;
+  detail.value = null;
+  exportPreview.value = false;
+  controller.state.deletion = null;
+}
 function move(step: number) {
   offset.value += step;
   void load();
@@ -175,6 +189,7 @@ async function remove() {
   if (controller.state.receipt?.deleted) {
     emit("changed", controller.state.receipt.record_id);
     detail.value = null;
+    exportPreview.value = false;
     offset.value = 0;
     await load();
   }
@@ -215,6 +230,7 @@ watch(
 );
 onBeforeUnmount(() => {
   generation++;
+  detailGeneration++;
   controller.bind(null);
 });
 defineExpose({
