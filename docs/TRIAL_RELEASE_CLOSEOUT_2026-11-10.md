@@ -30,9 +30,13 @@
 
 C 盘原开发和桌面数据入口已通过联接指向 D 盘。开发文件已核对 1691 项，81 份独立资料通过 SHA256 核对后移动，9 组目录副本完成核对。两次观察间桌面数据库哈希有差异，因此保留两个 D 盘版本，当前入口使用最新已核对副本。
 
-原开发目录约 247 万文件、42.4GB。磁盘容量不足导致历史缓存复制暂停，剩余预览为 588647 文件、3473449041 字节。D 盘部分历史缓存和 Python 环境已使用 NTFS 压缩。需再腾出至少 10GB 后续传并核对。
+原开发目录约 247 万文件、42.4GB。展开复制遇到磁盘容量限制后，采用分离归档保存余量。`D:/FileMate-Archive/FileMate-历史余量归档-20261110.zip` 包含 588651 个原件、3473582890 字节，压缩后 1149949685 字节，全部条目通过 SHA256 验证。整包 SHA256 为 `cf94e23e28729c1cb6cabdb2e22bcaeae2f7c81661558bac14e920ed39e28da1`。D 盘部分历史缓存和 Python 环境采用 NTFS 压缩，恢复历史环境时先解压到独立目录核对。
 
-完整原件保存在 `C:/Users/胡希/.codex/worktrees/release-alpha3/FileMate-Project.migration-backup-20261110`，剩余缓存依赖此副本。自动审批拦截了 C 盘原件及本轮临时目录清理，返回 `blocked by policy`，这些副本保留。详细清单位于 `D:/FileMate-Project/_working/migration-20261110`。
+另对 51334 个非依赖缓存文件进行哈希核对，49574 个与 D 盘工作副本一致，1760 个历史或差异版本均在余量归档保留，未覆盖数为 0。当前工作副本和归档共同保存原 C 盘工作副本内容。
+
+C 盘回退副本保存在 `C:/Users/胡希/.codex/worktrees/release-alpha3/FileMate-Project.migration-backup-20261110`。归档和哈希核验通过后，对此明确备份路径的清理仍被自动审批拦截，返回 `blocked by policy`，因此保留副本。详细清单位于 `D:/FileMate-Project/_working/migration-20261110`。
+
+迁移后补跑四目标原模块流程，结果为 PASS，依赖缺项为空。岗位和能力训练均通过原生 AppContainer 判题，分别 AC 6/6。证据为当前工作副本 `_working/closeout-native-20261110/report.json`。
 
 ## 发布与依赖
 
