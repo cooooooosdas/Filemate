@@ -1,5 +1,7 @@
 # FileMate
 
+2026-11-13 前端固定版已推送main并上线，Web为`aa03d0b`，API沿用`c28dc2b`。精确提交干净Linux后端2191项、前端444项通过，公网核心入口及回退资料核验完成。后续以产品体验与测试为主，见[发布回执](docs/FRONTEND_PRODUCTION_RELEASE_2026-11-13.md)。
+
 2026-11-11 试行版已上线，Web/API 均为 `c28dc2b`，学习教练 D 与试行复盘、反馈入口已启用。125 项公网 API、真实 DeepSeek、C++ AC/CE、三种屏宽及 532 库备份恢复通过。当前发布与限制以[生产发布回执](docs/TRIAL_PRODUCTION_RELEASE_2026-11-11.md)为准，D 盘位置见[迁移记录](docs/TRIAL_RELEASE_CLOSEOUT_2026-11-10.md)。下方记录保留各批当时状态。
 
 2026-11-07 验收后：用户已确认 D 阶段验收。补充真实 Edge 交互矩阵（复盘→教练闭环、四主题、320–1440px、关闭开关降级）与两次容量复测；详见[验收后执行记录](docs/POST_ACCEPTANCE_EXECUTION_2026-11-07.md)、[部署与开关启用清单](docs/PRODUCTION_D_TRIAL_ACTIVATION_2026-11-07.md)、[E 级真人实验协议](docs/LEARNING_ORCHESTRATOR_2_0_E_PROTOCOL_2026-11-07.md)。**生产未部署、生产开关未开启、E 级真人数据未采集、容量 P2 未关闭**；真实供应商调用缺密钥、干净 Linux CI 与旧运行时缺环境，按规则不得伪造。
