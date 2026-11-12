@@ -8,14 +8,19 @@
 .welcome h1 { margin: 12px 0; font-size: clamp(30px, 3vw, 40px); font-weight: 650; letter-spacing: -.035em; line-height: 1.4; }
 .welcome p { margin: 0; color: var(--text-secondary); font-size: 17px; line-height: 1.75; }
 .learning-prompt p { margin: 8px 0 0; color: var(--text-secondary); font-size: 16px; line-height: 1.75; }
-.quote-sheet { --quote-ink: var(--text-primary); --quote-secondary: var(--text-secondary); --quote-line: var(--border-subtle); min-width: 0; margin-top: 20px; padding: 22px; border: 1px solid var(--border-subtle); border-radius: 16px; background: var(--bg-surface); }
-.quote-sheet :deep(.hero-encouragement) { margin: 0; padding: 0; border: 0; }
-.quote-sheet :deep(.hero-encouragement::before) { display: none; }
-.quote-sheet :deep(.quote-content) { min-height: 0; }
-.quote-sheet :deep(.encouragement-label) { margin-bottom: 12px; font-size: 15px; letter-spacing: 0; }
-.quote-sheet :deep(.encouragement-words) { font-family: var(--font-sans); font-size: 20px; line-height: 1.75; font-weight: 500; }
+.quote-sheet { --quote-ink: var(--text-primary); --quote-secondary: var(--text-secondary); --quote-line: var(--border-subtle); min-width: 0; margin: 0 0 22px; padding: 16px 22px; border-left: 3px solid var(--accent); border-radius: 0 12px 12px 0; background: var(--bg-surface); }
+.quote-sheet :deep(.hero-encouragement) { margin: 0; padding: 0; border: 0; min-height: 0; }
+.quote-sheet :deep(.hero-encouragement::before), .quote-sheet :deep(.quote-toggle) { display: none; }
+.quote-sheet :deep(.quote-content), .quote-sheet :deep(.quote-content.expanded) { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px 20px; min-height: 0; padding: 0; }
+.quote-sheet :deep(.encouragement-label) { margin: 0; font-size: 15px; letter-spacing: 0; }
+.quote-sheet :deep(.encouragement-words) { font-family: var(--font-sans); font-size: 21px; line-height: 1.65; font-weight: 500; overflow-wrap: anywhere; }
 .quote-sheet :deep(.verse-line) { display: inline; font-weight: inherit; }
-.quote-sheet :deep(.encouragement-source) { margin-top: 12px; font-size: 15px; }
+.quote-sheet :deep(.encouragement-source) { margin: 0; max-width: 220px; font-size: 15px; }
+@media (max-width: 900px) {
+  .quote-sheet :deep(.quote-content), .quote-sheet :deep(.quote-content.expanded) { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .quote-sheet :deep(.encouragement-words) { font-size: 19px; }
+  .quote-sheet :deep(.encouragement-source) { max-width: 100%; }
+}
 .home-action { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 24px; padding: 28px 30px; min-height: 132px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px; box-shadow: 0 2px 5px #18233104; }
 .home-action h2 { margin: 0; font-size: 21px; line-height: 1.55; font-weight: 600; }
 .first-visit ol { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 10px 0 0; padding-left: 22px; font-size: 15px; color: var(--text-secondary); }
@@ -110,7 +115,6 @@ a.task-entry-main:hover .task-entry-arrow { transform: translateX(3px); }
   .desk-grid { grid-template-columns: 1fr; }
   .desk-aside { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
   .partner-note { margin: 0; }
-  .quote-sheet { margin-top: 0; }
   .privacy-link { grid-column: 1 / -1; }
 }
 @media (max-width: 700px) {
@@ -136,7 +140,6 @@ a.task-entry-main:hover .task-entry-arrow { transform: translateX(3px); }
   .task-entry-links { gap: 0 14px; }
   .desk-aside { display: block; }
   .today-sheet { padding: 22px; }
-  .quote-sheet { margin-top: 20px; }
   .partner-note { margin-top: 20px; }
   .file-row { grid-template-columns: 36px minmax(0,1fr); gap: 10px; }
   .file-status { grid-column: 2; }
