@@ -44,3 +44,13 @@
 
 :root[data-theme='midnight'] :is(.portfolio-page button:not(.primary),.auth-card .guest-action) { background:var(--bg-elevated);color:var(--text-primary);border-color:var(--border-strong); }
 :root[data-theme='midnight'] .trust-page :is(.status,.status.running,.status.failed,.steps li>span,.agent-stack i,.memory-grid article) { background:var(--bg-elevated);color:var(--text-secondary);border-color:var(--border-subtle); }
+
+/* CampusOS reference: white navigation with visible blue selection. */
+:root[data-theme='blue-gray'] .app-shell .sidebar { --accent: #3155ce; --success: #235c3f; --danger: #8b3034; --border-strong: #7e8899; }
+:root[data-theme='blue-gray'] .app-shell .sidebar .nav-item.nav-selected,
+:root[data-theme='blue-gray'] .app-shell .sidebar .nav-parent-active,
+:root[data-theme='blue-gray'] .app-shell .sidebar .nav-children a.child-selected { color: var(--accent); background: var(--sidebar-hover); }
+:root[data-theme='blue-gray'] .app-shell .sidebar .nav-item.nav-selected::before { background: var(--accent); }
+:root[data-theme='blue-gray'] .app-shell .sidebar .nav-item:hover:not(.nav-selected),
+:root[data-theme='blue-gray'] .app-shell .sidebar .nav-children a:hover:not(.child-selected) { color: var(--accent); background: var(--sidebar-hover); }
+:root[data-theme='blue-gray'] .app-shell .sidebar :is(.icon-button,a):focus-visible { outline-color: var(--accent); }

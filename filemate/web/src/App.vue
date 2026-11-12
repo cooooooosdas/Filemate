@@ -990,7 +990,7 @@ function isAuthPath(path: string): boolean {
   --danger: #ffb9ae;
   color: var(--text-primary);
   background: var(--bg-surface);
-  border-color: #14243e;
+  border-color: var(--sidebar-line);
 }
 .sidebar .brand-link { align-items: center; min-height: 44px; padding: 0 8px; background: transparent; }
 .sidebar .version-label { border: 0; background: transparent; min-height: 44px; padding: 0; }

@@ -3,7 +3,7 @@
     <img
       v-if="variant === 'navigation'"
       class="brand-lockup brand-lockup-navigation"
-      src="../assets/optimized/filemate-brand-navigation.svg"
+      :src="currentTheme.id === 'blue-gray' ? lightNavigation : darkNavigation"
       alt="FileMate，你的文件知识管理伙伴"
       width="936"
       height="220"
@@ -22,6 +22,10 @@
 </template>
 
 <script setup lang="ts">
+import { currentTheme } from '../preferences/theme-runtime'
+import lightNavigation from '../assets/optimized/filemate-brand-navigation-light.svg'
+import darkNavigation from '../assets/optimized/filemate-brand-navigation.svg'
+
 withDefaults(defineProps<{ variant?: 'default' | 'navigation' }>(), {
   variant: 'default',
 })

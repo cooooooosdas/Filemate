@@ -6,13 +6,13 @@
       <button v-for="theme in themes" :key="theme.id" type="button" class="theme-choice" :aria-pressed="themePreference === theme.id" @click="choose(theme.id)">
         <span class="theme-preview" aria-hidden="true" :style="{ background: theme.colors['bg-base'] }">
           <i :style="{ background: theme.colors['sidebar-surface'] }" />
-          <span><b :style="{ background: theme.colors['hero-background'] }" /><em :style="{ background: theme.colors['bg-surface'], borderColor: theme.colors['border-subtle'] }" /></span>
+          <span><b :style="{ background: theme.colors['accent-soft'] }" /><em :style="{ background: theme.colors['bg-surface'], borderColor: theme.colors['border-subtle'] }" /></span>
         </span>
         <strong>{{ theme.name }}<span v-if="themePreference === theme.id" class="selected-mark">已选</span></strong>
         <small>{{ theme.description }}</small>
       </button>
     </div>
-    <label class="system-theme"><input type="checkbox" :checked="themePreference === 'system'" @change="choose(($event.target as HTMLInputElement).checked ? 'system' : currentTheme.id)"><span><strong>跟随系统自动切换</strong><small>系统浅色时使用蓝灰工作台，深色时使用午夜深蓝。</small></span></label>
+    <label class="system-theme"><input type="checkbox" :checked="themePreference === 'system'" @change="choose(($event.target as HTMLInputElement).checked ? 'system' : currentTheme.id)"><span><strong>跟随系统自动切换</strong><small>系统浅色时使用清爽工作台，深色时使用午夜深蓝。</small></span></label>
     <p class="appearance-status" role="status">{{ themePreference === 'system' ? '自动模式 · 当前为' : '当前主题：' }}{{ currentTheme.name }}{{ persistWarning }}</p>
   </section>
 </template>

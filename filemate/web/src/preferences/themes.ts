@@ -16,7 +16,17 @@ const base = {
   'sidebar-secondary': '#e1e8f5', 'sidebar-muted': '#becce0', 'sidebar-line': '#405474',
 }
 export const themes: Theme[] = [
-  { id: 'blue-gray', name: '蓝灰工作台', description: '有层次的蓝灰，清晰沉稳', dark: false, colors: { ...base } },
+  { id: 'blue-gray', name: '清爽工作台', description: '白色导航、轻灰画布与清晰蓝色重点', dark: false, colors: {
+    ...base, 'bg-base': '#f7f8fa', 'workspace-background': '#f7f8fa',
+    'bg-surface': '#ffffff', 'bg-reading': '#ffffff', 'bg-elevated': '#f4f6fa', 'bg-hover': '#edf1fa',
+    'text-primary': '#182331', 'text-secondary': '#475467', 'text-muted': '#5e6879',
+    'accent': '#3155ce', 'accent-hover': '#2445b6', 'accent-soft': '#edf1ff', 'accent-border': '#b8c6f5',
+    'action-fill': '#3b60e4', 'action-hover': '#294dcb',
+    'border-subtle': '#e2e6ed', 'border-default': '#7e8899', 'border-strong': '#7e8899',
+    'panel-tint': '#f1f4fc', 'header-surface': '#ffffff',
+    'sidebar-surface': '#ffffff', 'sidebar-hover': '#edf1ff', 'sidebar-ink': '#182331',
+    'sidebar-secondary': '#475467', 'sidebar-muted': '#5e6879', 'sidebar-line': '#e2e6ed',
+  } },
   { id: 'mist', name: '晴空浅蓝', description: '明亮蓝白，适合白天阅读', dark: false, colors: {
     ...base, 'bg-base': '#e4ebf5', 'workspace-background': '#e4ebf5', 'bg-surface': '#ffffff', 'bg-reading': '#ffffff',
     'bg-elevated': '#edf2fa', 'bg-hover': '#dae5f6', 'header-surface': '#edf2fa', 'panel-tint': '#dbe7f8',

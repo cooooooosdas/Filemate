@@ -6,6 +6,7 @@ import App from './App.vue'
 import './style.css'
 import './workspace.css'
 import './themes.css'
+import './styles/workspace-refinement.css'
 import { initializeAppearance } from './preferences/theme-runtime'
 
 initializeAppearance()

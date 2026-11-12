@@ -1,0 +1,151 @@
+/* Three daily workspaces share the same hierarchy while retaining their own controls. */
+.content-scroll :is(.knowledge-page,.interview-page,.action-workspace) .workspace-refined-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 26px;
+  padding: 8px 0 24px;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: transparent;
+}
+.content-scroll :is(.knowledge-page,.interview-page,.action-workspace) .workspace-refined-heading > div { flex: 1; min-width: 200px; }
+.content-scroll :is(.knowledge-page,.interview-page,.action-workspace) .workspace-refined-heading h1 {
+  margin: 0 0 8px;
+  font-size: clamp(28px, 2.8vw, 38px);
+  font-weight: 650;
+  letter-spacing: -.035em;
+  line-height: 1.4;
+}
+.content-scroll :is(.knowledge-page,.interview-page,.action-workspace) .workspace-refined-heading p { margin: 0; font-size: 17px; line-height: 1.75; color: var(--text-secondary); }
+.content-scroll :is(.knowledge-page,.interview-page,.action-workspace) .workspace-refined-heading .action-meta { margin-top: 6px; font-size: 15px; }
+.workspace-heading-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 54px;
+  width: 54px;
+  height: 54px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: 14px;
+}
+
+/* Search and documents form one desk, with secondary destinations below it. */
+.knowledge-page .knowledge-desk { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 16px; }
+.content-scroll .knowledge-page .knowledge-desk > :is(.search-panel,.results,.library) { border: 0; border-radius: 0; background: transparent; padding: 28px; }
+.knowledge-page .knowledge-desk .search-panel { overflow: visible; }
+.content-scroll .knowledge-page .knowledge-desk > :is(.library,.results) { border-top: 1px solid var(--border-subtle); margin: 0; }
+.content-scroll .knowledge-page .knowledge-desk .search-panel h2 { font-size: 24px; font-weight: 600; margin-bottom: 18px; }
+.content-scroll .knowledge-page .search-box { border-radius: 10px; background: var(--bg-elevated); }
+.content-scroll .knowledge-page .search-row > button { border-radius: 10px; }
+.content-scroll .knowledge-page .library-heading h2 { font-size: 24px; font-weight: 600; }
+.content-scroll .knowledge-page .evidence-entries { gap: 0; margin: 18px 0 0; padding-block: 4px; }
+.content-scroll .knowledge-page .evidence-entries a { padding: 16px 20px; border: 0; border-right: 1px solid var(--border-subtle); border-radius: 0; background: transparent; transition: background var(--motion-fast); }
+.content-scroll .knowledge-page .evidence-entries a:first-child { padding-left: 4px; }
+.content-scroll .knowledge-page .evidence-entries a:last-child { border-right: 0; }
+.content-scroll .knowledge-page .evidence-entries a:hover { transform: none; background: var(--bg-hover); }
+.content-scroll .knowledge-page .evidence-entries strong { font-size: 18px; font-weight: 600; }
+.content-scroll .knowledge-page .evidence-entries a > span { gap: 4px; }
+.content-scroll .knowledge-page .source-card { padding: 24px 0; }
+.content-scroll .knowledge-page .file-mark { border-radius: 10px; border: 1px solid var(--accent-border); }
+.content-scroll .knowledge-page .source-actions button { border-color: var(--border-subtle); color: var(--text-secondary); }
+.content-scroll .knowledge-page .source-actions button:hover { background: var(--bg-hover); border-color: var(--accent); }
+.content-scroll .knowledge-page .source-actions .delete { border-color: transparent; }
+.content-scroll .knowledge-page .source-actions .delete:hover { color: var(--danger); border-color: var(--danger); }
+.content-scroll .knowledge-page .artifact-list { padding: 22px; margin-top: 4px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--bg-elevated); }
+.content-scroll .knowledge-page .library-empty { min-height: 240px; }
+
+/* The schedule begins with a goal, then progresses to an explicit preview. */
+.content-scroll .action-workspace .action-paper { border-color: var(--border-subtle); border-radius: 16px; padding: 26px; }
+.content-scroll .action-workspace h2 { font-weight: 600; font-size: 24px; }
+.content-scroll .action-workspace h3 { font-weight: 600; }
+.content-scroll .action-workspace .action-next { border-top: 1px solid var(--accent-border); background: var(--bg-surface); }
+.content-scroll .action-workspace .action-next h2 { font-size: 28px; }
+.content-scroll .action-workspace .action-eyebrow { color: var(--accent); }
+.content-scroll .action-workspace .is-unconfigured { grid-template-columns: minmax(0, .95fr) minmax(340px, 1fr); }
+.content-scroll .action-workspace .action-intro { padding: 32px; }
+.action-intro-icon { display: grid; place-items: center; width: 60px; height: 60px; margin-bottom: 24px; color: var(--accent); background: var(--accent-soft); border-radius: 16px; }
+.action-onboarding { list-style: none; counter-reset: learning-step; margin: 26px 0 18px; padding: 0; }
+.action-onboarding li { counter-increment: learning-step; display: grid; grid-template-columns: 36px minmax(0,1fr); gap: 2px 14px; position: relative; padding: 0 0 26px; }
+.action-onboarding li::before { content: counter(learning-step); grid-row: span 2; display: grid; place-items: center; align-self: start; width: 32px; height: 32px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-border); font-size: 16px; font-weight: 600; }
+.action-onboarding li:not(:last-child)::after { content: ''; position: absolute; left: 16px; top: 40px; bottom: 8px; width: 1px; background: var(--border-subtle); }
+.action-onboarding strong { font-size: 19px; font-weight: 600; }
+.action-onboarding span { font-size: 16px; color: var(--text-secondary); }
+.content-scroll .action-workspace .action-scope h2 { margin-bottom: 22px; }
+.content-scroll .action-workspace .action-search { border-bottom: 1px solid var(--border-subtle); margin-bottom: 20px; padding-bottom: 6px; }
+.content-scroll .action-workspace .action-range { border-block: 1px solid var(--border-subtle); padding-block: 4px; }
+.content-scroll .action-workspace .action-primary { font-size: 17px; font-weight: 600; }
+.content-scroll .action-workspace .action-budget-label input { max-width: 180px; border-color: var(--accent-border); background: var(--accent-soft); color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.content-scroll .action-workspace .action-list > li { padding: 24px 0; }
+.content-scroll .action-workspace .action-order { display: grid; place-items: center; align-self: start; width: 32px; height: 32px; border-radius: 9px; font-size: 18px; background: var(--accent-soft); }
+
+/* Interview preparation uses clear selected states, with optional persistence collapsed. */
+.content-scroll .interview-page .setup-card { padding: 30px; border-radius: 16px; }
+.content-scroll .interview-page .creator-heading { padding-bottom: 20px; margin-bottom: 22px; border-bottom: 1px solid var(--border-subtle); }
+.content-scroll .interview-page .creator-heading h2 { margin: 6px 0 0; font-size: 27px; font-weight: 600; }
+.content-scroll .interview-page .creator-heading > button { border-color: var(--border-subtle); background: transparent; }
+.content-scroll .interview-page .direction-grid button { position: relative; min-height: 148px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--bg-surface); padding: 20px; gap: 10px; transition: background var(--motion-fast), border-color var(--motion-fast); }
+.content-scroll .interview-page .direction-grid button:not(:disabled):hover { border-color: var(--accent); background: var(--accent-soft); }
+.content-scroll .interview-page .direction-grid button[aria-pressed=true],
+.content-scroll .interview-page .direction-grid button[aria-pressed=true]:not(:disabled):hover { background: var(--hero-background); border-color: var(--hero-background); box-shadow: none; }
+.content-scroll .interview-page .direction-grid button[aria-pressed=true] :is(strong,span,svg) { color: var(--hero-ink); }
+.content-scroll .interview-page .direction-grid strong { font-size: 22px; font-weight: 600; }
+.content-scroll .interview-page .direction-grid span { font-size: 16px; line-height: 1.65; }
+.content-scroll .interview-page .creator .expression-link { margin-block: 14px 24px; border-color: var(--border-subtle); background: var(--bg-elevated); }
+.content-scroll .interview-page .creator .expression-link[aria-pressed=true] { border-color: var(--accent); background: var(--accent-soft); }
+.content-scroll .interview-page .track-picker legend { font-size: 17px; font-weight: 600; }
+.content-scroll .interview-page .track-picker button { border-color: var(--border-subtle); background: var(--bg-surface); }
+.content-scroll .interview-page .track-picker button[aria-pressed=true] { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); box-shadow: none; font-weight: 600; }
+.content-scroll .interview-page .runtime-note { border-left: 3px solid var(--accent-border); border-radius: 0 10px 10px 0; font-size: 16px; line-height: 1.75; }
+.content-scroll .interview-page .draft-disclosure { margin-top: 12px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px; }
+.content-scroll .interview-page .draft-disclosure summary { min-height: 48px; padding-block: 12px; font-size: 17px; cursor: pointer; font-weight: 600; }
+.content-scroll .interview-page .draft-disclosure summary span { display: inline-block; margin-left: 12px; font-size: 15px; color: var(--text-secondary); font-weight: 400; }
+.content-scroll .interview-page .draft-disclosure summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.content-scroll .interview-page .draft-bar { margin: 8px 0 12px; border: 1px solid var(--border-subtle); }
+.content-scroll .interview-page .form-grid { padding-top: 24px; border-top: 1px solid var(--border-subtle); }
+.content-scroll .interview-page .form-grid label { font-size: 17px; }
+.content-scroll .interview-page .resume-panel { background: var(--bg-surface); border-color: var(--border-subtle); }
+
+@media (max-width: 1100px) {
+  .content-scroll .action-workspace .is-unconfigured { grid-template-columns: minmax(0,1fr); }
+  .content-scroll .action-workspace .is-unconfigured .action-settings { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 700px) {
+  .content-scroll :is(.knowledge-page,.interview-page,.action-workspace) .workspace-refined-heading { gap: 12px; padding-block: 4px 20px; margin-bottom: 20px; }
+  .content-scroll :is(.knowledge-page,.interview-page,.action-workspace) .workspace-refined-heading > div { flex-basis: calc(100% - 60px); min-width: 0; }
+  .workspace-heading-icon { flex-basis: 44px; width: 44px; height: 44px; border-radius: 11px; }
+  .content-scroll :is(.knowledge-page,.interview-page,.action-workspace) .workspace-refined-heading h1 { font-size: 27px; }
+  .content-scroll :is(.knowledge-page,.interview-page,.action-workspace) .workspace-refined-heading p { font-size: 16px; }
+  .content-scroll .knowledge-page .knowledge-desk > :is(.search-panel,.results,.library) { padding: 20px 18px; }
+  .content-scroll .knowledge-page .evidence-entries a { border-right: 0; border-bottom: 1px solid var(--border-subtle); padding: 16px 4px; }
+  .content-scroll .knowledge-page .evidence-entries a > span { flex-wrap: wrap; }
+  .content-scroll .knowledge-page .evidence-entries a:last-child { border-bottom: 0; }
+  .content-scroll .knowledge-page .artifact-list { padding: 16px; }
+  .content-scroll .action-workspace .action-paper { padding: 22px; }
+  .content-scroll .action-workspace .action-intro { padding: 22px; }
+  .content-scroll .action-workspace .action-next h2 { font-size: 25px; }
+  .action-onboarding { display: flex; gap: 12px; margin: 20px 0 12px; }
+  .action-onboarding li { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 0; }
+  .action-onboarding li::after { display: none; }
+  .action-onboarding strong { font-size: 16px; }
+  .action-onboarding span { display: none; }
+  .action-intro-icon { display: none; }
+  .content-scroll .interview-page .setup-card { padding: 22px 18px; }
+  .content-scroll .interview-page .creator-heading h2 { font-size: 25px; }
+  .content-scroll .interview-page .direction-grid button { padding: 16px 12px; min-height: 144px; }
+  .content-scroll .interview-page .direction-grid strong { font-size: 19px; }
+  .content-scroll .interview-page .direction-grid span { font-size: 16px; }
+  .content-scroll .interview-page .draft-disclosure summary span { margin-left: 0; display: block; }
+}
+@media (max-width: 360px) {
+  .content-scroll .interview-page .direction-grid { grid-template-columns: minmax(0,1fr); }
+  .content-scroll .interview-page .direction-grid button { min-height: 0; display: grid; grid-template-columns: 28px minmax(0,1fr); gap: 6px 12px; }
+  .content-scroll .interview-page .direction-grid button svg { grid-row: span 2; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .content-scroll .knowledge-page .evidence-entries a,
+  .content-scroll .interview-page .direction-grid button { transition: none; }
+}

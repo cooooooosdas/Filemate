@@ -2,12 +2,11 @@
   <div class="dashboard" :aria-busy="loading">
     <div class="welcome-board">
     <header class="welcome">
-      <div class="welcome-copy"><div class="welcome-meta"><span>{{ greeting }}</span><time>{{ todayLabel }}</time></div><h1>今天，<br />让知识<span class="title-dot">成形。</span></h1><p>打开课件，读原文、记笔记、做练习。</p></div>
-      <HeroEncouragement />
-      <StudyMotif class="welcome-motif" />
+      <div class="welcome-copy"><span class="welcome-icon" aria-hidden="true"><el-icon><Reading /></el-icon></span><div class="welcome-meta"><span>{{ greeting }}</span><time>{{ todayLabel }}</time></div><h1>今天，让知识成形。</h1><p>打开课件，读原文、记笔记、做练习。</p></div>
     </header>
     <section class="home-action" aria-label="开始这次学习" :aria-busy="homeStatus === 'loading'">
       <div v-if="firstVisit" class="first-visit"><h2>从一份课件，开始学习</h2><ol><li>导入课件</li><li>阅读提问</li><li>练习复习</li></ol></div>
+      <div v-else class="learning-prompt"><h2>从资料开始，把知识用起来。</h2><p>阅读、提问与练习，在同一个学习空间里完成。</p></div>
       <div class="home-action-row">
         <button v-if="action.kind === 'sample'" class="solid-link hero-start" :disabled="sampleBusy" @click="trySample">{{ sampleBusy ? '正在导入原创示例…' : action.title }}<el-icon><ArrowRight /></el-icon></button>
         <button v-else-if="action.kind === 'retry'" class="solid-link hero-start" @click="loadHomeState">{{ action.title }}</button>
@@ -63,6 +62,7 @@
             <p class="today-summary">选定优先目标，安排可用时间，从有依据的下一步开始。</p>
             <router-link class="today-start" to="/today">打开今日行动<el-icon><ArrowRight /></el-icon></router-link>
           </section>
+          <section class="quote-sheet"><HeroEncouragement /></section>
           <section class="partner-note"><div><h2>最近学了什么？</h2><p>回看练习、面试和学习记录。</p><router-link to="/growth">查看学习记录<el-icon><ArrowRight /></el-icon></router-link></div><picture><source srcset="../assets/optimized/filemate-mascot-home.webp" type="image/webp" /><img src="../assets/optimized/filemate-mascot-home.png" alt="" aria-hidden="true" width="220" height="294" loading="lazy" decoding="async" /></picture></section>
           <router-link class="privacy-link" to="/trust"><el-icon><Lock /></el-icon><span>资料如何保存与使用</span><el-icon><ArrowRight /></el-icon></router-link>
         </aside>
@@ -75,7 +75,6 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ArrowRight, Calendar, FolderOpened, Lock, Microphone, Reading } from '../icons'
-import StudyMotif from '../components/StudyMotif.vue'
 import HeroEncouragement from '../components/HeroEncouragement.vue'
 import DataState from '../components/DataState.vue'
 import { getHistory, getAccountState, getKnowledgeSources, listAIContexts, getWrongbookPage, getPrivacyBoundary, importLearningSource } from '../services/api'

@@ -1,6 +1,7 @@
 <template>
   <div class="interview-page coach-surface">
-    <header class="page-head">
+    <header class="page-head workspace-refined-heading">
+      <span class="workspace-heading-icon" aria-hidden="true"><Conversation :size="27" /></span>
       <div>
         <h1>口头讲解与模拟面试</h1>
         <p>用资料练表达，逐题回答并回看依据。</p>

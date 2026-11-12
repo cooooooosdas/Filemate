@@ -1,7 +1,8 @@
 <template>
   <div class="knowledge-page">
-    <header class="page-head"><div><h1>个人知识库</h1><p>查找原文、打开笔记，继续学习已有资料。</p></div><router-link class="import-link" to="/ai-tools"><Reading :size="21" aria-hidden="true" />打开学习工作区</router-link></header>
+    <header class="page-head workspace-refined-heading"><span class="workspace-heading-icon" aria-hidden="true"><Reading :size="27" /></span><div><h1>个人知识库</h1><p>查找原文、打开笔记，继续学习已有资料。</p></div><router-link class="import-link" to="/ai-tools"><Reading :size="21" aria-hidden="true" />打开学习工作区</router-link></header>
 
+    <div class="knowledge-desk">
     <MotionSurface class="search-panel" aria-labelledby="search-heading">
       <h2 id="search-heading">想找什么知识？</h2>
       <div class="search-row">
@@ -11,11 +12,7 @@
       <div class="search-foot"><p class="privacy"><Lock :size="17" aria-hidden="true" />私有空间检索 · 原文可回看</p><span v-if="!selectedSource" class="scope-label">范围：全部资料</span><button v-else class="scope-chip" :disabled="searching" @click="selectedSource = ''" :aria-label="`清除检索范围：${scopeName}`">{{ scopeName }}<Close :size="17" aria-hidden="true" /></button></div>
     </MotionSurface>
 
-    <nav class="evidence-entries" aria-label="继续学习与查看证据">
-      <router-link v-if="graphEnabled" to="/knowledge-graph"><Share :size="27" aria-hidden="true" /><span><strong>连接知识</strong><span>核对概念与原文</span></span><ArrowUpRight :size="21" aria-hidden="true" /></router-link>
-      <router-link to="/today"><Reading :size="27" aria-hidden="true" /><span><strong>继续复习</strong><span>查看今天的学习任务</span></span><ArrowUpRight :size="21" aria-hidden="true" /></router-link>
-      <router-link to="/growth"><DataAnalysis :size="27" aria-hidden="true" /><span><strong>回看成长</strong><span>查看记录与评测依据</span></span><ArrowUpRight :size="21" aria-hidden="true" /></router-link>
-    </nav>
+
 
     <section v-if="hasSearched" class="results" aria-live="polite">
       <div class="section-head"><h2>检索结果</h2><span>{{ results.length }} 条引用 · {{ searchedQuery }}</span></div>
@@ -65,6 +62,13 @@
         <router-link to="/import?intent=study"><el-icon><DocumentAdd /></el-icon>添加第一份资料</router-link>
       </div>
     </section>
+
+    </div>
+    <nav class="evidence-entries" aria-label="继续学习与查看证据">
+      <router-link v-if="graphEnabled" to="/knowledge-graph"><Share :size="27" aria-hidden="true" /><span><strong>连接知识</strong><span>核对概念与原文</span></span><ArrowUpRight :size="21" aria-hidden="true" /></router-link>
+      <router-link to="/today"><Reading :size="27" aria-hidden="true" /><span><strong>继续复习</strong><span>查看今天的学习任务</span></span><ArrowUpRight :size="21" aria-hidden="true" /></router-link>
+      <router-link to="/growth"><DataAnalysis :size="27" aria-hidden="true" /><span><strong>回看成长</strong><span>查看记录与评测依据</span></span><ArrowUpRight :size="21" aria-hidden="true" /></router-link>
+    </nav>
 
     <el-dialog v-model="dialogVisible" class="artifact-dialog" width="min(860px, calc(100vw - 24px))" :show-close="false" :before-close="beforeDialogClose" :title="selectedArtifact?.title || '学习产物'" append-to-body destroy-on-close>
       <p v-if="selectedArtifact?.metadata?.question_data_error" class="error" role="alert">此题集数据不完整，已暂停判题；原内容保留，可修订题集或重新生成。</p>
