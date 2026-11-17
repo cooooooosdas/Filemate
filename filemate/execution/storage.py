@@ -766,6 +766,7 @@ class SQLiteStorage:
         self._write_lock = threading.RLock()
         self._graph_lock = threading.RLock()
         self._connections: set[sqlite3.Connection] = set()
+        self._connection_threads: dict[sqlite3.Connection, threading.Thread] = {}
 
     # ------------------------------------------------------------------
     # 内部：每个线程持有一条连接
@@ -774,6 +775,13 @@ class SQLiteStorage:
     def _conn(self) -> sqlite3.Connection:
         conn = getattr(self._local, "conn", None)
         if conn is None:
+            with self._write_lock:
+                # 线程池会回收空闲线程；仅按租户淘汰不能释放这些遗留连接。
+                for retired, owner in tuple(self._connection_threads.items()):
+                    if not owner.is_alive():
+                        retired.close()
+                        self._connections.discard(retired)
+                        del self._connection_threads[retired]
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
             conn = sqlite3.connect(
                 str(self.db_path),
@@ -789,6 +797,7 @@ class SQLiteStorage:
             self._local.conn = conn
             with self._write_lock:
                 self._connections.add(conn)
+                self._connection_threads[conn] = threading.current_thread()
         return conn
 
     def close(self) -> None:
@@ -797,6 +806,7 @@ class SQLiteStorage:
             for conn in tuple(self._connections):
                 conn.close()
             self._connections.clear()
+            self._connection_threads.clear()
             self._local.conn = None
 
     @contextmanager
