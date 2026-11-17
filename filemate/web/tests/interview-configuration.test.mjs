@@ -75,3 +75,22 @@ test('draft save carries the opaque version read from the server',async()=>{
   await c.load();await c.save({configuration:configurationForScenario('技术面','标准'),target_role:'合成岗位'})
   assert.equal(submitted.expected_token,'after-restore-token')
 })
+
+import * as configurationRules from '../src/interview/configuration.ts'
+
+test('empty interview topic directs the user to the required field', () => {
+  const result = configurationRules.requiredInterviewField({ targetRole: '  ', scenario: '技术面', projectName: '', projectDetails: '' })
+  assert.equal(result.field, 'target_role')
+  assert.match(result.message, /训练主题/)
+})
+test('project interview guides each missing fact in order', () => {
+  const input = { targetRole: '课程项目答辩', scenario: '项目面', projectName: '', projectDetails: '' }
+  assert.equal(configurationRules.requiredInterviewField(input).field, 'project_name')
+  input.projectName = 'FileMate'
+  assert.equal(configurationRules.requiredInterviewField(input).field, 'project_details')
+  input.projectDetails = '我实现资料引用并验证来源。'
+  assert.equal(configurationRules.requiredInterviewField(input), null)
+})
+test('ordinary interview does not require optional project facts', () => {
+  assert.equal(configurationRules.requiredInterviewField({ targetRole: 'Java 后端开发', scenario: '技术面', projectName: '', projectDetails: '' }), null)
+})

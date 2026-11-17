@@ -1,5 +1,12 @@
 import type { ConfigurationStatus, InterviewCategory, InterviewConfiguration, InterviewDraft, InterviewDraftContent, SaveInterviewDraft, SessionConfiguration } from '../types/interviewConfiguration'
 
+export function requiredInterviewField(input: { targetRole: string; scenario: string; projectName: string; projectDetails: string }): { field: 'target_role' | 'project_name' | 'project_details'; label: string; message: string } | null {
+  if (!input.targetRole.trim()) return { field: 'target_role', label: '填写训练主题', message: '先填写训练主题，例如“Java 后端开发”或“课程项目答辩”，再开始训练。' }
+  if (input.scenario === '项目面' && !input.projectName.trim()) return { field: 'project_name', label: '填写项目名称', message: '项目面需要填写项目名称，点击下方按钮可定位到输入框。' }
+  if (input.scenario === '项目面' && !input.projectDetails.trim()) return { field: 'project_details', label: '补充项目事实', message: '请补充你的实际职责、设计选择或项目结果，作为本场提问依据。' }
+  return null
+}
+
 export const interviewDirections: { id: InterviewCategory; label: string; description: string; tracks: {id:string;label:string;scenario:string|null}[] }[] = [
   {id:'general',label:'通用求职',description:'自我介绍、沟通与职业选择',tracks:[{id:'general',label:'综合面试',scenario:'求职面试'},{id:'hr',label:'HR 沟通',scenario:'HR面'}]},
   {id:'technical',label:'专业技术',description:'岗位知识与算法思路',tracks:[{id:'technical',label:'岗位技术',scenario:'技术面'},{id:'algorithm',label:'算法表达',scenario:'算法面'}]},

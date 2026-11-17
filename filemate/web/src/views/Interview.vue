@@ -25,7 +25,7 @@
       <p v-if="loading" role="status">正在准备面试…</p>
     </details>
 
-    <section v-if="!session" class="setup-card">
+    <section v-if="!session" class="setup-card" ref="setupCard">
       <p v-if="needsConfigurationChoice" class="focus-note" role="alert">这场历史记录的训练模式未被识别。原题与回答仍可回看；请重新选择训练方向后再开始。</p>
       <InterviewCreator v-if="!configurationState.ready || configurationState.enabled" :model-value="configuration" :draft="configurationState" :runtime-enabled="runtimeEnabled" :busy="loading || memoryBusy" @update:model-value="updateConfiguration" @save="savePreparation" @restore="restorePreparation" @reload="draftController.load()" />
       <div v-else class="setup-copy">
@@ -37,7 +37,7 @@
         <button v-for="mode in interviewModes" :key="mode" type="button" :aria-pressed="form.scenario === mode" :disabled="loading" @click="form.scenario = mode; needsConfigurationChoice = false"><component :is="modeIcons[mode]" :size="24" aria-hidden="true" /><span>{{ mode === 'HR面' ? 'HR 面' : mode }}</span></button>
       </fieldset>
       <div class="form-grid">
-        <label>02 / 这次想练什么？<input v-model="form.targetRole" name="target_role" maxlength="120" autocomplete="off" placeholder="例如：数据库索引 / Java 后端开发" :disabled="loading" /></label>
+        <label>02 / 这次想练什么？<input v-model="form.targetRole" name="target_role" required aria-required="true" :aria-describedby="requiredStartField ? 'interview-start-guidance' : undefined" maxlength="120" autocomplete="off" placeholder="例如：数据库索引 / Java 后端开发" :disabled="loading" /></label>
         <fieldset v-if="configurationState.ready && !configurationState.enabled" class="difficulty-picker"><legend>选择难度</legend><button v-for="level in ['入门', '标准', '压力面']" :key="level" type="button" :aria-pressed="form.difficulty === level" :disabled="loading" @click="form.difficulty = level">{{ level }}</button></fieldset>
         <label v-if="configuration.execution_mode!=='timed'" class="source-field">结合哪份资料？（可选）<select v-model="form.sourceId" name="interview_source" :disabled="loading" @change="focusWrongId = ''; originGoalId = ''"><option value="">按题库训练</option><option v-for="source in knowledgeSources" :key="source.source_id" :value="source.source_id">{{ source.original_name }}</option></select><small>主动选择后才会使用；授权未确认时只用资料名组织问题。</small></label>
       </div>
@@ -45,8 +45,8 @@
       <p v-if="form.scenario === '英语面'" class="focus-note">问题播报与语音识别切换到英语；也可以直接输入英文回答。</p>
       <fieldset v-if="form.scenario === '项目面' || configuration.execution_mode==='timed'" class="project-input">
         <legend>{{ configuration.category==='creator'?'讲解主题／商品的已知事实':'真实经历与资料事实' }}</legend>
-        <label>项目名称<input v-model="projectName" maxlength="120" placeholder="例如：课程项目或比赛作品" :disabled="loading" /></label>
-        <label>本场事实依据（未知信息请注明）<textarea v-model="projectDetails" maxlength="6000" rows="4" :disabled="loading" placeholder="说明目标、你的职责、设计选择和实际结果。未做或未验证的部分请明确写出。" /></label>
+        <label>项目名称<input v-model="projectName" name="project_name" maxlength="120" placeholder="例如：课程项目或比赛作品" :disabled="loading" /></label>
+        <label>本场事实依据（未知信息请注明）<textarea v-model="projectDetails" name="project_details" maxlength="6000" rows="4" :disabled="loading" placeholder="说明目标、你的职责、设计选择和实际结果。未做或未验证的部分请明确写出。" /></label>
         <p>这段事实会随本场练习保存，只用于提问；不会自动修改简历或能力画像。</p>
       </fieldset>
       <label v-if="configuration.execution_mode!=='timed'" class="practice-consent"><input v-model="rememberForFuture" type="checkbox" :disabled="loading" />允许本场回答用于以后面试的连续追问（可随时遗忘）</label>
@@ -68,7 +68,8 @@
       <p v-if="form.scenario === '知识讲解'" class="focus-note">讲解会保存为练习记录；当前内容准确性待评估，语音节奏仅作参考。</p>
       <p v-if="reviewEnabled" class="focus-note">本轮先按规则选题，回答保存到学习空间。提交后可在复盘区主动授权内容分析；录像和视觉观察不会发给模型。</p>
       <label v-else class="legacy-consent"><input v-model="legacyExternalConsent" type="checkbox" />授权已配置模型对问题和回答提供四维参考评分；不发送本地录像。</label>
-      <button class="primary start-practice" :disabled="loading || memoryBusy || needsConfigurationChoice || configurationState.busy || !configurationState.ready || (configurationState.enabled && (!!unavailableReason(configuration) || (configuration.execution_mode==='timed'&&!runtimeEnabled))) || !form.targetRole.trim() || (form.scenario === '项目面' && (!projectName.trim() || !projectDetails.trim()))" @click="begin"><VideoPlay :size="22" aria-hidden="true" />{{ loading ? '正在创建…' : configuration.execution_mode==='timed'?'准备实战':'开始逐题训练' }}<ArrowRight :size="22" aria-hidden="true" /></button>
+      <p v-if="requiredStartField" id="interview-start-guidance" class="focus-note" role="status">{{ requiredStartField.message }}</p>
+      <button class="primary start-practice" :disabled="loading || memoryBusy || needsConfigurationChoice || configurationState.busy || !configurationState.ready || (configurationState.enabled && (!!unavailableReason(configuration) || (configuration.execution_mode==='timed'&&!runtimeEnabled)))" @click="begin"><VideoPlay :size="22" aria-hidden="true" />{{ loading ? '正在创建…' : configuration.execution_mode==='timed'?'准备实战':requiredStartField?.label || '开始逐题训练' }}<ArrowRight :size="22" aria-hidden="true" /></button>
       <DataState v-if="error" :error="error" @retry="begin" />
     </section>
 
@@ -287,7 +288,7 @@ import InterviewCreator from '../components/InterviewCreator.vue'
 import InterviewRuntimePanel from '../components/InterviewRuntimePanel.vue'
 import type { RuntimeKind } from '../types/interviewRuntime'
 import { prepareInterviewRuntime } from '../services/api'
-import { configurationForScenario, configurationForSession, createDraftController, legacyScenario, unavailableReason } from '../interview/configuration'
+import { configurationForScenario, configurationForSession, createDraftController, legacyScenario, unavailableReason, requiredInterviewField } from '../interview/configuration'
 import { getInterviewConfiguration, saveInterviewDraft } from '../services/api'
 import type { InterviewConfiguration } from '../types/interviewConfiguration'
 import { useInterviewVision } from '../interview/useInterviewVision'
@@ -335,6 +336,8 @@ function restorePreparation(): void {
 }
 const projectName = ref('')
 const projectDetails = ref('')
+const setupCard = ref<HTMLElement | null>(null)
+const requiredStartField = computed(() => requiredInterviewField({ targetRole: form.value.targetRole, scenario: form.value.scenario, projectName: projectName.value, projectDetails: projectDetails.value }))
 const rememberForFuture = ref(false)
 const selectedMemoryId = ref<string | null>(null)
 const practiceMemories = ref<InterviewPracticeMemory[]>([])
@@ -617,6 +620,13 @@ const speakQuestion = () => {
 
 const begin = async () => {
   if (loading.value || memoryBusy.value || needsConfigurationChoice.value || configurationState.value.busy || !configurationState.value.ready) return
+  const missing = requiredStartField.value
+  if (missing) {
+    const field = setupCard.value?.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${missing.field}"]`)
+    field?.focus()
+    field?.scrollIntoView({ block: 'center', behavior: 'auto' })
+    return
+  }
   loading.value = true
   error.value = ''
   memoryError.value = ''
