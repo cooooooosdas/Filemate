@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
@@ -16,7 +16,12 @@ const apiTarget = process.env.VITE_API_URL || 'http://127.0.0.1:8001'
 const visionFiles = ['vision_wasm_internal.js', 'vision_wasm_internal.wasm', 'vision_wasm_nosimd_internal.js', 'vision_wasm_nosimd_internal.wasm', 'vision_wasm_module_internal.js', 'vision_wasm_module_internal.wasm']
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_')
+  const wrongbookV2 = env.VITE_ENABLE_WRONGBOOK_V2 ?? (command === 'build' ? 'true' : 'false')
+  if (!['true', 'false'].includes(wrongbookV2)) throw new Error('VITE_ENABLE_WRONGBOOK_V2 must be true or false')
+  return {
+  define: { 'import.meta.env.VITE_ENABLE_WRONGBOOK_V2': JSON.stringify(wrongbookV2) },
   plugins: [vue(), Components({
     dirs: [],
     dts: false,
@@ -172,4 +177,5 @@ export default defineConfig({
       },
     },
   },
+  }
 })

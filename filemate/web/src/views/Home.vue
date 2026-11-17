@@ -2,12 +2,12 @@
   <div class="dashboard" :aria-busy="loading">
     <div class="welcome-board">
     <header class="welcome">
-      <div class="welcome-copy"><span class="welcome-icon" aria-hidden="true"><el-icon><Reading /></el-icon></span><div class="welcome-meta"><span>{{ greeting }}</span><time>{{ todayLabel }}</time></div><h1>今天，让知识成形。</h1><p>打开课件，读原文、记笔记、做练习。</p></div>
-    </header>
-    <section class="quote-sheet"><HeroEncouragement /></section>
+      <KnowledgeBackdrop />
+      <div class="welcome-copy">
+        <div class="welcome-meta"><span>{{ greeting }}，学习者</span><time>{{ todayLabel }}</time></div>
+        <h1>今天，<br />让知识<span>成形。</span></h1>
+        <p>读懂一份资料，走向你的下一步。</p>
     <section class="home-action" aria-label="开始这次学习" :aria-busy="homeStatus === 'loading'">
-      <div v-if="firstVisit" class="first-visit"><h2>从一份课件，开始学习</h2><ol><li>导入课件</li><li>阅读提问</li><li>练习复习</li></ol></div>
-      <div v-else class="learning-prompt"><h2>从资料开始，把知识用起来。</h2><p>阅读、提问与练习，在同一个学习空间里完成。</p></div>
       <div class="home-action-row">
         <button v-if="action.kind === 'sample'" class="solid-link hero-start" :disabled="sampleBusy" @click="trySample">{{ sampleBusy ? '正在导入原创示例…' : action.title }}<el-icon><ArrowRight /></el-icon></button>
         <button v-else-if="action.kind === 'retry'" class="solid-link hero-start" @click="loadHomeState">{{ action.title }}</button>
@@ -18,6 +18,9 @@
       <p v-if="firstVisit" class="sample-note">原创示例会保存到当前空间，不调用模型。</p>
       <p v-if="homeError" role="alert">{{ homeError }}</p>
     </section>
+      </div>
+      <section class="quote-sheet" aria-label="每日一言"><HeroEncouragement /></section>
+    </header>
     </div>
     <span v-if="loading" class="sr-only" role="status">正在读取你的学习记录…</span>
     <div class="dashboard-workspace">
@@ -76,6 +79,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ArrowRight, Calendar, FolderOpened, Lock, Microphone, Reading } from '../icons'
 import HeroEncouragement from '../components/HeroEncouragement.vue'
+import KnowledgeBackdrop from '../components/KnowledgeBackdrop.vue'
 import DataState from '../components/DataState.vue'
 import { getHistory, getAccountState, getKnowledgeSources, listAIContexts, getWrongbookPage, getPrivacyBoundary, importLearningSource } from '../services/api'
 import { resolveHomeAction, createSampleImporter } from '../home/action'
