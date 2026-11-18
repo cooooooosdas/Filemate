@@ -1,5 +1,7 @@
 # API 规范
 
+2026-11-18 生产配置：游客 `FILEMATE_AI_GUEST_DAILY_BUDGET_UNITS=1000000`，沿用现有环境变量，无API或schema变化；代码默认仍250000。每日60次、并发4、账号与全站上限保持原配置。预算单位不是实际token或费用；累计额度耗尽仍429，不因重启或恢复个人备份重置。见[学习工作区429恢复记录](../../docs/LEARNING_WORKSPACE_429_2026-11-18.md)。
+
 ## 错题D级学习上下文（2026-10-28，本地开发候选）
 
 分析路线：`POST /wrongbook/v2/{wrong_id}/analyses`接收attempt_id、input_digest、request_key、可空course_id、credential_mode=server|browser、force_refresh=false、allow_external_model严格true。默认模型开关FILEMATE_ENABLE_WRONGBOOK_AI=0；需同时开启V2。每次新工作最多一次模型请求、20秒总期限，无自动修复／重试。不同键相同有效输入默认复用ready结果；强制刷新需新键。同键异内容409，被删除请求墓碑410。已认领的模型故障返回200的failed记录及固定error_code，调用方必须检查status；不触发账户401退出。
